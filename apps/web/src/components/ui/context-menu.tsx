@@ -1,15 +1,190 @@
 "use client"
 
 import * as React from "react"
+import { flushSync } from "react-dom"
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
+import { useTouchPrimary } from "@/hooks/use-touch-primary"
 import { cn } from "@/lib/utils"
 import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes"
 
 const ContextMenu = ContextMenuPrimitive.Root
 
-const ContextMenuTrigger = ContextMenuPrimitive.Trigger
+// Radix opens on touch after a 700ms hold that only pointer events cancel, and
+// at once on Android's native long-press `contextmenu`. Neither knows about
+// scrolling or the swipe gestures built on touch events, so a hold that became
+// a swipe could still open the menu. On touch-primary devices the trigger runs
+// the long-press from those same touch events, then enables Radix just long
+// enough to hand it the `contextmenu` a right-click would send.
+const LONG_PRESS_MS = 700
+// Small enough that a swipe cancels the press before its own gesture engages.
+const LONG_PRESS_SLOP_PX = 8
+// A touch that lands while content is still gliding only stops the scroll, as
+// it does in native scroll views.
+const SCROLL_SETTLE_MS = 150
+
+let lastScrollAt = -Infinity
+let scrollListeners = 0
+const recordScroll = () => {
+  lastScrollAt = performance.now()
+}
+
+function useScrollTimestamp(enabled: boolean) {
+  React.useEffect(() => {
+    if (!enabled) return
+    if (scrollListeners++ === 0) {
+      document.addEventListener("scroll", recordScroll, {
+        capture: true,
+        passive: true,
+      })
+    }
+    return () => {
+      if (--scrollListeners === 0) {
+        document.removeEventListener("scroll", recordScroll, { capture: true })
+      }
+    }
+  }, [enabled])
+}
+
+type LongPress = { x: number; y: number; startedAt: number; timer: number }
+
+const ContextMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof ContextMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Trigger>
+>(
+  (
+    {
+      disabled,
+      onContextMenu,
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+      onTouchCancel,
+      ...props
+    },
+    forwardedRef
+  ) => {
+    const isTouchPrimary = useTouchPrimary()
+    const managesTouch = isTouchPrimary && !disabled
+    const [opening, setOpening] = React.useState(false)
+    const triggerRef = React.useRef<HTMLSpanElement | null>(null)
+    const pressRef = React.useRef<LongPress | null>(null)
+    const touchActiveRef = React.useRef(false)
+    const dispatchingRef = React.useRef(false)
+    useScrollTimestamp(managesTouch)
+
+    const setRefs = React.useCallback(
+      (node: HTMLSpanElement | null) => {
+        triggerRef.current = node
+        if (typeof forwardedRef === "function") forwardedRef(node)
+        else if (forwardedRef) forwardedRef.current = node
+      },
+      [forwardedRef]
+    )
+
+    const cancelPress = React.useCallback(() => {
+      if (pressRef.current) window.clearTimeout(pressRef.current.timer)
+      pressRef.current = null
+    }, [])
+
+    React.useEffect(() => {
+      if (!managesTouch) return
+      return cancelPress
+    }, [managesTouch, cancelPress])
+
+    const openAt = React.useCallback((x: number, y: number) => {
+      const trigger = triggerRef.current
+      if (!trigger) return
+      flushSync(() => setOpening(true))
+      dispatchingRef.current = true
+      try {
+        trigger.dispatchEvent(
+          new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX: x,
+            clientY: y,
+          })
+        )
+      } finally {
+        dispatchingRef.current = false
+        setOpening(false)
+      }
+    }, [])
+
+    return (
+      <ContextMenuPrimitive.Trigger
+        ref={setRefs}
+        disabled={disabled || (managesTouch && !opening)}
+        onContextMenu={(event) => {
+          onContextMenu?.(event)
+          if (!managesTouch || dispatchingRef.current) return
+          event.preventDefault()
+          if (!touchActiveRef.current) {
+            // A trackpad, mouse, or keyboard on a touch-primary device.
+            const { clientX, clientY } = event
+            window.setTimeout(() => openAt(clientX, clientY))
+            return
+          }
+          // Android's own long-press counts only while ours is still intact.
+          const press = pressRef.current
+          cancelPress()
+          if (press && lastScrollAt < press.startedAt) {
+            window.setTimeout(() => openAt(press.x, press.y))
+          }
+        }}
+        onTouchStart={(event) => {
+          onTouchStart?.(event)
+          if (!managesTouch) return
+          touchActiveRef.current = true
+          cancelPress()
+          const startedAt = performance.now()
+          if (event.touches.length !== 1) return
+          if (startedAt - lastScrollAt < SCROLL_SETTLE_MS) return
+          const touch = event.touches[0]
+          const press: LongPress = {
+            x: touch.clientX,
+            y: touch.clientY,
+            startedAt,
+            timer: 0,
+          }
+          press.timer = window.setTimeout(() => {
+            pressRef.current = null
+            // Any scroll since the press began means it was a gesture.
+            if (lastScrollAt < startedAt) openAt(press.x, press.y)
+          }, LONG_PRESS_MS)
+          pressRef.current = press
+        }}
+        onTouchMove={(event) => {
+          onTouchMove?.(event)
+          const press = pressRef.current
+          if (!press) return
+          const touch = event.touches[0]
+          if (
+            event.touches.length !== 1 ||
+            Math.hypot(touch.clientX - press.x, touch.clientY - press.y) >=
+              LONG_PRESS_SLOP_PX
+          ) {
+            cancelPress()
+          }
+        }}
+        onTouchEnd={(event) => {
+          onTouchEnd?.(event)
+          if (event.touches.length === 0) touchActiveRef.current = false
+          cancelPress()
+        }}
+        onTouchCancel={(event) => {
+          onTouchCancel?.(event)
+          touchActiveRef.current = false
+          cancelPress()
+        }}
+        {...props}
+      />
+    )
+  }
+)
+ContextMenuTrigger.displayName = ContextMenuPrimitive.Trigger.displayName
 
 const ContextMenuGroup = ContextMenuPrimitive.Group
 

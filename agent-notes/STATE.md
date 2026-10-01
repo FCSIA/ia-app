@@ -214,6 +214,9 @@
   unlayered surface ladder now gives Custom the same dark-surface cascade level
   as Bubblegum Dark, and invalid custom Text/Background or Primary/surface
   contrast combinations are rejected before application or local persistence.
+  Custom wallpaper uploads sample up to three distinct image colors on the
+  client; the chosen raised-surface tint and candidate colors persist on the
+  user's account, with a neutral fallback for older unsampled wallpapers.
 - `/courses` is included in protected route middleware.
 - Club channel message queries include both `clubId` and `channelId`.
 - Event creation UI only offers eligible clubs to non-general creators and

@@ -20,6 +20,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 import { hasRole, isSuperAdmin, type AppUser } from '@/lib/auth';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import {
@@ -148,8 +149,9 @@ function GlobalCommandPaletteContent({
   const shouldLoad = open && !!user;
   const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
   const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const announcementNow = useAnnouncementFeedClock();
 
-  const announcements = useQuery(api.announcements.feed.list, shouldLoad ? {} : 'skip');
+  const announcements = useQuery(api.announcements.feed.list, shouldLoad ? { now: announcementNow } : 'skip');
   const clubs = useQuery(api.clubs.management.getAll, shouldLoad ? {} : 'skip');
   const myClubs = useQuery(
     api.clubs.management.getMyClubs,

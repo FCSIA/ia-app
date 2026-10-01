@@ -27,6 +27,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
 type AnnouncementDetail = AnnouncementCardRecord & {
   bodyMarkdown?: string | null;
@@ -142,6 +143,7 @@ function AnnouncementDetailSkeleton() {
 
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const announcementNow = useAnnouncementFeedClock(3_600_000);
   const user = useCurrentUser();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
@@ -157,6 +159,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
 
   const detail = useQuery(api.announcements.feed.get, {
     announcementId: id as Id<'announcements'>,
+    now: announcementNow,
   });
   const isLoading = detail === undefined;
   const announcement: AnnouncementDetail | null = detail ? { ...detail.announcement, comments: detail.comments } : null;
@@ -232,8 +235,8 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           </Button>
         </div>
 
-        <Card>
-          <CardHeader className="gap-5 bg-muted/20 pb-5">
+        <Card className={`overflow-hidden rounded-2xl border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+          <CardHeader className="gap-5 border-b border-white/10 bg-background/35 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (
                 <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
@@ -271,7 +274,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4 pt-0">
+          <CardContent className="space-y-4 bg-background/70 pt-6">
             {announcement.status === 'EXPIRED' ? (
               <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                 <Clock3 className="size-4" />

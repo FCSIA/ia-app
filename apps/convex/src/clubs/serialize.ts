@@ -1,5 +1,5 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
 import { countClubChannels, countClubMembers } from "./counts";
@@ -98,7 +98,7 @@ export function toClubUserRef(user: Doc<"users">) {
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
     isDeveloper: user.isDeveloper,
-  };
+  } satisfies Infer<typeof clubUserRefValidator>;
 }
 
 export const clubSummaryValidator = v.object({

@@ -67,7 +67,7 @@ async function countOf(
 ) {
   return t.run(async (ctx) => {
     const ann = await ctx.db.get(announcementId);
-    const [serialized] = await serializeAnnouncements(ctx, [ann!], viewerId);
+    const [serialized] = await serializeAnnouncements(ctx, [ann!], viewerId, Date.now());
     return serialized.commentCount;
   });
 }

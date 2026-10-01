@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
+import { cn } from '@/lib/utils';
 
 type AdminShellProps = {
   activeTab: AdminTabId;
@@ -23,17 +24,23 @@ export function AdminShell({
   children,
 }: AdminShellProps) {
   return (
-    <div className="grid h-full min-h-0 w-full flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)]">
-      <h1 className="pb-3 text-xl font-bold text-foreground lg:col-start-1 lg:row-start-1">
-        Admin Panel
-      </h1>
+    <div className={cn(
+      "admin-shell grid h-full min-h-0 w-full flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)]",
+      "lg:p-6 p-4"
+    )}>
+      <div className="relative z-10 lg:col-start-1 lg:row-start-1">
+        <h1 className="pb-3 text-xl font-bold text-foreground tracking-tight">
+          Admin Panel
+        </h1>
+        <p className="text-sm text-muted-foreground">Manage users, content, and platform settings</p>
+      </div>
 
       <Tabs
         value={activeTab}
         onValueChange={(value) => onTabChange(value as AdminTabId)}
-        className="contents"
+        className="relative z-10 contents"
       >
-        <div className="mb-3 min-w-0 max-w-full justify-self-start overflow-x-auto lg:col-start-2 lg:row-start-1 lg:justify-self-end">
+        <div className="mb-4 min-w-0 max-w-full justify-self-start overflow-x-auto lg:col-start-2 lg:row-start-1 lg:justify-self-end lg:mb-0">
           <TabsList>
             <TabItem value="users" icon={Users} label="Users" />
             {isSuperAdmin ? (

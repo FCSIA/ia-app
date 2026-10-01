@@ -53,6 +53,12 @@ code after the app confirms the viewer is already a club member.
 - Keeps explicitly selected people as access exceptions for special cases.
 - Lets managers drag channels into sibling order and move them inward or
   outward through the structure tree without coupling placement to access.
+- Web channel visits show a red Unread divider before the first unread post,
+  using the viewer's saved read receipt. The entry boundary stays fixed while
+  the channel acknowledges messages; switching channels captures a new boundary.
+  Older pages load automatically when needed to locate a previous read position.
+  Search results omit the divider, and already-read/empty visits do not acquire
+  one when live messages arrive.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
 - Gives every channel collaborative [whiteboards](whiteboards.md) that all

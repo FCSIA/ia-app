@@ -34,7 +34,7 @@ import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 
 const cardClass = cn(
-  'overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm',
+  'overflow-hidden rounded-2xl border border-border bg-card',
   CARD_SURFACE_FOREGROUND,
 );
 const headerClass = 'flex flex-row items-start justify-between gap-4 border-b border-border/70 px-5 py-4';
@@ -82,7 +82,7 @@ function SettingsCard({
           <div className="min-w-0">
             <CardTitle className="text-base font-semibold leading-tight">{title}</CardTitle>
             {description ? (
-              <CardDescription className="mt-1 text-xs leading-5">{description}</CardDescription>
+              <CardDescription className="mt-1 text-xs leading-5 text-foreground/80">{description}</CardDescription>
             ) : null}
           </div>
         </div>
@@ -113,7 +113,7 @@ function InfoRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-baseline gap-4 py-3 last:pb-5">
-      <span className="min-w-0 text-sm text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-sm font-medium text-foreground/80">{label}</span>
       <span
         className={cn(
           'truncate text-right text-sm font-medium text-foreground',
@@ -187,7 +187,7 @@ export function ProfileSidebar({
               <DeveloperBadge user={user} size={16} />
             </div>
             {user?.roles?.length ? (
-              <CardDescription className="mt-2 text-sm leading-5">
+              <CardDescription className="mt-2 text-sm leading-5 text-foreground/80">
                 {user.roles.map(friendlyRole).join(' · ')}
               </CardDescription>
             ) : null}
@@ -207,7 +207,10 @@ export function ProfileSidebar({
                 variant={activeSection === id ? 'secondary' : 'ghost'}
                 size="md"
                 leadingIcon={icon}
-                className="w-full justify-start"
+                className={cn(
+                  'w-full justify-start',
+                  activeSection === id ? 'text-foreground' : 'text-foreground/85 hover:text-foreground',
+                )}
                 aria-current={activeSection === id ? 'page' : undefined}
                 // The count is decoration; keep it out of the accessible name
                 // and say what it means instead.
@@ -284,10 +287,10 @@ export function AccountSettingsCard({
     >
       <section className="px-5 pt-4" aria-labelledby="account-details-heading">
         <div className="flex items-center gap-2">
-          <User className="size-3.5 text-muted-foreground" aria-hidden />
+          <User className="size-3.5 text-foreground/70" aria-hidden />
           <h2
             id="account-details-heading"
-            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            className="text-xs font-semibold uppercase tracking-wide text-foreground/80"
           >
             Account details
           </h2>
@@ -303,13 +306,13 @@ export function AccountSettingsCard({
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <Lock className="size-3.5 text-muted-foreground" aria-hidden />
+              <Lock className="size-3.5 text-foreground/70" aria-hidden />
               <h2 id="password-heading" className="text-sm font-semibold">
                 Password
               </h2>
             </div>
             {!changing ? (
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <p className="mt-1 text-xs leading-5 text-foreground/80">
                 Update your sign-in credentials.
               </p>
             ) : null}
@@ -384,7 +387,7 @@ export function AccountSettingsCard({
           <h2 id="sign-out-heading" className="text-sm font-semibold">
             Sign out
           </h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <p className="mt-1 text-xs leading-5 text-foreground/80">
             End this session on this device.
           </p>
         </div>
