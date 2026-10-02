@@ -150,7 +150,10 @@ export function ChannelMessageComposer({
         BoldPlugin,
         ItalicPlugin,
         UnderlinePlugin,
-        MentionPlugin.withComponent(MentionElement),
+        // A space after a picked mention, so the next word never runs into it.
+        MentionPlugin.configure({ options: { insertSpaceAfterMention: true } }).withComponent(
+          MentionElement,
+        ),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
       value: initialValue,
