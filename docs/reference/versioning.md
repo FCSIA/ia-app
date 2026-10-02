@@ -138,7 +138,9 @@ version alone.
 
 ## Verifying a deployed build
 
-Every web deployment exposes a small unauthenticated JSON marker at `/_meta`.
+Every web deployment exposes a small unauthenticated JSON marker at `/_meta`
+(a rewrite to the handler in `apps/web/src/app/api/meta/route.ts`; Next.js never
+routes a folder named `_meta`).
 It is deliberately not linked in the product UI, but it is not secret: it only
 returns the service name, release version/channel, display release, and the
 seven-character build commit when one was stamped at build time. It must never
