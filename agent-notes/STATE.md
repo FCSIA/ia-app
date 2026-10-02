@@ -2,10 +2,10 @@
 
 ## Active Focus
 
-- **Branch**: `codex/refresh-bun-stack` (refreshing PR #100);
-  `codex/admin-mobile-layout` owns the separate admin UI repair.
-- **Goal**: Merge the #100 → #111 tooling/backend stack, then make the admin
-  header and mobile scrolling usable. Production deployment is not authorized.
+- **Branch**: `codex/admin-mobile-layout`.
+- **Goal**: Finish the admin mobile repair and hand it off for design-owner
+  review. The #100 → #111 tooling/backend stack is merged. Production
+  deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -14,14 +14,33 @@
 
 ### Bun stack refresh (2026-10-02)
 
-- PR #100 retains the newer worktree bootstrap, LAN dev orchestration, deploy
-  marker, and Convex 1.46.0 from main while moving installs and scripts to Bun.
+- PR #100 is merged and retains the newer worktree bootstrap, LAN dev
+  orchestration, deploy marker, and Convex 1.46.0 from main while moving installs
+  and scripts to Bun.
+- PR #111 is merged after #100. It adopts native Convex schema document helpers
+  and generated environment bindings without downgrading Convex 1.46.0 or
+  removing newer schema fields and performance changes.
 - Security dependencies are refreshed, including Next 16.3.8 and image-size
   2.0.4. node-forge 1.4.0 carries the upstream nested DigestAlgorithm validation
   patch until a patched release exists; CI tests reproduce and reject the bug.
 - The primary local backend has older whiteboard documents incompatible with
   the current schema. Use an isolated backend for verification; do not reset
   the primary dataset.
+
+### Admin mobile layout (2026-10-02)
+
+- The admin title uses the existing app-header slot, including the loading
+  state. Admin tabs and user records use separate horizontal ScrollAreas;
+  the page stays within the viewport width.
+- User filters and bulk-selection controls wrap. Pagination stays in the
+  existing table-panel footer, outside the scrolling records. Names, pathways,
+  and role metadata wrap, and touch action columns reserve space for 44px
+  buttons. Empty results use the existing AdminNotice outside the wide table.
+- Browser verification uses synthetic accounts on the isolated anonymous
+  backend in the attached `merge-100-111` worktree. The primary dataset was not
+  reset. Phone, tablet, desktop, paging, search, selection, and empty-result
+  checks are diagnostic; material visual changes still await design-owner
+  review before merge.
 
 ### Convex Usage and Scale Audit (2026-08-31)
 
