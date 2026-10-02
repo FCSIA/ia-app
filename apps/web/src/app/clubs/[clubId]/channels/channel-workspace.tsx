@@ -327,7 +327,14 @@ function MessageAttachmentGallery({
   attachments: ClubChannelMessageAttachment[];
 }) {
   return (
-    <section className="mt-2 max-w-full" aria-label={`${attachments.length} message attachments`}>
+    // Swiping the gallery pages through attachments; it never starts a reply
+    // or opens the club navigation.
+    <section
+      className="mt-2 max-w-full"
+      aria-label={`${attachments.length} message attachments`}
+      data-message-gallery
+      data-swipe-navigation-ignore
+    >
       <Carousel
         opts={{ align: 'start', containScroll: 'trimSnaps' }}
         className="max-w-full"
@@ -337,7 +344,9 @@ function MessageAttachmentGallery({
           {attachments.map((attachment, index) => (
             <CarouselItem
               key={attachment._id}
-              className="pl-0"
+              // Own compositing layer per slide: iOS Safari otherwise can skip
+              // painting an image that is translated into view.
+              className="pl-0 [backface-visibility:hidden] [transform:translateZ(0)]"
               aria-label={`${index + 1} of ${attachments.length}: ${attachment.fileName}`}
             >
               <MessageAttachmentCard attachment={attachment} fillAvailableWidth />
@@ -345,8 +354,16 @@ function MessageAttachmentGallery({
           ))}
         </CarouselContent>
 
-        <CarouselPrevious aria-label="Previous attachment" />
-        <CarouselNext aria-label="Next attachment" />
+        {/* Inside the gallery: the default outside offset widened the chat
+            past the screen and let it scroll sideways on phones. */}
+        <CarouselPrevious
+          aria-label="Previous attachment"
+          className="left-2 bg-background/85 shadow-sm backdrop-blur disabled:hidden"
+        />
+        <CarouselNext
+          aria-label="Next attachment"
+          className="right-2 bg-background/85 shadow-sm backdrop-blur disabled:hidden"
+        />
       </Carousel>
     </section>
   );
@@ -902,7 +919,7 @@ function MessageRow({
             style={replySwipeOffset ? { transform: `translateX(${replySwipeOffset}px)` } : undefined}
             onTouchStart={(event) => {
               if (!canSwipeToReply || event.touches.length !== 1) return;
-              if ((event.target as HTMLElement).closest('button, a, input, textarea, [contenteditable=true]')) return;
+              if ((event.target as HTMLElement).closest('button, a, input, textarea, [contenteditable=true], [data-message-gallery]')) return;
               const touch = event.touches[0];
               replySwipeStart.current = { x: touch.clientX, y: touch.clientY, swiping: false };
             }}
@@ -1015,7 +1032,7 @@ function MessageRow({
                     ? replyTarget.isDeleted
                       ? 'Message deleted'
                       : replyTarget.body || 'Attachment'
-                    : 'Message unavailable'}
+                    : 'Tap to view'}
                 </span>
               </button>
             ) : null}
@@ -1060,13 +1077,15 @@ function MessageRow({
 
         {!isEditing && (
           <>
-            {!isDeleted && !isSending ? (
+            {/* Touch devices use the long-press menu: on a phone a tap leaves
+                this bar stuck open, and its hidden buttons caught taps. */}
+            {!isDeleted && !isSending && !isTouchPrimary ? (
               <>
                 <MessageActions
                   className={cn(
-                    'translate-y-1 rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
+                    'pointer-events-none translate-y-1 rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:pointer-events-auto group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
                     (reactionPickerOpen || actionsMenuOpen || deleteDialogOpen) &&
-                      'translate-y-0 opacity-100',
+                      'pointer-events-auto translate-y-0 opacity-100',
                   )}
                 >
                   <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
