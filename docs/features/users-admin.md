@@ -53,6 +53,8 @@ first and last name. Greetings preserve the regular first-name fallback.
 Profile names, chat authors (including existing and optimistic messages), mentions,
 club directories, schedules, calendars, announcements, events, Flex Friday,
 moderation, audit actors, and Wrapped use this rule on both clients.
+Profile dialogs, hover previews, and the user's own profile also show the regular
+name directly below the preferred name when they differ.
 
 Saving trims and collapses whitespace, limits names to 80 characters, rejects
 control characters, and updates the user search index in the same transaction.
