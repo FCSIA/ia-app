@@ -36,6 +36,14 @@ export function isMobilePwaDisplay() {
   );
 }
 
+export type DevicePlatform = 'ios' | 'android' | 'desktop';
+
+export function devicePlatform(): DevicePlatform {
+  if (isIosDevice()) return 'ios';
+  if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) return 'android';
+  return 'desktop';
+}
+
 /** True for iPhone/iPad, including iPadOS which reports a desktop user agent. */
 export function isIosDevice() {
   if (typeof navigator === 'undefined') return false;

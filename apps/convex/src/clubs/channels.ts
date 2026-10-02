@@ -62,6 +62,7 @@ import {
   toMentionGroupToken,
 } from "./channelMentions";
 import { logAuditEvent } from "../audit/_lib";
+import { channelWhiteboardsEnabled } from "./whiteboardElements";
 import { contentRateLimiter } from "../rateLimits";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
 import {
@@ -92,6 +93,7 @@ const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
 const MAX_CHANNEL_SEARCH_RESULTS = 30;
 const AUDIT_MESSAGE_PREVIEW_CHARACTERS = 240;
 const MAX_CHANNEL_MENTION_CONTEXT_MEMBERS = 60;
+const REPLY_PREVIEW_CHARACTERS = 160;
 
 export function channelMessageAuditMeta(input: {
   clubId: Id<"clubs">;
@@ -198,6 +200,21 @@ const messageSummaryValidator = v.object({
     }),
     v.null(),
   ),
+  // The message this one replies to, so the reply line can name its author
+  // even when that message is outside the loaded history.
+  replyPreview: v.optional(
+    v.union(
+      v.object({
+        _id: v.id("clubChannelMessages"),
+        author: clubUserRefValidator,
+        body: v.string(),
+        isDeleted: v.boolean(),
+      }),
+      v.null(),
+    ),
+  ),
+  // The viewer was among the people this message's mentions notified.
+  mentionsViewer: v.optional(v.boolean()),
   poll: messagePollValidator,
 });
 const messagePageValidator = v.object({
@@ -872,6 +889,13 @@ export const postMessage = mutation({
         createdAt: Date.now(),
       });
     }
+    for (const recipientId of mentionPlan.recipients.keys()) {
+      await ctx.db.insert("clubChannelMessageMentionRecipients", {
+        messageId,
+        userId: recipientId,
+        createdAt: now,
+      });
+    }
 
     await logAuditEvent(ctx, {
       actorId: user._id,
@@ -1012,6 +1036,46 @@ export const markChannelDeliveriesReadContinuation = internalMutation({
 });
 
 /**
+ * The author of the message being replied to, when the reply should notify
+ * them on its own: not a reply to yourself, not someone the reply's mentions
+ * already reach, and only while they can still read the channel.
+ */
+async function replyNotificationRecipient(
+  ctx: MutationCtx,
+  input: {
+    message: Doc<"clubChannelMessages">;
+    channel: Doc<"clubChannels">;
+    mentionRecipients: ReadonlyMap<Id<"users">, unknown>;
+  },
+) {
+  if (!input.message.replyToMessageId) return null;
+  const target = await ctx.db.get(input.message.replyToMessageId);
+  if (
+    !target ||
+    target.channelId !== input.channel._id ||
+    target.authorId === input.message.authorId ||
+    input.mentionRecipients.has(target.authorId)
+  ) {
+    return null;
+  }
+  const targetAuthor = await ctx.db.get(target.authorId);
+  if (!targetAuthor?.isActive) return null;
+  const context = await getViewerContext(
+    ctx,
+    input.channel.clubId,
+    targetAuthor,
+  );
+  if (!context.canAccessWorkspace) return null;
+  const access = await getChannelAccess(
+    ctx,
+    input.channel,
+    context,
+    targetAuthor._id,
+  );
+  return access.canView ? targetAuthor._id : null;
+}
+
+/**
  * Notification preference reads and fan-out are deliberately outside the
  * sender's acknowledgement transaction. A normal channel post can otherwise
  * read hundreds of member preference documents before the client sees the
@@ -1052,12 +1116,19 @@ export const deliverPostedMessageNotifications = internalMutation({
       channel,
       MAX_CHANNEL_MENTION_RECIPIENTS,
     );
+    const repliedToUserId = await replyNotificationRecipient(ctx, {
+      message,
+      channel,
+      mentionRecipients,
+    });
 
     await deliverMany(
       ctx,
       audienceIds.filter(
         (userId) =>
-          userId !== message.authorId && !mentionRecipients.has(userId),
+          userId !== message.authorId &&
+          !mentionRecipients.has(userId) &&
+          userId !== repliedToUserId,
       ),
       {
         category: "CLUB_CHANNEL_MESSAGE",
@@ -1094,6 +1165,22 @@ export const deliverPostedMessageNotifications = internalMutation({
           sourceCreatedAt: message.createdAt,
         });
       }
+    }
+
+    if (repliedToUserId) {
+      await deliverNotification(ctx, {
+        userId: repliedToUserId,
+        category: "CLUB_CHANNEL_THREAD",
+        title: channelNotificationTitle({
+          authorName,
+          channelName: channel.name,
+          kind: "REPLY",
+        }),
+        body: preview,
+        href,
+        subject,
+        sourceCreatedAt: message.createdAt,
+      });
     }
 
     for (const [recipientId, mentionKind] of mentionRecipients) {
@@ -1424,6 +1511,13 @@ async function serializeMessageSummary(
       )[0] ?? null)
     : null;
 
+  const [replyPreview, mentionsViewer] = await Promise.all([
+    loadReplyPreview(ctx, message, authorsById),
+    !isDeleted && message.authorId !== currentUserId
+      ? messageMentionsUser(ctx, message, currentUserId)
+      : false,
+  ]);
+
   return {
     _id: message._id,
     _creationTime: message._creationTime,
@@ -1448,6 +1542,8 @@ async function serializeMessageSummary(
     threadRootId: message.parentMessageId ?? message._id,
     author: toClubUserRef(author),
     mentions: [],
+    replyPreview,
+    mentionsViewer,
     attachments: attachments.map((attachment) => ({
       _id: attachment._id,
       _creationTime: attachment._creationTime,
@@ -1477,6 +1573,58 @@ async function serializeMessageSummary(
       : null,
     poll,
   };
+}
+
+async function loadReplyPreview(
+  ctx: QueryCtx,
+  message: Doc<"clubChannelMessages">,
+  authorsById?: ReadonlyMap<Id<"users">, Doc<"users"> | null>,
+) {
+  if (!message.replyToMessageId) return null;
+  const target = await ctx.db.get(message.replyToMessageId);
+  if (!target || target.channelId !== message.channelId) return null;
+  const author =
+    authorsById?.get(target.authorId) ?? (await ctx.db.get(target.authorId));
+  if (!author) return null;
+  const isDeleted = !!target.deletedAt;
+  const text = isDeleted
+    ? ""
+    : target.body || (target.pollQuestion ? `Poll: ${target.pollQuestion}` : "");
+  return {
+    _id: target._id,
+    author: toClubUserRef(author),
+    body: Array.from(text).slice(0, REPLY_PREVIEW_CHARACTERS).join(""),
+    isDeleted,
+  };
+}
+
+/**
+ * Whether the message's mentions notified `userId`. Mentions only come from
+ * `@` tokens, so most messages skip the lookups. Messages from before
+ * recipients were recorded still match their direct mentions.
+ */
+async function messageMentionsUser(
+  ctx: QueryCtx,
+  message: Doc<"clubChannelMessages">,
+  userId: Id<"users">,
+) {
+  if (!message.body.includes("@") && !message.bodyMarkdown?.includes("@")) {
+    return false;
+  }
+  const recipient = await ctx.db
+    .query("clubChannelMessageMentionRecipients")
+    .withIndex("by_messageId_and_userId", (q) =>
+      q.eq("messageId", message._id).eq("userId", userId),
+    )
+    .first();
+  if (recipient) return true;
+  const directMention = await ctx.db
+    .query("clubChannelMessageMentions")
+    .withIndex("by_messageId_and_userId", (q) =>
+      q.eq("messageId", message._id).eq("userId", userId),
+    )
+    .first();
+  return directMention !== null;
 }
 
 async function loadMessageAuthors(
@@ -1534,6 +1682,7 @@ const channelConversationContextValidator = v.union(
     canCreatePolls: v.boolean(),
     canPinMessages: v.boolean(),
     canModerateMessages: v.boolean(),
+    whiteboardsEnabled: v.boolean(),
   }),
   v.null(),
 );
@@ -1574,6 +1723,7 @@ export const getConversationContext = query({
       canCreatePolls: context.permissions.createPolls,
       canPinMessages: context.permissions.pinMessages,
       canModerateMessages: context.permissions.moderateMessages,
+      whiteboardsEnabled: channelWhiteboardsEnabled(channel),
     };
   },
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { AtSign, BarChart3, Bold, FileText, ImagePlay, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
@@ -68,6 +68,16 @@ type ChannelMessageComposerProps = {
   canAttach?: boolean;
   canCreatePoll?: boolean;
   onMentionIntent?: () => void;
+  /** Lets the chat focus the editor, e.g. after choosing Reply. */
+  handleRef?: Ref<ChannelMessageComposerHandle>;
+};
+
+export type ChannelMessageComposerHandle = {
+  /**
+   * Focuses the editor synchronously, so a call from a tap handler still
+   * raises the iOS keyboard.
+   */
+  focus: () => void;
 };
 
 const MAX_ATTACHMENTS = 5;
@@ -128,6 +138,7 @@ export function ChannelMessageComposer({
   canAttach = true,
   canCreatePoll = false,
   onMentionIntent,
+  handleRef,
 }: ChannelMessageComposerProps) {
   const initialValue = useMemo(
     () =>
@@ -141,13 +152,19 @@ export function ChannelMessageComposer({
         BoldPlugin,
         ItalicPlugin,
         UnderlinePlugin,
-        MentionPlugin.withComponent(MentionElement),
+        // A space after a picked mention, so the next word never runs into it.
+        MentionPlugin.configure({ options: { insertSpaceAfterMention: true } }).withComponent(
+          MentionElement,
+        ),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
       value: initialValue,
     },
     [],
   );
+  // Plain focus: asking Plate to move the caret first defers the DOM focus
+  // to a timer, which iOS no longer treats as part of the tap.
+  useImperativeHandle(handleRef, () => ({ focus: () => editor.tf.focus() }), [editor]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);

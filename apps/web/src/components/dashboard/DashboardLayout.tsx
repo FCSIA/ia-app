@@ -34,6 +34,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { CanvasCalendarAnnouncement } from './CanvasCalendarAnnouncement';
+import { PushReenableAnnouncement } from './PushReenableAnnouncement';
 import { useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { normalizeDashboardLayout } from '~/apps/convex/src/users/dashboardLayout';
@@ -298,6 +299,7 @@ export function DashboardLayout({
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
+          <PushReenableAnnouncement />
           <CanvasCalendarAnnouncement />
           {editing ? (
             <div className="flex flex-wrap items-center justify-between gap-3">

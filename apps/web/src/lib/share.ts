@@ -22,13 +22,17 @@ function copyWithExecCommand(value: string) {
   }
 }
 
-export async function copyShareUrl(url: string) {
+/**
+ * Copies text, falling back to the legacy copy command where the async
+ * clipboard is unavailable or refused. Call it inside the user's tap or click.
+ */
+export async function copyText(value: string) {
   try {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(value);
     return;
   } catch {
-    if (!copyWithExecCommand(url)) {
-      throw new Error('This browser could not copy the share link.');
+    if (!copyWithExecCommand(value)) {
+      throw new Error('This browser could not copy the text.');
     }
   }
 }
@@ -50,6 +54,25 @@ export async function shareUrl({ title, text, url }: ShareUrlOptions): Promise<S
     }
   }
 
-  await copyShareUrl(url);
+  await copyText(url);
   return 'copied';
+}
+
+/** Whether this browser's share sheet accepts this file. */
+export function canShareFile(file: File) {
+  return typeof navigator.share === 'function' && !!navigator.canShare?.({ files: [file] });
+}
+
+/**
+ * Shares a file itself, so the iOS share sheet offers Save Image for
+ * pictures. Check `canShareFile` first, inside the same tap.
+ */
+export async function shareFile(file: File, { title }: { title?: string } = {}): Promise<ShareUrlResult> {
+  try {
+    await navigator.share({ files: [file], title });
+    return 'shared';
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
+    throw error;
+  }
 }

@@ -121,7 +121,7 @@ export async function logAuditEvent(
       }
     }
   }
-  await ctx.db.insert("auditEvents", {
+  return await ctx.db.insert("auditEvents", {
     actorId: input.actorId,
     action: input.action,
     entityType: input.entityType,

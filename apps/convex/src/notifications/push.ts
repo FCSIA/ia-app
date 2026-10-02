@@ -5,6 +5,12 @@ import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { notificationCategoryValidator } from "../validators";
 import { activatePushPreferences } from "./_pushActivation";
+import {
+  assertPushDeviceId,
+  maxSubscriptionsPerDevice,
+  subscriptionsReplacedOnDevice,
+} from "./_pushDevices";
+import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwnership";
 import { subscriptionsToRetire } from "./_subscriptionPruning";
 import {
   preferenceAllowsPush,
@@ -85,14 +91,52 @@ async function retireSurplusSubscriptions(
   }
 }
 
+/** Disable the endpoints a device registered before the one it holds now. */
+async function retireReplacedDeviceSubscriptions(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  deviceId: string,
+  currentEndpoint: string,
+  now: number,
+) {
+  const rows = await ctx.db
+    .query("notificationPushSubscriptions")
+    .withIndex("by_userId_and_deviceId", (q) => q.eq("userId", userId).eq("deviceId", deviceId))
+    .take(maxSubscriptionsPerDevice);
+
+  for (const row of subscriptionsReplacedOnDevice(rows, currentEndpoint)) {
+    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+  }
+}
+
+/** Stop delivering to an endpoint for every account except the one now using it. */
+async function releaseEndpointFromOtherAccounts(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  endpoint: string,
+  now: number,
+) {
+  const rows = await ctx.db
+    .query("notificationPushSubscriptions")
+    .withIndex("by_endpoint", (q) => q.eq("endpoint", endpoint))
+    .take(maxAccountsPerPushTarget);
+
+  for (const row of rowsHeldByOtherAccounts(rows, userId)) {
+    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+  }
+}
+
 export const upsertSubscription = mutation({
   args: {
     subscription: pushSubscriptionValidator,
     userAgent: v.optional(v.string()),
+    // Optional so clients from before device reporting keep working.
+    deviceId: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    if (args.deviceId !== undefined) assertPushDeviceId(args.deviceId);
     const now = Date.now();
     const existing = await ctx.db
       .query("notificationPushSubscriptions")
@@ -105,6 +149,8 @@ export const upsertSubscription = mutation({
       p256dh: args.subscription.keys.p256dh,
       auth: args.subscription.keys.auth,
       userAgent: args.userAgent,
+      // An older client re-registering must not erase the device that claimed it.
+      ...(args.deviceId !== undefined ? { deviceId: args.deviceId } : {}),
       enabled: true,
       failureCount: 0,
       lastError: undefined,
@@ -122,6 +168,16 @@ export const upsertSubscription = mutation({
       });
     }
 
+    await releaseEndpointFromOtherAccounts(ctx, user._id, args.subscription.endpoint, now);
+    if (args.deviceId !== undefined) {
+      await retireReplacedDeviceSubscriptions(
+        ctx,
+        user._id,
+        args.deviceId,
+        args.subscription.endpoint,
+        now,
+      );
+    }
     await retireSurplusSubscriptions(ctx, user._id, now);
     await activatePushPreferences(ctx, user._id, now);
 
