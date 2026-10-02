@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { ArrowLeft, Plus, SearchX, UsersRound } from "lucide-react";
 
 import { api } from "~/apps/convex/src/_generated/api";
@@ -24,6 +24,7 @@ import { SearchInput } from "@/components/ui/search";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hasRole, isSuperAdmin, useCurrentUser } from "@/lib/auth";
 import { filterBySearchQuery } from "@/lib/search";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
 const DISCOVERY_SKELETON_IDS = [
   "discovery-skeleton-1",
@@ -87,7 +88,7 @@ export default function DiscoverClubsPage() {
       mainClassName="flex min-h-0 flex-1 px-3 pb-4 pt-3 md:px-4"
       pageTransitionClassName="flex min-h-0 w-full"
     >
-      <section className="mx-auto flex min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1">
+      <section className={`mx-auto flex min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
         <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
           <h2 className="min-w-0 flex-1 text-sm font-semibold text-foreground">
             Discover clubs

@@ -96,7 +96,7 @@ VAPID_PRIVATE_KEY
 VAPID_SUBJECT
 ```
 
-For this app, `bun run --filter cvx exec convex deploy` deploys Convex schema, functions, HTTP
+For this app, `bun run --cwd apps/convex convex deploy` deploys Convex schema, functions, HTTP
 routes, storage integration, and component configuration. In CI this should run
 with a production `CONVEX_DEPLOY_KEY` stored in the CI or Azure secret store,
 not in git.
@@ -209,8 +209,7 @@ CONVEX_SITE_URL / NEXT_PUBLIC_CONVEX_SITE_URL -> http://127.0.0.1:3211
 
 Local mode keeps each worktree's `.convex` state separate and avoids accidental
 writes to a shared cloud deployment or cloud quota use. A same-LAN physical
-device can use `bun run sync:convex-env -- --host <LAN IPv4>` before restarting the
-web server. Local mode is not appropriate when the task specifically needs
+device can use `bun run dev:phone`. Local mode is not appropriate when the task specifically needs
 public webhook access, off-LAN device access, an HTTPS tunnel, production-like
 public URLs, or shared dashboard visibility.
 
@@ -221,7 +220,7 @@ physical-device testing, a webhook, or shared dashboard access. Do not let two
 schema-changing worktrees select the same cloud deployment.
 
 ```bash
-bun run --filter cvx exec convex deployment create dev/<feature-name> \
+bun run --cwd apps/convex convex deployment create dev/<feature-name> \
   --type dev --select --expiration "in 7 days"
 bun run sync:convex-env
 bun run dev
@@ -260,7 +259,7 @@ from deployment repair and cannot reconcile an incompatible schema or data.
 To select an existing named cloud dev deployment:
 
 ```bash
-bun run --filter cvx exec convex deployment select dev/<feature-name>
+bun run --cwd apps/convex convex deployment select dev/<feature-name>
 bun run sync:convex-env
 bun run dev
 ```

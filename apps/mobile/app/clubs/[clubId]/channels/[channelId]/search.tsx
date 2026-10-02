@@ -1,7 +1,7 @@
 import { useDeferredValue, useState } from "react";
 import { View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { format } from "date-fns";
 import { MessageCircle, Search } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";

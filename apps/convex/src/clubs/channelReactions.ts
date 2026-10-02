@@ -10,6 +10,7 @@ export const CLUB_CHANNEL_REACTIONS = [
   { token: "CELEBRATE", glyph: "🎉" },
   { token: "EYES", glyph: "👀" },
   { token: "DONE", glyph: "✅" },
+  { token: "SKULL", glyph: "💀" },
 ] as const satisfies ReadonlyArray<{
   token: ClubChannelReaction;
   glyph: string;

@@ -13,6 +13,12 @@ export type StudentImportResult = {
 
 export type AdministratorImportResult = StudentImportResult;
 
+export type StudentBulkUpdateResult = {
+  updated: number;
+  skipped: number;
+  errors: string[];
+};
+
 export type AuditActorScope = 'ALL' | 'USER' | 'SYSTEM';
 
 export type AuditEventRecord = {
@@ -52,9 +58,12 @@ export type AdminUserRecord = {
   lastName: string;
   roles?: string[];
   gradeLevel?: number | null;
+  major?: string | null;
+  minor?: string | null;
   email?: string;
   avatarUrl?: string;
   isActive?: boolean;
+  isDeveloper?: boolean;
 };
 
 export type AdminUserRoleGroup = 'students' | 'teachers' | 'other' | 'student-admin' | 'all';

@@ -4,6 +4,14 @@ import { portableMentionTokens } from "./channelMarkdown";
 export const MAX_CHANNEL_MENTION_TOKENS = 20;
 export const MAX_CHANNEL_MENTION_RECIPIENTS = 50;
 
+/**
+ * Group mentions use a compact token so `School Leads`, `school-leads`, and
+ * `@schoolleads` resolve to the same role or substructure target.
+ */
+export function toMentionGroupToken(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export function boundedPortableMentionTokens(body: string, bodyMarkdown?: string) {
   const tokens = portableMentionTokens(body, bodyMarkdown);
   const byNormalizedToken = new Map<string, string>();

@@ -20,18 +20,18 @@ export function buildChatMentionSuggestions(
         ]
       : []),
     {
-      token: "leaders",
-      label: "Club leaders",
-      displayText: "@leaders",
-      detail: "Leaders and sponsors",
-    },
-    {
       token: "sponsors",
       label: "Club sponsors",
       displayText: "@sponsors",
       detail: "Sponsors",
     },
   ];
+  const groups = context.groups.map((group) => ({
+    token: group.token,
+    label: group.label,
+    displayText: `@${group.label}`,
+    detail: group.detail,
+  }));
   const tags = context.tags
     .filter((tag) => !RESERVED_MENTION_TOKENS.has(tag.slug.toLowerCase()))
     .map((tag) => ({
@@ -51,5 +51,5 @@ export function buildChatMentionSuggestions(
     };
   });
 
-  return [...builtIns, ...tags, ...people];
+  return [...builtIns, ...groups, ...tags, ...people];
 }

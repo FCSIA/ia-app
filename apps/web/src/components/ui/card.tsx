@@ -529,32 +529,29 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
   ({ className, children, ...props }, ref) => {
-    const { emphasized, orientation } = useContext(CardContext);
-    // Inline rows trim the title to cap height so it centres tightly against
-    // the media/actions; stacked cards keep the natural line box.
-    const trim =
-      orientation === "inline" ? "[text-box:trim-both_cap_alphabetic]" : "";
+    const { emphasized } = useContext(CardContext);
     // Ghost-span pattern: an invisible semibold copy reserves the width so the
-    // resting→active weight animation never reflows the row.
+    // resting→active weight animation never reflows the row. When a consumer
+    // supplies `truncate`, the text cells—not the title grid—must own the
+    // ellipsis; otherwise grid tracks clip their contents at the row edge.
+    // Do not text-box trim inline titles: cap/alphabetic trimming clips
+    // descenders in browsers that implement the experimental property.
     return (
       <span
         ref={ref}
         data-slot="card-title"
-        className={cn("inline-grid text-[14px] leading-snug", className)}
+        className={cn("inline-grid grid-cols-[minmax(0,1fr)] text-[14px] leading-snug", className)}
         {...props}
       >
         <span
-          className={cn("col-start-1 row-start-1 invisible", trim)}
+          className="col-start-1 row-start-1 min-w-0 overflow-hidden text-ellipsis invisible"
           style={{ fontVariationSettings: fontWeights.semibold }}
           aria-hidden="true"
         >
           {children}
         </span>
         <span
-          className={cn(
-            "col-start-1 row-start-1 text-foreground transition-[font-variation-settings] duration-80",
-            trim
-          )}
+          className="col-start-1 row-start-1 min-w-0 overflow-hidden text-ellipsis text-foreground transition-[font-variation-settings] duration-80"
           style={{
             // normal → semibold on emphasis, matching nav-item / menu-item /
             // table (the opsz-paired tokens keep the advance width ~constant).

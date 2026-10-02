@@ -885,7 +885,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
             aria-label={textareaProps?.["aria-label"] ?? "Message"}
             className={cn(
               "w-full resize-none bg-transparent outline-none",
-              "text-sm any-pointer-coarse:text-base leading-5 text-foreground placeholder:text-muted-foreground",
+              "text-sm pointer-coarse:text-base leading-5 text-foreground placeholder:text-muted-foreground",
               "px-2 py-2"
             )}
             style={{ fontVariationSettings: fontWeights.normal }}

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 type PageFrameProps = {
   children: ReactNode;
@@ -126,7 +127,9 @@ export function Panel({
     <section
       className={cn(
         'flex flex-col rounded-3xl border',
-        tone === 'accent' ? 'border-transparent bg-accent' : 'bg-card',
+        tone === 'accent'
+          ? 'border-transparent bg-accent'
+          : cn('bg-card', CARD_SURFACE_FOREGROUND),
         className,
       )}
     >
@@ -134,7 +137,9 @@ export function Panel({
         <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
             {title ? (
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                {title}
+              </h3>
             ) : null}
             {description ? (
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>

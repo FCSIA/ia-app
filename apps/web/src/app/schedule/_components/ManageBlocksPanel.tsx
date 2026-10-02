@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { usePathname, useSearchParams } from "next/navigation";
 import { DayButton } from "react-day-picker";
@@ -52,6 +52,7 @@ import {
 import { formatScheduleTime } from "@/components/schedule/schedule-utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { api } from "~/apps/convex/src/_generated/api";
 
 type PlanBlock = FunctionArgs<
@@ -133,7 +134,7 @@ function planBlockValue(block: PlanBlock) {
 
 function ReadOnlyPlanBlockTable({ blocks }: { blocks: PlanBlock[] }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+    <div className={`overflow-hidden rounded-xl bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
       <Table>
         <TableHeader>
           <TableRow>
@@ -177,7 +178,7 @@ function PlanBlockEditor({
 
   return (
     <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="min-w-0 overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+      <div className={`min-w-0 overflow-hidden rounded-xl bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
         <div className="grid grid-cols-[2.25rem_minmax(8rem,1fr)_minmax(12rem,0.9fr)_2.25rem] gap-2 bg-surface-3 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground max-md:hidden">
           <span />
           <span>Block</span>
@@ -532,7 +533,7 @@ function DatePlanWorkspace({
     <div className="flex flex-col gap-5 pt-5">
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.7fr)] xl:items-start">
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">
-          <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+          <section className={`overflow-hidden rounded-xl bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <header className="flex items-center justify-between gap-3 bg-surface-3 px-4 py-3">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">School calendar</h3>
@@ -558,7 +559,7 @@ function DatePlanWorkspace({
           </section>
         </aside>
 
-        <section className="min-w-0 overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+        <section className={`min-w-0 overflow-hidden rounded-xl bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
           <header className="flex flex-col gap-4 bg-surface-3 px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -722,7 +723,7 @@ function TemplateWorkspace({
 
   return (
     <div className="space-y-5 pt-5">
-      <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3 shadow-surface-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className={`flex flex-col gap-3 rounded-xl bg-surface-2 p-3 shadow-surface-1 sm:flex-row sm:items-end sm:justify-between ${CARD_SURFACE_FOREGROUND}`}>
         <div className="space-y-1.5">
           <Label className="text-xs">Template</Label>
           <Select
@@ -884,7 +885,7 @@ function SchoolConfigWorkspace({
 }) {
   return (
     <section className="w-full max-w-2xl pt-5" aria-labelledby="school-config-title">
-      <div className="flex flex-col gap-4 rounded-xl bg-surface-2 p-4 shadow-surface-1">
+      <div className={`flex flex-col gap-4 rounded-xl bg-surface-2 p-4 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 id="school-config-title" className="text-base font-semibold text-foreground">School year</h2>

@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { Archive, ArrowLeft, Clock3, Flag, MessageSquare, Send } from 'lucide-react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
@@ -15,16 +15,22 @@ import {
   type AnnouncementCardRecord,
 } from '@/components/announcements/announcement-card';
 import { Badge } from '@/components/ui/badge';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { AnnouncementMedia } from '@/components/announcements/announcement-media';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
 type AnnouncementDetail = AnnouncementCardRecord & {
+  bodyMarkdown?: string | null;
   embedUrls?: string[];
   images?: Array<{
     _id: string;
@@ -44,6 +50,7 @@ type AnnouncementDetail = AnnouncementCardRecord & {
       _id?: string;
       firstName?: string | null;
       lastName?: string | null;
+      isDeveloper?: boolean | null;
     } | null;
   }>;
 };
@@ -111,7 +118,7 @@ function AnnouncementDetailSkeleton() {
         <LoadingBlock className="h-9 w-24 rounded-full" />
         <LoadingBlock className="h-9 w-9 rounded-full" />
       </div>
-      <div className="rounded-2xl border border-border/70 bg-card px-6 py-6 shadow-sm">
+      <div className={cn("rounded-2xl border border-border/70 bg-card px-6 py-6 shadow-sm", CARD_SURFACE_FOREGROUND)}>
         <div className="flex gap-2">
           <LoadingBlock className="h-5 w-20 rounded-full" />
           <LoadingBlock className="h-5 w-24 rounded-full" />
@@ -136,6 +143,7 @@ function AnnouncementDetailSkeleton() {
 
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const announcementNow = useAnnouncementFeedClock(3_600_000);
   const user = useCurrentUser();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
@@ -151,6 +159,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
 
   const detail = useQuery(api.announcements.feed.get, {
     announcementId: id as Id<'announcements'>,
+    now: announcementNow,
   });
   const isLoading = detail === undefined;
   const announcement: AnnouncementDetail | null = detail ? { ...detail.announcement, comments: detail.comments } : null;
@@ -226,8 +235,8 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           </Button>
         </div>
 
-        <Card>
-          <CardHeader className="gap-5 bg-muted/20 pb-5">
+        <Card className={`overflow-hidden rounded-2xl border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+          <CardHeader className="gap-5 border-b border-white/10 bg-background/35 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (
                 <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
@@ -250,7 +259,10 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             <div className="space-y-3">
               <CardTitle className="text-2xl leading-tight tracking-tight text-foreground sm:text-3xl">{announcement.title}</CardTitle>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                <span>Posted by {authorName}</span>
+                <span className="inline-flex items-center gap-1">
+                  Posted by {authorName}
+                  <DeveloperBadge user={announcement.author} size={12} />
+                </span>
                 <span>
                   {formatDistanceToNow(new Date(announcement.createdAt), {
                     addSuffix: true,
@@ -262,7 +274,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4 pt-0">
+          <CardContent className="space-y-4 bg-background/70 pt-6">
             {announcement.status === 'EXPIRED' ? (
               <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                 <Clock3 className="size-4" />
@@ -277,7 +289,13 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               </p>
             ) : null}
 
-            <div className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/90">{announcement.body}</div>
+            {announcement.bodyMarkdown ? (
+              <div className="typeset max-w-none text-[15px] leading-7 text-foreground/90">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{announcement.bodyMarkdown}</ReactMarkdown>
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/90">{announcement.body}</div>
+            )}
             <AnnouncementMedia images={announcement.images} embedUrls={announcement.embedUrls} />
           </CardContent>
         </Card>
@@ -297,7 +315,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             {commentCount > 0 ? (
               <div className="space-y-4">
                 {announcement.comments?.map((entry) => (
-                  <div key={entry._id} className="rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm">
+                  <div key={entry._id} className={cn("rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm", CARD_SURFACE_FOREGROUND)}>
                     <div className="flex items-start gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
                         {getInitials(entry.author)}
@@ -306,7 +324,10 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">{formatName(entry.author)}</p>
+                            <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-foreground">
+                              <span className="truncate">{formatName(entry.author)}</span>
+                              <DeveloperBadge user={entry.author} size={12} />
+                            </p>
                             <p className="text-xs text-muted-foreground">{format(new Date(entry.createdAt), 'EEE, MMM d · h:mm a')}</p>
                           </div>
 

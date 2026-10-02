@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Settings2, Trash2 } from "lucide-react";
-import { useAction, useMutation } from "convex/react";
+import { useEffect, useState } from "react";
+import { Pencil, Settings2, Trash2 } from "lucide-react";
+import { useAction, useMutation } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
 import { EditableAvatar } from "@/components/ui/editable-avatar";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
@@ -27,9 +28,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FileInput } from "@/components/ui/file-input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -61,6 +64,18 @@ export function ClubHero({
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [pendingCrop, setPendingCrop] = useState<{
+    file: File;
+    kind: "logo" | "banner";
+    previewUrl: string;
+  } | null>(null);
+
+  useEffect(
+    () => () => {
+      if (pendingCrop) URL.revokeObjectURL(pendingCrop.previewUrl);
+    },
+    [pendingCrop],
+  );
 
   const uploadClubImage = async (kind: "logo" | "banner", file: File) => {
     const { storageId, uploadIntentId } = await uploadFileToConvex(
@@ -76,23 +91,6 @@ export function ClubHero({
       mimeType: file.type || "application/octet-stream",
       size: file.size,
     });
-  };
-
-  const handleQuickLogoUpload = async (file: File) => {
-    setUploadingLogo(true);
-    try {
-      const uploaded = await uploadClubImage("logo", file);
-      toast({ title: "Club logo updated" });
-
-      setForm((c) => ({ ...c, logoUrl: uploaded.url }));
-    } catch (e: unknown) {
-      toast({
-        title: e instanceof Error ? e.message : "Upload failed",
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingLogo(false);
-    }
   };
 
   const openEditor = () => {
@@ -116,14 +114,38 @@ export function ClubHero({
         ...c,
         [kind === "logo" ? "logoUrl" : "bannerUrl"]: uploaded.url,
       }));
+      return true;
     } catch (e: unknown) {
       toast({
         title: e instanceof Error ? e.message : "Upload failed",
         variant: "destructive",
       });
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  const beginCrop = (kind: "logo" | "banner", file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Not an image",
+        description: "Pick a JPG, PNG, GIF, or WebP file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setPendingCrop({ kind, file, previewUrl: URL.createObjectURL(file) });
+  };
+
+  const handleCropConfirm = async (file: File) => {
+    if (!pendingCrop) return;
+    const uploaded = await handleUpload(pendingCrop.kind, file);
+    if (!uploaded) return;
+    toast({
+      title: pendingCrop.kind === "logo" ? "Club logo updated" : "Club banner updated",
+    });
+    setPendingCrop(null);
   };
 
   const handleSave = () => {
@@ -156,13 +178,29 @@ export function ClubHero({
   const logoUrl = resolveMediaUrl(club.logoUrl);
   const accent = club.accentColor || undefined;
   const clubInitial = club.name.trim().charAt(0).toUpperCase() || "C";
+  const cropDialog = (
+    <ImageCropDialog
+      open={Boolean(pendingCrop)}
+      onOpenChange={(open) => {
+        if (!open) setPendingCrop(null);
+      }}
+      imageSrc={pendingCrop?.previewUrl ?? null}
+      fileName={pendingCrop?.file.name}
+      aspectRatio={pendingCrop?.kind === "banner" ? 3 : 1}
+      outputWidth={pendingCrop?.kind === "banner" ? 1536 : 512}
+      title={pendingCrop?.kind === "banner" ? "Adjust banner" : "Adjust club logo"}
+      saveLabel={pendingCrop?.kind === "banner" ? "Save banner" : "Save logo"}
+      confirming={pendingCrop?.kind === "banner" ? uploadingBanner : uploadingLogo}
+      onConfirm={handleCropConfirm}
+    />
+  );
 
   return (
     <>
-      <section className="overflow-hidden rounded-lg border border-border/70 bg-card">
+      <section className={cn("overflow-hidden rounded-lg border border-border/70 bg-card", CARD_SURFACE_FOREGROUND)}>
         <div
           className={cn(
-            "relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
+            "group/banner relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
             !bannerUrl && "ring-1 ring-inset ring-border/40",
           )}
           style={
@@ -179,24 +217,48 @@ export function ClubHero({
                 : undefined
           }
         >
-          {canEdit && !editing && (
-            <Button
-              variant="secondary"
-              size="sm"
-              leadingIcon={Settings2}
-              onClick={openEditor}
-              className="absolute right-2 top-2 h-8 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
-            >
-              Customize
-            </Button>
-          )}
+          {canEdit && !editing ? (
+            <div className="absolute right-2 top-2 flex items-center gap-2">
+              <FileInput
+                accept="image/*"
+                loading={uploadingBanner}
+                onFileSelect={(file) => beginCrop("banner", file)}
+              >
+                {({ disabled, open }) => (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    leadingIcon={Pencil}
+                    disabled={disabled}
+                    onClick={open}
+                    className="h-8 bg-background/90 px-2.5 opacity-0 backdrop-blur transition-opacity group-hover/banner:opacity-100 group-focus-within/banner:opacity-100 [@media(pointer:coarse)]:opacity-100 hover:bg-background"
+                  >
+                    Edit banner
+                  </Button>
+                )}
+              </FileInput>
+              <Tooltip content="Customize club home" side="left">
+                <Button
+                  variant="secondary"
+                  size="icon-sm"
+                  onClick={openEditor}
+                  aria-label="Customize club home"
+                  className="bg-background/90 backdrop-blur hover:bg-background"
+                >
+                  <Settings2 />
+                </Button>
+              </Tooltip>
+            </div>
+          ) : null}
         </div>
 
         <div className="relative space-y-3 px-4 pb-4 pt-3">
           <EditableAvatar
             alt={club.name}
             canEdit={canEdit && !editing}
-            className="absolute -top-8 left-4 size-16 rounded-xl border-4 border-background bg-muted"
+            containerClassName="absolute -top-8 left-4 size-16"
+            className="size-full rounded-xl border-4 border-background bg-muted"
             fallback={clubInitial}
             fallbackClassName="rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-lg text-orange-100"
             fallbackStyle={
@@ -208,10 +270,10 @@ export function ClubHero({
             }
             imageUrl={logoUrl}
             loading={uploadingLogo}
-            onUpload={(file) => void handleQuickLogoUpload(file)}
+            onUpload={(file) => beginCrop("logo", file)}
             uploadLabel="Change club logo"
           />
-          <div className="min-h-16 pl-20 pt-0.5">
+          <div className="pt-6">
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
                 {club.name}
@@ -231,6 +293,8 @@ export function ClubHero({
           ) : null}
         </div>
       </section>
+
+      {!editing ? cropDialog : null}
 
       {canEdit ? (
         <Dialog
@@ -275,9 +339,7 @@ export function ClubHero({
                         accept="image/*"
                         label="Upload banner"
                         loading={uploadingBanner}
-                        onFileSelect={(file) =>
-                          void handleUpload("banner", file)
-                        }
+                        onFileSelect={(file) => beginCrop("banner", file)}
                       />
                       {form.bannerUrl ? (
                         <Button
@@ -318,7 +380,7 @@ export function ClubHero({
                             kind: "logo",
                           }).then(() => setForm((c) => ({ ...c, logoUrl: "" })))
                         }
-                        onUpload={(file) => void handleUpload("logo", file)}
+                        onUpload={(file) => beginCrop("logo", file)}
                         removeLabel="Remove logo"
                         uploadLabel="Upload logo"
                         variant="inline"
@@ -431,6 +493,8 @@ export function ClubHero({
                 </div>
               </section>
             </div>
+
+            {editing ? cropDialog : null}
 
             <DialogFooter>
               <Button

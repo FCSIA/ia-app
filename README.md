@@ -72,8 +72,8 @@ School-owned EAS, Apple, Google, and universal-link values are documented in
 Open Convex dashboard:
 
 ```bash
-bun --cwd apps/convex x convex dash
-bun --cwd apps/convex x convex dashboard
+bun run --cwd apps/convex convex dash
+bun run --cwd apps/convex convex dashboard
 ```
 
 > [!IMPORTANT]
@@ -94,18 +94,18 @@ Browser push also needs VAPID keys. Generate one key pair, put the public key in
 `apps/web/.env.local`, and set the matching Convex deployment values:
 
 ```bash
-bun run --filter cvx exec web-push generate-vapid-keys
-bun run --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
-bun run --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
-bun run --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+bun run --cwd apps/convex web-push generate-vapid-keys
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "<public-key>"
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "<private-key>"
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
 Then seed the small demo profile from the CLI:
 
 ```bash
-bun run --filter cvx exec convex run --deployment local \
+bun run --cwd apps/convex convex run --deployment local \
   bootstrap:resetAndSeed '{"profile":"development"}'
-bun run --filter cvx exec convex run --deployment local \
+bun run --cwd apps/convex convex run --deployment local \
   bootstrap:seedStatus '{}' --watch
 ```
 
@@ -133,7 +133,7 @@ output securely. See [docs/reference/getting-started.md](./docs/reference/gettin
 ```bash
 bun run dev          # Start web app and Convex dev server in parallel
 bun run dev:mobile   # Start the Expo mobile app
-bun run --filter cvx exec convex dashboard  # Open local/dev Convex Dashboard console
+bun run --cwd apps/convex convex dashboard  # Open local/dev Convex Dashboard console
 bun run lint         # Lint all workspaces
 bun run build        # Build all workspaces for production
 bun run test         # Run test suites

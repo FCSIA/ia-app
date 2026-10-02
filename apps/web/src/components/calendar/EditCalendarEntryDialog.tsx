@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,11 +35,23 @@ interface EditCalendarEntryDialogProps {
     inviteId?: Id<'calendarInvites'>;
     sharedBy?: { firstName: string; lastName: string };
   };
-  trigger?: (onOpen: () => void) => React.ReactNode;
+  trigger?: ((onOpen: () => void) => React.ReactNode) | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditCalendarEntryDialog({
+  entry,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: EditCalendarEntryDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const { toast } = useToast();
 
   const [form, setForm] = useState({
@@ -135,7 +147,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
         }
       }}
     >
-      {trigger ? (
+      {trigger === null ? null : trigger ? (
         trigger(() => setOpen(true))
       ) : (
         <div className="cursor-pointer" onDoubleClick={() => setOpen(true)}>
@@ -175,8 +187,8 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                 Date
               </Label>
@@ -186,7 +198,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
                 buttonClassName="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="time" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                 Time
               </Label>

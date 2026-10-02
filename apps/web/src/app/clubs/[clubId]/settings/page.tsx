@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
 import {
@@ -20,6 +20,7 @@ import { ClubStructureActions } from "@/components/clubs/dialogs/hierarchy-dialo
 import { PeopleGroupsSettings } from "@/components/clubs/people-groups-settings";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import {
   Card,
   CardContent,
@@ -527,7 +528,7 @@ export default function ClubSettingsPage() {
           {canManageChannels ? (
             <Link
               href={`/clubs/${clubId}/settings/channels`}
-              className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4 transition-colors hover:bg-hover"
+              className={`flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4 transition-colors hover:bg-hover ${CARD_SURFACE_FOREGROUND}`}
             >
               <div>
                 <p className="text-sm font-semibold text-foreground">

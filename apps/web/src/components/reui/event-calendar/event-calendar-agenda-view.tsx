@@ -1,0 +1,231 @@
+"use client"
+
+import { useMemo, type HTMLAttributes } from "react"
+import {
+  EventCalendarViewContext,
+  useEventCalendar,
+  useEventCalendarSelector,
+  useEventCalendarSettings,
+  useEventCalendarViewConfig,
+} from "@/components/reui/event-calendar/event-calendar"
+import { EventCalendarEvent } from "@/components/reui/event-calendar/event-calendar-event"
+import {
+  getDayKey,
+  getRangeKey,
+  toZoned,
+  zonedStartOfDay,
+} from "@/components/reui/event-calendar/event-calendar-lib"
+import type {
+  EventCalendarDateRange,
+  EventCalendarSegment,
+} from "@/components/reui/event-calendar/event-calendar-types"
+import { IconStack } from "@/components/reui/icon-stack"
+import { addDays, format } from "date-fns"
+import { Slot } from "@/components/ui/slot"
+
+import { cn } from "@/lib/utils"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTouchPrimary } from "@/hooks/use-touch-primary"
+import { CalendarIcon } from "lucide-react"
+
+// The agenda window length is the agendaDayCount SETTING (the store derives
+// visibleRange from it); a per-view prop here would silently disagree.
+interface EventCalendarAgendaViewProps extends HTMLAttributes<HTMLDivElement> {
+  asChild?: boolean
+}
+
+function EventCalendarAgendaView({
+  className,
+  asChild = false,
+  ...props
+}: EventCalendarAgendaViewProps) {
+  const instance = useEventCalendar()
+  const settings = useEventCalendarSettings()
+  const viewConfig = useEventCalendarViewConfig()
+  const visibleRange = useEventCalendarSelector<
+    unknown,
+    EventCalendarDateRange
+  >((state) => state.visibleRange, {
+    isEqual: (a, b) => getRangeKey(a) === getRangeKey(b),
+  })
+  // Subscribe to event changes via the day-bucket content of the whole range
+  useEventCalendarSelector((state) => state.events)
+
+  const days = useMemo(() => {
+    const result: Date[] = []
+    let cursor = zonedStartOfDay(visibleRange.start, settings.timeZone)
+    while (cursor < visibleRange.end) {
+      result.push(cursor)
+      cursor = zonedStartOfDay(
+        addDays(toZoned(cursor, settings.timeZone), 1),
+        settings.timeZone
+      )
+    }
+    return result
+  }, [visibleRange, settings.timeZone])
+
+  const index = instance.internals.getIndex()
+  const groups = days
+    .map((day) => ({
+      day,
+      bucket: index.byDay.get(getDayKey(day, settings.timeZone)),
+    }))
+    .filter((group) => {
+      const total =
+        (group.bucket?.allDay.length ?? 0) + (group.bucket?.timed.length ?? 0)
+      return total > 0
+    })
+
+  const isToday = (day: Date) =>
+    getDayKey(day, settings.timeZone) ===
+    getDayKey(new Date(), settings.timeZone)
+
+  const touchPrimary = useTouchPrimary()
+  const native = viewConfig.scrollbars === "native"
+  const usesOverlayScrollbar = !native || touchPrimary
+
+  const body = (
+    <>
+      {groups.length === 0 ? (
+        <div
+          data-slot="event-calendar-no-events"
+          className={cn(
+            "flex min-h-72 flex-col items-center justify-center gap-4 py-16",
+            viewConfig.classNames?.noEvents
+          )}
+        >
+          {viewConfig.renderNoEvents?.() ?? (
+            <>
+              <IconStack>
+                <CalendarIcon className="size-5" aria-hidden="true" />
+              </IconStack>
+              <span className="text-muted-foreground text-sm">
+                {settings.i18n.labels.noEvents}
+              </span>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col [&>*:last-child]:border-b-0">
+          {groups.map(({ day, bucket }) => {
+            const items = [...(bucket?.allDay ?? []), ...(bucket?.timed ?? [])]
+            const zoned = toZoned(day, settings.timeZone)
+            const weekday = format(zoned, "EEEE", { locale: settings.locale })
+            const dayDate = format(zoned, "MMMM d, yyyy", {
+              locale: settings.locale,
+            })
+            return (
+              <div
+                key={day.getTime()}
+                data-slot="event-calendar-agenda-day"
+                data-today={isToday(day) || undefined}
+                // A named group per day so a screen reader can step day by day
+                // (and hear how full one is) instead of arrowing every row.
+                role="group"
+                aria-label={`${weekday}, ${dayDate}, ${settings.i18n.labels.events(items.length)}`}
+              >
+                {/* Group header: weekday (leading) + full date (trailing) */}
+                <div
+                  data-slot="event-calendar-agenda-day-header"
+                  // The day bar is the agenda's only structure, so give it a
+                  // heading level: the H key and the rotor can jump between
+                  // days, which is the whole point of a long agenda.
+                  role="heading"
+                  aria-level={3}
+                  className={cn(
+                    "bg-muted sticky top-0 z-10 flex items-baseline justify-between gap-4 border-b px-4 py-2",
+                    // Overlay scrollbars (the custom Radix treatment and native
+                    // touch scrolling) are painted inside the scrollport. Keep
+                    // the sticky, opaque day bar out of their 10px lane so it
+                    // cannot hide the thumb as it moves beneath each header.
+                    usesOverlayScrollbar && "me-2.5",
+                    viewConfig.classNames?.agendaDayHeader
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-foreground font-semibold",
+                      isToday(day) && "text-primary"
+                    )}
+                  >
+                    {weekday}
+                  </span>
+                  <span className="text-muted-foreground font-medium tabular-nums">
+                    {dayDate}
+                  </span>
+                </div>
+                {items.map((segment) => (
+                  <EventCalendarAgendaItem
+                    key={segment.occurrence.key}
+                    segment={segment}
+                  />
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+
+  const Comp = asChild ? Slot : "div"
+
+  return (
+    <EventCalendarViewContext.Provider value={{ view: "agenda" }}>
+      <Comp
+        data-slot="event-calendar-agenda-view"
+        data-view="agenda"
+        // Unlike the grid views the agenda has no row/column semantics to carry
+        // a name, so label the region with the day range it covers - through
+        // formatDayRange, so a consumer override reaches it.
+        role="group"
+        aria-label={settings.i18n.functions.formatDayRange(visibleRange, {
+          locale: settings.locale,
+        })}
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-hidden border-t",
+          viewConfig.classNames?.agendaView,
+          className
+        )}
+        {...props}
+      >
+        {native ? (
+          <div
+            data-slot="scroll-area-viewport"
+            data-ec-native-scroll=""
+            className="h-full min-h-0 overflow-auto overscroll-contain"
+          >
+            {body}
+          </div>
+        ) : (
+          <ScrollArea orientation="both" className="h-full min-h-0">{body}</ScrollArea>
+        )}
+      </Comp>
+    </EventCalendarViewContext.Provider>
+  )
+}
+
+/**
+ * One agenda row: a full-width, selectable table row - time column, color dot,
+ * and title (all replaceable via renderAgendaEvent). Clicking selects the
+ * event (drag/resize stay off in the agenda).
+ */
+function EventCalendarAgendaItem({
+  segment,
+}: {
+  segment: EventCalendarSegment
+}) {
+  const viewConfig = useEventCalendarViewConfig()
+  return (
+    <EventCalendarEvent
+      segment={segment}
+      className={cn(
+        "hover:bg-accent/40 gap-3 rounded-none border-b px-4 py-2.5 transition-colors",
+        viewConfig.classNames?.agendaItem
+      )}
+    />
+  )
+}
+
+export { EventCalendarAgendaView }
+export type { EventCalendarAgendaViewProps }

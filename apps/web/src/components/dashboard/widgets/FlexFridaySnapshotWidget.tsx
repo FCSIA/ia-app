@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { format } from 'date-fns';
 import { Presentation, MapPin, AlertCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';

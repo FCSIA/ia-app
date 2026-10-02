@@ -4,6 +4,7 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
+import { useFixedBottomVisualViewportOffset } from "@/components/ui/use-fixed-bottom-visual-viewport"
 
 const Drawer = ({
   shouldScaleBackground = true,
@@ -37,22 +38,26 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DrawerPortal>
-    <DrawerOverlay />
-    <DrawerPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[min(88dvh,46rem)] flex-col overscroll-contain rounded-t-2xl border bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl outline-none",
-        className
-      )}
-      {...props}
-    >
-      <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-muted-foreground/35" />
-      {children}
-    </DrawerPrimitive.Content>
-  </DrawerPortal>
-))
+>(({ className, children, ...props }, ref) => {
+  const contentRef = useFixedBottomVisualViewportOffset(ref)
+
+  return (
+    <DrawerPortal>
+      <DrawerOverlay />
+      <DrawerPrimitive.Content
+        ref={contentRef}
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[min(88dvh,46rem)] flex-col overscroll-contain rounded-t-2xl border bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl outline-none [translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:0_0]",
+          className
+        )}
+        {...props}
+      >
+        <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-muted-foreground/35" />
+        {children}
+      </DrawerPrimitive.Content>
+    </DrawerPortal>
+  )
+})
 DrawerContent.displayName = "DrawerContent"
 
 const DrawerHeader = ({

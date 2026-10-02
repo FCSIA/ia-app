@@ -18,7 +18,7 @@ functions only until an operator runs the reset action below.
 Run the reset against the isolated local deployment:
 
 ```bash
-bun run --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:resetAndSeed \
   '{"profile":"development"}'
@@ -27,7 +27,7 @@ bun run --filter cvx exec convex run \
 Check its asynchronous progress until it reaches `COMPLETE`:
 
 ```bash
-bun run --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:seedStatus \
   '{}' \

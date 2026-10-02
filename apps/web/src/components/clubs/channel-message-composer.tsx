@@ -1,20 +1,21 @@
 'use client';
 
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { AtSign, BarChart3, Bold, FileText, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  type Ref,
+} from 'react';
+import { AtSign, BarChart3, Bold, FileText, ImagePlay, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
 import { BoldPlugin, ItalicPlugin, UnderlinePlugin } from '@platejs/basic-nodes/react';
 import { MentionInputPlugin, MentionPlugin } from '@platejs/mention/react';
-import {
-  Attachment,
-  AttachmentAction,
-  AttachmentActions,
-  AttachmentContent,
-  AttachmentGroup,
-  AttachmentMedia,
-  AttachmentTitle,
-} from '@/components/ui/attachment';
 import { Button } from '@/components/ui/button';
 import {
   InputControl,
@@ -39,13 +40,25 @@ import {
   type MentionableItem,
 } from '@/components/ui/mention-node';
 import { cn } from '@/lib/utils';
+import { SchoolGifPicker } from './school-gif-picker';
+import { extractChatGifLinks } from '~/apps/shared/chat/gifs';
 
 export type ChannelMentionSuggestion = {
   token: string;
   label: string;
   detail: string;
-  kind: 'built-in' | 'tag' | 'person';
+  kind: 'built-in' | 'tag' | 'person' | 'role' | 'unit';
 };
+
+/** An attachment already saved on the message being edited. */
+export type ExistingComposerAttachment = {
+  _id: string;
+  fileName: string;
+  mimeType?: string;
+  fileUrl: string;
+};
+
+type DraftFile = { id: string; file: File; previewUrl: string | null };
 
 type ChannelMessageComposerProps = {
   suggestionEntries: ChannelMentionSuggestion[];
@@ -60,17 +73,55 @@ type ChannelMessageComposerProps = {
     bodyMarkdown: string;
     bodyRich: ClubChannelMessageRichBody | null;
     files: File[];
+    removedAttachmentIds: string[];
     pollQuestion?: string;
     pollOptions?: Array<{ id: string; label: string }>;
   }) => void;
   canAttach?: boolean;
+  /** Attachments already on the message; shown removable when editing. */
+  existingAttachments?: ExistingComposerAttachment[];
   canCreatePoll?: boolean;
   onMentionIntent?: () => void;
+  /** Lets the chat focus the editor, e.g. after choosing Reply. */
+  handleRef?: Ref<ChannelMessageComposerHandle>;
+};
+
+export type ChannelMessageComposerHandle = {
+  /**
+   * Focuses the editor synchronously, so a call from a tap handler still
+   * raises the iOS keyboard.
+   */
+  focus: () => void;
 };
 
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS = 12_000;
+function isPreviewableImage(mimeType: string | undefined, fileName: string) {
+  if (mimeType?.toLowerCase() === 'image/svg+xml') return false;
+  return !!mimeType?.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+}
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
+let draftFileSequence = 0;
+
+/** Pasted screenshots all arrive named "image.png"; give each a distinct name. */
+function nameForPastedFile(file: File) {
+  if (file.name && !/^image\.[a-z]+$/i.test(file.name)) return file;
+  const extension = IMAGE_EXTENSIONS[file.type] ?? 'png';
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+  return new File([file], `pasted-image-${stamp}-${++draftFileSequence}.${extension}`, {
+    type: file.type,
+    lastModified: file.lastModified,
+  });
+}
+
 const MAX_CHANNEL_POLL_QUESTION_CHARACTERS = 240;
 const MAX_CHANNEL_POLL_OPTION_CHARACTERS = 120;
 
@@ -114,6 +165,55 @@ function MarkToolButton({
   );
 }
 
+function ComposerAttachmentTile({
+  name,
+  previewUrl,
+  disabled,
+  onRemove,
+}: {
+  name: string;
+  previewUrl: string | null;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  return (
+    <li
+      className={cn(
+        'group/tile relative overflow-hidden rounded-xl border bg-muted',
+        previewUrl ? 'size-20' : 'flex h-20 w-40 items-center gap-2 px-2.5',
+      )}
+    >
+      {previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={previewUrl} alt={name} className="size-full object-cover" />
+      ) : (
+        <>
+          <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="min-w-0 truncate pr-5 text-xs" title={name}>
+            {name}
+          </span>
+        </>
+      )}
+      <button
+        type="button"
+        aria-label={`Remove ${name}`}
+        disabled={disabled}
+        onClick={onRemove}
+        className={cn(
+          'absolute right-1 top-1 flex size-6 items-center justify-center rounded-full',
+          'bg-background/90 text-foreground shadow ring-1 ring-border backdrop-blur',
+          'transition hover:bg-destructive hover:text-white focus-visible:outline-2',
+          'disabled:pointer-events-none disabled:opacity-50',
+          // Touch screens have no hover, so the button stays visible there.
+          'pointer-fine:opacity-0 pointer-fine:group-hover/tile:opacity-100 pointer-fine:focus-visible:opacity-100',
+        )}
+      >
+        <X className="size-3.5" />
+      </button>
+    </li>
+  );
+}
+
 export function ChannelMessageComposer({
   suggestionEntries,
   placeholder,
@@ -124,8 +224,10 @@ export function ChannelMessageComposer({
   initialBodyRich,
   onSubmit,
   canAttach = true,
+  existingAttachments,
   canCreatePoll = false,
   onMentionIntent,
+  handleRef,
 }: ChannelMessageComposerProps) {
   const initialValue = useMemo(
     () =>
@@ -139,15 +241,95 @@ export function ChannelMessageComposer({
         BoldPlugin,
         ItalicPlugin,
         UnderlinePlugin,
-        MentionPlugin.withComponent(MentionElement),
+        // A space after a picked mention, so the next word never runs into it.
+        MentionPlugin.configure({ options: { insertSpaceAfterMention: true } }).withComponent(
+          MentionElement,
+        ),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
       value: initialValue,
     },
     [],
   );
+  // Plain focus: asking Plate to move the caret first defers the DOM focus
+  // to a timer, which iOS no longer treats as part of the tap.
+  useImperativeHandle(handleRef, () => ({ focus: () => editor.tf.focus() }), [editor]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const [drafts, setDrafts] = useState<DraftFile[]>([]);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const draftsRef = useRef<DraftFile[]>([]);
+  draftsRef.current = drafts;
+  const keptExisting = (existingAttachments ?? []).filter((a) => !removedIds.includes(a._id));
+  const files = useMemo(() => drafts.map((draft) => draft.file), [drafts]);
+  const attachmentCount = keptExisting.length + drafts.length;
+  useEffect(
+    () => () => {
+      for (const draft of draftsRef.current) {
+        if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      }
+    },
+    [],
+  );
+
+  const addFiles = (incoming: File[]) => {
+    if (!canAttach || isPending || incoming.length === 0) return;
+    const oversized = incoming.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (oversized) {
+      setAttachmentError(`${oversized.name} is larger than 10 MB.`);
+      return;
+    }
+    const room = MAX_ATTACHMENTS - attachmentCount;
+    if (room <= 0) {
+      setAttachmentError('You can attach up to 5 files.');
+      return;
+    }
+    setAttachmentError(
+      incoming.length > room
+        ? `Only ${room} more ${room === 1 ? 'file fits' : 'files fit'} (5 max).`
+        : null,
+    );
+    const accepted = incoming.slice(0, room).map(
+      (file): DraftFile => ({
+        id: `draft-${++draftFileSequence}`,
+        file,
+        previewUrl: isPreviewableImage(file.type, file.name) ? URL.createObjectURL(file) : null,
+      }),
+    );
+    setDrafts((current) => [...current, ...accepted]);
+  };
+
+  const removeDraft = (id: string) => {
+    setAttachmentError(null);
+    const target = draftsRef.current.find((draft) => draft.id === id);
+    if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+    setDrafts((current) => current.filter((draft) => draft.id !== id));
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
+    if (!canAttach) return;
+    const pasted = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+      file.type.startsWith('image/'),
+    );
+    // Copying from a page can carry an image and its text together; only an
+    // image with no text is treated as an attachment paste.
+    if (pasted.length === 0 || event.clipboardData.getData('text/plain')) return;
+    event.preventDefault();
+    addFiles(pasted.map(nameForPastedFile));
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLElement>) => {
+    if (!canAttach || !event.dataTransfer.types.includes('Files')) return;
+    event.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    setDragActive(false);
+    if (!canAttach || event.dataTransfer.files.length === 0) return;
+    event.preventDefault();
+    addFiles(Array.from(event.dataTransfer.files));
+  };
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [plainText, setPlainText] = useState(() =>
     serializeClubChannelMessagePlainText(initialValue),
@@ -155,6 +337,7 @@ export function ChannelMessageComposer({
   const [richValue, setRichValue] = useState<Value>(initialValue);
   const [pollOpen, setPollOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
@@ -179,7 +362,8 @@ export function ChannelMessageComposer({
     .filter((option) => option.label);
   const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
   const currentBody = isMarkdownSource ? markdownSource : plainText;
-  const canSend = !isPending && (currentBody.trim().length > 0 || files.length > 0 || !!hasPoll);
+  const canSend =
+    !isPending && (currentBody.trim().length > 0 || attachmentCount > 0 || !!hasPoll);
   const hasComposerTools = canAttach || canCreatePoll || !isMarkdownSource;
 
   const handleSubmit = () => {
@@ -194,6 +378,7 @@ export function ChannelMessageComposer({
         ? (richValue as unknown as ClubChannelMessageRichBody)
         : null,
       files,
+      removedAttachmentIds: removedIds,
       pollQuestion: hasPoll ? pollQuestion.trim() : undefined,
       pollOptions: hasPoll ? normalizedPollOptions : undefined,
     });
@@ -229,34 +414,52 @@ export function ChannelMessageComposer({
       }}
     >
       <MentionablesProvider items={mentionables}>
-        <div className="flex flex-col gap-2" onFocusCapture={onMentionIntent}>
-          {files.length > 0 ? (
-            <AttachmentGroup className="gap-1.5 py-0">
-              {files.map((file) => (
-                <Attachment key={file.name} size="sm" className="max-w-56 flex-nowrap">
-                  <AttachmentMedia>
-                    <FileText />
-                  </AttachmentMedia>
-                  <AttachmentContent>
-                    <AttachmentTitle>{file.name}</AttachmentTitle>
-                  </AttachmentContent>
-                  <AttachmentActions>
-                    <AttachmentAction
-                      size="icon-sm"
-                      aria-label={`Remove ${file.name}`}
-                      onClick={() => {
-                        setAttachmentError(null);
-                        setFiles((current) =>
-                          current.filter((entry) => entry.name !== file.name),
-                        );
-                      }}
-                    >
-                      <X data-icon="inline-start" />
-                    </AttachmentAction>
-                  </AttachmentActions>
-                </Attachment>
+        <div
+          className={cn(
+            'relative flex flex-col gap-2 rounded-lg',
+            dragActive && 'ring-2 ring-primary/60 ring-offset-2 ring-offset-background',
+          )}
+          onFocusCapture={onMentionIntent}
+          onPasteCapture={handlePaste}
+          onDragOver={handleDragOver}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setDragActive(false);
+            }
+          }}
+          onDrop={handleDrop}
+        >
+          {attachmentCount > 0 ? (
+            <ul
+              aria-label={`${attachmentCount} ${attachmentCount === 1 ? 'attachment' : 'attachments'}`}
+              className="flex flex-wrap gap-2 px-0.5"
+            >
+              {keptExisting.map((attachment) => (
+                <ComposerAttachmentTile
+                  key={attachment._id}
+                  name={attachment.fileName}
+                  previewUrl={
+                    isPreviewableImage(attachment.mimeType, attachment.fileName)
+                      ? attachment.fileUrl
+                      : null
+                  }
+                  disabled={isPending}
+                  onRemove={() => {
+                    setAttachmentError(null);
+                    setRemovedIds((current) => [...current, attachment._id]);
+                  }}
+                />
               ))}
-            </AttachmentGroup>
+              {drafts.map((draft) => (
+                <ComposerAttachmentTile
+                  key={draft.id}
+                  name={draft.file.name}
+                  previewUrl={draft.previewUrl}
+                  disabled={isPending}
+                  onRemove={() => removeDraft(draft.id)}
+                />
+              ))}
+            </ul>
           ) : null}
 
           {attachmentError ? (
@@ -339,7 +542,7 @@ export function ChannelMessageComposer({
                 enterKeyHint="send"
                 className={cn(
                   'max-h-40 min-h-10 resize-none py-2.5',
-                  'font-mono text-sm any-pointer-coarse:text-base leading-5',
+                  'font-mono text-sm pointer-coarse:text-base leading-5',
                 )}
               />
             ) : (
@@ -354,7 +557,7 @@ export function ChannelMessageComposer({
                 enterKeyHint="send"
                 className={cn(
                   'max-h-40 min-h-10 min-w-0 flex-1 overflow-y-auto',
-                  'py-2 pl-1 pr-2 text-sm any-pointer-coarse:text-base leading-5 outline-none',
+                  'py-2 pl-1 pr-2 text-sm pointer-coarse:text-base leading-5 outline-none',
                   '[&_[data-slate-placeholder=true]]:top-2 [&_[data-slate-placeholder=true]]:max-w-full [&_[data-slate-placeholder=true]]:overflow-hidden [&_[data-slate-placeholder=true]]:text-ellipsis [&_[data-slate-placeholder=true]]:whitespace-nowrap',
                   '[&_[data-slate-placeholder=true]]:text-muted-foreground',
                 )}
@@ -382,7 +585,7 @@ export function ChannelMessageComposer({
                           type="button"
                           size="icon-sm"
                           aria-label="Attach files"
-                          disabled={files.length >= MAX_ATTACHMENTS}
+                          disabled={attachmentCount >= MAX_ATTACHMENTS}
                           onClick={() => {
                             setToolsOpen(false);
                             fileInputRef.current?.click();
@@ -403,6 +606,20 @@ export function ChannelMessageComposer({
                           }}
                         >
                           <BarChart3 data-icon="inline-start" />
+                        </InputControlButton>
+                      ) : null}
+                      {canAttach ? (
+                        <InputControlButton
+                          type="button"
+                          size="icon-sm"
+                          aria-label="Choose a GIF"
+                          disabled={isPending || extractChatGifLinks(currentBody).length >= 5}
+                          onClick={() => {
+                            setToolsOpen(false);
+                            setGifPickerOpen(true);
+                          }}
+                        >
+                          <ImagePlay data-icon="inline-start" />
                         </InputControlButton>
                       ) : null}
                       {!isMarkdownSource && (canAttach || canCreatePoll) ? (
@@ -470,27 +687,25 @@ export function ChannelMessageComposer({
       </MentionablesProvider>
 
       {canAttach ? (
+        <SchoolGifPicker open={gifPickerOpen} onOpenChange={setGifPickerOpen} onSelect={(gif) => {
+          if (isMarkdownSource) {
+            setMarkdownSource((current) => `${current.trimEnd()}${current.trim() ? '\n' : ''}${gif.url}`);
+          } else {
+            editor.tf.select(editor.api.end([]));
+            if (plainText.trim()) editor.tf.insertBreak();
+            editor.tf.insertText(gif.url);
+          }
+          setGifPickerOpen(false);
+        }} />
+      ) : null}
+      {canAttach ? (
         <input
           ref={fileInputRef}
           type="file"
           multiple
           className="hidden"
           onChange={(event) => {
-            const nextFiles = Array.from(event.target.files ?? []);
-            const oversized = nextFiles.find((file) => file.size > MAX_ATTACHMENT_BYTES);
-            if (oversized) {
-              setAttachmentError(`${oversized.name} is larger than 10 MB.`);
-            } else if (nextFiles.length > 0) {
-              const additions = nextFiles.filter(
-                (file) => !files.some((entry) => entry.name === file.name),
-              );
-              if (files.length + additions.length > MAX_ATTACHMENTS) {
-                setAttachmentError('You can attach up to 5 files.');
-              } else {
-                setAttachmentError(null);
-                setFiles((current) => [...current, ...additions]);
-              }
-            }
+            addFiles(Array.from(event.target.files ?? []));
             event.currentTarget.value = '';
           }}
         />

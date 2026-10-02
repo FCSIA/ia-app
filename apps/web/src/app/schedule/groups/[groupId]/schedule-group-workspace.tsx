@@ -4,7 +4,7 @@ import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
-import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from '@/lib/convex-react';
 import {
   ArrowLeft,
   CalendarDays,
@@ -45,8 +45,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
-type GroupData = FunctionReturnType<typeof api.schedule.groups.get>;
+type GroupData = NonNullable<FunctionReturnType<typeof api.schedule.groups.get>>;
 type GroupSchedule = GroupData['ownerSchedule'];
 type GroupPerson = GroupData['owner'];
 type GroupMember = GroupData['members'][number];
@@ -78,7 +79,7 @@ function ScheduleColumn({
   unavailableCopy?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+    <section className={cn('overflow-hidden rounded-xl bg-surface-2 shadow-surface-1', CARD_SURFACE_FOREGROUND)}>
       <div className="flex items-center gap-2.5 bg-surface-3 px-3 py-2.5">
         <UserAvatar firstName={person.firstName} lastName={person.lastName} className="size-8" />
         <div className="min-w-0">
@@ -326,7 +327,7 @@ function GroupWorkspaceBody({
               ))}
             </CardGroup>
           ) : (
-            <p className="rounded-xl bg-surface-2 px-3 py-3 text-sm text-muted-foreground shadow-surface-1">
+            <p className={cn('rounded-xl bg-surface-2 px-3 py-3 text-sm text-muted-foreground shadow-surface-1', CARD_SURFACE_FOREGROUND)}>
               Add a friend to start comparing.
             </p>
           )}
@@ -338,7 +339,7 @@ function GroupWorkspaceBody({
             <h2 className="text-sm font-semibold">Classes in common</h2>
           </div>
           {data.clusters.length > 0 ? (
-            <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+            <div className={cn('overflow-hidden rounded-xl bg-surface-2 shadow-surface-1', CARD_SURFACE_FOREGROUND)}>
               <div className="divide-y divide-border/60">
                 {data.clusters.map((cluster) => {
                   const attendees = cluster.attendeeUserIds
@@ -361,7 +362,7 @@ function GroupWorkspaceBody({
               </div>
             </div>
           ) : (
-            <p className="rounded-xl bg-surface-2 px-3 py-3 text-sm text-muted-foreground shadow-surface-1">
+            <p className={cn('rounded-xl bg-surface-2 px-3 py-3 text-sm text-muted-foreground shadow-surface-1', CARD_SURFACE_FOREGROUND)}>
               No shared class slots yet.
             </p>
           )}
@@ -397,7 +398,7 @@ function GroupWorkspaceBody({
             />
           </div>
         ) : (
-          <Empty className="min-h-96 bg-surface-2 shadow-surface-1">
+          <Empty className={cn('min-h-96 bg-surface-2 shadow-surface-1', CARD_SURFACE_FOREGROUND)}>
             <EmptyHeader>
               <EmptyMedia variant="icon"><Users /></EmptyMedia>
               <EmptyTitle>Add someone to compare</EmptyTitle>

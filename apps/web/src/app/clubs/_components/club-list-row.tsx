@@ -4,46 +4,13 @@ import type { ReactNode } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
+import { ClubMark } from "@/components/clubs/club-mark";
 import type { ClubSummary } from "@/components/clubs/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, type CardProps } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-function resolveMediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith("http")) return url;
-  return url;
-}
-
-export function ClubMark({
-  club,
-  size,
-}: {
-  club: { name: string; logoUrl?: string | null };
-  size: "sm" | "md";
-}) {
-  return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden bg-primary/10 font-bold text-primary",
-        size === "sm"
-          ? "size-8 rounded-md text-xs"
-          : "size-11 rounded-lg text-sm",
-      )}
-    >
-      {club.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={resolveMediaUrl(club.logoUrl)}
-          alt={club.name}
-          className="size-full object-cover"
-        />
-      ) : (
-        club.name.charAt(0).toUpperCase()
-      )}
-    </div>
-  );
-}
+export { ClubMark } from "@/components/clubs/club-mark";
 
 export function ClubListRow({
   club,
@@ -77,11 +44,11 @@ export function ClubListRow({
             <Badge className="h-5 shrink-0 px-1.5 text-[10px]">Joined</Badge>
           ) : null}
         </div>
-        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+        <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80">
           {club.description || "No description yet."}
         </p>
       </div>
-      <div className="hidden shrink-0 items-center gap-3 pr-2 text-[11px] tabular-nums text-muted-foreground sm:flex">
+      <div className="hidden shrink-0 items-center gap-3 pr-2 text-[11px] font-medium tabular-nums text-foreground/80 sm:flex">
         <span
           className={cn(
             "inline-flex items-center gap-1",

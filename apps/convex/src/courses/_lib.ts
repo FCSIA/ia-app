@@ -189,7 +189,7 @@ export async function listCourseCandidates(
       .withIndex("by_department_and_title", (q) =>
         q.eq("department", department),
       )
-      .take(500);
+      .take(args.gradeLevel == null ? limit : 500);
   }
 
   if (args.pathway != null) {
@@ -198,10 +198,13 @@ export async function listCourseCandidates(
       .withIndex("by_pathway_and_minGrade_and_maxGrade", (q) =>
         q.eq("pathway", args.pathway),
       )
-      .take(500);
+      .take(args.gradeLevel == null ? limit : 500);
   }
 
-  return await ctx.db.query("courses").take(500);
+  return await ctx.db
+    .query("courses")
+    .withIndex("by_department_and_title")
+    .take(args.gradeLevel == null ? limit : 500);
 }
 
 export function sortCoursesForCatalog(courses: Doc<"courses">[]) {

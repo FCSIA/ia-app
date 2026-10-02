@@ -3,6 +3,7 @@ import {
   addBoundedMentionRecipients,
   assertCanMentionEveryone,
   boundedPortableMentionTokens,
+  toMentionGroupToken,
 } from "./channelMentions";
 
 describe("club channel mention bounds", () => {
@@ -34,5 +35,11 @@ describe("club channel mention bounds", () => {
       "Only channel managers can mention everyone",
     );
     expect(() => assertCanMentionEveryone(["ALL"], true)).not.toThrow();
+  });
+
+  test("normalizes role and substructure mention tokens", () => {
+    expect(toMentionGroupToken("School Leads")).toBe("schoolleads");
+    expect(toMentionGroupToken("House-Leads")).toBe("houseleads");
+    expect(toMentionGroupToken("Room 101")).toBe("room101");
   });
 });

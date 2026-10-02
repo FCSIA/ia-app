@@ -6,7 +6,7 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { clubUnitJoinPolicyValidator } from "../validators";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
-import { getClubContext } from "./access";
+import { getClubContext, getViewerContext } from "./access";
 import {
   MAX_CLUB_UNITS,
   MAX_CLUB_UNIT_DESCRIPTION_LENGTH,
@@ -17,7 +17,8 @@ import {
   normalizeOptionalLabel,
   normalizeRequiredLabel,
 } from "./hierarchyRules";
-import { toClubUserRef } from "./serialize";
+import { clubUserRefValidator, toClubUserRef } from "./serialize";
+import { adjustClubCounts, recountClub } from "./counts";
 
 const unitSummaryValidator = v.object({
   _id: v.id("clubUnits"),
@@ -36,14 +37,8 @@ const unitMemberValidator = v.object({
   _id: v.id("clubUnitMembers"),
   userId: v.id("users"),
   joinedAt: v.number(),
-  user: v.object({
-    _id: v.id("users"),
-    uniqueId: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-    roles: v.array(v.string()),
-    avatarUrl: v.union(v.string(), v.null()),
-  }),
+  // Reuse the serializer's own validator so new user fields can't drift.
+  user: clubUserRefValidator,
 });
 
 const memberUnitOptionValidator = v.object({
@@ -153,7 +148,11 @@ export const list = query({
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
+    // A live query can outlast a membership change. Keep the authorization
+    // boundary intact, but settle that stale subscription to an empty result
+    // instead of surfacing a client error.
+    const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return { canManage: false, units: [] };
     const [units, viewerMemberships] = await Promise.all([
       ctx.db
         .query("clubUnits")
@@ -249,6 +248,7 @@ export const create = mutation({
     });
     const club = await ctx.db.get(args.clubId);
     if (club?.autoCreateUnitChannels) {
+      await adjustClubCounts(ctx, args.clubId, { channels: 1 });
       await ctx.db.insert("clubChannels", {
         clubId: args.clubId,
         ownerUnitId: unitId,
@@ -314,6 +314,7 @@ export const bulkCreate = mutation({
     }));
     let created = 0;
     let existing = 0;
+    let createdChannels = 0;
     while (pending.length) {
       let progressed = false;
       for (let index = pending.length - 1; index >= 0; index -= 1) {
@@ -371,6 +372,7 @@ export const bulkCreate = mutation({
             createdAt: now,
             updatedAt: now,
           });
+          createdChannels += 1;
         }
         const matches = byName.get(normalize(row.name)) ?? [];
         matches.push({
@@ -394,6 +396,11 @@ export const bulkCreate = mutation({
         throw new ConvexError("Structure CSV has a missing or circular parent");
       }
     }
+    // The import resolves parents as it goes, so how many channels it will
+    // auto-create is only known once it finishes — too late for a delta, whose
+    // one-time fallback count would then include the rows it is about to add.
+    // Deriving both counters from the rows is exact whatever the order.
+    if (createdChannels > 0) await recountClub(ctx, args.clubId);
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_UNITS_BULK_CREATED",

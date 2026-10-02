@@ -8,15 +8,27 @@ import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useShape } from "@/lib/shape-context"
+import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes"
+
+type CommandSurface = "popover" | "inherit"
+
+interface CommandProps extends React.ComponentPropsWithoutRef<typeof CommandPrimitive> {
+  /** `inherit` lets a containing surface, such as `DialogContent`, own the
+   * background and foreground instead of creating a nested command surface. */
+  surface?: CommandSurface
+}
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
->(({ className, ...props }, ref) => (
+  CommandProps
+>(({ className, surface = "popover", ...props }, ref) => (
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground",
+      "flex h-full w-full flex-col overflow-hidden",
+      surface === "popover" && "bg-popover text-popover-foreground",
+      surface === "popover" && POPOVER_SURFACE_FOREGROUND,
+      surface === "inherit" && "bg-transparent text-foreground",
       className
     )}
     {...props}
@@ -30,13 +42,15 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
       <DialogContent
         size="lg"
         mobilePosition="top"
-        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden p-0 [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-1rem)]"
+        padding="none"
+        closeButtonClassName="top-0 sm:top-1.5"
+        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-2rem)]"
         onOpenAutoFocus={(event) => {
           if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault()
         }}
       >
         <DialogTitle className="sr-only">Command menu</DialogTitle>
-        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-1 [&_[cmdk-input]]:h-11 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2">
+        <Command surface="inherit" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-1 [&_[cmdk-input]]:h-11 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2">
           {children}
         </Command>
       </DialogContent>
@@ -53,7 +67,7 @@ const CommandInput = React.forwardRef<
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full bg-transparent py-3 text-sm any-pointer-coarse:text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full bg-transparent py-3 text-sm pointer-coarse:text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -69,7 +83,10 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[min(640px,72vh)] overflow-y-auto overflow-x-hidden p-2", className)}
+    className={cn(
+      "max-h-[min(24rem,calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] overflow-y-auto overflow-x-hidden p-2",
+      className
+    )}
     {...props}
   />
 ))

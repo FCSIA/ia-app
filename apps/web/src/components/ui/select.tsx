@@ -17,6 +17,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
@@ -212,7 +213,7 @@ Select.displayName = "Select";
 const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between outline-none cursor-pointer",
-    "touch-manipulation any-pointer-coarse:min-h-11",
+    "touch-manipulation pointer-coarse:min-h-11",
     "transition-all duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -516,6 +517,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     // scrollbar-hiding stylesheet (see header comment) so
                     // long lists keep a visible scrollbar.
                     `relative flex flex-col gap-0.5 min-w-[var(--radix-select-trigger-width)] max-h-[min(300px,var(--radix-select-content-available-height))] overflow-y-auto ![scrollbar-width:thin] ${shape.container} p-1 select-none outline-none`,
+                    POPOVER_SURFACE_FOREGROUND,
                     className
                   )}
                 >
@@ -695,7 +697,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           // the text-box trim on the item text doesn't shrink the row.
           // shrink-0: the popup is a max-height flex column, so without it
           // a long list compresses rows to fit instead of scrolling.
-          `relative z-10 flex ${sizeClasses.control} shrink-0 touch-manipulation items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} ${sizeClasses.text} cursor-pointer outline-none select-none any-pointer-coarse:min-h-11`,
+          `relative z-10 flex ${sizeClasses.control} shrink-0 touch-manipulation items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} ${sizeClasses.text} cursor-pointer outline-none select-none pointer-coarse:min-h-11`,
           "transition-[color] duration-80",
           isActive || isChecked
             ? "text-foreground"

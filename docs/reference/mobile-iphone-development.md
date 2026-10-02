@@ -42,7 +42,7 @@ This setup requires a Mac with Xcode and the phone connected by cable.
      export EXPO_IOS_PERSONAL_TEAM=1
      export IOS_BUNDLE_IDENTIFIER=is.yourname.innovationacademy.dev
 
-     bun run --filter mobile exec expo prebuild --platform ios --clean --no-install
+     bun run --cwd apps/mobile expo prebuild --platform ios --clean --no-install
      cd apps/mobile/ios
      pod install
      open InnovationAcademy.xcworkspace

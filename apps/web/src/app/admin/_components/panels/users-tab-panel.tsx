@@ -45,6 +45,7 @@ function UsersTabPanelContent({ initialSearch }: { initialSearch: string }) {
       isResetPasswordPending={users.isResetPasswordPending}
       isAssignRolesPending={users.isAssignRolesPending}
       onAssignRoles={users.onAssignRoles}
+      onSetDeveloper={users.onSetDeveloper}
     />
   );
 }

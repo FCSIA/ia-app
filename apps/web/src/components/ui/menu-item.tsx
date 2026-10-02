@@ -138,7 +138,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       // text-box trim on the label doesn't shrink the row. shrink-0 because
       // menu popups are max-height flex columns — without it a long list
       // compresses rows to fit instead of scrolling.
-      `relative z-10 flex h-9 shrink-0 touch-manipulation items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none any-pointer-coarse:h-11`,
+      `relative z-10 flex h-9 shrink-0 touch-manipulation items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none pointer-coarse:h-11`,
       disabled && "opacity-50 pointer-events-none",
       className
     );

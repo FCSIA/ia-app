@@ -17,6 +17,9 @@ export function ScheduleTabPanel() {
       onExport={schedule.onExport}
       lastStudentImport={schedule.lastStudentImport}
       onExportGeneratedPasswords={schedule.onExportGeneratedPasswords}
+      isUpdating={schedule.isUpdating}
+      onBulkUpdate={schedule.onBulkUpdate}
+      lastStudentUpdate={schedule.lastStudentUpdate}
     />
   );
 }

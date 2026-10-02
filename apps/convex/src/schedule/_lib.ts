@@ -88,6 +88,7 @@ export const scheduleFriendUserValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
+  isDeveloper: v.optional(v.boolean()),
 });
 
 export const scheduleFriendValidator = v.object({
@@ -117,6 +118,7 @@ export const scheduleSearchResultValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
+  isDeveloper: v.optional(v.boolean()),
   friendshipStatus: v.union(
     v.literal("NONE"),
     v.literal("REQUEST_SENT"),
@@ -223,13 +225,16 @@ export function serializeBlock(block: Doc<"schoolDayBlocks">) {
   };
 }
 
+// Checked against the validator so a field added here without updating
+// `scheduleFriendUserValidator` fails typecheck instead of failing at runtime.
 export function serializeUser(user: Doc<"users">) {
   return {
     _id: user._id,
     uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
-  };
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof scheduleFriendUserValidator>;
 }
 
 export async function getScheduleForUser(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
@@ -253,18 +258,30 @@ export async function serializeScheduleForUser(
     )
     .take(60);
 
-  const serializedEntries = [];
-  for (const entry of entries) {
-    const course = entry.courseId ? await ctx.db.get(entry.courseId) : null;
-    serializedEntries.push({
+  const courseIds = Array.from(
+    new Set(
+      entries.flatMap((entry) => (entry.courseId ? [entry.courseId] : [])),
+    ),
+  );
+  const coursesById = new Map(
+    await Promise.all(
+      courseIds.map(async (courseId) => [
+        courseId,
+        await ctx.db.get(courseId),
+      ] as const),
+    ),
+  );
+  const serializedEntries = entries.map((entry) => {
+    const course = entry.courseId ? coursesById.get(entry.courseId) : null;
+    return {
       id: entry._id,
       weekday: entry.weekday,
       periodNumber: entry.periodNumber,
       className: entry.className,
       courseId: entry.courseId,
       course: course ? toCourseSummary(course) : null,
-    });
-  }
+    };
+  });
 
   serializedEntries.sort(
     (left, right) =>

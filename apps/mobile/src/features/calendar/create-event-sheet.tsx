@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { Button, ChipGroup, Sheet, TextField, Txt, useToast } from "@/components/ui";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useCurrentUser } from "@/lib/auth";

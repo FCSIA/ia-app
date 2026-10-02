@@ -1,4 +1,4 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { hashPassword } from "better-auth/crypto";
 import { createAuth } from "../auth";
 import { components } from "../_generated/api";
@@ -20,6 +20,7 @@ const userProfileFields = {
   email: docs.users.fields.email,
   isActive: docs.users.fields.isActive,
   avatarUrl: docs.users.fields.avatarUrl,
+  isDeveloper: docs.users.fields.isDeveloper,
 };
 
 export const userSelfProfileValidator = v.object({
@@ -27,8 +28,12 @@ export const userSelfProfileValidator = v.object({
   mustResetPassword: docs.users.fields.mustResetPassword,
   canReviewFeedback: docs.users.fields.canReviewFeedback,
   dashboardLayout: docs.users.fields.dashboardLayout,
+  mobileTabLayout: docs.users.fields.mobileTabLayout,
   use24HourTime: docs.users.fields.use24HourTime,
+  chatDoubleTapReaction: docs.users.fields.chatDoubleTapReaction,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
+  customBackgroundPalette: docs.users.fields.customBackgroundPalette,
+  customBackgroundTint: docs.users.fields.customBackgroundTint,
 });
 
 export const adminUserProfileValidator = v.object(userProfileFields);
@@ -48,10 +53,15 @@ export function toUserSelfProfile(user: Doc<"users">) {
     mustResetPassword: user.mustResetPassword,
     canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
+    mobileTabLayout: user.mobileTabLayout,
     use24HourTime: user.use24HourTime ?? false,
+    chatDoubleTapReaction: user.chatDoubleTapReaction,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
-  };
+    customBackgroundPalette: user.customBackgroundPalette,
+    customBackgroundTint: user.customBackgroundTint,
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof userSelfProfileValidator>;
 }
 
 export function toAdminUserProfile(user: Doc<"users">) {
@@ -67,7 +77,8 @@ export function toAdminUserProfile(user: Doc<"users">) {
     email: user.email,
     isActive: user.isActive,
     avatarUrl: user.avatarUrl,
-  };
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof adminUserProfileValidator>;
 }
 
 export const temporaryPasswordAlphabet =

@@ -1,7 +1,7 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
 import { Send, Upload, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';

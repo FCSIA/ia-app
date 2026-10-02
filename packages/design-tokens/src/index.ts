@@ -1,4 +1,4 @@
-export type ThemeName = "light" | "dark" | "high-contrast" | "bubblegum" | "custom";
+export type ThemeName = "light" | "dark" | "high-contrast" | "bubblegum" | "bubblegum-dark" | "custom";
 
 export type ThemeTokens = {
   background: string;
@@ -193,6 +193,40 @@ export const themes: Record<ThemeName, ThemeTokens> = {
     sidebarAccentForeground: "0 0% 100%",
     sidebarBorder: "330 30% 32%",
     sidebarRing: "328 95% 65%",
+  },
+  "bubblegum-dark": {
+    background: "330 36% 6%",
+    foreground: "330 24% 96%",
+    card: "330 30% 10%",
+    cardForeground: "330 24% 96%",
+    popover: "330 30% 10%",
+    popoverForeground: "330 24% 96%",
+    primary: "328 90% 68%",
+    primaryForeground: "330 62% 13%",
+    secondary: "330 25% 15%",
+    secondaryForeground: "330 25% 93%",
+    muted: "330 24% 12%",
+    mutedForeground: "330 15% 68%",
+    accent: "290 32% 20%",
+    accentForeground: "290 20% 94%",
+    destructive: "0 78% 62%",
+    destructiveForeground: "0 0% 8%",
+    border: "330 22% 21%",
+    input: "330 22% 21%",
+    ring: "328 90% 68%",
+    chart1: "328 90% 68%",
+    chart2: "290 72% 72%",
+    chart3: "200 82% 68%",
+    chart4: "45 95% 65%",
+    chart5: "150 62% 60%",
+    sidebar: "330 36% 5%",
+    sidebarForeground: "330 20% 86%",
+    sidebarPrimary: "328 90% 68%",
+    sidebarPrimaryForeground: "330 62% 13%",
+    sidebarAccent: "330 24% 12%",
+    sidebarAccentForeground: "330 20% 92%",
+    sidebarBorder: "330 20% 14%",
+    sidebarRing: "328 90% 68%",
   },
   custom: {
     background: "150 8% 4%",

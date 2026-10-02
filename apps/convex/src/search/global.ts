@@ -14,6 +14,7 @@ const personResultValidator = v.object({
   firstName: v.string(),
   lastName: v.string(),
   avatarUrl: v.union(v.string(), v.null()),
+  isDeveloper: v.optional(v.boolean()),
 });
 
 const channelResultValidator = v.object({
@@ -96,6 +97,7 @@ export const palette = query({
         firstName: person.firstName,
         lastName: person.lastName,
         avatarUrl: person.avatarUrl ?? null,
+        isDeveloper: person.isDeveloper,
       }));
 
     const channels: Array<{

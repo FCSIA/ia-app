@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { router } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import {
   Check,
   ChevronRight,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { Users, Shield, User, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -64,7 +65,7 @@ export function MyClubsWidget() {
               <Link
                 key={club._id}
                 href={clubEntryHref(club._id)}
-                className="group flex flex-col gap-3 rounded-[1.2rem] border border-border/70 bg-card p-3 transition-colors hover:bg-muted/40"
+                className={`group flex flex-col gap-3 rounded-[1.2rem] border border-border/70 bg-card p-3 transition-colors hover:bg-muted/40 ${CARD_SURFACE_FOREGROUND}`}
               >
                 <div className="flex items-center gap-3">
                   <Avatar className="size-10 rounded-xl border border-border shadow-sm">

@@ -6,8 +6,8 @@ tags: [feature, calendar]
 
 [Home](../index.md)
 
-The calendar shows school, club, Flex Friday, district, and personal entries on
-a monthly grid.
+The calendar shows school, club, Flex Friday, district, external, and personal
+entries in an adaptive event calendar.
 
 Date-specific bell schedules are managed separately in the Schedule workspace's
 Day Plans tab. See [Schedule](schedule.md) for reusable templates, date
@@ -15,19 +15,24 @@ overrides, and canonical-period resolution.
 
 ## What It Does
 
-- Lists entries within the visible month range.
+- Lists entries within the active view's visible range.
 - Filters by source.
 - Searches title, description, and location on the client for the current range.
 - Lets users create and delete their own personal entries.
 - Lets users connect private HTTPS ICS feeds, including Canvas personal calendar
   feeds such as `fultonschools.instructure.com`.
 - Shows published events and Flex Friday rows through linked calendar entries.
-- Uses the active app theme across month, day, and resource views.
+- Uses the ReUI event-calendar engine for month, week, day, and agenda views.
+- Offers month, week, day, and agenda on larger screens; phones use agenda and
+  day views so event content is never compressed into seven narrow columns.
+- Uses the shared date-calendar adapter for the compact Dashboard picker.
 
 ## Source Files
 
 - Backend: `apps/convex/src/events/calendar.ts`
 - Web page: `apps/web/src/app/calendar/page.tsx`
+- Event calendar: `apps/web/src/components/reui/event-calendar/`
+- Dashboard picker: `apps/web/src/components/dashboard/widgets/CalendarWidget.tsx`
 - Create dialog: `apps/web/src/components/calendar/AddCalendarEntryDialog.tsx`
 
 ## Convex Surface
@@ -55,9 +60,10 @@ overrides, and canonical-period resolution.
 Personal entries are only returned to the user who created them.
 
 External subscriptions and normalized events are private to their owner. The
-feed URL is not returned to clients after creation. ICS feeds refresh every six
-hours, retain events from the previous 31 days through the next year, and mark
-failed connections with an error state for retry.
+feed URL is not returned to clients after creation. A new connection starts its
+first sync immediately; ICS feeds then refresh every six hours. Imports retain
+events from the previous 31 days through the next year and mark failed
+connections with an error state for retry.
 
 ## Permissions
 

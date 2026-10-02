@@ -18,10 +18,14 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   its conversation.
 - Lets signed-in users find people and every club channel they can read from the
   global command palette.
+- Lets club members search the People directory by name, student ID, member or
+  sponsor type, club role, and assigned unit/substructure name.
 - Collects files and images previously shared in each readable channel.
 - Supports direct member adds by sponsors, admins, and club roles with the
-  membership-invite permission, plus invites, bulk CSV invites, open joins,
-  manager-approved join requests, invite-only clubs, and join codes.
+  membership-invite permission, including an idempotent bulk unique-ID CSV
+  upload that leaves existing members unchanged. Also supports invitations,
+  open joins, manager-approved join requests, invite-only clubs, and join
+  codes.
 - Lets club managers create reusable roles, assign them to members, rename
   them, remove them, and configure their permissions. Role removal explicitly
   confirms any affected channel rules and warns when a channel will become
@@ -49,8 +53,16 @@ code after the app confirms the viewer is already a club member.
 - Keeps explicitly selected people as access exceptions for special cases.
 - Lets managers drag channels into sibling order and move them inward or
   outward through the structure tree without coupling placement to access.
+- Web channel visits show a red Unread divider before the first unread post,
+  using the viewer's saved read receipt. The entry boundary stays fixed while
+  the channel acknowledges messages; switching channels captures a new boundary.
+  Older pages load automatically when needed to locate a previous read position.
+  Search results omit the divider, and already-read/empty visits do not acquire
+  one when live messages arrive.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
+- Gives every channel collaborative [whiteboards](whiteboards.md) that all
+  channel readers can use.
 
 ## Source Files
 
@@ -94,6 +106,7 @@ invites or adds people.
 - `api.clubs.invitations.respondToJoinRequest`
 - `api.clubs.invitations.sendInvite`
 - `api.clubs.invitations.addMemberDirectly`
+- `api.clubs.invitations.bulkAddMembers`
 - `api.clubs.invitations.bulkInvite`
 - `api.clubs.invitations.respondToInvite`
 - `api.clubs.invitations.generateJoinCode`
@@ -126,6 +139,56 @@ uses Plate for rich marks and structured mentions, while read-only timelines use
 `https` links remain clickable after Plate content is serialized.
 Person mentions show the member's name while their portable `user://` link
 keeps the stable school unique ID used for backend resolution.
+
+### Chat GIFs
+
+Chat accepts uploaded GIFs through the existing file picker (up to five files,
+10 MB each), preserving the original animation. Web and mobile also preview
+GIPHY and Tenor links, including Markdown links: share links and direct `.gif`
+URLs on their media CDNs (`media*.giphy.com`, `i.giphy.com`, `media*.tenor.com`,
+`c.tenor.com`). GIFs on any other host stay ordinary links, because every
+viewer's device loads a preview automatically and an open list would let
+whoever posts a link log the IP address of everyone who reads it.
+Previews are deduplicated and limited to five per message; code examples stay
+text. Web and native composers also offer a searchable, fixed collection of
+nine existing online reaction GIFs (SpongeBob, Pikachu, Homer, Spider-Man,
+typing cat, Kermit, Jim, Leonardo applause, and Pedro raccoon). The collection
+contains no generated media and exposes no provider-wide search. Each entry in
+`apps/shared/chat/school-gifs.ts` retains its source page and static thumbnail;
+review the complete clip before adding or replacing an entry. Selecting a GIF
+adds its external media URL to the draft, preserving existing text and mentions.
+
+GIFs render without a filename/status card or Open link. A compact icon button
+in the lower-right corner controls playback. Previewed links are hidden from the
+message text; surrounding prose and code examples remain. The message's own
+context menu (right-click or long-press on web, the message actions sheet on
+mobile) offers Copy GIF URL, so a GIF never opens a second menu over the
+message actions. GIFs autoplay by default. Appearance settings let
+users disable autoplay for this browser/device, starting animations paused while
+keeping each play button available. Playback preferences persist locally. Users with
+reduced motion enabled start with a paused preview. Enabling
+reduced motion stops playback; users can opt in again with Play. Native GIFs
+paused because the app went to the background resume when it returns.
+Unavailable media shows an unavailable state; its URL remains available in the
+message's context menu. Previews contact only the GIPHY/Tenor CDNs; web omits
+the referrer. The web image policy adds just those CDNs, while scripts, frames,
+and connection origins retain their existing restrictions.
+
+Tenor share pages are resolved by an authenticated, rate-limited Convex action
+with a five-second timeout, a 512 KB response limit, and at most two redirects
+within validated Tenor share URLs; a short link that redirects straight to the
+Tenor CDN returns that media. Only Tenor CDN GIF URLs are returned; provider
+HTML and scripts are never rendered. GIPHY links use their public media URL.
+Each share link is fetched once and stored in `chatGifLinkResolutions`, so
+viewers share the result and only cache misses count toward the rate limit;
+links that could not be resolved are retried after an hour, and network
+failures are not stored. Clients also reuse a resolution for the rest of the
+session. Provider failures show an unavailable state without blocking the
+message; the original link can still be copied from the message's menu.
+
+Pasted GIFs remain in the message body, so channel permissions, edits, deletion,
+and moderation apply to the message as usual. Uploads retain the existing
+signature validation, ownership, staged-upload, and storage-cleanup rules.
 
 ### Arbitrary hierarchy contract
 
@@ -176,9 +239,13 @@ Admins create clubs. Sponsors and leaders manage most club-local settings.
 Sponsors retain visibility into private channels. Channel read/post permissions
 are enforced through `apps/convex/src/clubs/access.ts`. The backend resolves
 user, built-in, and custom-tag mentions against that readable audience;
-`@all` is manager-only and mention delivery is capped. Message reports accept
-only a message id and reason from clients, then derive the club and author after
-checking channel access.
+`@all` is manager-only and mention delivery is capped. Role names and active
+structure branch names are also available as group mentions: their compact
+tokens remove spaces and punctuation, so a `School Leads` role can be mentioned
+as `@schoolleads`. Structure mentions include descendant units. Every group
+mention is intersected with the channel's readable audience before delivery.
+Message reports accept only a message id and reason from clients, then derive
+the club and author after checking channel access.
 
 `SUPER_ADMIN` club access is presented as administrative rather than personal
 membership. The web and mobile club directories omit personal club groups for

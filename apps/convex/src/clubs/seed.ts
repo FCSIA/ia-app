@@ -8,6 +8,7 @@ import {
   type SeedClubDefinition,
 } from "../../seed-data/clubs";
 import { createInitialClubRoles } from "./rolePermissions";
+import { recountClub } from "./counts";
 
 class SeedRandom {
   private seed: number;
@@ -218,6 +219,12 @@ export const run = internalMutation({
         .query("clubChannelMessageMentions")
         .take(5000);
       for (const mention of oldMentions) await ctx.db.delete(mention._id);
+
+      const oldMentionRecipients = await ctx.db
+        .query("clubChannelMessageMentionRecipients")
+        .take(5000);
+      for (const recipient of oldMentionRecipients)
+        await ctx.db.delete(recipient._id);
 
       const oldReactions = await ctx.db
         .query("clubChannelMessageReactions")
@@ -567,6 +574,13 @@ export const run = internalMutation({
         });
         joinRequestsSeeded++;
       }
+    }
+
+    // Seeding writes memberships and channels in bulk without tracking a
+    // per-club total, so the counters are derived once at the end rather than
+    // maintained row by row.
+    for (const club of CLUB_DEFINITIONS) {
+      await recountClub(ctx, clubIdByName.get(club.name)!);
     }
 
     return {

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { ChevronRight, Search } from "lucide-react-native";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { FilterChip, PressableScale, TextField, Txt } from "@/components/ui";

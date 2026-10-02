@@ -3,7 +3,7 @@ import { query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getChannelViewerContext, getViewerContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
+import { getChannelAccessForChannels } from "./channelAccess";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 import { clubRolePermissionsValidator } from "../validators";
 import {
@@ -69,6 +69,7 @@ const clubDetailValidator = v.union(
         roleId: v.union(v.id("clubRoles"), v.null()),
         roleName: v.union(v.string(), v.null()),
         unitNames: v.array(v.string()),
+        unitIds: v.array(v.id("clubUnits")),
         joinedAt: v.string(),
       }),
     ),
@@ -129,6 +130,40 @@ const workspaceNavigationValidator = v.union(
   }),
   v.null(),
 );
+
+const workspaceActivityValidator = v.union(
+  v.object({
+    channels: v.array(
+      v.object({
+        channelId: v.id("clubChannels"),
+        lastMessageAt: v.union(v.number(), v.null()),
+        hasUnreadMessages: v.boolean(),
+      }),
+    ),
+  }),
+  v.null(),
+);
+
+const mutualClubValidator = v.object({
+  _id: v.id("clubs"),
+  name: v.string(),
+  logoUrl: v.union(v.string(), v.null()),
+});
+
+const MAX_MUTUAL_CLUBS = 12;
+const MAX_CLUB_AFFILIATIONS = 100;
+
+/**
+ * Read receipts and channel message ordering both use the application-created
+ * timestamp. Do not compare a receipt to Convex's later document creation
+ * timestamp: a message read through its own boundary would remain unread.
+ */
+export function hasUnreadChannelActivity(
+  latestMessage: Pick<Doc<"clubChannelMessages">, "createdAt"> | null,
+  lastReadAt: number,
+) {
+  return latestMessage !== null && latestMessage.createdAt > lastReadAt;
+}
 
 export const get = query({
   args: { clubId: v.id("clubs") },
@@ -223,12 +258,16 @@ export const get = query({
     const customRoleNames = new Map(customRoles.map((role) => [role._id, role.name]));
     const unitNameById = new Map(units.map((unit) => [unit._id, unit.name]));
     const unitNamesByUserId = new Map<Id<"users">, string[]>();
+    const unitIdsByUserId = new Map<Id<"users">, Id<"clubUnits">[]>();
     for (const membership of unitMemberships) {
       const unitName = unitNameById.get(membership.unitId);
       if (!unitName) continue;
       const names = unitNamesByUserId.get(membership.userId) ?? [];
       names.push(unitName);
       unitNamesByUserId.set(membership.userId, names);
+      const ids = unitIdsByUserId.get(membership.userId) ?? [];
+      ids.push(membership.unitId);
+      unitIdsByUserId.set(membership.userId, ids);
     }
     const defaultRole = customRoles.find((role) => role.isDefault);
     const legacyLeaderRole = customRoles.find((role) => role.position === 1);
@@ -292,6 +331,7 @@ export const get = query({
         roleId: null,
         roleName: "Sponsor",
         unitNames: unitNamesByUserId.get(s.userId) ?? [],
+        unitIds: unitIdsByUserId.get(s.userId) ?? [],
         joinedAt: new Date(0).toISOString(),
       })),
       ...hydratedMembers
@@ -307,6 +347,7 @@ export const get = query({
             roleId: role?._id ?? null,
             roleName: role?.name ?? (m.role === "LEADER" ? "Leader" : "Member"),
             unitNames: unitNamesByUserId.get(m.userId) ?? [],
+            unitIds: unitIdsByUserId.get(m.userId) ?? [],
             joinedAt: new Date(
               uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
             ).toISOString(),
@@ -315,7 +356,12 @@ export const get = query({
     ];
 
     const visibleChannels = context.canAccessWorkspace
-      ? await getVisibleChannels(ctx, args.clubId, context, user._id)
+      ? await getVisibleChannels(ctx, args.clubId, context, user._id, {
+          units,
+          unitMemberships: unitMemberships.filter(
+            (membership) => membership.userId === user._id,
+          ),
+        })
       : null;
     const summary = await clubSummaryWithCounts(
       ctx,
@@ -379,6 +425,19 @@ export const getWorkspaceNavigation = query({
       .query("clubChannels")
       .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
       .collect();
+    const unitRows = await ctx.db
+      .query("clubUnits")
+      .withIndex("by_clubId_and_isActive_and_position", (q) =>
+        q.eq("clubId", club._id).eq("isActive", true),
+      )
+      .take(250);
+    const accessByChannelId = await getChannelAccessForChannels(
+      ctx,
+      channelRows,
+      context,
+      user._id,
+      { units: unitRows },
+    );
     const channels = (
       await Promise.all(
         channelRows.map(async (channel) => {
@@ -399,8 +458,7 @@ export const getWorkspaceNavigation = query({
               memberships = viewerMembership ? [viewerMembership] : [];
             }
           }
-          const channelWithMemberships = { ...channel, memberships };
-          const access = await getChannelAccess(ctx, channel, context, user._id);
+          const access = accessByChannelId.get(channel._id)!;
           if (!access.canView) return null;
           return {
             _id: channel._id,
@@ -435,7 +493,7 @@ export const getWorkspaceNavigation = query({
           a.createdAt - b.createdAt,
       );
 
-    const [memberRows, sponsorRows, unitRows] = await Promise.all([
+    const [memberRows, sponsorRows] = await Promise.all([
       ctx.db
         .query("clubMembers")
         .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", user._id))
@@ -444,23 +502,32 @@ export const getWorkspaceNavigation = query({
         .query("clubSponsors")
         .withIndex("by_userId_and_clubId", (q) => q.eq("userId", user._id))
         .collect(),
-      ctx.db.query("clubUnits")
-        .withIndex("by_clubId_and_isActive_and_position", (q) => q.eq("clubId", club._id).eq("isActive", true))
-        .take(250),
     ]);
     const clubRoles = new Map([
       ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
       ...sponsorRows.map((sponsorship) => [sponsorship.clubId, "SPONSOR" as const] as const),
     ]);
-    const myClubs = (
-      await Promise.all(
-        Array.from(clubRoles, async ([clubId, role]) => {
-          const row = await ctx.db.get(clubId);
-          if (!row?.isActive) return null;
-          return { _id: row._id, name: row.name, logoUrl: row.logoUrl ?? null, role };
-        }),
-      )
-    ).filter((row): row is NonNullable<typeof row> => !!row);
+    const myClubs = user.roles.includes("SUPER_ADMIN")
+      ? (
+          await ctx.db
+            .query("clubs")
+            .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))
+            .collect()
+        ).map((row) => ({
+          _id: row._id,
+          name: row.name,
+          logoUrl: row.logoUrl ?? null,
+          role: null,
+        }))
+      : (
+          await Promise.all(
+            Array.from(clubRoles, async ([clubId, role]) => {
+              const row = await ctx.db.get(clubId);
+              if (!row?.isActive) return null;
+              return { _id: row._id, name: row.name, logoUrl: row.logoUrl ?? null, role };
+            }),
+          )
+        ).filter((row): row is NonNullable<typeof row> => !!row);
 
     return {
       club: { _id: club._id, name: club.name, logoUrl: club.logoUrl ?? null },
@@ -481,6 +548,122 @@ export const getWorkspaceNavigation = query({
         position: unit.position,
       })),
       myClubs,
+    };
+  },
+});
+
+/** Active clubs both the viewer and this person belong to or sponsor. */
+export const getMutualClubs = query({
+  args: { personId: v.id("users") },
+  returns: v.array(mutualClubValidator),
+  handler: async (ctx, args) => {
+    const viewer = await getCurrentAppUser(ctx);
+    if (args.personId === viewer._id) return [];
+
+    const [person, viewerMemberships, personMemberships, viewerSponsorships, personSponsorships] =
+      await Promise.all([
+        ctx.db.get(args.personId),
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", viewer._id))
+          .take(MAX_CLUB_AFFILIATIONS),
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", args.personId))
+          .take(MAX_CLUB_AFFILIATIONS),
+        ctx.db
+          .query("clubSponsors")
+          .withIndex("by_userId_and_clubId", (q) => q.eq("userId", viewer._id))
+          .take(MAX_CLUB_AFFILIATIONS),
+        ctx.db
+          .query("clubSponsors")
+          .withIndex("by_userId_and_clubId", (q) => q.eq("userId", args.personId))
+          .take(MAX_CLUB_AFFILIATIONS),
+      ]);
+    if (!person?.isActive) return [];
+
+    const viewerClubIds = new Set([
+      ...viewerMemberships.map((membership) => membership.clubId),
+      ...viewerSponsorships.map((sponsorship) => sponsorship.clubId),
+    ]);
+    const mutualClubIds = Array.from(
+      new Set([
+        ...personMemberships.map((membership) => membership.clubId),
+        ...personSponsorships.map((sponsorship) => sponsorship.clubId),
+      ]),
+    )
+      .filter((clubId) => viewerClubIds.has(clubId))
+      .slice(0, MAX_MUTUAL_CLUBS);
+
+    const clubs = await Promise.all(mutualClubIds.map((clubId) => ctx.db.get(clubId)));
+    return clubs
+      .filter((club): club is NonNullable<typeof club> => Boolean(club?.isActive))
+      .map((club) => ({
+        _id: club._id,
+        name: club.name,
+        logoUrl: club.logoUrl ?? null,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  },
+});
+
+/**
+ * High-churn channel activity is isolated from the stable workspace shell so
+ * a message does not recompute club metadata, structure, and memberships for
+ * every connected viewer.
+ */
+export const getWorkspaceActivity = query({
+  args: { clubId: v.id("clubs") },
+  returns: workspaceActivityValidator,
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const club = await ctx.db.get(args.clubId);
+    if (!club || !club.isActive) return null;
+    const context = await getChannelViewerContext(ctx, club, user);
+    if (!context.canAccessWorkspace) return null;
+
+    const channelRows = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
+      .take(500);
+    const [readReceipts, accessByChannelId] = await Promise.all([
+      ctx.db
+        .query("clubChannelReadReceipts")
+        .withIndex("by_userId_and_clubId", (q) =>
+          q.eq("userId", user._id).eq("clubId", club._id),
+        )
+        .take(500),
+      getChannelAccessForChannels(ctx, channelRows, context, user._id),
+    ]);
+    const lastReadAtByChannelId = new Map(
+      readReceipts.map((receipt) => [receipt.channelId, receipt.lastReadAt]),
+    );
+    const visibleChannels = channelRows.filter(
+      (channel) => accessByChannelId.get(channel._id)?.canView,
+    );
+
+    return {
+      channels: await Promise.all(
+        visibleChannels.map(async (channel) => {
+          const latestMessage = await ctx.db
+            .query("clubChannelMessages")
+            .withIndex("by_channelId_and_createdAt", (q) =>
+              q.eq("channelId", channel._id),
+            )
+            .order("desc")
+            .first();
+          const lastMessageAt = latestMessage?.createdAt ?? null;
+          return {
+            channelId: channel._id,
+            lastMessageAt,
+            hasUnreadMessages: hasUnreadChannelActivity(
+              latestMessage,
+              lastReadAtByChannelId.get(channel._id) ?? 0,
+            ),
+          };
+        }),
+      ),
     };
   },
 });

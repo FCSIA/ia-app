@@ -5,13 +5,21 @@ type MobileNavigationSwipeOptions = {
   onCancel?: () => void;
 };
 
+/** Movement needed before a touch counts as a sideways swipe or a scroll. */
+const AXIS_LOCK_DISTANCE = 10;
+
 function useMobileNavigationSwipe(
-  onSwipeRight: () => void,
+  onSwipeRight: (() => void) | undefined,
   { onProgress, onCancel }: MobileNavigationSwipeOptions = {},
 ) {
-  const swipeStartRef = useRef<{ x: number; y: number; at: number } | null>(
-    null,
-  );
+  // `axis` is decided once the finger has moved far enough to tell a sideways
+  // swipe from a scroll; a scroll never reveals the navigation.
+  const swipeStartRef = useRef<{
+    x: number;
+    y: number;
+    at: number;
+    axis: "x" | "y" | null;
+  } | null>(null);
   const swipeActionRef = useRef(onSwipeRight);
 
   useEffect(() => {
@@ -39,7 +47,7 @@ function useMobileNavigationSwipe(
     }
 
     swipeStartRef.current = null;
-    swipeActionRef.current();
+    swipeActionRef.current?.();
     return true;
   };
 
@@ -67,6 +75,7 @@ function useMobileNavigationSwipe(
       x: touch.clientX,
       y: touch.clientY,
       at: performance.now(),
+      axis: null,
     };
   };
 
@@ -77,8 +86,18 @@ function useMobileNavigationSwipe(
     if (onProgress && start) {
       const deltaX = touch.clientX - start.x;
       const deltaY = Math.abs(touch.clientY - start.y);
+      if (start.axis === null) {
+        if (Math.max(Math.abs(deltaX), deltaY) < AXIS_LOCK_DISTANCE) return;
+        start.axis = deltaX > 0 && deltaX > deltaY * 1.4 ? "x" : "y";
+      }
+      if (start.axis === "y") {
+        swipeStartRef.current = null;
+        return;
+      }
       if (deltaX > 0 && deltaX > deltaY * 1.4 && deltaY <= 64) {
-        onProgress(Math.min(1, deltaX / (window.innerWidth * 0.72)));
+        onProgress(
+          Math.min(1, (deltaX - AXIS_LOCK_DISTANCE) / (window.innerWidth * 0.72)),
+        );
         return;
       }
     }
@@ -91,15 +110,16 @@ function useMobileNavigationSwipe(
     const touch = event.changedTouches[0];
     if (onProgress) {
       const start = swipeStartRef.current;
-      const deltaX = start ? touch.clientX - start.x : 0;
-      const deltaY = start ? Math.abs(touch.clientY - start.y) : Infinity;
+      if (!start) return;
+      const deltaX = touch.clientX - start.x;
+      const deltaY = Math.abs(touch.clientY - start.y);
       if (
         start &&
         deltaX >= window.innerWidth * 0.28 &&
         deltaX > deltaY * 1.4 &&
         deltaY <= 64
       ) {
-        swipeActionRef.current();
+        swipeActionRef.current?.();
       } else {
         onCancel?.();
       }
@@ -111,9 +131,12 @@ function useMobileNavigationSwipe(
   };
 
   const onTouchCancel = () => {
+    if (!swipeStartRef.current) return;
     swipeStartRef.current = null;
     onCancel?.();
   };
+
+  if (!onSwipeRight) return {};
 
   return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel };
 }

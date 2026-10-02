@@ -2,20 +2,23 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, Pin, SendHorizontal } from "lucide-react-native";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, TextField, Txt, useToast } from "@/components/ui";
+import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
 import { relativeTime } from "@/lib/format";
 import { success } from "@/lib/haptics";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { useAnnouncementFeedClock } from "@/features/announcements/use-announcement-feed-clock";
 
 export default function AnnouncementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any } : "skip");
+  const announcementNow = useAnnouncementFeedClock(3_600_000);
+  const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any, now: announcementNow } : "skip");
   const markRead = useMutation(api.announcements.engagement.markRead);
   const markUnread = useMutation(api.announcements.engagement.markUnread);
   const bookmark = useMutation(api.announcements.engagement.bookmark);
@@ -128,9 +131,15 @@ export default function AnnouncementDetailScreen() {
 
                 <View style={{ gap: spacing.sm }}>
                   <Txt variant="display">{announcement.title}</Txt>
-                  <Txt variant="caption" tone="muted">
-                    {authorName || "Innovation Academy"} · {relativeTime(announcement.createdAt)}
-                  </Txt>
+                  <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                    <Txt variant="caption" tone="muted">
+                      {authorName || "Innovation Academy"}
+                    </Txt>
+                    <DeveloperBadge user={announcement.author} size={12} />
+                    <Txt variant="caption" tone="muted">
+                      {" "}· {relativeTime(announcement.createdAt)}
+                    </Txt>
+                  </View>
                 </View>
 
                 <Txt style={{ lineHeight: 25 }}>{announcement.body}</Txt>
@@ -169,6 +178,7 @@ export default function AnnouncementDetailScreen() {
                                 <Txt variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
                                   {commentAuthor || "Community member"}
                                 </Txt>
+                                <DeveloperBadge user={row.author} size={12} />
                                 <Txt variant="caption" tone="muted">{relativeTime(row.createdAt)}</Txt>
                               </View>
                               <Txt>{row.body}</Txt>
