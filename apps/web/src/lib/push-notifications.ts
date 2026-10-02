@@ -232,3 +232,67 @@ export async function getCurrentPushSubscription() {
     return null;
   }
 }
+
+/**
+ * The endpoint this browser holds, `{ endpoint: null }` when it positively
+ * holds none, or null when that could not be determined.
+ *
+ * Unlike `getCurrentPushSubscription`, "the worker never started" and "no
+ * subscription" stay distinct here: the server disables a device's old
+ * endpoints only on a positive answer, never on a read that failed.
+ */
+export async function readPushSubscriptionState(): Promise<{ endpoint: string | null } | null> {
+  try {
+    const registration = await getServiceWorkerRegistration();
+    if (!registration) return null;
+    const subscription = await registration.pushManager.getSubscription();
+    return { endpoint: subscription?.endpoint ?? null };
+  } catch {
+    return null;
+  }
+}
+
+const pushDeviceIdKey = 'ia.push-device-id.v1';
+const pushOptOutKey = 'ia.push-opted-out.v1';
+
+/**
+ * A stable id for this browser install, created on first use.
+ *
+ * Push services cannot tell us that an endpoint died, but the device can tell
+ * us which endpoint replaced it. Null when storage is unavailable, in which
+ * case the device simply doesn't report.
+ */
+export function getPushDeviceId() {
+  try {
+    const existing = localStorage.getItem(pushDeviceIdKey);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    localStorage.setItem(pushDeviceIdKey, created);
+    return created;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether the user turned push off on this device with Disable push.
+ *
+ * Permission stays granted after Disable push, so without this marker the sync
+ * would quietly re-subscribe on the next launch and undo the choice.
+ */
+export function isPushOptedOut() {
+  try {
+    return localStorage.getItem(pushOptOutKey) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setPushOptedOut(optedOut: boolean) {
+  try {
+    if (optedOut) localStorage.setItem(pushOptOutKey, 'true');
+    else localStorage.removeItem(pushOptOutKey);
+  } catch {
+    // Without storage the choice lasts until the next launch.
+  }
+}

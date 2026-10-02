@@ -82,6 +82,7 @@ import type * as moderation_reportValidation from "../moderation/reportValidatio
 import type * as moderation_reports from "../moderation/reports.js";
 import type * as notifications__lib from "../notifications/_lib.js";
 import type * as notifications__pushActivation from "../notifications/_pushActivation.js";
+import type * as notifications__pushDevices from "../notifications/_pushDevices.js";
 import type * as notifications__subscriptionPruning from "../notifications/_subscriptionPruning.js";
 import type * as notifications_delivery from "../notifications/delivery.js";
 import type * as notifications_deliveryPreference from "../notifications/deliveryPreference.js";
@@ -89,6 +90,7 @@ import type * as notifications_inbox from "../notifications/inbox.js";
 import type * as notifications_migrations from "../notifications/migrations.js";
 import type * as notifications_preferences from "../notifications/preferences.js";
 import type * as notifications_push from "../notifications/push.js";
+import type * as notifications_pushDevices from "../notifications/pushDevices.js";
 import type * as notifications_pushExpo from "../notifications/pushExpo.js";
 import type * as notifications_pushNode from "../notifications/pushNode.js";
 import type * as rateLimits from "../rateLimits.js";
@@ -210,6 +212,7 @@ declare const fullApi: ApiFromModules<{
   "moderation/reports": typeof moderation_reports;
   "notifications/_lib": typeof notifications__lib;
   "notifications/_pushActivation": typeof notifications__pushActivation;
+  "notifications/_pushDevices": typeof notifications__pushDevices;
   "notifications/_subscriptionPruning": typeof notifications__subscriptionPruning;
   "notifications/delivery": typeof notifications_delivery;
   "notifications/deliveryPreference": typeof notifications_deliveryPreference;
@@ -217,6 +220,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/migrations": typeof notifications_migrations;
   "notifications/preferences": typeof notifications_preferences;
   "notifications/push": typeof notifications_push;
+  "notifications/pushDevices": typeof notifications_pushDevices;
   "notifications/pushExpo": typeof notifications_pushExpo;
   "notifications/pushNode": typeof notifications_pushNode;
   rateLimits: typeof rateLimits;
