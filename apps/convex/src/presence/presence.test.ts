@@ -98,11 +98,10 @@ describe("presence", () => {
   });
 
   test("people outside the club can't see its members' status", async () => {
-    const { clubId, outsider } = await fixture();
+    const { clubId, alice, outsider } = await fixture();
+    await alice.mutation(api.presence.status.heartbeat, { sessionId: "alice-tab", platform: "ios" });
 
-    await expect(outsider.query(api.presence.status.clubStatuses, { clubId })).rejects.toThrow(
-      /Not a club member/,
-    );
+    expect(await outsider.query(api.presence.status.clubStatuses, { clubId })).toEqual([]);
   });
 
   test("a closed tab goes offline at once", async () => {

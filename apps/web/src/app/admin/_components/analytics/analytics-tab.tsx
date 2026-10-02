@@ -14,6 +14,7 @@ import {
   BarListChart,
   ChartBlock,
   DailyTrendChart,
+  HeatmapChart,
   formatCount,
   formatDay,
   formatLongDay,
@@ -23,6 +24,7 @@ import {
 } from './analytics-charts';
 
 const sections = [
+  { id: 'engagement', label: 'Engagement' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'communication', label: 'Chat & announcements' },
   { id: 'safety', label: 'Moderation' },
@@ -57,7 +59,7 @@ function rangeFor(days: number, today: string): Range {
 }
 
 export function AnalyticsTab() {
-  const [section, setSection] = useState<SectionId>('notifications');
+  const [section, setSection] = useState<SectionId>('engagement');
   const [days, setDays] = useState<(typeof rangeOptions)[number]>(30);
   const today = useMemo(() => schoolToday(), []);
   const range = useMemo(() => rangeFor(days, today), [days, today]);
@@ -94,6 +96,7 @@ export function AnalyticsTab() {
   return (
     <AdminPanel title="Analytics" contentClassName="space-y-5">
       {toolbar}
+      {section === 'engagement' ? <EngagementSection range={range} /> : null}
       {section === 'notifications' ? <NotificationsSection range={range} today={today} /> : null}
       {section === 'communication' ? <CommunicationSection range={range} /> : null}
       {section === 'safety' ? <SafetySection range={range} /> : null}
@@ -106,7 +109,13 @@ export function AnalyticsTab() {
  * Shown when a range reaches back before analytics started. Days are counted
  * from the app's own records, so history can be filled in on request.
  */
-function CoverageNotice({ coverage }: { coverage: { coveredDays: number; rangeDays: number } }) {
+function CoverageNotice({
+  coverage,
+  canFill = true,
+}: {
+  coverage: { coveredDays: number; rangeDays: number };
+  canFill?: boolean;
+}) {
   const fillHistory = useMutation(api.analytics.dashboard.fillHistory);
   const { toast } = useToast();
   const [pending, setPending] = useState(false);
@@ -133,6 +142,19 @@ function CoverageNotice({ coverage }: { coverage: { coveredDays: number; rangeDa
     }
   };
 
+  if (!canFill) {
+    return (
+      <div className="rounded-lg border bg-background p-4">
+        <p className="text-sm font-medium text-foreground">
+          {formatCount(coverage.coveredDays)} of {formatCount(coverage.rangeDays)} days counted
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Activity is recorded from the day online status shipped. Earlier days have no record to count.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -153,6 +175,126 @@ function CoverageNotice({ coverage }: { coverage: { coveredDays: number; rangeDa
 
 function Loading() {
   return <AdminNotice message="Loading analytics…" />;
+}
+
+const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const weekdayNames = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
+const hourLabel = (hour: number) => `${hour % 12 === 0 ? 12 : hour % 12}${hour < 12 ? 'a' : 'p'}`;
+const hourName = (hour: number) => `${hour % 12 === 0 ? 12 : hour % 12} ${hour < 12 ? 'AM' : 'PM'}`;
+
+function EngagementSection({ range }: { range: Range }) {
+  const result = useStableValue(useQuery(api.analytics.dashboard.engagement, range));
+  if (!result.value) return <Loading />;
+
+  const { series, weeks, platforms, heatmap, coverage } = result.value;
+  const typicalDay =
+    series.length > 0 ? Math.round(series.reduce((sum, row) => sum + row.active, 0) / series.length) : 0;
+  const busiest = heatmap
+    .flatMap((hours, weekday) => hours.map((people, hour) => ({ weekday, hour, people })))
+    .reduce((best, cell) => (cell.people > best.people ? cell : best), { weekday: 0, hour: 0, people: 0 });
+  const fullWeek = [...weeks].reverse().find((week) => week.countedDays === 7);
+  const platformTotal = platforms.ios + platforms.android + platforms.desktop;
+  const platformBars = [
+    { label: platformLabels.ios, value: platforms.ios },
+    { label: platformLabels.android, value: platforms.android },
+    { label: platformLabels.desktop, value: platforms.desktop },
+  ];
+  const formatAverage = (value: number) => (value >= 10 ? formatCount(Math.round(value)) : value.toFixed(1));
+
+  return (
+    <>
+      <CoverageNotice coverage={coverage} canFill={false} />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <AdminMetric label="Active on a typical day" value={formatCount(typicalDay)} detail="Average people using the app per day" />
+        <AdminMetric
+          label="Busiest time"
+          value={busiest.people > 0 ? `${weekdayLabels[busiest.weekday]} ${hourName(busiest.hour)}` : '—'}
+          detail={busiest.people > 0 ? `About ${formatAverage(busiest.people)} people online` : 'Recorded from now on'}
+          compact
+        />
+        <AdminMetric
+          label="Active in a full week"
+          value={fullWeek ? formatCount(fullWeek.active) : '—'}
+          detail={fullWeek ? `Week of ${formatDay(fullWeek.week)}` : 'Shown once a whole week is counted'}
+        />
+        <AdminMetric
+          label="On phones"
+          value={formatRatio(platforms.ios + platforms.android, platformTotal)}
+          detail="Share of daily activity on iPhone, iPad, or Android"
+        />
+      </div>
+
+      <ChartBlock
+        title="People active per day"
+        refreshing={result.refreshing}
+        table={{
+          columns: ['Day', 'People active'],
+          rows: series.map((row) => [formatLongDay(row.day), formatCount(row.active)]),
+        }}
+      >
+        <DailyTrendChart range={range} data={series} dataKey="active" label="People active" />
+      </ChartBlock>
+
+      <ChartBlock
+        title="When people are online"
+        description="Average people active in each hour, New York time. Counted for everyone together, never per person."
+        refreshing={result.refreshing}
+        empty="Activity appears here after the first full day is counted."
+        table={{
+          columns: ['Hour', ...weekdayLabels],
+          rows: series.length > 0
+            ? Array.from({ length: 24 }, (_, hour) => [hourName(hour), ...heatmap.map((hours) => formatAverage(hours[hour]))])
+            : [],
+        }}
+      >
+        <HeatmapChart
+          label="Average people active by weekday and hour"
+          grid={heatmap}
+          rowLabels={weekdayLabels}
+          columnLabels={Array.from({ length: 24 }, (_, hour) => hourLabel(hour))}
+          showColumnLabel={(hour) => hour % 3 === 0}
+          describe={(weekday, hour, people) =>
+            `${weekdayNames[weekday]} at ${hourName(hour)}: about ${formatAverage(people)} people`
+          }
+        />
+      </ChartBlock>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartBlock
+          title="People per day by platform"
+          description="Average per counted day. Someone on two platforms counts on each."
+          refreshing={result.refreshing}
+          table={{
+            columns: ['Platform', 'Average people per day'],
+            rows: series.length > 0 ? platformBars.map((row) => [row.label, formatAverage(row.value)]) : [],
+          }}
+        >
+          <BarListChart label="People per day" format={formatAverage} data={platformBars} />
+        </ChartBlock>
+        <ChartBlock
+          title="People active each week"
+          description="Weeks start Monday. Partly counted weeks say so."
+          refreshing={result.refreshing}
+          table={{
+            columns: ['Week of', 'People active', 'Days counted'],
+            rows: weeks.map((week) => [formatLongDay(week.week), formatCount(week.active), `${week.countedDays} of 7`]),
+          }}
+        >
+          <BarListChart
+            label="People active"
+            data={weeks.map((week) => ({
+              label: `Week of ${formatDay(week.week)}`,
+              value: week.active,
+              display:
+                week.countedDays < 7
+                  ? `${formatCount(week.active)} · ${week.countedDays} of 7 days`
+                  : formatCount(week.active),
+            }))}
+          />
+        </ChartBlock>
+      </div>
+    </>
+  );
 }
 
 function NotificationsSection({ range, today }: { range: Range; today: string }) {

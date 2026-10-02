@@ -24,6 +24,7 @@ those rows and never scans messages, deliveries, or reports itself.
 | `announcements` | Readers in each announcement's first 24 hours | `announcements`, `announcementReads` |
 | `moderation` | Reports opened and reviewed, time to review, backlog | `moderationReports` |
 | `pushHealth` | What each device last reported about push, per platform | `notificationPushDevices` |
+| `engagement` | People active per day, per platform, per hour | anonymous `activityMarks` (see below) |
 | `flex` | Registrations against capacity for Flex Fridays three weeks either side of today | `flexFridays`, `flexRegistrations` |
 
 - Days are school days on the school's own clock (America/New_York), including
@@ -38,6 +39,22 @@ those rows and never scans messages, deliveries, or reports itself.
   runs, so they can't be recovered for past days.
 - Time to first read uses `notificationDeliveries.readAt`, recorded from the
   release that added it. Older reads count as read but have no time.
+
+## Online status and activity
+
+Each visible tab heartbeats (30s) through `@convex-dev/presence` into one app-wide
+room; closing a tab disconnects it via `sendBeacon`. Club pages show an
+online / Do Not Disturb dot on member avatars to people who can open that club's
+workspace (`api.presence.status.clubStatuses`); offline people are never listed.
+
+Do Not Disturb (1 hour, 8 hours, or until turned off, from the account menu)
+stops web and native push but still delivers to the inbox. Its `userStatuses`
+row exists only while it is on; a stale timer can't end a newer setting.
+
+Heartbeats also write at most one **anonymous** `activityMarks` row per person per
+hour (no user id). The nightly rollup turns a day's marks into the Engagement
+section's totals and weekday x hour heatmap, then deletes them. There is no
+per-person history, and none is exposed to admins.
 
 ## Filling in history
 

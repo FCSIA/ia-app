@@ -4,7 +4,7 @@ import type { Id } from "../_generated/dataModel";
 import { internalMutation, mutation, query } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { getClubContext } from "../clubs/access";
+import { getViewerContext } from "../clubs/access";
 import { pushDevicePlatformValidator, type PushDevicePlatform } from "../validators";
 import { nextActivity } from "./_activity";
 import { appRoom, heartbeatIntervalMs, isDoNotDisturb, presence } from "./_status";
@@ -149,8 +149,10 @@ export const endDoNotDisturb = internalMutation({
 });
 
 /**
- * Who in this club is online right now, for anyone who can open the club.
- * Offline people are left out; Do Not Disturb shows only while online.
+ * Who in this club is online right now. Only people who can open the club's
+ * workspace see anyone; everyone else gets an empty list rather than an error,
+ * since club pages they can still visit subscribe to this too. Offline people
+ * are left out, and Do Not Disturb shows only while online.
  */
 export const clubStatuses = query({
   args: { clubId: v.id("clubs") },
@@ -162,7 +164,8 @@ export const clubStatuses = query({
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    await getClubContext(ctx, args.clubId, user);
+    const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return [];
 
     const people = new Set<Id<"users">>();
     for (const member of await ctx.db

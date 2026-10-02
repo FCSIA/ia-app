@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { ChartLine, Table2 } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
@@ -273,5 +273,75 @@ export function BarListChart({
         );
       })}
     </ul>
+  );
+}
+
+// Sequential steps of the one series hue: more people, more ink.
+const heatSteps = [0.16, 0.34, 0.54, 0.76, 0.96];
+
+const heatFill = (step: number) =>
+  step < 0 ? 'hsl(var(--muted))' : `hsl(var(--chart-1) / ${heatSteps[step]})`;
+
+/**
+ * A grid of magnitudes in one hue, light to dark, with a scale legend. Cells
+ * describe themselves on hover; the table view carries every exact value.
+ */
+export function HeatmapChart({
+  grid,
+  rowLabels,
+  columnLabels,
+  showColumnLabel,
+  describe,
+  label,
+}: {
+  grid: number[][];
+  rowLabels: string[];
+  columnLabels: string[];
+  showColumnLabel: (column: number) => boolean;
+  describe: (row: number, column: number, value: number) => string;
+  label: string;
+}) {
+  const max = Math.max(0, ...grid.flat());
+  const stepFor = (value: number) =>
+    value <= 0 || max <= 0 ? -1 : Math.min(heatSteps.length - 1, Math.floor((value / max) * heatSteps.length));
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="overflow-x-auto">
+        <div
+          role="img"
+          aria-label={label}
+          className="grid min-w-[560px] gap-[2px]"
+          style={{ gridTemplateColumns: `2.75rem repeat(${columnLabels.length}, minmax(0, 1fr))` }}
+        >
+          <div />
+          {columnLabels.map((columnLabel, column) => (
+            <div key={columnLabel} className="pb-1 text-center text-[10px] tabular-nums text-muted-foreground">
+              {showColumnLabel(column) ? columnLabel : ''}
+            </div>
+          ))}
+          {grid.map((row, rowIndex) => (
+            <Fragment key={rowLabels[rowIndex]}>
+              <div className="pr-2 text-right text-[11px] leading-6 text-muted-foreground">{rowLabels[rowIndex]}</div>
+              {row.map((value, column) => (
+                <div
+                  key={column}
+                  title={describe(rowIndex, column, value)}
+                  className="h-6 rounded-[3px] transition-shadow hover:ring-2 hover:ring-foreground/40"
+                  style={{ background: heatFill(stepFor(value)) }}
+                />
+              ))}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <div aria-hidden className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
+        <span>Fewer</span>
+        {heatSteps.map((_, step) => (
+          <span key={step} className="size-3 rounded-[3px]" style={{ background: heatFill(step) }} />
+        ))}
+        <span>More</span>
+      </div>
+    </div>
   );
 }
