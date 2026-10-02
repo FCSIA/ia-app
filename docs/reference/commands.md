@@ -104,9 +104,10 @@ provides the same internal functions as an alternative.
 | `bun add --filter web <package>` | Add a package to the web app            |
 | `bun add --filter cvx <package>` | Add a package to the Convex backend     |
 
-CI pins Bun through `packageManager`; local developers must install Bun
-separately and may use a newer compatible release. Use Bun for installs and
-scripts; do not regenerate the lockfile with another tool.
+The Nix/direnv shell provides the Bun version pinned by `packageManager`, matching
+CI. Without Nix, install that version separately. When upgrading Bun, update the
+pin, CI workflows, and release hashes in `flake.nix` together. Use Bun for installs
+and scripts; do not regenerate the lockfile with another tool.
 
 ## Security audit
 
