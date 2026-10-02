@@ -65,8 +65,8 @@ After selection, both `CONVEX_URL` and `CONVEX_SITE_URL` must be local URLs (or
 both must identify the same named cloud deployment). `bun run sync:convex-env`
 refuses to copy a mixed local/cloud configuration into the web and mobile apps.
 Use the Nix/direnv shell when the system Node version is not supported by
-Convex local; the repo shell provides Node 24. Invoke your separately installed
-Bun from the shell rather than expecting direnv to provide it.
+Convex local; the repo shell provides Node 24 and the Bun version pinned by
+`packageManager` in `package.json`.
 
 ### Physical-device clients
 
@@ -173,8 +173,8 @@ bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "..."
 bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
-Bun is not provided by the repo's Nix/direnv shell; install it separately and
-invoke it from the shell when using the shell's Node 24 environment.
+The repo's Nix/direnv shell provides Bun and Node 24 together. After changes to
+the shell configuration, run `direnv allow` and `direnv reload` in the worktree.
 
 ## Mobile / Expo
 
