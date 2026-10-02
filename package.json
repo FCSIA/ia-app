@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.29.3",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:phone": "node scripts/sync-convex-env.mjs --host auto && node scripts/dev.mjs",
     "dev:mobile": "pnpm --filter mobile dev",
     "dev:mobile:tunnel": "pnpm --filter mobile dev:client:tunnel",
     "build": "turbo run build",

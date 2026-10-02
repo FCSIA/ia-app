@@ -71,9 +71,13 @@ const nextConfig: NextConfig = {
   },
 
   // Allow the requested LocalTunnel hostname to load Next.js dev resources.
+  // The phone-testing host written by `pnpm dev:phone`, so a device can load
+  // dev assets from whatever network address the machine has today.
   allowedDevOrigins: [
     'ia-app-dev.loca.lt',
-    '10.0.0.231',
+    ...[convexUrl ? new URL(convexUrl).hostname : null].filter(
+      (host): host is string => !!host && !['localhost', '127.0.0.1'].includes(host),
+    ),
   ],
 
   // PWA support via service worker (manual, no paid plugin needed)
