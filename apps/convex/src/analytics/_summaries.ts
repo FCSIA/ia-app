@@ -3,6 +3,7 @@ import { deviceLostPush } from "../notifications/_pushDevices";
 import type { PushDevicePlatform } from "../validators";
 import type {
   ChatData,
+  EngagementData,
   FlexData,
   ModerationData,
   NotificationsData,
@@ -192,4 +193,33 @@ export function summarizeFlex(
     if (workshop.registered >= workshop.capacity) data.fullWorkshops += 1;
   }
   return data;
+}
+
+export const emptyEngagement: EngagementData = {
+  activePeople: 0,
+  newWeekPeople: 0,
+  platforms: { ios: 0, android: 0, desktop: 0 },
+  hours: Array.from({ length: 24 }, () => 0),
+};
+
+export function addMarks(
+  data: EngagementData,
+  marks: Pick<
+    Doc<"activityMarks">,
+    "hour" | "platform" | "newHour" | "newDay" | "newWeek" | "newPlatformDay"
+  >[],
+): EngagementData {
+  const next = {
+    activePeople: data.activePeople,
+    newWeekPeople: data.newWeekPeople,
+    platforms: { ...data.platforms },
+    hours: [...data.hours],
+  };
+  for (const mark of marks) {
+    if (mark.newDay) next.activePeople += 1;
+    if (mark.newWeek) next.newWeekPeople += 1;
+    if (mark.newPlatformDay) next.platforms[mark.platform] += 1;
+    if (mark.newHour && mark.hour >= 0 && mark.hour < 24) next.hours[mark.hour] += 1;
+  }
+  return next;
 }

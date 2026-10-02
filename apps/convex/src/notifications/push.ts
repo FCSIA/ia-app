@@ -12,6 +12,7 @@ import {
 } from "./_pushDevices";
 import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwnership";
 import { subscriptionsToRetire } from "./_subscriptionPruning";
+import { isDoNotDisturb } from "../presence/_status";
 import {
   preferenceAllowsPush,
   resolveNotificationPreference,
@@ -223,6 +224,9 @@ export const getDeliveryTargets = internalQuery({
     }),
   })),
   handler: async (ctx, args) => {
+    // Do Not Disturb holds push only; the delivery still reaches the inbox.
+    if (await isDoNotDisturb(ctx, args.userId)) return [];
+
     const preference = await resolveNotificationPreference(ctx, args);
 
     if (!preferenceAllowsPush(preference)) {

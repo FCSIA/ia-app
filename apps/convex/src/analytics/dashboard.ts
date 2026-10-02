@@ -6,7 +6,14 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { notificationCategoryStatsValidator, pushHealthDataValidator } from "./validators";
 import type { AnalyticsData, AnalyticsKind, NotificationsData } from "./validators";
-import { dayKeysBetween, maxAnalyticsRangeDays, schoolDayKey, shiftDay } from "./_days";
+import {
+  dayKeysBetween,
+  maxAnalyticsRangeDays,
+  mondayIndex,
+  schoolDayKey,
+  shiftDay,
+  weekStart,
+} from "./_days";
 
 const maxBackfillDays = 90;
 const topClubCount = 8;
@@ -48,6 +55,64 @@ async function completedRows<K extends AnalyticsKind>(
 }
 
 const coverageValidator = v.object({ coveredDays: v.number(), rangeDays: v.number() });
+
+/**
+ * People active in the app. Counted only from the presence release onward,
+ * since there is no earlier record of when people were online.
+ */
+export const engagement = query({
+  args: rangeArgs,
+  returns: v.object({
+    coverage: coverageValidator,
+    series: v.array(v.object({ day: v.string(), active: v.number() })),
+    weeks: v.array(
+      v.object({ week: v.string(), active: v.number(), countedDays: v.number() }),
+    ),
+    // Average people per counted day, by the platform they used.
+    platforms: v.object({ ios: v.number(), android: v.number(), desktop: v.number() }),
+    // Average people active in each hour, Monday first, hour 0 through 23.
+    heatmap: v.array(v.array(v.number())),
+  }),
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx);
+    const days = rangeDays(args.fromDay, args.toDay);
+    const rows = await completedRows(ctx, "engagement", args.fromDay, args.toDay);
+
+    const weeks = new Map<string, { active: number; countedDays: number }>();
+    const platforms = { ios: 0, android: 0, desktop: 0 };
+    const sums = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
+    const dayCounts = Array.from({ length: 7 }, () => 0);
+    for (const row of rows) {
+      const week = weeks.get(weekStart(row.day)) ?? { active: 0, countedDays: 0 };
+      weeks.set(weekStart(row.day), {
+        active: week.active + row.data.newWeekPeople,
+        countedDays: week.countedDays + 1,
+      });
+      platforms.ios += row.data.platforms.ios;
+      platforms.android += row.data.platforms.android;
+      platforms.desktop += row.data.platforms.desktop;
+      const weekday = mondayIndex(row.day);
+      dayCounts[weekday] += 1;
+      row.data.hours.forEach((people, hour) => {
+        sums[weekday][hour] += people;
+      });
+    }
+    const average = (total: number, count: number) =>
+      count > 0 ? Math.round((total / count) * 10) / 10 : 0;
+
+    return {
+      coverage: { coveredDays: rows.length, rangeDays: days.length },
+      series: rows.map((row) => ({ day: row.day, active: row.data.activePeople })),
+      weeks: [...weeks].map(([week, value]) => ({ week, ...value })),
+      platforms: {
+        ios: average(platforms.ios, rows.length),
+        android: average(platforms.android, rows.length),
+        desktop: average(platforms.desktop, rows.length),
+      },
+      heatmap: sums.map((hours, weekday) => hours.map((total) => average(total, dayCounts[weekday]))),
+    };
+  },
+});
 
 export const pushHealth = query({
   args: rangeArgs,

@@ -30,6 +30,16 @@ function schoolOffsetMs(ms: number) {
   return asUtc - Math.floor(ms / 1000) * 1000;
 }
 
+/** Monday = 0 through Sunday = 6, for a calendar day key. */
+export function mondayIndex(dayKey: string) {
+  return (new Date(`${normalizeDateKey(dayKey)}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
+/** The Monday that starts the school week containing `day`. */
+export function weekStart(dayKey: string) {
+  return shiftDay(dayKey, -mondayIndex(dayKey));
+}
+
 export function schoolDayKey(ms: number) {
   return dateKeyForSchoolTime(new Date(ms));
 }

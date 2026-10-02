@@ -17,6 +17,7 @@
     "@better-auth/expo": "^1.6.22",
     "@convex-dev/better-auth": "0.12.2",
     "@convex-dev/migrations": "0.3.6",
+    "@convex-dev/presence": "0.4.0",
     "@convex-dev/rate-limiter": "0.4.0",
     "better-auth": "1.6.22",
     "convex": "1.46.0",

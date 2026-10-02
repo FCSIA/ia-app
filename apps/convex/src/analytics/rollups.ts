@@ -6,8 +6,10 @@ import type { MutationCtx } from "../_generated/server";
 import { getStoredUserCount } from "../stats";
 import {
   addDeliveries,
+  addMarks,
   addMessages,
   emptyChat,
+  emptyEngagement,
   finishChat,
   readersWithin24h,
   summarizeFlex,
@@ -34,6 +36,7 @@ const rolledUpKind = v.union(
   v.literal("chat"),
   v.literal("moderation"),
   v.literal("announcements"),
+  v.literal("engagement"),
 );
 
 /** Write one day's rollup; the row's kind always matches its data's. */
@@ -58,7 +61,7 @@ export const runDaily = internalMutation({
     const today = schoolDayKey(Date.now());
     const yesterday = shiftDay(today, -1);
     await ctx.scheduler.runAfter(0, internal.analytics.rollups.capturePushHealth, { day: today });
-    for (const kind of ["notifications", "chat", "moderation"] as const) {
+    for (const kind of ["notifications", "chat", "moderation", "engagement"] as const) {
       await ctx.scheduler.runAfter(0, internal.analytics.rollups.start, {
         kind,
         day: yesterday,
@@ -86,6 +89,19 @@ export const start = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const bounds = schoolDayBounds(args.day);
+
+    if (args.kind === "engagement") {
+      // Marks are deleted as they are counted, so a day is counted once: a
+      // second start would reset the row and find nothing left to count.
+      const existing = await ctx.db
+        .query("analyticsDaily")
+        .withIndex("by_kind_and_day", (q) => q.eq("kind", "engagement").eq("day", args.day))
+        .unique();
+      if (existing) return null;
+      await upsertRow(ctx, args.day, false, { kind: "engagement", ...emptyEngagement });
+      await ctx.scheduler.runAfter(0, internal.analytics.rollups.countMarks, { day: args.day });
+      return null;
+    }
 
     if (args.kind === "notifications" || args.kind === "chat") {
       await upsertRow(
@@ -223,6 +239,35 @@ export const scan = internalMutation({
         });
       }
     }
+    return null;
+  },
+});
+
+/**
+ * Count one batch of a day's activity marks and delete them, so nothing about
+ * when individuals were online outlives the day's totals.
+ */
+export const countMarks = internalMutation({
+  args: { day: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("analyticsDaily")
+      .withIndex("by_kind_and_day", (q) => q.eq("kind", "engagement").eq("day", args.day))
+      .unique();
+    if (!row || row.complete || row.data.kind !== "engagement") return null;
+    const marks = await ctx.db
+      .query("activityMarks")
+      .withIndex("by_day", (q) => q.eq("day", args.day))
+      .take(scanBatchSize);
+    for (const mark of marks) await ctx.db.delete(mark._id);
+    const done = marks.length < scanBatchSize;
+    await ctx.db.patch(row._id, {
+      complete: done,
+      updatedAt: Date.now(),
+      data: { kind: "engagement", ...addMarks(row.data, marks) },
+    });
+    if (!done) await ctx.scheduler.runAfter(0, internal.analytics.rollups.countMarks, args);
     return null;
   },
 });
