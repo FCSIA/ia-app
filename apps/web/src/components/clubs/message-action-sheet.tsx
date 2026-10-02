@@ -1,7 +1,8 @@
 'use client';
 
-import type { ComponentType, ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
+import { Pencil } from 'lucide-react';
 import {
   Drawer,
   DrawerContent,
@@ -9,6 +10,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { Toggle } from '@/components/ui/toggle';
+import { hapticTick } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
 export type MessageSheetAction = {
@@ -30,14 +32,15 @@ export type MessageSheetReaction = {
 /**
  * The touch counterpart of a message's context menu: a bottom sheet that names
  * the message, puts reactions one tap away, and groups the actions with
- * full-width targets.
+ * full-width targets. The line under the reactions names the double-tap
+ * reaction; tapping it turns the reaction row into a picker for it.
  */
 export function MessageActionSheet({
   open,
   onOpenChange,
   preview,
   reactions,
-  reactionHint,
+  doubleTap,
   onReact,
   actionGroups,
 }: {
@@ -50,11 +53,22 @@ export function MessageActionSheet({
     text: string;
   };
   reactions: MessageSheetReaction[];
-  reactionHint?: ReactNode;
+  /** The reaction a double tap adds, and how to change it. */
+  doubleTap?: { value: string; onChange: (value: string) => void };
   onReact?: (value: string) => void;
   actionGroups: MessageSheetAction[][];
 }) {
   const groups = actionGroups.filter((group) => group.length > 0);
+  const [choosingDoubleTap, setChoosingDoubleTap] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  // Each opening starts back on the ordinary reaction row.
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) setChoosingDoubleTap(false);
+  }
+  const doubleTapReaction = doubleTap
+    ? reactions.find((reaction) => reaction.value === doubleTap.value)
+    : undefined;
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
@@ -103,10 +117,25 @@ export function MessageActionSheet({
                 {reactions.map((reaction) => (
                   <Toggle
                     key={reaction.value}
-                    pressed={reaction.selected}
-                    aria-label={reaction.name}
-                    className="aspect-square h-auto w-full min-w-0 max-w-12 justify-self-center rounded-full bg-muted p-0 text-[22px] leading-none transition-[transform,background-color] duration-150 ease-out active:scale-90 focus-visible:ring-2 data-[state=on]:bg-primary/15 data-[state=on]:ring-1 data-[state=on]:ring-primary/40 motion-reduce:transition-none"
+                    // While choosing, "on" marks the double-tap reaction
+                    // instead of your reactions to this message.
+                    pressed={
+                      choosingDoubleTap ? reaction.value === doubleTap?.value : reaction.selected
+                    }
+                    aria-label={choosingDoubleTap ? `Double-tap with ${reaction.name}` : reaction.name}
+                    className={cn(
+                      'aspect-square h-auto w-full min-w-0 max-w-12 justify-self-center rounded-full bg-muted p-0 text-[22px] leading-none transition-[transform,background-color,box-shadow] duration-150 ease-out active:scale-90 focus-visible:ring-2 motion-reduce:transition-none',
+                      choosingDoubleTap
+                        ? 'data-[state=on]:bg-primary/20 data-[state=on]:ring-2 data-[state=on]:ring-primary'
+                        : 'data-[state=on]:bg-primary/15 data-[state=on]:ring-1 data-[state=on]:ring-primary/40',
+                    )}
                     onPressedChange={() => {
+                      if (choosingDoubleTap && doubleTap) {
+                        hapticTick();
+                        doubleTap.onChange(reaction.value);
+                        setChoosingDoubleTap(false);
+                        return;
+                      }
                       flushSync(() => onOpenChange(false));
                       onReact(reaction.value);
                     }}
@@ -115,8 +144,45 @@ export function MessageActionSheet({
                   </Toggle>
                 ))}
               </div>
-              {reactionHint ? (
-                <p className="mt-2 text-center text-[11px] text-muted-foreground">{reactionHint}</p>
+              {doubleTapReaction ? (
+                <p
+                  aria-live="polite"
+                  className="mt-2 flex min-h-6 items-center justify-center gap-1 text-[11px] text-muted-foreground"
+                >
+                  {choosingDoubleTap ? (
+                    <>
+                      Pick what a double tap adds
+                      <button
+                        type="button"
+                        className="rounded-full px-1.5 py-0.5 font-medium text-primary outline-none active:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                        onClick={() => setChoosingDoubleTap(false)}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      Double-tap a message to add
+                      <button
+                        type="button"
+                        aria-label={`Change double-tap reaction, now ${doubleTapReaction.name}`}
+                        // Small to look at; the invisible ::after makes it a
+                        // finger-sized target.
+                        className="relative inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 outline-none transition-transform duration-150 after:absolute after:-inset-x-2 after:-inset-y-2 active:scale-90 focus-visible:ring-1 focus-visible:ring-ring motion-reduce:transition-none"
+                        onClick={() => setChoosingDoubleTap(true)}
+                      >
+                        <span
+                          key={doubleTapReaction.value}
+                          aria-hidden="true"
+                          className="text-[13px] leading-none motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-200"
+                        >
+                          {doubleTapReaction.label}
+                        </span>
+                        <Pencil aria-hidden="true" className="size-2.5" />
+                      </button>
+                    </>
+                  )}
+                </p>
               ) : null}
             </div>
           ) : null}

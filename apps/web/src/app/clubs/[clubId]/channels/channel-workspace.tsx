@@ -885,8 +885,8 @@ function ScrollToReplyTarget({
   return null;
 }
 
-/** The reaction a double tap adds, as in Discord. */
-const DOUBLE_TAP_REACTION = QUICK_REACTIONS[0];
+/** What a double tap adds until someone picks their own, as in Discord. */
+const DEFAULT_DOUBLE_TAP_REACTION: ChannelReaction = 'LIKE';
 
 /**
  * The line above a reply that names the message it answers. It sits above the
@@ -958,6 +958,8 @@ function MessageRow({
   onCopyText,
   onShowHistory,
   onReport,
+  doubleTapReaction,
+  onChangeDoubleTapReaction,
   canSendFriendRequest,
   friendshipStatus,
   onSendFriendRequest,
@@ -991,6 +993,8 @@ function MessageRow({
   onCopyText: (message: ClubChannelMessage) => void;
   onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
+  doubleTapReaction: ChannelReaction;
+  onChangeDoubleTapReaction: (reaction: ChannelReaction) => void;
   canSendFriendRequest: boolean;
   friendshipStatus?: FriendshipStatus;
   onSendFriendRequest: (userId: string) => void;
@@ -1046,8 +1050,10 @@ function MessageRow({
   // Discord-style: replies to you and mentions that reached you stand out.
   const pingsViewer =
     !isAuthor && !isDeleted && !isSending && (repliesToViewer || !!message.mentionsViewer);
+  const doubleTapOption =
+    QUICK_REACTIONS.find((reaction) => reaction.value === doubleTapReaction) ?? QUICK_REACTIONS[0];
   const doubleTapReacted = message.reactions.some(
-    (reaction) => reaction.emoji === DOUBLE_TAP_REACTION.value && reaction.reactedByCurrentUser,
+    (reaction) => reaction.emoji === doubleTapOption.value && reaction.reactedByCurrentUser,
   );
 
   const pressHandlers = useMessagePress({
@@ -1064,7 +1070,7 @@ function MessageRow({
       hapticTick();
       // Like a double-tap like elsewhere: it adds, and never takes back.
       if (!doubleTapReacted && !isReactionPending) {
-        onToggleReaction(message._id, DOUBLE_TAP_REACTION.value);
+        onToggleReaction(message._id, doubleTapOption.value);
       }
     },
   });
@@ -1492,7 +1498,7 @@ function MessageRow({
               style={{ left: reactionBurst.x, top: reactionBurst.y }}
               onAnimationEnd={() => setReactionBurst(null)}
             >
-              {DOUBLE_TAP_REACTION.label}
+              {doubleTapOption.label}
             </span>
           ) : null}
         </div>
@@ -1607,7 +1613,12 @@ function MessageRow({
             (existing) => existing.emoji === reaction.value && existing.reactedByCurrentUser,
           ),
         }))}
-        reactionHint={`Double-tap a message to add ${DOUBLE_TAP_REACTION.label}`}
+        doubleTap={{
+          value: doubleTapOption.value,
+          onChange: (value) => {
+            if (isChannelReaction(value)) onChangeDoubleTapReaction(value);
+          },
+        }}
         onReact={(value) => {
           if (isChannelReaction(value)) onToggleReaction(message._id, value);
         }}
@@ -1801,6 +1812,16 @@ export function ChannelWorkspace() {
     },
   );
   const setPinned = useMutation(api.clubs.channels.setPinned);
+  const updateDoubleTapReaction = useMutation(
+    api.users.me.updateChatDoubleTapReaction,
+  ).withOptimisticUpdate((localStore, args) => {
+    const me = localStore.getQuery(api.users.me.me, {});
+    if (me) localStore.setQuery(api.users.me.me, {}, { ...me, chatDoubleTapReaction: args.reaction });
+  });
+  const doubleTapReaction =
+    user?.chatDoubleTapReaction && isChannelReaction(user.chatDoubleTapReaction)
+      ? user.chatDoubleTapReaction
+      : DEFAULT_DOUBLE_TAP_REACTION;
   const votePoll = useMutation(api.clubs.channels.votePoll);
   const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
@@ -2126,6 +2147,12 @@ export function ChannelWorkspace() {
           }
           onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
           onCopyText={copyMessageText}
+          doubleTapReaction={doubleTapReaction}
+          onChangeDoubleTapReaction={(reaction) =>
+            void updateDoubleTapReaction({ reaction }).catch(() =>
+              toast({ title: "Couldn't save your double-tap reaction", variant: 'destructive' }),
+            )
+          }
           canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
           friendshipStatus={friendshipStatusByUserId.get(message.author._id)}
           onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
