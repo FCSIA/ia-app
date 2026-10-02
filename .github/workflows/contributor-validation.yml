@@ -89,7 +89,7 @@ jobs:
           fi
 
           blocked_count=$(jq '[.results[]?.packages[]?.vulnerabilities[]? | select(.database_specific.severity == "HIGH" or .database_specific.severity == "CRITICAL")] | length' "$RUNNER_TEMP/ia-production-osv-results.json")
-          echo "Accepted existing image-size advisories: 2 (configured in osv-scanner.toml; expires 2026-10-01)."
+          echo "Source-patched dependency exceptions are documented in osv-scanner.toml and verified by audit:production:test."
           echo "Blocking high/critical findings: $blocked_count"
           if [ "$blocked_count" -gt 0 ]; then
             cat "$RUNNER_TEMP/ia-production-osv-results.json"

@@ -292,6 +292,11 @@ function toChange(commit) {
   if (trailers.devlog && trailers.devlog.toLowerCase() === "skip") return null;
 
   let subject = commit.subject.trim();
+
+  // Release commits only record already-cut release data. They are normally
+  // excluded by the tag range, but must never become changelog entries when
+  // the range falls back to a recorded commit (e.g. tags missing locally).
+  if (/^release:\s*v\d+\.\d+\.\d+\s*$/i.test(subject)) return null;
   let pr;
   const prMatch = /\s*\(#(\d+)\)\s*$/.exec(subject);
   if (prMatch) {
@@ -511,7 +516,9 @@ function commandCut(flags, { previewOnly }) {
       "Next:",
       "  git add CHANGELOG.md packages/devlog",
       `  git commit -m "release: v${release.version}"`,
-      `  git tag v${release.version}`,
+      `  git tag -a -m "release: v${release.version}" v${release.version}`,
+      `  git push origin main v${release.version}`,
+      "  (or prepare a release PR with `bun run release`)",
       "",
     ].join("\n"),
   );

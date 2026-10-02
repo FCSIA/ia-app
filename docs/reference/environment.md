@@ -12,11 +12,11 @@ development.
 
 ## Local Files
 
-| File                     | Purpose                                                      |
-| ------------------------ | ------------------------------------------------------------ |
-| `.env`                   | Local root defaults                                          |
-| `.env.example`           | Template for local defaults                                  |
-| `apps/convex/.env.local` | Worktree-local Convex selection and URLs written by the Convex CLI |
+| File                     | Purpose                                                               |
+| ------------------------ | --------------------------------------------------------------------- |
+| `.env`                   | Local root defaults                                                   |
+| `.env.example`           | Template for local defaults                                           |
+| `apps/convex/.env.local` | Worktree-local Convex selection and URLs written by the Convex CLI    |
 | `apps/web/.env.local`    | Local web-only public values such as Convex URLs and VAPID public key |
 
 ## Convex Variables
@@ -38,10 +38,13 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 
 ## Worktrees And Deployment Selection
 
-`apps/convex/.env.local` selects a stateful backend. Never copy it between
-worktrees: doing so makes separate code branches deploy to and write data into
-the same Convex deployment. Stop any `bun run dev` or `bun run cvx:dev` watcher using
-that deployment before changing a worktree's selection.
+`bun run worktree:bootstrap` creates/selects an isolated local Convex backend by
+default, so `bun run dev` is safe to use after bootstrap. Use `--shared-convex`
+only for an explicit short-lived UI task. Shared mode links the primary
+worktree's local state and makes `bun run dev` start only the web server, avoiding
+a second Convex watcher. Use `--no-convex` to leave backend configuration
+untouched. See [Git worktrees](worktrees.md) for configuration and opt-out
+options.
 
 For ordinary worktree development, initialize each worktree's own local backend:
 
@@ -67,27 +70,47 @@ Bun from the shell rather than expecting direnv to provide it.
 
 ### Physical-device clients
 
-A loopback URL such as `http://127.0.0.1:3210` points back to the phone when it
-is used by a mobile browser, installed web app, or native client. For a device
-on the same LAN, rewrite only the public client URLs to the development
-machine's LAN address, then restart the web development server:
-
 ```bash
-bun run sync:convex-env -- --host 10.0.0.231
-bun run dev
+bun run dev:phone
 ```
 
-The server-side Convex URLs remain on loopback. The rewritten public URLs are
-used by both the web PWA and the Expo client. An HTTPS frontend tunnel cannot
-connect to a local HTTP Convex backend because browsers block mixed content;
-use the named cloud development deployment flow below for HTTPS tunnels.
+Points the web and mobile clients at this machine's network address, then
+starts `bun run dev`. The phone and the desktop browser can test at the same time.
+
+- Web on the phone: open `http://<address>:3000` (printed by the command).
+- Native app: run `bun run dev:mobile` in a second terminal and scan the QR code
+  with Expo Go.
+
+| Setup | Works |
+| --- | --- |
+| Mac and phone on the same Wi-Fi | Yes |
+| Mac on the phone's hotspot | Needs Tailscale |
+| Phone on cellular, Mac elsewhere | Needs Tailscale |
+| iOS Simulator | Yes, with plain `bun run dev` |
+| Android emulator | Run `bun run sync:convex-env -- --android`, then `bun run dev` |
+
+Tailscale: install it on the Mac and the phone and sign both in to the same
+account. `bun run dev:phone` then prefers the Mac's Tailscale address, which works
+on any network.
+
+After a network change, `bun run dev` re-points the clients automatically. To go
+back to desktop-only:
+
+```bash
+bun run sync:convex-env -- --host 127.0.0.1
+```
+
+HTTPS tunnels need a named cloud dev deployment (below).
+
+A refused or timed-out connection on ports 3210/3211 usually means `bun run dev`
+is not running.
 
 For a feature that needs a public URL, off-LAN mobile-device access, webhooks,
 an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment
 instead:
 
 ```bash
-bun run --filter cvx exec convex deployment create dev/<feature-name> \
+bun run --cwd apps/convex convex deployment create dev/<feature-name> \
   --type dev --select --expiration "in 7 days"
 bun run sync:convex-env
 bun run dev
@@ -103,6 +126,21 @@ it does not undo database I/O or other usage already metered this month.
 Runtime secrets such as Better Auth credentials belong in the Convex deployment
 environment. Demo seed/reset does not use `BOOTSTRAP_SECRET`; invoke the
 internal `bootstrap:resetAndSeed` function through the Convex CLI or Dashboard.
+
+### Google Cloud Vision schedule import
+
+Schedule image import requires a Google Cloud service account with the Cloud
+Vision API enabled. Store the complete service-account JSON as the deployment
+secret `GOOGLE_VISION_SERVICE_ACCOUNT_JSON`; never add it to `.env`, a client
+bundle, or git. The action exchanges its signed JWT for a short-lived OAuth token
+and sends image bytes directly to the Google Vision API.
+
+```bash
+direnv exec . bun run --cwd apps/convex convex env set GOOGLE_VISION_SERVICE_ACCOUNT_JSON "$(cat service-account.json)"
+```
+
+Run this only after selecting the intended non-production or production
+deployment and obtaining the appropriate data-processing approval.
 
 ## Web Push
 
@@ -120,7 +158,7 @@ VAPID_SUBJECT=mailto:admin@example.com
 Generate keys with:
 
 ```bash
-bun run --filter cvx exec web-push generate-vapid-keys
+bun run --cwd apps/convex web-push generate-vapid-keys
 ```
 
 Then set the same public key in the web app and Convex, and keep the private
@@ -130,9 +168,9 @@ key only in Convex:
 # apps/web/.env.local
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
 
-bun run --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
-bun run --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
-bun run --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "..."
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "..."
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
 Bun is not provided by the repo's Nix/direnv shell; install it separately and

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
-import { useMutation } from "convex/react";
+import { useMutation } from "@/lib/convex-react";
 import { Button, Sheet, TextField, useToast } from "@/components/ui";
 import {
   ClubFormField,

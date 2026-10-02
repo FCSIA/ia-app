@@ -3,7 +3,8 @@ import { useWindowDimensions, View } from "react-native";
 import { Check, RotateCcw } from "lucide-react-native";
 import { hsl, themes, type ThemeName, type ThemeTokens } from "@ia/design-tokens";
 import { Screen } from "@/components/screen";
-import { Button, PressableScale, Section, TextField, Txt, useToast } from "@/components/ui";
+import { Button, PressableScale, Section, TextField, Txt, Switch, ListRow, useToast } from "@/components/ui";
+import { useGifAutoplay } from "@/lib/gif-playback";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 
@@ -21,6 +22,7 @@ const themeLabels: Record<ThemeName, string> = {
   dark: "Dark",
   "high-contrast": "High contrast",
   bubblegum: "Bubblegum",
+  "bubblegum-dark": "Bubblegum Dark",
   custom: "Custom",
 };
 
@@ -38,6 +40,7 @@ const swatches = [
 ] as const;
 
 export default function ThemeScreen() {
+  const { autoplay, setAutoplay } = useGifAutoplay();
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const { showToast } = useToast();
@@ -79,6 +82,13 @@ export default function ThemeScreen() {
       title="Appearance"
       contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
     >
+      <Section title="Animations">
+        <ListRow title="Autoplay GIFs" subtitle="Play automatically on this device. Turn off to start paused. Reduced motion starts paused; individual play buttons still work." trailing={
+          <Switch label="Autoplay GIFs" value={autoplay} onValueChange={(next) => {
+            void setAutoplay(next).catch(() => showToast({ title: 'Could not save playback preference', tone: 'warning' }));
+          }} />
+        } />
+      </Section>
       <Section title="Theme">
         <View
           accessibilityRole="radiogroup"

@@ -48,7 +48,9 @@ layer. Normal users do not read audit rows.
 Domain mutations call `logAuditEvent(ctx, ...)` after meaningful writes such as
 user changes, schedule saves, friend requests, announcement changes,
 moderation updates, event approvals, Flex Friday changes, and channel-message
-posts, edits, deletes, pins, and reaction adds/removals.
+posts, edits, deletes, pins, and reaction adds/removals. Whiteboard creates,
+edits, renames, archives, and restores are audited too; see
+[Whiteboards](whiteboards.md).
 
 ## Known Limits
 

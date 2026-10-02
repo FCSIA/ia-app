@@ -5,11 +5,26 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { StudentImportResult } from '../_lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import type { StudentBulkUpdateResult, StudentImportResult } from '../_lib/types';
 import { AdminMetric, AdminPanel } from './admin-ui';
 
 const studentCsvExample = `first_name,last_name,student_id,email,grade_level,major_pathway,minor_pathway
 Alex,Smith,STU001,alex.smith@example.com,10,IT,`;
+
+const studentBulkUpdateCsvExample = `student_id,major_pathway,minor_pathway
+STU001,Engineering,
+STU002,Engineering,Health Science`;
 
 export function AdminScheduleTab({
   studentCsvInputKey,
@@ -21,6 +36,9 @@ export function AdminScheduleTab({
   onExport,
   lastStudentImport,
   onExportGeneratedPasswords,
+  isUpdating,
+  onBulkUpdate,
+  lastStudentUpdate,
 }: {
   studentCsvInputKey: number;
   onStudentCsvFileChange: (file: File | null) => void;
@@ -31,6 +49,9 @@ export function AdminScheduleTab({
   onExport: () => void;
   lastStudentImport: StudentImportResult | null;
   onExportGeneratedPasswords: () => void;
+  isUpdating: boolean;
+  onBulkUpdate: () => void;
+  lastStudentUpdate: StudentBulkUpdateResult | null;
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -75,6 +96,35 @@ export function AdminScheduleTab({
             >
               Import students
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  disabled={!canImport || isImporting || isUpdating}
+                  leadingIcon={Upload}
+                >
+                  Bulk update records
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Update students from this CSV?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Each row must include a student ID and at least one of grade level, major pathway, or minor pathway. Only columns in the file are changed; blank values clear that field.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isUpdating}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isUpdating}
+                    onClick={onBulkUpdate}
+                  >
+                    Update students
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button
               type="button"
               variant="secondary"
@@ -96,6 +146,15 @@ export function AdminScheduleTab({
           <p>Grade level must be a number from 9 to 12.</p>
           <p>Minor pathway must be different from the major pathway.</p>
           <p>Existing student IDs are skipped to avoid overwriting live accounts.</p>
+        </AdminPanel>
+
+        <AdminPanel title="Bulk Update CSV" contentClassName="space-y-3">
+          <pre className="overflow-x-auto rounded-lg bg-muted/30 p-3 font-mono text-xs leading-5 text-foreground">
+            <code>{studentBulkUpdateCsvExample}</code>
+          </pre>
+          <p className="text-sm text-muted-foreground">
+            Include <span className="text-foreground">student_id</span> and only the columns to change: grade_level, major_pathway, or minor_pathway. A blank value clears an included field.
+          </p>
         </AdminPanel>
 
         {lastStudentImport ? (
@@ -120,6 +179,28 @@ export function AdminScheduleTab({
                   viewportClassName="max-h-48 p-3"
                 >
                   {lastStudentImport.errors.map((error, index) => (
+                    <p key={`${error}-${index}`} className="leading-5">{error}</p>
+                  ))}
+                </ScrollArea>
+              </div>
+            ) : null}
+          </AdminPanel>
+        ) : null}
+
+        {lastStudentUpdate ? (
+          <AdminPanel title="Latest Bulk Update" contentClassName="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <AdminMetric label="Updated" value={lastStudentUpdate.updated} />
+              <AdminMetric label="Skipped" value={lastStudentUpdate.skipped} />
+            </div>
+            {lastStudentUpdate.errors.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Skipped rows</p>
+                <ScrollArea
+                  className="rounded-lg border bg-muted/30 text-xs text-muted-foreground"
+                  viewportClassName="max-h-48 p-3"
+                >
+                  {lastStudentUpdate.errors.map((error, index) => (
                     <p key={`${error}-${index}`} className="leading-5">{error}</p>
                   ))}
                 </ScrollArea>

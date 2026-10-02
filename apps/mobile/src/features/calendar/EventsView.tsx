@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { ChevronRight, Plus, X } from "lucide-react-native";
 import { router } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { DataBoundary } from "@/components/data-boundary";
 import {
   Button,

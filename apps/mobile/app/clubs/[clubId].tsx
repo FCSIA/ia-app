@@ -1,15 +1,12 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import {
   CalendarPlus,
   ChevronDown,
   ChevronRight,
   FolderOpen,
-  Hash,
-  LockKeyhole,
-  Megaphone,
   Search,
   Settings2,
   UsersRound,
@@ -26,6 +23,7 @@ import {
   Txt,
 } from "@/components/ui";
 import { CreateEventSheet } from "@/features/calendar/create-event-sheet";
+import { channelVisibilityIcon } from "@/features/clubs/channel-visibility";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -118,7 +116,13 @@ export default function ClubDetailScreen() {
           async function joinClub() {
             try {
               if (data.joinPolicy === "OPEN") {
-                await joinOpen({ clubId: clubId as any });
+                const result = await joinOpen({ clubId: clubId as any });
+                if (result.kind === "memberLimitReached") {
+                  Alert.alert(
+                    "Club is full",
+                    "A member spot must open before you can join.",
+                  );
+                }
               } else {
                 await requestJoin({ clubId: clubId as any });
               }
@@ -419,20 +423,29 @@ export default function ClubDetailScreen() {
                               title="Approve"
                               size="sm"
                               style={{ flex: 1 }}
-                              onPress={() =>
-                                respondToJoinRequest({
+                              onPress={() => {
+                                void respondToJoinRequest({
                                   clubId: clubId as any,
                                   requestId: request._id,
                                   accept: true,
-                                }).catch((error) =>
-                                  Alert.alert(
-                                    "Could not approve",
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Try again.",
-                                  ),
-                                )
-                              }
+                                })
+                                  .then((result) => {
+                                    if (result.kind === "memberLimitReached") {
+                                      Alert.alert(
+                                        "Club is full",
+                                        "A member spot must open before this request can be approved.",
+                                      );
+                                    }
+                                  })
+                                  .catch((error) =>
+                                    Alert.alert(
+                                      "Could not approve",
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Try again.",
+                                    ),
+                                  );
+                              }}
                             />
                             <Button
                               title="Decline"
@@ -504,12 +517,4 @@ function WorkspaceIconAction({
       <Icon size={19} color={color("foreground")} strokeWidth={2} />
     </PressableScale>
   );
-}
-
-function channelVisibilityIcon(
-  visibility: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY",
-) {
-  if (visibility === "PRIVATE") return LockKeyhole;
-  if (visibility === "MEMBER_READONLY") return Megaphone;
-  return Hash;
 }

@@ -33,8 +33,11 @@ import {
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useMutation } from 'convex/react';
+import { CanvasCalendarAnnouncement } from './CanvasCalendarAnnouncement';
+import { PushReenableAnnouncement } from './PushReenableAnnouncement';
+import { useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
+import { normalizeDashboardLayout } from '~/apps/convex/src/users/dashboardLayout';
 import {
   WIDGETS,
   getAvailableWidgets,
@@ -184,15 +187,24 @@ export function DashboardLayout({
 
   // Load persisted layout once user is known
   useEffect(() => {
+    const normalizeAllowedLayout = (candidate: readonly string[]) =>
+      normalizeDashboardLayout(candidate).filter((id) => {
+        const widget = WIDGETS[id];
+        return widget && isWidgetAllowed(widget, user?.roles);
+      });
+
+    const savedLayout = user?.dashboardLayout?.length
+      ? normalizeAllowedLayout(user.dashboardLayout)
+      : [];
+    const localLayout = normalizeAllowedLayout(loadLayout(user?._id) ?? []);
     const nextLayout =
       !user
         ? getDefaultLayout()
-        : user.dashboardLayout && user.dashboardLayout.length > 0
-          ? user.dashboardLayout.filter((id) => {
-              const widget = WIDGETS[id];
-              return widget && isWidgetAllowed(widget, user.roles);
-            })
-          : (loadLayout(user._id) ?? getDefaultLayout());
+        : savedLayout.length > 0
+          ? savedLayout
+          : localLayout.length > 0
+            ? localLayout
+            : getDefaultLayout();
 
     setLayout(nextLayout);
   }, [user]);
@@ -260,8 +272,9 @@ export function DashboardLayout({
     return { fixedIds: fixed, fullIds: full, columnIds: cols };
   }, [layout, user?.roles]);
 
-  // Distribute half-width widgets into N columns, assigning by index
-  // so that layout is predictable and doesn't jump randomly.
+  // Distribute valid half-width widgets into N columns by index so the order
+  // remains stable. An odd count necessarily produces a 3/2 split across two
+  // columns; duplicate IDs are removed before this point.
   const columns = useMemo<string[][]>(() => {
     if (columnIds.length === 0) return [];
     const cols: string[][] = Array.from({ length: columnCount }, () => []);
@@ -286,6 +299,8 @@ export function DashboardLayout({
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
+          <PushReenableAnnouncement />
+          <CanvasCalendarAnnouncement />
           {editing ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>

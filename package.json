@@ -8,7 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --filter=web --filter=cvx",
+    "dev": "node scripts/dev.mjs",
+    "dev:phone": "node scripts/sync-convex-env.mjs --host auto && node scripts/dev.mjs",
     "dev:mobile": "bun run --filter mobile dev",
     "dev:mobile:tunnel": "bun run --filter mobile dev:client:tunnel",
     "build": "turbo run build",
@@ -17,8 +18,9 @@
     "cvx:dev": "bun run --filter cvx dev",
     "convex:dev": "bun run --filter cvx dev",
     "db:generate": "bun run --filter cvx codegen",
-    "db:studio": "bun --cwd apps/convex x convex dashboard",
+    "db:studio": "bun run --cwd apps/convex convex dashboard",
     "setup:convex-local": "node scripts/setup-convex-local.mjs",
+    "worktree:bootstrap": "node scripts/bootstrap-worktree.mjs",
     "mobile:ios": "bun run --filter mobile ios",
     "mobile:ios:refresh": "bash scripts/refresh-ios-personal-build.sh",
     "mobile:android": "bun run --filter mobile android",
@@ -30,8 +32,11 @@
     "release": "node scripts/release.mjs",
     "release:test": "bun test scripts/release.test.mjs",
     "audit:production": "node scripts/audit-production.mjs",
-    "audit:production:test": "bun test scripts/audit-production.test.mjs",
+    "audit:production:test": "bun test scripts/audit-production.test.mjs scripts/dependency-security.test.mjs",
+    "devlog:cut": "node scripts/devlog.mjs cut",
+    "release:ship": "node scripts/release-ship.mjs",
     "fluid:update": "node scripts/update-fluid-components.mjs",
+    "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "overrides": {
@@ -46,7 +51,12 @@
     "hono": ">=4.12.34",
     "effect": ">=3.20.0",
     "js-yaml": ">=4.3.1",
-    "nanoid": ">=5.1.16"
+    "nanoid": ">=5.1.16",
+    "@xmldom/xmldom": "0.9.12",
+    "browserslist": "4.29.3",
+    "image-size": "2.0.4",
+    "lodash-es": "4.18.1",
+    "node-forge": "1.4.0"
   },
   "trustedDependencies": [
     "bcrypt",
@@ -64,6 +74,9 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
-    "convex": "1.45.0"
+    "convex": "1.46.0"
+  },
+  "patchedDependencies": {
+    "node-forge@1.4.0": "patches/node-forge@1.4.0.patch"
   }
 }

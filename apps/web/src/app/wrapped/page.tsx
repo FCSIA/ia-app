@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useConvexQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { computeWrappedAvailability } from '@/lib/wrapped';

@@ -5,6 +5,7 @@ import { flexFridayValidator } from "./_lib";
 import { flexSessionTypeValidator } from "../validators";
 import { deliverMany, flexFridayAudience } from "../notifications/delivery";
 import { canCreateFlexFriday } from "./permissions";
+import { countFlexSessions } from "./counts";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -19,16 +20,14 @@ export const list = query({
     const fridays = await ctx.db.query("flexFridays").order("desc").take(50);
 
     return Promise.all(
-      fridays.map(async (friday) => {
-        const sessions = await ctx.db
-          .query("flexSessions")
-          .withIndex("by_flexFridayId", (q) => q.eq("flexFridayId", friday._id))
-          .collect();
-        return {
-          ...friday,
-          _count: { sessions: sessions.length },
-        };
-      }),
+      fridays.map(async (friday) => ({
+        ...friday,
+        _count: {
+          // Fridays written before the counter existed still have to be counted;
+          // `backfillFlexSessionCount` is what retires that last scan.
+          sessions: friday.sessionCount ?? (await countFlexSessions(ctx, friday._id)),
+        },
+      })),
     );
   },
 });
@@ -61,6 +60,7 @@ export const create = mutation({
     }
 
     const date = parseFridayDate(args.date);
+    const sessions = args.sessions ?? [];
     const fridayId = await ctx.db.insert("flexFridays", {
       date,
       type: args.type,
@@ -68,10 +68,13 @@ export const create = mutation({
       pathway: args.pathway,
       isSchoolDay: args.isSchoolDay ?? true,
       notes: args.notes?.trim(),
+      // A new Friday owns exactly the sessions created with it, so the counter
+      // is known outright rather than adjusted.
+      sessionCount: sessions.length,
       createdAt: Date.now(),
     });
 
-    for (const session of args.sessions ?? []) {
+    for (const session of sessions) {
       await ctx.db.insert("flexSessions", {
         flexFridayId: fridayId,
         ...session,

@@ -15,6 +15,7 @@ tags: [commands, development]
 | `bun run --filter web dev` | Start only the Next.js web app                            |
 | `bun run lint`             | Lint all workspaces                                       |
 | `bun run build`            | Build all workspaces                                      |
+| `bun run worktree:bootstrap -- [options]` | Install dependencies and initialize an isolated local backend; see [Git worktrees](worktrees.md) |
 | `bun run test`             | Run test suites                                           |
 
 ## Release log
@@ -49,7 +50,7 @@ Prepare the generated release data with `bun run release`; merging its PR
 creates and pushes the matching tag automatically. Humans do not create or
 push release tags.
 
-Production URL: `https://ia-app-alpha.vercel.app`
+Production URL: `https://app.fcsia.com`
 
 Manual deploy from the repo root:
 
@@ -79,11 +80,11 @@ There are no local `bun run db:seed`, `bun run db:reset`, or `bun run db:clear`
 commands. To destructively recreate demo data on the local deployment:
 
 ```bash
-bun run --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:resetAndSeed \
   '{"profile":"development"}'
-bun run --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:seedStatus \
   '{}' \
@@ -109,9 +110,10 @@ scripts; do not regenerate the lockfile with another tool.
 
 ## Security audit
 
-Contributor Validation scans `bun.lock` directly with OSV-Scanner. High and
-critical findings block CI; the two known `image-size` advisories are accepted
-in `osv-scanner.toml` until 2026-10-01. Findings without severity metadata also
-fail the gate. The raw `bun audit --prod` command is not the CI security gate
+Contributor Validation builds the production dependency closure from `bun.lock`
+and scans it with OSV-Scanner. High and critical findings block CI. The temporary
+`node-forge` version exception in `osv-scanner.toml` covers a checked-in upstream
+security patch, whose regression test runs before scanning; it expires on
+2026-11-01. Findings without severity metadata also fail the gate. The raw `bun audit --prod` command is not the CI security gate
 because Bun can include workspace tooling and optional-peer resolution paths in
 its output.

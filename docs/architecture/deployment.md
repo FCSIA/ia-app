@@ -34,10 +34,10 @@ bootstrap secret.
 Browser push needs VAPID keys in the Convex deployment:
 
 ```bash
-bun run --filter cvx exec web-push generate-vapid-keys
-bun run --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
-bun run --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
-bun run --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+bun run --cwd apps/convex web-push generate-vapid-keys
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "<public-key>"
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "<private-key>"
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
 ## Frontend Deployment
@@ -51,6 +51,12 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 NEXT_PUBLIC_SITE_URL=https://...
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
 ```
+
+The production application origin is `https://app.fcsia.com`. Requests to the
+former Vercel hostname, `https://ia-app-alpha.vercel.app`, are redirected before
+authentication to the statically rendered `/moved` migration notice.
+That notice links to the production origin and to the unlisted
+`/pwa-setup` platform guide for replacing an old Home Screen app.
 
 ## Build Checks
 

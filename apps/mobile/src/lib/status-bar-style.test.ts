@@ -19,6 +19,9 @@ describe("statusBarStyleForBackground", () => {
     expect(
       statusBarStyleForBackground(hsl(themes["high-contrast"].background)),
     ).toBe("light-content");
+    expect(
+      statusBarStyleForBackground(hsl(themes["bubblegum-dark"].background)),
+    ).toBe("light-content");
   });
 
   it("chooses the higher-contrast style for custom RGB colors", () => {

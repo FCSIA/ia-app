@@ -4,10 +4,7 @@
  */
 export const NAVIGATION_LOADING_MESSAGES = [
   // Science & nature
-  'Octopuses have three hearts. Two pump blood to the gills; one pumps it to the rest of the body.',
-  'Honey never spoils. Archaeologists have found 3,000-year-old honey that was still edible.',
   'Bananas are berries. Strawberries are not.',
-  'A day on Venus is longer than a year on Venus.',
   'Hot water freezes faster than cold water sometimes. Scientists call it the Mpemba effect.',
   'Your brain uses about 20% of your body\'s energy even though it\'s only ~2% of your weight.',
   'Sharks existed before trees.',
@@ -44,7 +41,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The average person walks about 70,000 miles in a lifetime — roughly three times around Earth.',
 
   // Space
-  'One million Earths could fit inside the sun.',
   'Neptune has only completed one orbit since it was discovered in 1846.',
   'A day on Mercury lasts 59 Earth days.',
   'Jupiter\'s Great Red Spot is a storm that\'s been raging for at least 400 years.',
@@ -55,9 +51,7 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'Saturn\'s moon Titan has lakes and rivers made of liquid methane.',
   'The International Space Station travels at 17,500 mph.',
   'Black holes aren\'t actually black holes — they emit a faint glow called Hawking radiation.',
-  'There are more possible games of chess than atoms in the observable universe.',
   'The Milky Way and Andromeda galaxies will collide in about 4.5 billion years.',
-  'A sunset on Mars looks blue.',
   'You could fit all the planets in our solar system between Earth and the moon — with room to spare.',
 
   // History
@@ -83,7 +77,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'Before alarm clocks, people were hired to knock on windows and wake workers up.',
 
   // Geography & world
-  'Russia spans 11 time zones.',
   'Canada has more lakes than the rest of the world combined.',
   'Maine is the closest U.S. state to Africa.',
   'Africa is the only continent in all four hemispheres.',
@@ -104,7 +97,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'There\'s a lake in Venezuela that gets struck by lightning about 280 times a year.',
 
   // Food & drink
-  'Carrots were originally purple, not orange.',
   'Peanuts aren\'t nuts — they\'re legumes, like beans.',
   'Apples float because they\'re 25% air.',
   'The most stolen food in the world is cheese.',
@@ -132,7 +124,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'A "jiffy" is an actual unit of time — about 1/100th of a second in physics.',
   'The word "set" has the most definitions in the Oxford English Dictionary — over 400.',
   '"Almost" is the longest common word with all letters in alphabetical order.',
-  'The word "school" comes from Greek "scholē," which originally meant "leisure."',
   'Emoji is Japanese for "picture character."',
   'The @ symbol is called an "at sign" but also a "strudel" in Israel and a "monkey tail" in Germany.',
   'Shakespeare invented over 1,700 words, including "eyeball" and "swagger."',
@@ -158,7 +149,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'A billion seconds ago was 1993. A trillion seconds ago was 31,000 BC.',
 
   // Technology & internet
-  'The first website is still online: info.cern.ch, created in 1991.',
   'The first computer mouse was made of wood.',
   'Email existed before the World Wide Web.',
   'The QWERTY keyboard was designed to slow typists down so typewriter keys wouldn\'t jam.',
@@ -174,7 +164,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The @ in email addresses was chosen because it was on every keyboard and rarely used.',
 
   // Animals (more)
-  'Dolphins have names for each other — signature whistles.',
   'A shrimp\'s heart is in its head.',
   'Frogs don\'t drink water — they absorb it through their skin.',
   'Giraffes have the same number of neck vertebrae as humans: seven.',
@@ -197,7 +186,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
 
   // Sports & games
   'Golf is the only sport played on the moon. Alan Shepard hit two balls in 1971.',
-  'A regulation ping pong ball must bounce 8–9 inches when dropped from 12 inches.',
   'The Olympic gold medal is mostly silver with a gold coating.',
   'Chess was invented in India around the 6th century.',
   'The longest tennis match lasted 11 hours and 5 minutes.',

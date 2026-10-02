@@ -2,26 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { BellOff, BellRing, Share } from 'lucide-react';
-import { useAction, useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Button } from '@/components/ui/button';
 import {
   getCurrentPushSubscription,
   permissionState,
   pushAvailability,
-  requestNotificationPermission,
-  subscribeBrowserToPush,
-  subscriptionToPayload,
+  setPushOptedOut,
 } from '@/lib/push-notifications';
+import { useEnablePush } from './enable-push';
 
 type PermissionStateLabel = NotificationPermission | 'unsupported' | 'checking';
 
 export function PushNotificationSettings() {
   const publicKey = useQuery(api.notifications.push.getPublicKey);
   const serverSubscriptions = useQuery(api.notifications.push.listMine) ?? [];
-  const upsertSubscription = useMutation(api.notifications.push.upsertSubscription);
   const removeSubscription = useMutation(api.notifications.push.removeSubscription);
-  const activatePush = useMutation(api.notifications.preferences.activatePush);
+  const enablePushOnDevice = useEnablePush();
   const sendTestPush = useAction(api.notifications.pushNode.sendTestToMe);
   const [permission, setPermission] = useState<PermissionStateLabel>('checking');
   const [localEndpoint, setLocalEndpoint] = useState<string | null>(null);
@@ -87,10 +85,10 @@ export function PushNotificationSettings() {
 
     // Fired before any await so the browser still sees this as a direct
     // response to the tap. iOS rejects the prompt otherwise.
-    const permissionRequest = requestNotificationPermission();
+    const enabling = enablePushOnDevice(configuredPublicKey);
 
     try {
-      const granted = await permissionRequest;
+      const { permission: granted, endpoint } = await enabling;
       setPermission(granted);
       if (granted !== 'granted') {
         throw new Error(
@@ -101,13 +99,7 @@ export function PushNotificationSettings() {
       }
 
       setTestResult(null);
-      const subscription = await subscribeBrowserToPush(configuredPublicKey, granted);
-      await upsertSubscription({
-        subscription: subscriptionToPayload(subscription),
-        userAgent: navigator.userAgent,
-      });
-      await activatePush({});
-      setLocalEndpoint(subscription.endpoint);
+      setLocalEndpoint(endpoint);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not enable push notifications.');
     } finally {
@@ -124,6 +116,7 @@ export function PushNotificationSettings() {
         await removeSubscription({ endpoint: subscription.endpoint });
         await subscription.unsubscribe();
       }
+      setPushOptedOut(true);
       setLocalEndpoint(null);
       setTestResult(null);
       setPermission(permissionState());

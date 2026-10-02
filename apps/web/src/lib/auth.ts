@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useConvexAuth, useQuery } from 'convex/react';
+import { useConvexAuth, useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { api } from '~/apps/convex/src/_generated/api';

@@ -11,7 +11,7 @@ import {
   MapPin,
   Share2,
 } from 'lucide-react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';

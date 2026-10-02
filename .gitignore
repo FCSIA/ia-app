@@ -1,5 +1,7 @@
 # Convex local dev
 \\
+apps/convex/.convex/
+.worktree-bootstrap.json
 
 # Dependencies
 node_modules
@@ -96,3 +98,6 @@ apps/web/next-env.d.ts
 # data
 .data
 .worktrees/
+
+# Generated from @excalidraw/excalidraw by scripts/copy-excalidraw-assets.mjs
+apps/web/public/excalidraw-assets/

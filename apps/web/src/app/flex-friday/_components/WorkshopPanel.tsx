@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, MapPin, Users, Ticket, CheckCircle } from 'lucide-react';
 import { formatTimeRange } from '../_utils';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 
 interface Props {
@@ -43,7 +44,7 @@ export function WorkshopPanel({
   actionPending,
 }: Props) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
+    <section className={`flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 ${CARD_SURFACE_FOREGROUND}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
         <h2 className="text-lg font-semibold text-foreground">Workshops</h2>

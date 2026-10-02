@@ -1,10 +1,17 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
-import { clubRolePermissionsValidator } from "../validators";
 import { schema } from "../schema";
+import { countClubChannels, countClubMembers } from "./counts";
+import {
+  getChannelAccess,
+  getChannelAccessForChannels,
+  type ChannelAccessBatchState,
+} from "./channelAccess";
+import {
+  clubRolePermissionsValidator,
+} from "../validators";
 
 export const clubUserRefValidator = v.object({
   _id: v.id("users"),
@@ -13,6 +20,7 @@ export const clubUserRefValidator = v.object({
   lastName: v.string(),
   roles: v.array(v.string()),
   avatarUrl: v.union(v.string(), v.null()),
+  isDeveloper: v.optional(v.boolean()),
 });
 
 export const clubViewerStateValidator = v.object({
@@ -51,7 +59,8 @@ export function toClubUserRef(user: Doc<"users">) {
     lastName: user.lastName,
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
-  };
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof clubUserRefValidator>;
 }
 
 export const clubSummaryValidator = v.object({
@@ -112,22 +121,14 @@ export async function clubSummaryWithCounts(
   role?: string | null,
   counts?: { members?: number; channels?: number },
 ) {
+  // Callers that already hold the rows pass their own totals. Otherwise the
+  // denormalized counters answer it, and only a club written before those
+  // existed falls back to reading every row — which is what
+  // `backfillClubCounts` removes.
   const memberCount =
-    counts?.members ??
-    (
-      await ctx.db
-        .query("clubMembers")
-        .withIndex("by_clubId", (q) => q.eq("clubId", club._id))
-        .collect()
-    ).length;
+    counts?.members ?? club.memberCount ?? (await countClubMembers(ctx, club._id));
   const channelCount =
-    counts?.channels ??
-    (
-      await ctx.db
-        .query("clubChannels")
-        .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
-        .collect()
-    ).length;
+    counts?.channels ?? club.channelCount ?? (await countClubChannels(ctx, club._id));
 
   return {
     _id: club._id,
@@ -157,20 +158,42 @@ export async function getVisibleChannels(
   clubId: Id<"clubs">,
   context: ClubContext,
   userId: Id<"users">,
+  preloaded: ChannelAccessBatchState = {},
 ) {
   const channels = await ctx.db
     .query("clubChannels")
     .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", clubId))
     .collect();
 
+  const accessByChannelId = await getChannelAccessForChannels(
+    ctx,
+    channels,
+    context,
+    userId,
+    preloaded,
+  );
+  const membershipsByChannelId = new Map(
+    await Promise.all(
+      channels
+        .filter((channel) => channel.visibility === "PRIVATE")
+        .map(async (channel) => [
+          channel._id,
+          await ctx.db
+            .query("clubChannelMemberships")
+            .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
+            .collect(),
+        ] as const),
+    ),
+  );
   const result = [];
   for (const channel of channels) {
-    const memberships = await ctx.db
-      .query("clubChannelMemberships")
-      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
-      .collect();
+    const memberships = membershipsByChannelId.get(channel._id) ?? [];
     const channelDoc = { ...channel, memberships };
-    const viewer = await toChannelViewerState(ctx, channelDoc, context, userId);
+    const access = accessByChannelId.get(channel._id)!;
+    const viewer = {
+      viewerCanRead: access.canView,
+      viewerCanPost: access.canPost,
+    };
     if (!viewer.viewerCanRead) continue;
 
     result.push({
@@ -187,6 +210,7 @@ export async function getVisibleChannels(
       includeDescendants: channel.includeDescendants,
       includeAncestorLeaders: channel.includeAncestorLeaders,
       postingPolicy: channel.postingPolicy,
+      whiteboardsEnabled: channel.whiteboardsEnabled,
       name: channel.name,
       description: channel.description,
       visibility: channel.visibility,

@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth } from "@/lib/convex-react";
 import { useTheme } from "@/lib/theme";
 import { ScreenLoader } from "@/components/ui";
 

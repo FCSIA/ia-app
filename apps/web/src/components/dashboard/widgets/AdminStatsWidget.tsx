@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { ArrowRight, AlertTriangle, Flag, Shield, Users } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';

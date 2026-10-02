@@ -11,14 +11,15 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { Slider } from "@/components/ui/slider";
-import { Dropdown, useDropdown } from "@/components/ui/dropdown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -517,7 +518,7 @@ function AlphaSlider({
 }
 
 // ---------------------------------------------------------------------------
-// FormatDropdown (custom, lightweight)
+// FormatDropdown
 // ---------------------------------------------------------------------------
 
 const FORMAT_LABELS: Record<ColorFormat, string> = {
@@ -527,57 +528,6 @@ const FORMAT_LABELS: Record<ColorFormat, string> = {
   oklch: "OKLCH",
 };
 
-function FormatItem({
-  index,
-  label,
-  checked,
-  onSelect,
-}: {
-  index: number;
-  label: string;
-  checked: boolean;
-  onSelect: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { registerItem, activeIndex, checkedIndex } = useDropdown();
-  const shape = useShape();
-
-  useEffect(() => {
-    registerItem(index, ref.current);
-    return () => registerItem(index, null);
-  }, [index, registerItem]);
-
-  const isActive = activeIndex === index;
-
-  return (
-    <div
-      ref={ref}
-      data-proximity-index={index}
-      role="menuitemradio"
-      aria-checked={checked}
-      aria-label={label}
-      tabIndex={index === (checkedIndex ?? 0) ? 0 : -1}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === " " || e.key === "Enter") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-      className={cn(
-        `relative z-10 flex items-center px-3 py-2 text-[13px] cursor-pointer outline-none transition-colors duration-80`,
-        shape.item,
-        isActive || checked ? "text-foreground" : "text-muted-foreground"
-      )}
-      style={{
-        fontVariationSettings: checked ? fontWeights.semibold : fontWeights.normal,
-      }}
-    >
-      {label}
-    </div>
-  );
-}
-
 function FormatDropdown({
   value,
   onChange,
@@ -585,108 +535,19 @@ function FormatDropdown({
   value: ColorFormat;
   onChange: (f: ColorFormat) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const shape = useShape();
-  const [rect, setRect] = useState<DOMRect | null>(null);
-
-  useEffect(() => {
-    if (open && triggerRef.current) {
-      setRect(triggerRef.current.getBoundingClientRect());
-    } else {
-      setRect(null);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (
-        !panelRef.current?.contains(e.target as Node) &&
-        !triggerRef.current?.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   const formats = ["hex", "rgb", "hsl", "oklch"] as const;
-  const checkedIdx = formats.indexOf(value);
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={cn(
-          "flex items-center justify-between gap-2 h-9 px-3 text-[13px] text-foreground border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
-          shape.input
-        )}
-        style={{ fontVariationSettings: fontWeights.medium }}
-      >
-        <span>{FORMAT_LABELS[value]}</span>
-        <svg
-          width={14}
-          height={14}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-muted-foreground"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-      {open && rect && typeof document !== "undefined" && createPortal(
-        <div
-          style={{
-            position: "fixed",
-            top: rect.bottom + 6,
-            left: rect.left,
-            zIndex: 60,
-          }}
-        >
-          <motion.div
-            ref={panelRef}
-            initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
-            animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            transition={spring.fast}
-            style={{ transformOrigin: "top center", minWidth: rect.width }}
-          >
-            <Dropdown checkedIndex={checkedIdx} className="!w-auto min-w-full">
-              {formats.map((fmt, i) => (
-                <FormatItem
-                  key={fmt}
-                  index={i}
-                  label={FORMAT_LABELS[fmt]}
-                  checked={value === fmt}
-                  onSelect={() => {
-                    onChange(fmt);
-                    setOpen(false);
-                  }}
-                />
-              ))}
-            </Dropdown>
-          </motion.div>
-        </div>,
-        document.body
-      )}
-    </>
+    <Select value={value} onValueChange={(next) => onChange(next as ColorFormat)} size="compact">
+      <SelectTrigger className="w-full" />
+      <SelectContent>
+        {formats.map((format, index) => (
+          <SelectItem key={format} value={format} index={index}>
+            {FORMAT_LABELS[format]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -795,7 +656,7 @@ const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
           inputMode={inputMode}
           aria-label={ariaLabel}
           className={cn(
-            "flex-1 min-w-0 bg-transparent text-foreground text-[13px] any-pointer-coarse:text-base outline-none tabular-nums",
+            "flex-1 min-w-0 bg-transparent text-foreground text-[13px] pointer-coarse:text-base outline-none tabular-nums",
             align === "center" && "text-center",
             align === "right" && "text-right",
             inputClassName
@@ -1096,7 +957,11 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
     return (
       <div
         ref={ref}
-        className={cn("flex flex-col gap-3 p-3 bg-card border border-border/60 rounded-xl", className)}
+        className={cn(
+          "flex flex-col gap-3 p-3 bg-card border border-border/60 rounded-xl",
+          CARD_SURFACE_FOREGROUND,
+          className,
+        )}
         style={{ width: PANEL_WIDTH }}
         {...props}
       >
@@ -1288,7 +1153,7 @@ function AlphaInput({ value, onCommit }: { value: number; onCommit: (n: number) 
 }
 
 // ---------------------------------------------------------------------------
-// ColorPickerPopover (trigger button + portal panel)
+// ColorPickerPopover
 // ---------------------------------------------------------------------------
 
 const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
@@ -1305,10 +1170,6 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
     ref
   ) => {
     const [open, setOpen] = useState(false);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const panelRef = useRef<HTMLDivElement>(null);
-    const [rect, setRect] = useState<DOMRect | null>(null);
-    const shape = useShape();
 
     const isControlled = pickerProps.value !== undefined;
     const [internalValue, setInternalValue] = useState(pickerProps.value ?? pickerProps.defaultValue ?? "#ff0000");
@@ -1322,35 +1183,6 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
       [isControlled, pickerProps]
     );
 
-    useEffect(() => {
-      if (open && triggerRef.current) {
-        setRect(triggerRef.current.getBoundingClientRect());
-      } else {
-        setRect(null);
-      }
-    }, [open]);
-
-    useEffect(() => {
-      if (!open) return;
-      const onClick = (e: MouseEvent) => {
-        if (
-          !panelRef.current?.contains(e.target as Node) &&
-          !triggerRef.current?.contains(e.target as Node)
-        ) {
-          setOpen(false);
-        }
-      };
-      const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setOpen(false);
-      };
-      document.addEventListener("mousedown", onClick);
-      document.addEventListener("keydown", onKey);
-      return () => {
-        document.removeEventListener("mousedown", onClick);
-        document.removeEventListener("keydown", onKey);
-      };
-    }, [open]);
-
     const parsed = useMemo(() => parseColor(currentValue), [currentValue]);
     const swatchColor = parsed
       ? rgbToHexStr(parsed.r, parsed.g, parsed.b, parsed.a)
@@ -1361,88 +1193,54 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
 
     return (
       <div ref={ref} className="inline-flex">
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          className={cn(
-            "flex items-center gap-2 h-9 px-2 border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
-            shape.input,
-            triggerClassName
-          )}
-          style={{ fontVariationSettings: fontWeights.medium }}
-        >
-          {triggerLabel && triggerLabelPosition === "left" && (
-            <span className="text-[13px] text-muted-foreground px-1 select-none">
-              {triggerLabel}
-            </span>
-          )}
-          <ColorTile color={swatchColor} size={20} />
-          {triggerShowValue && (
-            <span className="text-[13px] text-foreground tabular-nums">
-              {valueLabel}
-            </span>
-          )}
-          {triggerLabel && triggerLabelPosition === "right" && (
-            <span className="text-[13px] text-muted-foreground px-1 select-none">
-              {triggerLabel}
-            </span>
-          )}
-          {triggerShowRemove && (
-            <span
-              role="button"
-              aria-label="Remove color"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onTriggerRemove?.();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onTriggerRemove?.();
-                }
-              }}
-              className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer"
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex h-9 items-center gap-2 border border-border bg-transparent px-2 text-[13px] outline-none transition-colors duration-80 hover:bg-hover focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
+                triggerShowRemove && "rounded-r-none border-r-0",
+                triggerClassName,
+              )}
+              style={{ fontVariationSettings: fontWeights.medium }}
             >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </span>
-          )}
-        </button>
-        {open && rect && typeof document !== "undefined" && createPortal(
-          <div
-            style={{
-              position: "fixed",
-              top: rect.bottom + 6,
-              left: rect.left,
-              zIndex: 50,
-            }}
-          >
-            <AnimatePresence>
-              <motion.div
-                ref={panelRef}
-                initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
-                animate={{ opacity: 1, y: 0, scaleY: 1 }}
-                exit={{ opacity: 0, y: -4, scaleY: 0.96 }}
-                transition={spring.moderate}
-                style={{ transformOrigin: "top left" }}
-              >
+              {triggerLabel && triggerLabelPosition === "left" && (
+                <span className="select-none px-1 text-muted-foreground">
+                  {triggerLabel}
+                </span>
+              )}
+              <ColorTile color={swatchColor} size={20} />
+              {triggerShowValue && (
+                <span className="tabular-nums text-foreground">{valueLabel}</span>
+              )}
+              {triggerLabel && triggerLabelPosition === "right" && (
+                <span className="select-none px-1 text-muted-foreground">
+                  {triggerLabel}
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto! border-0! bg-transparent! p-0! shadow-none!">
                 <ColorPicker
                   {...pickerProps}
                   value={currentValue}
                   onValueChange={onValueChange}
                 />
-              </motion.div>
-            </AnimatePresence>
-          </div>,
-          document.body
-        )}
+          </PopoverContent>
+        </Popover>
+        {triggerShowRemove ? (
+          <button
+            type="button"
+            aria-label="Remove color"
+            onClick={onTriggerRemove}
+            className="flex h-9 items-center border border-border bg-transparent px-2 text-muted-foreground transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        ) : null}
       </div>
     );
   }

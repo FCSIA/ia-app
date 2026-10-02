@@ -2,6 +2,772 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.36",
+      "date": "2026-10-02",
+      "title": "Online status, Do Not Disturb, and admin analytics",
+      "commit": "2dc48cde",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "chat",
+          "summary": "Chat read receipts now wait for sent messages to finish saving.",
+          "commit": "f84a4648",
+          "pr": 131
+        },
+        {
+          "category": "Improved",
+          "scope": "chat ",
+          "summary": "Paste images into the composer and add/remove attachments when editing.",
+          "commit": "2dc48cde"
+        },
+        {
+          "category": "Added",
+          "scope": "presence",
+          "summary": "You can now see who is online in your clubs, and turn on Do Not Disturb to pause push notifications.",
+          "commit": "698fb5d8",
+          "pr": 145
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Analytics dashboard for super admins.",
+          "commit": "46a89691",
+          "pr": 144
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Pick which reaction a double tap adds: tap the emoji under the reactions when you hold a message.",
+          "commit": "8ec005be",
+          "pr": 142
+        },
+        {
+          "category": "Improved",
+          "scope": "whiteboards",
+          "summary": "Report archived-board unsent edits from the save path.",
+          "commit": "d2618cb4",
+          "pr": 139
+        },
+        {
+          "category": "Internal",
+          "summary": "One-command phone testing with automatic host.",
+          "commit": "68e6b7c1",
+          "pr": 140
+        }
+      ]
+    },
+    {
+      "version": "0.8.35",
+      "date": "2026-10-02",
+      "commit": "7f037ba2",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Club managers can turn whiteboards off for individual channels.",
+          "commit": "1b1aa2d5",
+          "pr": 133
+        },
+        {
+          "category": "Improved",
+          "scope": "notifications",
+          "summary": "If notifications get turned off on your phone, the dashboard now offers a one-tap way to turn them back on.",
+          "commit": "9eb82d3f",
+          "pr": 136
+        },
+        {
+          "category": "Improved",
+          "scope": "mobile",
+          "summary": "Chat read receipts now wait for sent messages to finish saving.",
+          "commit": "f5d21318",
+          "pr": 134
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club chat on phones no longer slides sideways, opens menus by accident, or starts replies when you swipe through images.",
+          "commit": "7f037ba2",
+          "pr": 141
+        },
+        {
+          "category": "Fixed",
+          "scope": "notifications",
+          "summary": "Signing out, or switching accounts on a shared device, now stops the previous account's notifications there.",
+          "commit": "5da23f28",
+          "pr": 138
+        },
+        {
+          "category": "Internal",
+          "summary": "Add Azure school environment plan and hosting migration plan.",
+          "commit": "b015a978"
+        }
+      ]
+    },
+    {
+      "version": "0.8.34",
+      "date": "2026-10-01",
+      "commit": "27185d80",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "chat",
+          "summary": "Chat channels now show where your unread messages begin when you return.",
+          "commit": "a380b943"
+        },
+        {
+          "category": "Improved",
+          "scope": "chat",
+          "summary": "Sending chat messages and thread replies no longer causes read-receipt errors.",
+          "commit": "27185d80"
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Fixed errors when opening a friend group, browsing a channel's shared files, or viewing club unit members that include a developer-designated user.",
+          "commit": "11552124"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "The dashboard stops prompting you to connect your Canvas calendar once a calendar feed is connected.",
+          "commit": "76440602"
+        },
+        {
+          "category": "Improved",
+          "summary": "Custom wallpapers now offer image-matched colors for cards and menus, with your choice saved to your account.",
+          "commit": "98a043c4",
+          "pr": 129
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Fixed an error that could prevent Groups, shared schedules, and calendar invites from loading for developer-designated users.",
+          "commit": "63584e25"
+        },
+        {
+          "category": "Improved",
+          "scope": "ui follow-ups",
+          "summary": "Gallery, dashboard, and announcements.",
+          "commit": "e9b99414"
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Cursor pagination for web and mobile feeds.",
+          "commit": "b8f486e5"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "On phones, open a club chat thread from a message's long-press menu.",
+          "commit": "1085bc9d",
+          "pr": 130
+        }
+      ]
+    },
+    {
+      "version": "0.8.33",
+      "date": "2026-09-21",
+      "commit": "53ab8c80",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Finding people and club tools is easier on a phone with a clearer layout.",
+          "commit": "53ab8c80"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Chat profile cards now show only classes you have in common.",
+          "commit": "72de06fb"
+        }
+      ]
+    },
+    {
+      "version": "0.8.32",
+      "date": "2026-09-20",
+      "commit": "885d5570",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Expand chat profile card with mutual friends and classes.",
+          "commit": "885d5570"
+        },
+        {
+          "category": "Fixed",
+          "scope": "profile",
+          "summary": "Profile names and developer badges now fit correctly in Settings on phones and larger screens.",
+          "commit": "2d03ee2b"
+        }
+      ]
+    },
+    {
+      "version": "0.8.31",
+      "date": "2026-09-19",
+      "commit": "e2ee1ec9",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "users",
+          "summary": "Add developer designation with wrench badge.",
+          "commit": "3b56c48b",
+          "pr": 123
+        },
+        {
+          "category": "Improved",
+          "scope": "tooling",
+          "summary": "Upgrade convex stack.",
+          "commit": "c83f5b7b"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "The old IA App address now points students to app.fcsia.com and includes device-specific Home Screen setup help.",
+          "commit": "6b491e28"
+        },
+        {
+          "category": "Improved",
+          "scope": "auth",
+          "summary": "The IA app now recognizes app.fcsia.com as its official sign-in address.",
+          "commit": "6734a5ca"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club member imports now finish even when a club reaches capacity, with clear results for skipped students.",
+          "commit": "eb66865f"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "People search now matches role and unit labels.",
+          "commit": "4355524e"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club chat interaction updates now build correctly.",
+          "commit": "e2ee1ec9"
+        }
+      ]
+    },
+    {
+      "version": "0.8.30",
+      "date": "2026-09-10",
+      "commit": "391970bd",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Add idempotent bulk enrollment.",
+          "commit": "a5788285"
+        },
+        {
+          "category": "Internal",
+          "summary": "Name release:ship as the standard deploy path.",
+          "commit": "193992a9"
+        },
+        {
+          "category": "Internal",
+          "scope": "release",
+          "summary": "Add one-command release:ship.",
+          "commit": "88bee80c"
+        }
+      ]
+    },
+    {
+      "version": "0.8.29",
+      "date": "2026-09-09",
+      "commit": "ff628442",
+      "changes": [
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "Dialogs and confirmations are centered again on desktop while staying above the keyboard on mobile.",
+          "commit": "ff628442"
+        }
+      ]
+    },
+    {
+      "version": "0.8.28",
+      "date": "2026-09-08",
+      "commit": "dd411f1f",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "convex",
+          "summary": "Club screens no longer show an error after your club access changes.",
+          "commit": "dd411f1f"
+        }
+      ]
+    },
+    {
+      "version": "0.8.27",
+      "date": "2026-09-08",
+      "commit": "dc07b4b3",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "mobile",
+          "summary": "The Clubs tab now explains when you have not joined a club and lets you open the club directory.",
+          "commit": "dc07b4b3"
+        },
+        {
+          "category": "Added",
+          "scope": "schedule",
+          "summary": "Schedule picture import now reads images with Google Vision and requires you to confirm each period before applying it.",
+          "commit": "ec21813f"
+        },
+        {
+          "category": "Improved",
+          "scope": "login",
+          "summary": "Sign-in campus artwork now has a subtly more visible dither pattern.",
+          "commit": "9fcc8ee7"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Canvas calendar prompt has clearer connect and dismiss controls.",
+          "commit": "e8007af1"
+        },
+        {
+          "category": "Improved",
+          "scope": "tooling",
+          "summary": "Bump convex to 1.45.0.",
+          "commit": "57922eb9"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Notifications, feedback, and Admin Panel stay at the bottom of the desktop sidebar when space allows.",
+          "commit": "8d193a35"
+        },
+        {
+          "category": "Improved",
+          "scope": "tooling",
+          "summary": "Harden worktree bootstrap modes.",
+          "commit": "4841d245"
+        },
+        {
+          "category": "Internal",
+          "summary": "Explain LAN worktree configuration.",
+          "commit": "fc5efd63"
+        }
+      ]
+    },
+    {
+      "version": "0.8.26",
+      "date": "2026-09-05",
+      "commit": "6d8970b6",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "mobile",
+          "summary": "Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner.",
+          "commit": "a1987cd8",
+          "pr": 120
+        },
+        {
+          "category": "Fixed",
+          "summary": "Sign-in now keeps one randomly selected dithered campus image for the browser session and tints it with the active theme.",
+          "commit": "6d8970b6",
+          "pr": 118
+        }
+      ]
+    },
+    {
+      "version": "0.8.25",
+      "date": "2026-09-04",
+      "commit": "35777a00",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "convex",
+          "summary": "Regenerate api types for the new counter modules.",
+          "commit": "35777a00"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Route the profile dialog through the query cache.",
+          "commit": "aa2d778f"
+        },
+        {
+          "category": "Improved",
+          "scope": "flex-friday",
+          "summary": "Denormalize session counts.",
+          "commit": "b537fa18"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Prewarm tab queries on navigation intent.",
+          "commit": "16c632c8"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Switching tabs no longer reloads the page — announcements, clubs, events and the rest open straight away.",
+          "commit": "62de866f"
+        },
+        {
+          "category": "Improved",
+          "scope": "review",
+          "summary": "Keep reply and club navigation reachable without gestures.",
+          "commit": "2add6bf3"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "The app now avoids stale PWA assets and offers a clear way to refresh a stuck sign-in session.",
+          "commit": "cfb118ea"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club people controls and roles are easier to use on touch devices.",
+          "commit": "be9b0d7e"
+        },
+        {
+          "category": "Improved",
+          "scope": "calendar",
+          "summary": "You can connect Canvas calendar feeds from the dashboard and calendar.",
+          "commit": "dfa672e4"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "You can jump from an inline reply to its original channel message.",
+          "commit": "0a5534a9"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Search close controls now stay aligned with the search field.",
+          "commit": "0b13bba1"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club member profiles now show shared clubs and let eligible students send friend requests.",
+          "commit": "43fee957"
+        },
+        {
+          "category": "Fixed",
+          "scope": "convex",
+          "summary": "Stop counting rows to render list queries.",
+          "commit": "cab9a6fb"
+        },
+        {
+          "category": "Fixed",
+          "scope": "calendar",
+          "summary": "Tolerate non-student friend queries.",
+          "commit": "fdf17a47"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Channel rows no longer grow when hover controls appear on touch-capable Windows devices.",
+          "commit": "240c1a9a"
+        },
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "Search now opens as one clean panel without an extra frame on desktop or mobile.",
+          "commit": "3e78fc19"
+        }
+      ]
+    },
+    {
+      "version": "0.8.24",
+      "date": "2026-09-04",
+      "commit": "e0c9f6ff",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "You can mention club roles and substructures in channels.",
+          "commit": "e0c9f6ff"
+        },
+        {
+          "category": "Improved",
+          "scope": "notifications",
+          "summary": "Reading a chat or opening notifications now clears matching alerts automatically.",
+          "commit": "e2f182ff"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Profile pictures, club logos, and club banners now use the same crop-and-adjust flow.",
+          "commit": "180bc650"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Theme surfaces now stay legible across every appearance, and the browser icon follows your selected theme.",
+          "commit": "9a9bc4a1"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Shared screenshots and photos now keep their original shape instead of being cropped.",
+          "commit": "01f05b54"
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Show student pathways in user table.",
+          "commit": "c53b3c31"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club branding images now have direct edit controls, club names sit cleanly below their logo, and banner uploads work reliably.",
+          "commit": "0c8258af"
+        }
+      ]
+    },
+    {
+      "version": "0.8.23",
+      "date": "2026-09-02",
+      "commit": "0669ac17",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Filter People by substructure, role, and member type — quickly narrow to the group you need.",
+          "commit": "d2d350dd"
+        },
+        {
+          "category": "Added",
+          "scope": "web",
+          "summary": "Allow local Convex images in CSP.",
+          "commit": "650b96e4"
+        },
+        {
+          "category": "Added",
+          "scope": "themes",
+          "summary": "Bubblegum now has a dark pink option for low-light use.",
+          "commit": "7b11ef50"
+        },
+        {
+          "category": "Added",
+          "scope": "profile",
+          "summary": "Adjust and crop your profile picture before saving — zoom and drag to frame it perfectly.",
+          "commit": "b948d569"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Custom colors now reject unreadable combinations, and automatic Custom surfaces stay dark and legible.",
+          "commit": "d0f78bcb"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Search now opens as one clear panel instead of a nested dialog.",
+          "commit": "daf93a1d"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Custom themes now keep text readable across schedule panels, navigation, cards, menus, and popups.",
+          "commit": "d91ee4ab"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Tap any profile picture to view that person's profile — works great on your phone.",
+          "commit": "2d920619"
+        },
+        {
+          "category": "Improved",
+          "summary": "Revert \"navigation: expand mobile tab bar\".",
+          "commit": "e46a394f"
+        },
+        {
+          "category": "Improved",
+          "scope": "navigation",
+          "summary": "Your mobile tab bar can show up to five favorite destinations.",
+          "commit": "0688fcda"
+        },
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "Fixed the command palette layout so search works cleanly on both desktop and mobile again.",
+          "commit": "0669ac17"
+        },
+        {
+          "category": "Fixed",
+          "scope": "navigation",
+          "summary": "The mobile tab bar keeps the app's familiar icons while fitting more shortcuts.",
+          "commit": "4a880ac6"
+        }
+      ]
+    },
+    {
+      "version": "0.8.22",
+      "date": "2026-09-01",
+      "commit": "7d019d5",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Deleting a friend group now returns you to the groups list instead of showing an error page.",
+          "commit": "7d019d5"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Club cards, menus, and reaction details now use readable text colors with custom themes.",
+          "commit": "6bc7ee8"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Mentions now include people who can access your club channel, including inherited house leaders.",
+          "commit": "223f179"
+        },
+        {
+          "category": "Improved",
+          "scope": "navigation",
+          "summary": "Your mobile tab bar now uses filled icons and can show up to five favorite destinations.",
+          "commit": "8880f5d"
+        }
+      ]
+    },
+    {
+      "version": "0.8.21",
+      "date": "2026-09-01",
+      "commit": "3dba3a8",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Fun facts now rotate through more topics, with special facts appearing less often.",
+          "commit": "3dba3a8"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club chat now keeps navigation and unread updates responsive as activity grows.",
+          "commit": "d262aab"
+        },
+        {
+          "category": "Improved",
+          "scope": "convex",
+          "summary": "Reduce hot read amplification.",
+          "commit": "7a72403"
+        }
+      ]
+    },
+    {
+      "version": "0.8.20",
+      "date": "2026-08-31",
+      "commit": "e172d92",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Dashboard calendar controls now live in the header, selected dates stay contained, and event dots remain visible.",
+          "commit": "e172d92"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Fun facts now feature more variety, with Phoenix facts appearing less often.",
+          "commit": "7550cfd"
+        }
+      ]
+    },
+    {
+      "version": "0.8.19",
+      "date": "2026-08-31",
+      "commit": "fd62daf",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "calendar",
+          "summary": "Long agenda titles now fade at hidden edges, calendar actions align right, and sticky date headers stay opaque.",
+          "commit": "129579c"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Club chat now keeps your place while older messages load and keeps consecutive messages compact.",
+          "commit": "fd62daf"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "The Dashboard calendar now aligns its controls cleanly and keeps selected-day event indicators visible.",
+          "commit": "57996e6"
+        },
+        {
+          "category": "Improved",
+          "scope": "calendar",
+          "summary": "Calendar agenda rows now keep long titles on one scrollable line and use clean circular action buttons.",
+          "commit": "88bce51"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "You can select and copy notification text on a computer.",
+          "commit": "bd61057"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Consecutive messages in club chats now stay grouped so names are not repeated.",
+          "commit": "cb754c3"
+        },
+        {
+          "category": "Improved",
+          "scope": "calendar",
+          "summary": "Calendar now uses readable agenda and day views on phones, with consistent event views and a compact Dashboard date picker.",
+          "commit": "84e5fd8"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Custom themes now let you choose page text color and automatically use higher-contrast text on custom surfaces.",
+          "commit": "ead3f2d"
+        },
+        {
+          "category": "Fixed",
+          "scope": "calendar",
+          "summary": "Calendar views now scroll correctly, show readable agenda details, and make Canvas connections easier to set up.",
+          "commit": "0ac5f08"
+        }
+      ]
+    },
+    {
+      "version": "0.8.18",
+      "date": "2026-08-31",
+      "commit": "4da382d",
+      "changes": [
+        {
+          "category": "Improved",
+          "summary": "Clubs now keep your place when you switch tabs and show cleaner timestamps.",
+          "commit": "4da382d"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Selecting a club chat mention now works reliably in iPhone and iPad PWAs.",
+          "commit": "c168abb"
+        },
+        {
+          "category": "Fixed",
+          "scope": "calendar",
+          "summary": "Canvas and other connected ICS calendars no longer prevent the calendar from opening after events sync.",
+          "commit": "994632c"
+        }
+      ]
+    },
+    {
       "version": "0.8.17",
       "date": "2026-08-29",
       "commit": "a20d794",

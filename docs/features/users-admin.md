@@ -12,7 +12,7 @@ User management is handled through Convex functions and the Admin Panel.
 
 - Lists students and staff for admin workflows.
 - Creates and links app users to Better Auth users.
-- Imports and exports student rows by CSV, and imports administrator accounts by CSV.
+- Imports and exports student rows by CSV, bulk-updates student grade and pathway fields by CSV, and imports administrator accounts by CSV.
 - Activates, deactivates, bulk-deletes, assigns roles, and resets passwords.
 - Stores dashboard layout preferences for each user.
 
@@ -31,6 +31,7 @@ User management is handled through Convex functions and the Admin Panel.
 - `api.users.admin.list`
 - `api.users.admin.createUser`
 - `api.users.admin.importStudents`
+- `api.users.admin.updateStudents`
 - `api.users.admin.importAdministrators`
 - `api.users.admin.exportStudents`
 - `api.users.admin.activate`

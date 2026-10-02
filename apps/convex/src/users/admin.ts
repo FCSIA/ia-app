@@ -62,6 +62,13 @@ const studentImportRowValidator = v.object({
   email: v.optional(v.string()),
 });
 
+const studentBulkUpdateRowValidator = v.object({
+  uniqueId: v.string(),
+  gradeLevel: v.optional(v.union(v.number(), v.null())),
+  major: v.optional(v.union(pathwayValidator, v.null())),
+  minor: v.optional(v.union(pathwayValidator, v.null())),
+});
+
 const administratorImportRowValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
@@ -292,6 +299,27 @@ const studentImportRowResultValidator = v.union(
   }),
 );
 
+type StudentBulkUpdateRowResult =
+  | { kind: "updated" }
+  | { kind: "skipped"; error?: string };
+
+type StudentBulkUpdateResult = {
+  updated: number;
+  skipped: number;
+  errors: string[];
+};
+
+const studentBulkUpdateRowResultValidator = v.union(
+  v.object({ kind: v.literal("updated") }),
+  v.object({ kind: v.literal("skipped"), error: v.optional(v.string()) }),
+);
+
+const studentBulkUpdateResultValidator = v.object({
+  updated: v.number(),
+  skipped: v.number(),
+  errors: v.array(v.string()),
+});
+
 const STUDENT_IMPORT_BATCH_SIZE = 5;
 const ADMINISTRATOR_IMPORT_BATCH_SIZE = 5;
 
@@ -379,6 +407,61 @@ export const importStudentRow = internalMutation({
   },
 });
 
+export const updateStudentRow = internalMutation({
+  args: {
+    row: studentBulkUpdateRowValidator,
+  },
+  returns: studentBulkUpdateRowResultValidator,
+  handler: async (ctx, args): Promise<StudentBulkUpdateRowResult> => {
+    const uniqueId = normalizeUniqueId(args.row.uniqueId);
+    const skip = (error?: string): StudentBulkUpdateRowResult => ({
+      kind: "skipped",
+      ...(error === undefined ? {} : { error }),
+    });
+
+    if (!uniqueId) return skip("missing student ID");
+    if (
+      args.row.gradeLevel === undefined &&
+      args.row.major === undefined &&
+      args.row.minor === undefined
+    ) {
+      return skip("no fields to update");
+    }
+    if (
+      args.row.gradeLevel !== undefined &&
+      args.row.gradeLevel !== null &&
+      (args.row.gradeLevel < 9 || args.row.gradeLevel > 12)
+    ) {
+      return skip("grade level must be between 9 and 12");
+    }
+
+    const student = await ctx.db
+      .query("users")
+      .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
+      .unique();
+    if (!student || !student.isStudent) return skip(`student ID '${uniqueId}' was not found`);
+
+    const major = args.row.major === undefined ? student.major : args.row.major ?? undefined;
+    const minor = args.row.minor === undefined ? student.minor : args.row.minor ?? undefined;
+    if (major && minor && major === minor) {
+      return skip("minor pathway must be different from major pathway");
+    }
+
+    const updates: {
+      gradeLevel?: number;
+      major?: Pathway;
+      minor?: Pathway;
+      updatedAt: number;
+    } = { updatedAt: Date.now() };
+    if (args.row.gradeLevel !== undefined) updates.gradeLevel = args.row.gradeLevel ?? undefined;
+    if (args.row.major !== undefined) updates.major = args.row.major ?? undefined;
+    if (args.row.minor !== undefined) updates.minor = args.row.minor ?? undefined;
+    await ctx.db.patch(student._id, updates);
+
+    return { kind: "updated" };
+  },
+});
+
 export const logStudentImportAudit = internalMutation({
   args: {
     actorId: v.id("users"),
@@ -397,6 +480,25 @@ export const logStudentImportAudit = internalMutation({
         skipped: args.skipped,
         generatedPasswords: args.generatedPasswords,
       },
+    });
+    return null;
+  },
+});
+
+export const logStudentBulkUpdateAudit = internalMutation({
+  args: {
+    actorId: v.id("users"),
+    updated: v.number(),
+    skipped: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    await logAuditEvent(ctx, {
+      actorId: args.actorId,
+      action: "USER_CSV_BULK_UPDATED",
+      entityType: "User",
+      entityId: "bulk",
+      meta: { updated: args.updated, skipped: args.skipped },
     });
     return null;
   },
@@ -500,6 +602,64 @@ export const importStudents = action({
       console.error("Failed to record student import audit event", error);
     }
 
+    return results;
+  },
+});
+
+export const updateStudents = action({
+  args: {
+    rows: v.array(studentBulkUpdateRowValidator),
+  },
+  returns: studentBulkUpdateResultValidator,
+  handler: async (ctx, args): Promise<StudentBulkUpdateResult> => {
+    const actorId: Id<"users"> = await ctx.runQuery(
+      internal.users.admin.requireStudentImportActor,
+      {},
+    );
+    if (args.rows.length === 0) throw new ConvexError("Import at least one student update.");
+    if (args.rows.length > 200) throw new ConvexError("Update at most 200 students at a time.");
+
+    const results: StudentBulkUpdateResult = { updated: 0, skipped: 0, errors: [] };
+    const seenUniqueIds = new Set<string>();
+    const work = args.rows.map((row, index) => {
+      const uniqueId = normalizeUniqueId(row.uniqueId);
+      const duplicateWithinImport = uniqueId.length > 0 && seenUniqueIds.has(uniqueId);
+      if (uniqueId.length > 0) seenUniqueIds.add(uniqueId);
+      return { row, rowNumber: index + 2, uniqueId, duplicateWithinImport };
+    });
+
+    for (let start = 0; start < work.length; start += STUDENT_IMPORT_BATCH_SIZE) {
+      const batch = work.slice(start, start + STUDENT_IMPORT_BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(async (entry): Promise<StudentBulkUpdateRowResult> => {
+        if (entry.duplicateWithinImport) {
+          return { kind: "skipped", error: `duplicate student ID '${entry.uniqueId}' in this CSV` };
+        }
+        try {
+          return await ctx.runMutation(internal.users.admin.updateStudentRow, { row: entry.row });
+        } catch (error) {
+          return { kind: "skipped", error: error instanceof Error ? error.message : "Unknown error" };
+        }
+      }));
+
+      for (const [batchIndex, result] of batchResults.entries()) {
+        if (result.kind === "updated") {
+          results.updated += 1;
+        } else {
+          results.skipped += 1;
+          if (result.error) results.errors.push(`Row ${batch[batchIndex]!.rowNumber}: ${result.error}`);
+        }
+      }
+    }
+
+    try {
+      await ctx.runMutation(internal.users.admin.logStudentBulkUpdateAudit, {
+        actorId,
+        updated: results.updated,
+        skipped: results.skipped,
+      });
+    } catch (error) {
+      console.error("Failed to record student bulk update audit event", error);
+    }
     return results;
   },
 });
@@ -761,6 +921,42 @@ export const setFeedbackReviewer = mutation({
     await logAuditEvent(ctx, {
       actorId: actor._id,
       action: "USER_FEEDBACK_REVIEW_ACCESS_UPDATED",
+      entityType: "User",
+      entityId: target._id,
+      meta: { enabled: args.enabled },
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Grants or revokes the developer designation (wrench badge). Only a
+ * SUPER_ADMIN may change it; the flag is never accepted from any self-service
+ * mutation, so regular users cannot set it on themselves.
+ */
+export const setDeveloper = mutation({
+  args: {
+    userId: v.id("users"),
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+
+    const target = await ctx.db.get(args.userId);
+    if (!target) throw new ConvexError("User not found.");
+    if (target.isDeveloper === true && args.enabled) return null;
+    if (!target.isDeveloper && !args.enabled) return null;
+
+    await ctx.db.patch(target._id, {
+      isDeveloper: args.enabled,
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "USER_DEVELOPER_STATUS_UPDATED",
       entityType: "User",
       entityId: target._id,
       meta: { enabled: args.enabled },

@@ -49,6 +49,9 @@ bun run dev
 > secrets and settings. Do not copy `apps/convex/.env.local` from another
 > worktree.
 
+For a short-lived UI-only worktree that can reuse an existing dependency install
+and explicitly selected client environment files, see [Git worktrees](worktrees.md).
+
 ## Browser Push Keys (Optional)
 
 Browser push is optional for basic local development, but notification
@@ -57,7 +60,7 @@ settings expect VAPID keys before push can be enabled.
 1. Generate key pair:
 
    ```bash
-   bun run --filter cvx exec web-push generate-vapid-keys
+   bun run --cwd apps/convex web-push generate-vapid-keys
    ```
 
 2. Set public key in `apps/web/.env.local`:
@@ -69,9 +72,9 @@ settings expect VAPID keys before push can be enabled.
 3. Set matching deployment variables on Convex:
 
    ```bash
-   bun run --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
-   bun run --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
-   bun run --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+   bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "..."
+   bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "..."
+   bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
    ```
 
    *(Prefix commands with `direnv exec .` if using Nix/direnv).*
@@ -81,7 +84,7 @@ settings expect VAPID keys before push can be enabled.
 Reset the local demo data from the CLI:
 
 ```bash
-bun run --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:resetAndSeed \
   '{"profile":"development"}'
@@ -90,7 +93,7 @@ bun run --filter cvx exec convex run \
 Monitor the asynchronous run:
 
 ```bash
-bun run --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:seedStatus \
   '{}' \

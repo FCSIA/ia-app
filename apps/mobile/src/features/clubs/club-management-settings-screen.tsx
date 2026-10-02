@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import { AtSign, ChevronRight, Trash2 } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";

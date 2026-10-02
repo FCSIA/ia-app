@@ -5,7 +5,8 @@ import { internal } from "../_generated/api";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, type ClubContext } from "../clubs/access";
 import { assertSafeStoredFile } from "./fileSignatures";
-import { uploadRateLimiter } from "../rateLimits";
+import { chatGifRateLimiter, uploadRateLimiter } from "../rateLimits";
+import { chatGifLink, tenorGifFromHtml } from "../../../shared/chat/gifs";
 import { recordUploadUsage } from "./quota";
 import {
   STAGED_CHAT_ATTACHMENT_TTL_MS,
@@ -29,8 +30,145 @@ import {
 
 export { validateChatAttachmentMetadata } from "./chatAttachments";
 
+/** Links that could not be resolved are retried after this long. */
+const GIF_LINK_RETRY_MS = 60 * 60 * 1000;
+const MAX_TENOR_PAGE_BYTES = 512 * 1024;
+
+const gifLinkResolutionValidator = v.union(
+  v.object({ cached: v.literal(true), mediaUrl: v.union(v.string(), v.null()) }),
+  v.object({ cached: v.literal(false) }),
+);
+
+/**
+ * Returns a stored resolution for a Tenor share link, or rate-limits the
+ * caller before the action fetches the page itself.
+ */
+export const prepareGifLinkResolution = internalMutation({
+  args: { url: v.string() },
+  returns: gifLinkResolutionValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const stored = await ctx.db
+      .query("chatGifLinkResolutions")
+      .withIndex("by_url", (q) => q.eq("url", args.url))
+      .unique();
+    if (
+      stored &&
+      (stored.mediaUrl !== null || Date.now() - stored.resolvedAt < GIF_LINK_RETRY_MS)
+    ) {
+      return { cached: true as const, mediaUrl: stored.mediaUrl };
+    }
+    const rate = await chatGifRateLimiter.limit(ctx, "previewsByUser", { key: user._id });
+    if (!rate.ok) throw new ConvexError("Too many GIF previews. Try again later.");
+    return { cached: false as const };
+  },
+});
+
+export const storeGifLinkResolution = internalMutation({
+  args: { url: v.string(), mediaUrl: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const stored = await ctx.db
+      .query("chatGifLinkResolutions")
+      .withIndex("by_url", (q) => q.eq("url", args.url))
+      .unique();
+    const resolution = { mediaUrl: args.mediaUrl, resolvedAt: Date.now() };
+    if (stored) await ctx.db.patch(stored._id, resolution);
+    else await ctx.db.insert("chatGifLinkResolutions", { url: args.url, ...resolution });
+    return null;
+  },
+});
+
+/**
+ * Resolves a public Tenor share page; never fetches an arbitrary client URL.
+ * Each share link is fetched once and stored, so viewers share the result.
+ */
+export const resolveChatGifLink = action({
+  args: { url: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args): Promise<string | null> => {
+    if (!(await ctx.auth.getUserIdentity())) throw new ConvexError("Not authenticated");
+    const link = args.url.length <= 2048 ? chatGifLink(args.url) : null;
+    if (!link) return null;
+    if (link.mediaUrl) return link.mediaUrl;
+    const prepared = await ctx.runMutation(
+      internal.uploads.files.prepareGifLinkResolution,
+      { url: link.url },
+    );
+    if (prepared.cached) return prepared.mediaUrl;
+    const mediaUrl = await fetchTenorGifMedia(link.url);
+    // A timeout or network error says nothing about the link; try again later.
+    if (mediaUrl === undefined) return null;
+    await ctx.runMutation(internal.uploads.files.storeGifLinkResolution, {
+      url: link.url,
+      mediaUrl,
+    });
+    return mediaUrl;
+  },
+});
+
+/** The share page's GIF media, null when it has none, undefined on failure. */
+async function fetchTenorGifMedia(url: string): Promise<string | null | undefined> {
+  try {
+    const response = await fetchTenorGifPage(url);
+    if (typeof response === "string" || response === null) return response;
+    if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
+      await response.body?.cancel();
+      return null;
+    }
+    const reader = response.body?.getReader();
+    if (!reader) return null;
+    const decoder = new TextDecoder();
+    let html = "";
+    let bytes = 0;
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > MAX_TENOR_PAGE_BYTES) return null;
+        html += decoder.decode(chunk.value, { stream: true });
+        const media = tenorGifFromHtml(html);
+        if (media) return media;
+      }
+      return tenorGifFromHtml(html + decoder.decode());
+    } finally {
+      await reader.cancel();
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Follows at most two redirects between Tenor share URLs. A redirect straight
+ * to allowed GIF media (short links often do this) is returned as its URL.
+ */
+export async function fetchTenorGifPage(value: string): Promise<Response | string | null> {
+  let link = chatGifLink(value);
+  const signal = AbortSignal.timeout(5000);
+  for (let redirects = 0; redirects <= 2; redirects++) {
+    if (!link) return null;
+    if (link.mediaUrl) return redirects > 0 ? link.mediaUrl : null;
+    const response = await fetch(link.url, { redirect: "manual", signal, headers: { Accept: "text/html" } });
+    if (response.status < 300 || response.status >= 400) return response;
+    const location = response.headers.get("location");
+    await response.body?.cancel();
+    if (!location) return null;
+    link = chatGifLink(new URL(location, link.url).toString());
+  }
+  return null;
+}
+
 async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE" | "FEEDBACK_IMAGE" | "ANNOUNCEMENT_IMAGE"; fallbackMimeType?: string }) {
-  const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, args);
+  const prepared = await ctx.runMutation(
+    internal.uploads.uploadIntents.prepareUploadValidation,
+    {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      purpose: args.purpose,
+    },
+  );
   try {
     const response = await fetch(prepared.url);
     if (!response.ok) throw new ConvexError("Upload not found");

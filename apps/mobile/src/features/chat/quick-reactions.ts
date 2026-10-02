@@ -11,6 +11,7 @@ export const QUICK_REACTIONS: ReadonlyArray<{
   { payload: "CELEBRATE", label: "Celebrate", glyph: "🎉" },
   { payload: "EYES", label: "Watching", glyph: "👀" },
   { payload: "DONE", label: "Done", glyph: "✅" },
+  { payload: "SKULL", label: "Skull", glyph: "💀" },
 ];
 
 const REACTION_PAYLOADS = new Set<QuickReaction>(

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import { Elevated } from '@/lib/elevated';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
 import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
@@ -11,6 +12,7 @@ import {
   AtSign,
   BellRing,
   CalendarDays,
+  ChevronDown,
   Hash,
   Megaphone,
   ShieldAlert,
@@ -20,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { hasRole, isSuperAdmin, useCurrentUser } from '@/lib/auth';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
@@ -74,12 +77,15 @@ export function NotificationSettingsPanel() {
   return (
     <div className="flex flex-col gap-6">
       <PushNotificationSettings />
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <BellRing className="size-4 text-muted-foreground" aria-hidden />
-          <h2 className="text-sm font-semibold">Global</h2>
+      <section className="flex flex-col gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <BellRing className="size-4 text-primary" aria-hidden />
+            <h2 className="text-sm font-semibold text-foreground">General notifications</h2>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Choose which school-wide updates reach your inbox.</p>
         </div>
-        <div className="flex flex-col gap-1">
+        <Elevated offset={1} className="overflow-hidden rounded-xl border border-border bg-card">
           {globalSettings.map((setting) => {
             const Icon = CATEGORY_ICONS[setting.key];
             const preference = preferences?.find(
@@ -92,7 +98,7 @@ export function NotificationSettingsPanel() {
             return (
               <div
                 key={setting.key}
-                className="flex min-w-0 items-center justify-between gap-3 py-1.5"
+                className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0 transition-colors hover:bg-hover"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <Icon
@@ -124,13 +130,16 @@ export function NotificationSettingsPanel() {
               </div>
             );
           })}
-        </div>
+        </Elevated>
       </section>
       {!hasAdministrativeClubAccess ? (
-        <section className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <AtSign className="size-4 text-muted-foreground" aria-hidden />
-            <h2 className="text-sm font-semibold">Clubs</h2>
+        <section className="flex flex-col gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <AtSign className="size-4 text-primary" aria-hidden />
+              <h2 className="text-sm font-semibold text-foreground">Club notifications</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Open a club to choose notifications for each channel.</p>
           </div>
           {clubsLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
@@ -159,6 +168,7 @@ function ClubNotificationChannels({
   const channels = useQuery(api.clubs.channels.list, { clubId }) ?? [];
   const preferences = useQuery(api.notifications.preferences.list);
   const [optimisticClubEnabled, setOptimisticClubEnabled] = useState<boolean | null>(null);
+  const [open, setOpen] = useState(false);
   const [optimisticChannelEnabled, setOptimisticChannelEnabled] = useState<
     Record<string, boolean>
   >({});
@@ -187,29 +197,43 @@ function ClubNotificationChannels({
   }, [optimisticClubEnabled, preferences, storedClubEnabled]);
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
-      <div className="flex min-w-0 items-center justify-between gap-3 bg-surface-3 px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <Megaphone
-            className={clubEnabled ? 'size-4 shrink-0 text-primary' : 'size-4 shrink-0 text-muted-foreground'}
-            aria-hidden
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Elevated offset={1} className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2.5">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`${open ? 'Collapse' : 'Expand'} ${clubName} notification settings`}
+            >
+              <Megaphone
+                className={clubEnabled ? 'size-4 shrink-0 text-primary' : 'size-4 shrink-0 text-muted-foreground'}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-foreground">{clubName}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {channels.length} channel{channels.length === 1 ? '' : 's'}
+                </span>
+              </span>
+              <ChevronDown
+                className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+          <NotificationScopeSwitch
+            category="CLUB_ANNOUNCEMENT"
+            label={`${clubName} notifications`}
+            clubId={clubId}
+            compact
+            className="shrink-0"
+            onOptimisticChange={setOptimisticClubEnabled}
           />
-          <p className="truncate text-sm font-semibold text-foreground">{clubName}</p>
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground" title="Visible channels">
-            {channels.length}
-          </span>
         </div>
-        <NotificationScopeSwitch
-          category="CLUB_ANNOUNCEMENT"
-          label={`${clubName} notifications`}
-          clubId={clubId}
-          compact
-          className="shrink-0"
-          onOptimisticChange={setOptimisticClubEnabled}
-        />
-      </div>
-      {channels.length > 0 ? (
-        <div className="divide-y divide-border/60">
+        <CollapsibleContent>
+          {channels.length > 0 ? (
+            <div className="divide-y divide-border/60 border-t border-border/60">
           {channels.map((channel) => {
             const channelScopeKey = `channel:${channel._id}`;
             const channelPreference = preferences?.find(
@@ -262,10 +286,12 @@ function ClubNotificationChannels({
               </div>
             );
           })}
-        </div>
-      ) : (
-        <p className="px-3 py-2 text-xs text-muted-foreground">No channels.</p>
-      )}
-    </div>
+            </div>
+          ) : (
+            <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">No channels available.</p>
+          )}
+        </CollapsibleContent>
+      </Elevated>
+    </Collapsible>
   );
 }

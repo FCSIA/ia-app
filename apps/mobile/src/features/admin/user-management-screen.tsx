@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import { Search, UserRoundX, Users } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";

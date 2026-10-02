@@ -1,4 +1,4 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { hashPassword } from "better-auth/crypto";
 import { createAuth } from "../auth";
 import { components } from "../_generated/api";
@@ -22,6 +22,7 @@ const userProfileValidator = schema
     "email",
     "isActive",
     "avatarUrl",
+    "isDeveloper",
   );
 
 export const userSelfProfileValidator = userProfileValidator.extend(
@@ -31,8 +32,12 @@ export const userSelfProfileValidator = userProfileValidator.extend(
       "mustResetPassword",
       "canReviewFeedback",
       "dashboardLayout",
+      "mobileTabLayout",
       "use24HourTime",
+      "chatDoubleTapReaction",
       "customBackgroundUrl",
+      "customBackgroundPalette",
+      "customBackgroundTint",
     ).fields,
 );
 
@@ -53,10 +58,15 @@ export function toUserSelfProfile(user: Doc<"users">) {
     mustResetPassword: user.mustResetPassword,
     canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
+    mobileTabLayout: user.mobileTabLayout,
     use24HourTime: user.use24HourTime ?? false,
+    chatDoubleTapReaction: user.chatDoubleTapReaction,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
-  };
+    customBackgroundPalette: user.customBackgroundPalette,
+    customBackgroundTint: user.customBackgroundTint,
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof userSelfProfileValidator>;
 }
 
 export function toAdminUserProfile(user: Doc<"users">) {
@@ -72,7 +82,8 @@ export function toAdminUserProfile(user: Doc<"users">) {
     email: user.email,
     isActive: user.isActive,
     avatarUrl: user.avatarUrl,
-  };
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof adminUserProfileValidator>;
 }
 
 export const temporaryPasswordAlphabet =

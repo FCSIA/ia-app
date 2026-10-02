@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { usePaginatedQuery, useQuery } from 'convex/react';
+import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';

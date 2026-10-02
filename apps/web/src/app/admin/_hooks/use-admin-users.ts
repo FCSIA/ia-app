@@ -1,7 +1,7 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -111,23 +111,25 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
   const assignRoles = useMutation(api.users.admin.assignRoles);
   const resetPassword = useMutation(api.users.admin.resetPassword);
   const deleteUsers = useMutation(api.users.admin.deleteUsers);
+  const setDeveloper = useMutation(api.users.admin.setDeveloper);
 
-  const runUserMutation = async <T,>(
+  const runUserMutation = async <T, TResult = boolean>(
     action: () => Promise<T>,
     successTitle: string,
     successDescription?: (result: T) => string,
+    resultMapper?: (result: T) => TResult,
   ) => {
     try {
       setIsUserMutationPending(true);
       const result = await action();
       toast({ title: successTitle, description: successDescription?.(result) });
-      return true;
+      return (resultMapper ? resultMapper(result) : true) as TResult;
     } catch (e: unknown) {
       toast({
         title: e instanceof Error ? e.message : 'Request failed',
         variant: 'destructive',
       });
-      return false;
+      return undefined;
     } finally {
       setIsUserMutationPending(false);
     }
@@ -194,12 +196,14 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
         () => activateUser({ userId: userId as Id<'users'> }),
         'Activated',
       ),
-    onResetPassword: (targetUser: AdminUserRecord) =>
-      void runUserMutation(
+    onResetPassword: async (targetUser: AdminUserRecord) => {
+      return await runUserMutation(
         () => resetPassword({ userId: targetUser._id as Id<'users'> }),
         'Temporary password generated',
-        (result) => `${targetUser.firstName} ${targetUser.lastName}: ${result.temporaryPassword}`,
-      ),
+        undefined,
+        (result) => result.temporaryPassword,
+      );
+    },
     onDeleteUsers: async (userIds: string[]) =>
       await runUserMutation(
         () => deleteUsers({ userIds: userIds as Id<'users'>[] }),
@@ -209,6 +213,12 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
     isDeleteUsersPending: isUserMutationPending,
     isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,
+    isSetDeveloperPending: isUserMutationPending,
+    onSetDeveloper: (payload: { _id: string; enabled: boolean }) =>
+      void runUserMutation(
+        () => setDeveloper({ userId: payload._id as Id<'users'>, enabled: payload.enabled }),
+        payload.enabled ? 'Developer badge granted' : 'Developer badge removed',
+      ),
     isAssignRolesPending: isUserMutationPending,
     onAssignRoles: (payload: { _id: string; roles: string[] }) =>
       void runUserMutation(

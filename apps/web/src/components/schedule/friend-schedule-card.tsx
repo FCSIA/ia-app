@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { fullName, getCurrentScheduleStatusForResolvedDay } from "./schedule-utils";
 import { FriendScheduleDialog } from "./friend-schedule-dialog";
 import { ResolvedSchoolDay, ScheduleFriend, SchoolDayBlock } from "./types";
@@ -52,6 +53,7 @@ export function FriendScheduleCard({
       <article
         className={cn(
           "flex min-w-0 items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-3 shadow-surface-1 sm:px-5",
+          CARD_SURFACE_FOREGROUND,
           emphasized && "ring-1 ring-primary/60",
         )}
       >
@@ -89,6 +91,7 @@ export function FriendScheduleCard({
     <article
       className={cn(
         "rounded-xl bg-surface-2 px-4 py-3 shadow-surface-1 transition-shadow sm:px-5 sm:py-4",
+        CARD_SURFACE_FOREGROUND,
         emphasized && "ring-1 ring-primary/60",
       )}
     >

@@ -8,7 +8,28 @@ function origin(value: string | undefined) {
 const convexUrl = origin(process.env.NEXT_PUBLIC_CONVEX_URL);
 const convexSiteUrl = origin(process.env.NEXT_PUBLIC_CONVEX_SITE_URL);
 const websocketUrl = convexUrl?.replace(/^http/, 'ws');
-const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl].filter(Boolean).join(' ');
+// Local Convex generates storage URLs from its loopback deployment URL even
+// when the browser uses a LAN hostname for ordinary client traffic.
+const localStorageOrigins = process.env.NODE_ENV === 'development'
+  ? [process.env.CONVEX_URL, process.env.CONVEX_SITE_URL]
+      .map(origin)
+      .filter((value) => value && ['127.0.0.1', 'localhost'].includes(new URL(value).hostname))
+  : [];
+const connectSources = [...new Set(["'self'", convexUrl, convexSiteUrl, websocketUrl, ...localStorageOrigins].filter(Boolean))].join(' ');
+const imageSources = [
+  "'self'",
+  'data:',
+  'blob:',
+  // Chat GIF previews load only from these CDNs; keep in sync with
+  // GIF_MEDIA_HOST in apps/shared/chat/gifs.ts.
+  'https://*.giphy.com',
+  'https://*.tenor.com',
+  convexUrl,
+  convexSiteUrl,
+  ...localStorageOrigins,
+  'https://*.convex.cloud',
+  'https://*.convex.site',
+].filter(Boolean).join(' ');
 const isProduction = process.env.NODE_ENV === 'production';
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -17,7 +38,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "object-src 'none'",
   `connect-src ${connectSources}`,
-  "img-src 'self' data: blob: https://*.convex.cloud https://*.convex.site",
+  `img-src ${imageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
@@ -50,10 +71,23 @@ const nextConfig: NextConfig = {
   },
 
   // Allow the requested LocalTunnel hostname to load Next.js dev resources.
+  // The phone-testing host written by `pnpm dev:phone`, so a device can load
+  // dev assets from whatever network address the machine has today.
   allowedDevOrigins: [
     'ia-app-dev.loca.lt',
-    '10.0.0.231',
+    ...[convexUrl ? new URL(convexUrl).hostname : null].filter(
+      (host): host is string => !!host && !['localhost', '127.0.0.1'].includes(host),
+    ),
   ],
+
+  // `/_meta` is the documented deployment marker, but the App Router treats
+  // folders starting with an underscore as private and never routes them, so
+  // the handler lives at /api/meta and this serves it at the public URL.
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: '/_meta', destination: '/api/meta' }],
+    };
+  },
 
   // PWA support via service worker (manual, no paid plugin needed)
   async headers() {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { pickDailySchoolMessage } from "@ia/fun-facts";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -72,7 +72,7 @@ export function WelcomeWidget() {
             {greeting}
             {firstName ? `, ${firstName}` : ""}.
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-foreground/80 drop-shadow-sm">
             {quietMessage ?? format(now, "EEEE, MMMM d")}
           </p>
         </div>

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'l
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
@@ -20,14 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
+import { formatPathwayLabel, formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
+import { InputCopy } from '@/components/ui/input-copy';
 
 const ROLE_BADGE_LIMIT = 2;
-const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
+const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Major', 'Minor', 'Roles', 'Status', 'Actions'] as const;
 
 function roleLabel(role: string) {
   return formatRoleLabel(role);
@@ -96,13 +98,27 @@ function ResetPasswordAction({
 }: {
   user: AdminUserRecord;
   disabled: boolean;
-  onResetPassword: (user: AdminUserRecord) => void;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
 }) {
   const [open, setOpen] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState<string>();
+  const [isResetting, setIsResetting] = useState(false);
   const label = `Reset password for ${user.firstName} ${user.lastName}`;
 
+  const resetPassword = async () => {
+    setIsResetting(true);
+    const password = await onResetPassword(user);
+    setIsResetting(false);
+    if (password) setTemporaryPassword(password);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setTemporaryPassword(undefined);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <IconActionButton
         label={label}
         disabled={disabled}
@@ -112,22 +128,25 @@ function ResetPasswordAction({
       </IconActionButton>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset password?</AlertDialogTitle>
+          <AlertDialogTitle>{temporaryPassword ? 'Temporary password created' : 'Reset password?'}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will generate a temporary password for {user.firstName} {user.lastName} and mark
-            their account to change it after signing in.
+            {temporaryPassword
+              ? `Copy this password and share it securely with ${user.firstName} ${user.lastName}. It is only shown once.`
+              : `This will generate a temporary password for ${user.firstName} ${user.lastName} and mark their account to change it after signing in.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {temporaryPassword ? <InputCopy label="Temporary password" value={temporaryPassword} variant="button" /> : null}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              onResetPassword(user);
-              setOpen(false);
-            }}
-          >
-            Reset password
-          </AlertDialogAction>
+          {temporaryPassword ? (
+            <AlertDialogCancel>Done</AlertDialogCancel>
+          ) : (
+            <>
+              <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+              <Button type="button" onClick={() => void resetPassword()} disabled={isResetting}>
+                {isResetting ? 'Resetting...' : 'Reset password'}
+              </Button>
+            </>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -205,6 +224,7 @@ function UserTableSection({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
+  onSetDeveloper,
   status,
   canLoadPrevious,
   pageIndex,
@@ -226,12 +246,13 @@ function UserTableSection({
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => void;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
   isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
   status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
   canLoadPrevious: boolean;
   pageIndex: number;
@@ -363,6 +384,8 @@ function UserTableSection({
           <col className="w-10" />
           <col className="w-[200px]" />
           <col className="w-[72px]" />
+          <col className="w-[156px]" />
+          <col className="w-[156px]" />
           <col />
           <col className="w-[92px]" />
           <col className="w-[176px]" />
@@ -403,10 +426,23 @@ function UserTableSection({
                   />
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>
+                  <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
+                    <span className="truncate">{user.firstName} {user.lastName}</span>
+                    <DeveloperBadge user={user} size={13} />
+                  </span>
                 </TableCell>
                 <TableCell className={d.cell}>
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block truncate" title={formatPathwayLabel(user.major)}>
+                    {formatPathwayLabel(user.major)}
+                  </span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block truncate" title={formatPathwayLabel(user.minor)}>
+                    {formatPathwayLabel(user.minor)}
+                  </span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <RoleSummary roles={getUserRoles(user)} />
@@ -423,6 +459,7 @@ function UserTableSection({
                       isSuperAdmin={isSuperAdmin}
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
+                      onSetDeveloper={onSetDeveloper}
                     />
                     {canResetPassword(user) && user._id !== currentUserId ? (
                       <ResetPasswordAction
@@ -503,6 +540,7 @@ export function AdminUsersTab({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
+  onSetDeveloper,
 }: {
   search: string;
   onSearchChange: (value: string) => void;
@@ -527,12 +565,13 @@ export function AdminUsersTab({
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => void;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
   isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -571,6 +610,7 @@ export function AdminUsersTab({
             isDeleteUsersPending={isDeleteUsersPending}
             isResetPasswordPending={isResetPasswordPending}
             isAssignRolesPending={isAssignRolesPending}
+            onSetDeveloper={onSetDeveloper}
             onAssignRoles={onAssignRoles}
             status={status}
             canLoadPrevious={canLoadPrevious}

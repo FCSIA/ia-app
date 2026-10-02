@@ -7,6 +7,7 @@ import {
 import { Txt, useToast } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { classifyChatLink, sanitizeChatMarkdown } from "./chat-markdown";
+import { hideChatGifLinks } from "~/apps/shared/chat/gifs";
 
 type RichMessageBodyProps = {
   body: string;
@@ -14,6 +15,9 @@ type RichMessageBodyProps = {
 };
 
 export function RichMessageBody({ body, bodyMarkdown }: RichMessageBodyProps) {
+  const source = bodyMarkdown || body;
+  body = hideChatGifLinks(body, source);
+  bodyMarkdown = bodyMarkdown ? hideChatGifLinks(bodyMarkdown, source) : undefined;
   const { color } = useTheme();
   const { showToast } = useToast();
   const markdown = useMemo(

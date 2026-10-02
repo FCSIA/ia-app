@@ -14,11 +14,12 @@ test("production inventory follows workspace dependencies, not dev tooling", asy
     ]),
   );
 
-  assert.equal(packages.get("image-size"), "1.2.1");
+  assert.equal(packages.get("next"), "16.3.8");
+  assert.equal(packages.get("convex"), "1.46.0");
   assert.equal(packages.has("deepmerge-ts"), false);
   assert.equal(packages.has("flatted"), false);
   assert.equal(packages.get("glob"), "13.0.6");
-  assert.equal(packages.get("minimatch"), "10.2.4");
+  assert.equal(packages.get("minimatch"), "10.2.6");
   assert.equal(packages.has("path-to-regexp"), false);
   assert.equal(packages.has("undici"), false);
 });

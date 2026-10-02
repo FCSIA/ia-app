@@ -1,5 +1,5 @@
 // Basic service worker for PWA install support
-const CACHE_NAME = 'ia-school-v4';
+const CACHE_NAME = 'ia-school-v5';
 const STATIC_ASSETS = ['/manifest.json', '/icons/ia-orbit-default-192.png'];
 
 /**
@@ -39,6 +39,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // External media must use the browser's image policy. Fetching it inside
+  // this worker would apply connect-src and block pasted GIF previews.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   // Network-first strategy; fall back to cache for navigation
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -50,6 +53,12 @@ self.addEventListener('fetch', (event) => {
   }
   // API calls: always network
   if (event.request.url.includes('/api/')) {
+    return;
+  }
+  // Next.js chunks change with every local development rebuild. Let the
+  // browser fetch them normally instead of allowing a prior PWA cache entry
+  // to keep an installed app on an old client bundle.
+  if (new URL(event.request.url).pathname.startsWith('/_next/')) {
     return;
   }
   event.respondWith(
@@ -84,6 +93,10 @@ function notificationOptions(payload) {
     data: {
       url: payload.url || '/notifications',
       category: payload.category,
+      deliveryId: payload.deliveryId,
+      deliveryCreatedAt: payload.deliveryCreatedAt,
+      channelId: payload.channelId,
+      sourceCreatedAt: payload.sourceCreatedAt,
     },
     tag,
     renotify: true,

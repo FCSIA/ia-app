@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import {
   ChevronDown,
   ChevronUp,

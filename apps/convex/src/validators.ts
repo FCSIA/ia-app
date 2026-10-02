@@ -130,6 +130,24 @@ export const notificationPreferenceLevelValidator = v.union(
   v.literal("TIME_SENSITIVE"),
 );
 
+export const pushDevicePlatformValidator = v.union(
+  v.literal("ios"),
+  v.literal("android"),
+  v.literal("desktop"),
+);
+
+export type PushDevicePlatform = Infer<typeof pushDevicePlatformValidator>;
+
+/** `Notification.permission`, plus `unsupported` where the API is absent. */
+export const pushPermissionValidator = v.union(
+  v.literal("granted"),
+  v.literal("default"),
+  v.literal("denied"),
+  v.literal("unsupported"),
+);
+
+export type PushPermission = Infer<typeof pushPermissionValidator>;
+
 export type NotificationPreferenceLevel = Infer<
   typeof notificationPreferenceLevelValidator
 >;
@@ -276,6 +294,8 @@ export const clubMentionKindValidator = v.union(
   v.literal("USER"),
   v.literal("BUILT_IN_TAG"),
   v.literal("CUSTOM_TAG"),
+  v.literal("ROLE"),
+  v.literal("UNIT"),
 );
 
 export type ClubMentionKind = Infer<typeof clubMentionKindValidator>;
@@ -296,6 +316,7 @@ export const clubChannelReactionValidator = v.union(
   v.literal("CELEBRATE"),
   v.literal("EYES"),
   v.literal("DONE"),
+  v.literal("SKULL"),
 );
 
 export type ClubChannelReaction = Infer<typeof clubChannelReactionValidator>;
@@ -310,12 +331,14 @@ export const clubChannelReactionInputValidator = v.union(
   v.literal("CELEBRATE"),
   v.literal("EYES"),
   v.literal("DONE"),
+  v.literal("SKULL"),
   v.literal("👍"),
   v.literal("❤️"),
   v.literal("🔥"),
   v.literal("🎉"),
   v.literal("👀"),
   v.literal("✅"),
+  v.literal("💀"),
 );
 
 export type ClubChannelReactionInput = Infer<

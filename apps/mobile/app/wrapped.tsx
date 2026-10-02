@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { Sparkles } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";

@@ -21,6 +21,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { TabPanel } from "@/components/ui/tabs";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { FriendCollaborationTools } from "./FriendCollaborationTools";
 
 export function FriendSchedulesPanel() {
@@ -48,7 +49,7 @@ export function FriendSchedulesPanel() {
     <TabPanel value="friends" className="mt-5">
       <div className="flex flex-col gap-5">
         <div className="grid min-w-0 gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
-          <aside className="flex flex-col gap-4 rounded-xl bg-surface-2 p-3 shadow-surface-1 lg:sticky lg:top-4">
+          <aside className={`flex flex-col gap-4 rounded-xl bg-surface-2 p-3 shadow-surface-1 lg:sticky lg:top-4 ${CARD_SURFACE_FOREGROUND}`}>
             <div className="flex flex-col gap-1 px-1">
               <h2 className="text-sm font-semibold text-foreground">
                 Find classmates
@@ -277,7 +278,7 @@ export function FriendSchedulesPanel() {
                   ))}
               </div>
             ) : (
-              <Empty className="min-h-72 bg-surface-2 shadow-surface-1">
+              <Empty className={`min-h-72 bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
                 <EmptyHeader>
                   <EmptyMedia>
                     <UsersRound className="size-6 text-muted-foreground" />

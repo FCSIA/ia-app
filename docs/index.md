@@ -52,6 +52,8 @@ same change.
 - [Data flow](architecture/data-flow.md)
 - [Deployment](architecture/deployment.md)
 - [Azure portability review](architecture/azure-portability.md)
+- [Azure school environment plan](architecture/azure-school-environment-plan.md)
+- [Azure hosting migration](architecture/azure-hosting-migration.md)
 - [Client state ownership](architecture/client-state-ownership.md)
 
 ## Backend
@@ -69,6 +71,7 @@ same change.
 - [[roles-and-permissions]] — All 8 user roles and what they can do
 - [[environment]] — Every environment variable explained
 - [[commands]] — All dev commands and what they do
+- [[worktrees]] — Fast, isolated checkouts for small fixes and reviews
 - [[versioning]] — Version scheme, release cutting, and the in-app devlog
 
 ## Database
@@ -88,6 +91,7 @@ same change.
 
 ## Features
 
+- [Admin analytics](features/analytics.md)
 - [Announcements](features/announcements.md)
 - [Audit log](features/audit-log.md)
 - [Calendar](features/calendar.md)
@@ -100,6 +104,7 @@ same change.
 - [Schedule](features/schedule.md)
 - [Uploads](features/uploads.md)
 - [Users and admin](features/users-admin.md)
+- [Whiteboards](features/whiteboards.md)
 - [Wrapped](features/wrapped.md)
 
 ## Product Reference

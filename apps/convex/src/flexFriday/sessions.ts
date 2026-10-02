@@ -6,6 +6,7 @@ import {
   canCreateFlexSession,
   canManageExistingFlexSessions,
 } from "./permissions";
+import { adjustFlexSessionCount } from "./counts";
 
 export const listByFriday = query({
   args: { flexFridayId: v.id("flexFridays") },
@@ -35,6 +36,7 @@ export const create = mutation({
     const friday = await ctx.db.get(args.flexFridayId);
     if (!friday) throw new Error("Flex Friday not found");
 
+    await adjustFlexSessionCount(ctx, args.flexFridayId, 1);
     const sessionId = await ctx.db.insert("flexSessions", {
       flexFridayId: args.flexFridayId,
       title: args.title.trim(),
@@ -113,6 +115,7 @@ export const remove = mutation({
       throw new Error("Remove workshops from this session before deleting it");
     }
 
+    await adjustFlexSessionCount(ctx, session.flexFridayId, -1);
     await ctx.db.delete(args.sessionId);
 
     await ctx.db.insert("auditEvents", {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
 import { useToast } from '@/hooks/use-toast';
