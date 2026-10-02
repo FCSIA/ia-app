@@ -2,26 +2,74 @@
 
 ## Active Focus
 
-- **Branch**: `codex/refresh-bun-stack` (refreshing PR #100);
-  `codex/admin-mobile-layout` owns the separate admin UI repair.
-- **Goal**: Merge the #100 → #111 tooling/backend stack, then make the admin
-  header and mobile scrolling usable. Production deployment is not authorized.
+- **Integration**: `codex/local-bun-and-mobile-swipe` combines the admin repair,
+  Bun/Nix setup, and swipe fix. Main receives them through PRs #148, #149, and
+  #150; #148 contains the remaining admin changes after #149 and #150 merged.
+- **Goal**: Keep the latest Bun shell and mobile repairs available locally.
+  The user explicitly authorized merging all three branches after the preview
+  and verification handoff. Native iPhone verification remains outstanding.
+  Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
 
+### Local Bun/Nix setup (2026-10-02)
+
+- Nix/direnv supplies Bun 1.4.2, matching `packageManager` and CI, alongside
+  Node 24.14.0. The Bun assets use verified release digests; changing
+  `package.json` invalidates the direnv shell cache. CocoaPods is macOS-only.
+- The native Apple Silicon shell builds and loads; both Darwin and Linux
+  architectures evaluate. Frozen install leaves the lockfile unchanged.
+  The dependency/audit regression tests and web typecheck, lint, and build
+  pass with Bun 1.4.2. Existing lint warnings remain.
+- PR #149 is merged and contains this setup independently of the admin and
+  swipe changes.
+
+### Mobile sidebar gesture (2026-10-02)
+
+- The shared app-shell gesture owner uses a scoped native non-passive
+  `touchmove` listener. A rightward movement is cancelled before the sidebar
+  reveal, so React's passive delegated listener no longer controls the swipe.
+- Vertical/left gestures, excluded controls, and multi-touch keep their
+  browser behavior. Interrupted or browser-owned gestures cancel the reveal;
+  ownership continues until release when a gesture reverses or opens early.
+- Twelve gesture regression tests pass. The built mobile page has the native
+  listener wired correctly and its explicit sidebar control still works.
+  Native iPhone/PWA Back-gesture verification remains pending because this
+  browser cannot reliably automate touch input. The user authorized merging
+  despite that outstanding device check, and PR #150 is merged.
+
 ### Bun stack refresh (2026-10-02)
 
-- PR #100 retains the newer worktree bootstrap, LAN dev orchestration, deploy
-  marker, and Convex 1.46.0 from main while moving installs and scripts to Bun.
+- PR #100 is merged and retains the newer worktree bootstrap, LAN dev
+  orchestration, deploy marker, and Convex 1.46.0 from main while moving installs
+  and scripts to Bun.
+- PR #111 is merged after #100. It adopts native Convex schema document helpers
+  and generated environment bindings without downgrading Convex 1.46.0 or
+  removing newer schema fields and performance changes.
 - Security dependencies are refreshed, including Next 16.3.8 and image-size
   2.0.4. node-forge 1.4.0 carries the upstream nested DigestAlgorithm validation
   patch until a patched release exists; CI tests reproduce and reject the bug.
 - The primary local backend has older whiteboard documents incompatible with
   the current schema. Use an isolated backend for verification; do not reset
   the primary dataset.
+
+### Admin mobile layout (2026-10-02)
+
+- The admin title uses the existing app-header slot, including the loading
+  state. Admin tabs and user records use separate horizontal ScrollAreas;
+  the page stays within the viewport width.
+- User filters and bulk-selection controls wrap. Pagination stays in the
+  existing table-panel footer, outside the scrolling records. Names, pathways,
+  and role metadata wrap, and touch action columns reserve space for 44px
+  buttons. Empty results use the existing AdminNotice outside the wide table.
+- Browser verification uses synthetic accounts on the isolated anonymous
+  backend in the attached `merge-100-111` worktree. The primary dataset was not
+  reset. Phone, tablet, desktop, paging, search, selection, and empty-result
+  checks are diagnostic. The user subsequently authorized merging the
+  combined local branch, including this admin layout repair.
 
 ### Convex Usage and Scale Audit (2026-08-31)
 

@@ -42,13 +42,13 @@ function RoleSummary({ roles }: { roles: string[] }) {
 
   return (
     <div
-      className="flex max-w-full flex-nowrap items-center gap-1 overflow-hidden"
+      className="flex max-w-full flex-wrap items-center gap-1"
       aria-label={fullLabel}
       title={fullLabel}
     >
       {visibleRoles.map((role) => (
-        <Badge key={role} variant="solid" size="sm" className="min-w-0 max-w-[118px] shrink-0">
-          <span className="truncate">{roleLabel(role)}</span>
+        <Badge key={role} variant="solid" size="sm">
+          {roleLabel(role)}
         </Badge>
       ))}
       {overflowCount > 0 ? (
@@ -259,7 +259,7 @@ function UserTableSection({
   loadNextPage: () => void;
   loadPreviousPage: () => void;
 }) {
-  const d = dataTableClasses('compact');
+  const d = dataTableClasses('comfortable');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
   const selectableUsers = canDeleteUsers ? users.filter((user) => user._id !== currentUserId) : [];
   const selectedCount = selectedUserIds.size;
@@ -306,12 +306,13 @@ function UserTableSection({
         <SearchInput
           className="w-full min-w-0 sm:w-64"
           placeholder="Search users..."
+          aria-label="Search users"
           value={search}
           onValueChange={onSearchChange}
           size="sm"
         />
         <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
-          <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" />
+          <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" aria-label="Filter users by role" />
           <SelectContent>
             <SelectItem index={0} value="students">Students</SelectItem>
             <SelectItem index={1} value="teachers">Teachers</SelectItem>
@@ -322,7 +323,7 @@ function UserTableSection({
         </Select>
       </div>
       {canDeleteUsers && selectedCount > 0 ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="whitespace-nowrap text-xs text-muted-foreground">
             {selectedCount} selected
           </span>
@@ -342,31 +343,33 @@ function UserTableSection({
           />
         </div>
       ) : null}
-      <div className="flex shrink-0 items-center justify-between gap-2 text-xs text-muted-foreground xl:justify-end">
-        <span className="whitespace-nowrap">
-          Page {pageIndex + 1} · Showing {users.length}
-          {typeof totalCount === 'number' ? ` of ${totalCount}` : ''} user{users.length === 1 ? '' : 's'}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="tertiary"
-            size="sm"
-            onClick={loadPreviousPage}
-            disabled={!canLoadPrevious || status === 'LoadingMore'}
-            leadingIcon={ChevronLeft}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="tertiary"
-            size="sm"
-            onClick={loadNextPage}
-            disabled={status !== 'CanLoadMore'}
-            trailingIcon={ChevronRight}
-          >
-            {status === 'LoadingMore' ? 'Loading...' : 'Next page'}
-          </Button>
-        </div>
+    </div>
+  );
+
+  const pagination = (
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
+      <span role="status">
+        Page {pageIndex + 1} · {users.length} user{users.length === 1 ? '' : 's'} shown
+      </span>
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="tertiary"
+          size="sm"
+          onClick={loadPreviousPage}
+          disabled={!canLoadPrevious || status === 'LoadingMore'}
+          leadingIcon={ChevronLeft}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="tertiary"
+          size="sm"
+          onClick={loadNextPage}
+          disabled={status !== 'CanLoadMore'}
+          trailingIcon={ChevronRight}
+        >
+          {status === 'LoadingMore' ? 'Loading...' : 'Next page'}
+        </Button>
       </div>
     </div>
   );
@@ -375,47 +378,44 @@ function UserTableSection({
     <DataTablePanel
       title={title}
       count={totalCount}
-      density="compact"
+      density="comfortable"
       fillHeight
       toolbar={toolbar}
+      footer={pagination}
     >
-      <Table className={`${d.table} table-fixed`}>
-        <colgroup>
-          <col className="w-10" />
-          <col className="w-[200px]" />
-          <col className="w-[72px]" />
-          <col className="w-[156px]" />
-          <col className="w-[156px]" />
-          <col />
-          <col className="w-[92px]" />
-          <col className="w-[176px]" />
-        </colgroup>
-        <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
-          <TableRow>
-            <TableHead className={d.head}>
-              <Checkbox
-                checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
-                onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
-                disabled={selectableUsers.length === 0 || isDeleteUsersPending}
-                aria-label="Select all users shown on this page"
-              />
-            </TableHead>
-            {USER_TABLE_HEADERS.slice(1).map((header) => (
-              <TableHead key={header} className={d.head}>
-                {header}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.length === 0 ? (
+      {users.length === 0 ? (
+        <AdminNotice message={emptyMessage} />
+      ) : (
+        <Table aria-label={title} className={`${d.table} min-w-[1104px] table-fixed`}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[200px]" />
+            <col className="w-[72px]" />
+            <col className="w-[156px]" />
+            <col className="w-[156px]" />
+            <col className="w-[156px]" />
+            <col className="w-[92px]" />
+            <col className="w-[232px]" />
+          </colgroup>
+          <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
             <TableRow>
-              <TableCell colSpan={USER_TABLE_HEADERS.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
-                {emptyMessage}
-              </TableCell>
+              <TableHead className={d.head}>
+                <Checkbox
+                  checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
+                  onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
+                  disabled={selectableUsers.length === 0 || isDeleteUsersPending}
+                  aria-label="Select all users shown on this page"
+                />
+              </TableHead>
+              {USER_TABLE_HEADERS.slice(1).map((header) => (
+                <TableHead key={header} className={d.head}>
+                  {header}
+                </TableHead>
+              ))}
             </TableRow>
-          ) : (
-            users.map((user, index) => (
+          </TableHeader>
+          <TableBody>
+            {users.map((user, index) => (
               <TableRow key={user._id} index={index} className="h-10">
                 <TableCell className={d.cell}>
                   <Checkbox
@@ -427,7 +427,7 @@ function UserTableSection({
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
-                    <span className="truncate">{user.firstName} {user.lastName}</span>
+                    <span className="min-w-0 break-words">{user.firstName} {user.lastName}</span>
                     <DeveloperBadge user={user} size={13} />
                   </span>
                 </TableCell>
@@ -435,12 +435,12 @@ function UserTableSection({
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block truncate" title={formatPathwayLabel(user.major)}>
+                  <span className="block break-words">
                     {formatPathwayLabel(user.major)}
                   </span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block truncate" title={formatPathwayLabel(user.minor)}>
+                  <span className="block break-words">
                     {formatPathwayLabel(user.minor)}
                   </span>
                 </TableCell>
@@ -453,7 +453,7 @@ function UserTableSection({
                   </Badge>
                 </TableCell>
                 <TableCell className={`${d.cell} overflow-hidden`}>
-                  <div className="grid grid-cols-[2rem_2rem_2rem_2rem] items-center justify-end gap-1">
+                  <div className="grid grid-flow-col auto-cols-[2rem] items-center justify-end gap-1 pointer-coarse:auto-cols-[2.75rem]">
                     <UserPermissionsPopover
                       user={user}
                       isSuperAdmin={isSuperAdmin}
@@ -502,10 +502,10 @@ function UserTableSection({
                   </div>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </DataTablePanel>
   );
 }
@@ -574,8 +574,8 @@ export function AdminUsersTab({
   onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {isUsersLoading ? (
           <AdminNotice className="min-h-0 flex-1" message="Loading users..." />
         ) : isUsersError ? (
