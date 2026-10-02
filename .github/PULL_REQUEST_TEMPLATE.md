@@ -8,11 +8,11 @@ Closes #
 
 <!-- List commands you actually ran and their results. -->
 
-- [ ] `pnpm brand:check`
-- [ ] `pnpm devlog:check`
-- [ ] `pnpm lint`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
+- [ ] `bun run brand:check`
+- [ ] `bun run devlog:check`
+- [ ] `bun run lint`
+- [ ] `bun run test`
+- [ ] `bun run build`
 - [ ] Relevant manual or visual behavior was checked
 
 ## Safety and review

@@ -18,7 +18,7 @@ if (mode !== "shared") {
     stdio: "inherit",
   });
 }
-const result = spawnSync("pnpm", ["exec", "turbo", "run", "dev", ...filters], {
+const result = spawnSync("bun", ["x", "turbo", "run", "dev", ...filters], {
   cwd: root,
   stdio: "inherit",
 });

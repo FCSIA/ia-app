@@ -12,11 +12,15 @@ longer part of the active local setup.
 ## Prerequisites
 
 - **Node.js**: v24 (or v20.19+)
-- **pnpm**: v10.29.3 (matching `packageManager` in `package.json`)
+- **Bun**: install separately; CI uses the version recorded by
+  `packageManager` in `package.json`, while local developers may use a newer
+  compatible release
 
 ### Optional: Nix + direnv (macOS / Linux)
 
-If you use Nix and direnv, dependencies and Node versions load automatically:
+If you use Nix and direnv, the repository's native development tools and Node
+version load automatically. Bun is not provided by the Nix shell and must be
+installed separately:
 
 ```bash
 direnv allow
@@ -29,18 +33,18 @@ direnv allow
 cp .env.example .env
 
 # 2. Install dependencies
-pnpm install
+bun install
 
 # 3. Create/select this worktree's local Convex deployment, initialize its
 #    Better Auth environment, and sync its URLs to the frontend apps
-pnpm setup:convex-local
+bun run setup:convex-local
 
 # 4. Start development servers
-pnpm dev
+bun run dev
 ```
 
 > [!IMPORTANT]
-> Run `pnpm setup:convex-local` once in each worktree and whenever its local
+> Run `bun run setup:convex-local` once in each worktree and whenever its local
 > deployment selection needs repair. The command preserves existing deployment
 > secrets and settings. Do not copy `apps/convex/.env.local` from another
 > worktree.
@@ -56,7 +60,7 @@ settings expect VAPID keys before push can be enabled.
 1. Generate key pair:
 
    ```bash
-   pnpm --filter cvx exec web-push generate-vapid-keys
+   bun run --cwd apps/convex web-push generate-vapid-keys
    ```
 
 2. Set public key in `apps/web/.env.local`:
@@ -68,9 +72,9 @@ settings expect VAPID keys before push can be enabled.
 3. Set matching deployment variables on Convex:
 
    ```bash
-   pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
-   pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
-   pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+   bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "..."
+   bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "..."
+   bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
    ```
 
    *(Prefix commands with `direnv exec .` if using Nix/direnv).*
@@ -80,7 +84,7 @@ settings expect VAPID keys before push can be enabled.
 Reset the local demo data from the CLI:
 
 ```bash
-pnpm --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:resetAndSeed \
   '{"profile":"development"}'
@@ -89,7 +93,7 @@ pnpm --filter cvx exec convex run \
 Monitor the asynchronous run:
 
 ```bash
-pnpm --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:seedStatus \
   '{}' \
@@ -117,12 +121,12 @@ credentials expire after 24 hours. The generated IDs include:
 ## Daily Workflow & Commands
 
 ```bash
-pnpm dev              # Start web app and Convex dev server
-pnpm db:studio        # Open Convex Dashboard in browser
-pnpm --filter cvx typecheck # Typecheck Convex functions
-pnpm --filter web exec tsc --noEmit # Typecheck web frontend
-pnpm lint             # Run linter
-pnpm build            # Production build check
+bun run dev              # Start web app and Convex dev server
+bun run db:studio        # Open Convex Dashboard in browser
+bun run --filter cvx typecheck # Typecheck Convex functions
+bun run --filter web typecheck # Typecheck web frontend
+bun run lint             # Run linter
+bun run build            # Production build check
 ```
 
 ## Troubleshooting
@@ -132,7 +136,7 @@ pnpm build            # Production build check
 If you see `Convex is not configured for this checkout`:
 
 ```bash
-pnpm setup:convex-local
+bun run setup:convex-local
 ```
 
 ### Stale Build Caches
@@ -141,5 +145,5 @@ If Turborepo or Next.js build caches are stale:
 
 ```bash
 rm -rf .turbo apps/web/.next
-pnpm build
+bun run build
 ```

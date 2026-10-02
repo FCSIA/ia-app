@@ -1,9 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { docs } from "../../lib/docs";
+import { schema } from "../schema";
 
-export const announcementListItemValidator = docs.announcements.extend({
+export const announcementListItemValidator = schema.doc("announcements").extend({
   isRead: v.boolean(),
   readAt: v.optional(v.number()),
   isBookmarked: v.boolean(),
@@ -36,7 +36,7 @@ export const announcementListItemValidator = docs.announcements.extend({
   ),
 });
 
-export const commentWithAuthorValidator = docs.comments.extend({
+export const commentWithAuthorValidator = schema.doc("comments").extend({
   author: v.union(
     v.object({
       _id: v.id("users"),
@@ -131,7 +131,10 @@ export async function getViewerAudience(ctx: QueryCtx | MutationCtx, userId: Id<
   };
 }
 
-export async function getAccessibleClubIds(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+export async function getAccessibleClubIds(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+) {
   const memberships = await ctx.db
     .query("clubMembers")
     .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", userId))

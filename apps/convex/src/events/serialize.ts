@@ -2,7 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { createDocLoader, type DocLoader } from "../../lib/docLoader";
-import { eventApprovalValidator, eventValidator } from "./_lib";
+import { schema } from "../schema";
 
 const personValidator = v.object({
   _id: v.id("users"),
@@ -10,18 +10,16 @@ const personValidator = v.object({
   lastName: v.string(),
   isDeveloper: v.optional(v.boolean()),
 });
-export const serializedEventValidator = v.object({
-  _id: v.id("events"), _creationTime: v.number(), ...eventValidator,
-  createdAt: v.number(), updatedAt: v.number(),
+export const serializedEventValidator = schema.doc("events").extend({
   author: v.union(personValidator, v.null()),
   club: v.union(v.object({ _id: v.id("clubs"), name: v.string() }), v.null()),
 });
-export const serializedEventDetailValidator = v.object({
-  ...serializedEventValidator.fields,
-  approvals: v.array(v.object({
-    _id: v.id("eventApprovals"), _creationTime: v.number(), ...eventApprovalValidator,
-    createdAt: v.number(), sponsor: v.union(personValidator, v.null()),
-  })),
+export const serializedEventDetailValidator = serializedEventValidator.extend({
+  approvals: v.array(
+    schema.doc("eventApprovals").extend({
+      sponsor: v.union(personValidator, v.null()),
+    }),
+  ),
 });
 
 export async function serializeEvent(

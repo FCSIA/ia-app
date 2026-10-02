@@ -2,8 +2,8 @@
 /**
  * One-command release ship.
  *
- *   pnpm release:ship -- --minor --title="Calendar-first schedules"
- *   pnpm release:ship -- --title="Fix late-night sign-in" --yes
+ *   bun run release:ship -- --minor --title="Calendar-first schedules"
+ *   bun run release:ship -- --title="Fix late-night sign-in" --yes
  *
  * From an up-to-date `main` checkout this runs the standard release flow in
  * one step: `devlog:cut`, the `release: vX.Y.Z` commit, the annotated
@@ -53,16 +53,16 @@ function fail(message) {
 function usage() {
   process.stdout.write(
     [
-      "Usage: pnpm release:ship [--yes] [--no-push] [-- <devlog:cut flags>]",
+      "Usage: bun run release:ship [--yes] [--no-push] [-- <devlog:cut flags>]",
       "",
       "Cut the next release, commit it, tag it, and push (default remote: origin).",
       "Pushing the tag starts the Production Deploy workflow.",
       "",
       "Examples:",
-      '  pnpm release:ship -- --title="Fix late-night sign-in"',
-      '  pnpm release:ship --yes -- --minor --title="Calendar-first schedules"',
-      "  pnpm release:ship --no-push -- --allow-empty   # commit + tag locally only",
-      "  pnpm release:ship --dry-run                    # preview; write nothing",
+      '  bun run release:ship -- --title="Fix late-night sign-in"',
+      '  bun run release:ship --yes -- --minor --title="Calendar-first schedules"',
+      "  bun run release:ship --no-push -- --allow-empty   # commit + tag locally only",
+      "  bun run release:ship --dry-run                    # preview; write nothing",
       "",
       "Ship options:",
       "  --remote=<name>   Git remote to push to (default: origin)",

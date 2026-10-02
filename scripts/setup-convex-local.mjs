@@ -143,4 +143,4 @@ if (!getDeploymentEnv("BETTER_AUTH_MAINTENANCE_SECRET")) {
 }
 
 run(process.execPath, [join(root, "scripts", "sync-convex-env.mjs")]);
-console.log("Local Convex setup is ready. Run `pnpm dev` to start the app.");
+console.log("Local Convex setup is ready. Run `bun run dev` to start the app.");

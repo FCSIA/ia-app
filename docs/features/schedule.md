@@ -182,15 +182,15 @@ After deploying the widened schema and dual-read/write code, inspect the bounded
 report and dry-run the first migration batch:
 
 ```bash
-pnpm --filter cvx exec convex run schedule/migrations:getLunchMigrationReport
-pnpm --filter cvx exec convex run schedule/migrations:backfillLunchPeriod '{"dryRun":true}'
+bun run --cwd apps/convex convex run schedule/migrations:getLunchMigrationReport
+bun run --cwd apps/convex convex run schedule/migrations:backfillLunchPeriod '{"dryRun":true}'
 ```
 
 Run the resumable migration and watch component status:
 
 ```bash
-pnpm --filter cvx exec convex run schedule/migrations:backfillLunchPeriod
-pnpm --filter cvx exec convex run --component migrations lib:getStatus --watch
+bun run --cwd apps/convex convex run schedule/migrations:backfillLunchPeriod
+bun run --cwd apps/convex convex run --component migrations lib:getStatus --watch
 ```
 
 Use `--prod` for the production deployment. Re-run the report after completion;

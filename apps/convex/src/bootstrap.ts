@@ -18,7 +18,7 @@ const SEED_CREDENTIAL_TTL_MS = 24 * 60 * 60 * 1000;
 function assertLocalDemoSeedEnabled() {
   if (!isLocalDemoSeedEnabled(process.env.ALLOW_LOCAL_DEMO_SEED)) {
     throw new Error(
-      "Demo seed is disabled. Run it only on an isolated local deployment configured by pnpm setup:convex-local.",
+      "Demo seed is disabled. Run it only on an isolated local deployment configured by bun run setup:convex-local.",
     );
   }
 }

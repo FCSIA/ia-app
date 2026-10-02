@@ -2,9 +2,14 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../../lib/currentUser";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUser,
+  requireAnyRole,
+  requireAnyRoleSafe,
+} from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { docs } from "../../lib/docs";
+import { schema } from "../schema";
 import {
   activeAdmins,
   deliverMany,
@@ -20,7 +25,11 @@ import { contentRateLimiter } from "../rateLimits";
 import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
 import { canReviewFeedback } from "./feedbackAccess";
 
-const genericReportContentTypeValidator = v.union(v.literal("GENERAL"), v.literal("ANNOUNCEMENT"), v.literal("EVENT"));
+const genericReportContentTypeValidator = v.union(
+  v.literal("GENERAL"),
+  v.literal("ANNOUNCEMENT"),
+  v.literal("EVENT"),
+);
 const MAX_FEEDBACK_RESPONSES_PER_REPORT = 25;
 const moderationReportStatusValidator = v.union(
   v.literal("PENDING"),
@@ -35,7 +44,7 @@ const userRefValidator = v.object({
   uniqueId: v.string(),
 });
 
-const reportValidator = docs.moderationReports.extend({
+const reportValidator = schema.doc("moderationReports").extend({
   submitter: v.union(userRefValidator, v.null()),
   reportedUser: v.union(userRefValidator, v.null()),
   club: v.union(
@@ -55,7 +64,7 @@ const reportValidator = docs.moderationReports.extend({
     }),
   ),
   responses: v.array(
-    docs.feedbackReportResponses.extend({
+    schema.doc("feedbackReportResponses").extend({
       author: v.object({
         firstName: v.string(),
         lastName: v.string(),
@@ -85,7 +94,10 @@ const reportListArgs = {
   isEscalated: v.optional(v.boolean()),
 };
 
-async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) {
+async function serializeReport(
+  ctx: QueryCtx,
+  report: Doc<"moderationReports">,
+) {
   const submitter = await ctx.db.get(report.submitterId);
   const reportedUser = report.reportedUserId
     ? await ctx.db.get(report.reportedUserId)
@@ -166,7 +178,9 @@ async function createReport(
     imageUploadIds?: Id<"feedbackImageUploads">[];
   },
 ) {
-  const rate = await contentRateLimiter.limit(ctx, "reportsByUser", { key: user._id });
+  const rate = await contentRateLimiter.limit(ctx, "reportsByUser", {
+    key: user._id,
+  });
   if (!rate.ok) throw new ConvexError("Too many reports. Try again later.");
   const reportId = await ctx.db.insert("moderationReports", {
     submitterId: user._id,
@@ -193,13 +207,17 @@ async function createReport(
     isFeedback ? admin.roles.includes("SUPER_ADMIN") : true,
   );
 
-  await deliverMany(ctx, recipients.map((admin) => admin._id), {
-    category: "CONTENT_MODERATED",
-    title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
-    body: `${user.firstName} ${user.lastName} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
-    href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
-    subject: { kind: "moderationReport", reportId },
-  });
+  await deliverMany(
+    ctx,
+    recipients.map((admin) => admin._id),
+    {
+      category: "CONTENT_MODERATED",
+      title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
+      body: `${user.firstName} ${user.lastName} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
+      href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
+      subject: { kind: "moderationReport", reportId },
+    },
+  );
 
   await logAuditEvent(ctx, {
     actorId: user._id,
@@ -245,7 +263,9 @@ async function loadReports(
     reports = reports.filter((report) => report.clubId === args.clubId);
   }
   if (args.isEscalated !== undefined) {
-    reports = reports.filter((report) => report.isEscalated === args.isEscalated);
+    reports = reports.filter(
+      (report) => report.isEscalated === args.isEscalated,
+    );
   }
 
   return reports;
@@ -256,7 +276,15 @@ export const list = query({
   returns: v.array(reportValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !requireAnyRoleSafe(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"])) {
+    if (
+      !user ||
+      !requireAnyRoleSafe(user, [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "SUPPORT_STAFF",
+        "TEACHER",
+      ])
+    ) {
       return [];
     }
 
@@ -309,13 +337,13 @@ export const listMyFeedback = query({
         status: report.status,
         reviewNote: report.reviewNote,
         createdAt: report.createdAt,
-        responses: (await listFeedbackResponsesForSubmitter(ctx, report._id)).map(
-          (response) => ({
-            _id: response._id,
-            body: response.body,
-            createdAt: response.createdAt,
-          }),
-        ),
+        responses: (
+          await listFeedbackResponsesForSubmitter(ctx, report._id)
+        ).map((response) => ({
+          _id: response._id,
+          body: response.body,
+          createdAt: response.createdAt,
+        })),
       })),
     );
   },
@@ -334,7 +362,11 @@ export const submit = mutation({
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (Array.from(args.contentId).length < 1 || Array.from(args.contentId).length > 128) throw new ConvexError("Invalid report reference");
+    if (
+      Array.from(args.contentId).length < 1 ||
+      Array.from(args.contentId).length > 128
+    )
+      throw new ConvexError("Invalid report reference");
     if (args.imageUploadIds && args.contentType !== "GENERAL") {
       throw new ConvexError("Images can only be attached to feedback");
     }
@@ -347,11 +379,13 @@ export const submit = mutation({
     }
     if (args.contentType === "EVENT") {
       const id = ctx.db.normalizeId("events", args.contentId);
-      if (!id || !(await ctx.db.get(id))) throw new ConvexError("Event not found");
+      if (!id || !(await ctx.db.get(id)))
+        throw new ConvexError("Event not found");
     }
     if (args.contentType === "ANNOUNCEMENT") {
       const id = ctx.db.normalizeId("announcements", args.contentId);
-      if (!id || !(await ctx.db.get(id))) throw new ConvexError("Announcement not found");
+      if (!id || !(await ctx.db.get(id)))
+        throw new ConvexError("Announcement not found");
     }
     return await createReport(ctx, user, {
       ...args,
@@ -392,7 +426,7 @@ export const submitClubChannelMessage = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("moderationReports"),
-    status: docs.moderationReports.fields.status,
+    status: schema.doc("moderationReports").fields.status,
     reviewNote: v.string(),
   },
   returns: v.object({ success: v.boolean() }),
@@ -460,10 +494,14 @@ export const addFeedbackResponse = mutation({
     const body = normalizeFeedbackResponse(args.body);
     const existingResponses = await ctx.db
       .query("feedbackReportResponses")
-      .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+      .withIndex("by_reportId_and_createdAt", (q) =>
+        q.eq("reportId", report._id),
+      )
       .take(MAX_FEEDBACK_RESPONSES_PER_REPORT);
     if (existingResponses.length >= MAX_FEEDBACK_RESPONSES_PER_REPORT) {
-      throw new ConvexError("This feedback already has the maximum number of staff responses");
+      throw new ConvexError(
+        "This feedback already has the maximum number of staff responses",
+      );
     }
     const responseId = await ctx.db.insert("feedbackReportResponses", {
       reportId: report._id,

@@ -2,15 +2,26 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Make Convex usage scale predictably from the 2026-08-31 production
-  baseline toward a 1,500-user, chat-heavy school rollout, without mutating or
-  deploying to production.
+- **Branch**: `codex/refresh-bun-stack` (refreshing PR #100);
+  `codex/admin-mobile-layout` owns the separate admin UI repair.
+- **Goal**: Merge the #100 → #111 tooling/backend stack, then make the admin
+  header and mobile scrolling usable. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Bun stack refresh (2026-10-02)
+
+- PR #100 retains the newer worktree bootstrap, LAN dev orchestration, deploy
+  marker, and Convex 1.46.0 from main while moving installs and scripts to Bun.
+- Security dependencies are refreshed, including Next 16.3.8 and image-size
+  2.0.4. node-forge 1.4.0 carries the upstream nested DigestAlgorithm validation
+  patch until a patched release exists; CI tests reproduce and reject the bug.
+- The primary local backend has older whiteboard documents incompatible with
+  the current schema. Use an isolated backend for verification; do not reset
+  the primary dataset.
 
 ### Convex Usage and Scale Audit (2026-08-31)
 
@@ -177,7 +188,7 @@
   by explicitly initialized loopback Convex deployments, while cloud
   deployments retain an explicit origin allowlist.
 - Same-LAN web PWAs now receive LAN-reachable public Convex URLs from
-  `pnpm sync:convex-env -- --host <LAN IPv4>` while server calls stay on
+  `bun run sync:convex-env -- --host <LAN IPv4>` while server calls stay on
   loopback. Protected-route auth startup renders a branded connection state
   instead of an unexplained blank screen when the backend is slow or
   unreachable.
@@ -239,7 +250,7 @@
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
-  sync via `pnpm sync:convex-env -- --android`.
+  sync via `bun run sync:convex-env -- --android`.
 - Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
   Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
   are reachable from every tab through the shared in-app header, and Profile
@@ -420,7 +431,7 @@
   Tenor viewer URLs normalize to direct media, and the PWA worker leaves external
   images to the browser. React Doctor 0.9.8 reports no new findings. Delete QA
   remains pending.
-  A clean frozen install with pinned pnpm 10.29.3 repaired the stale mobile
+  A clean frozen install with pinned bun run 10.29.3 repaired the stale mobile
   Convex version; mobile TypeScript now passes. All catalog media loaded during
   a temporary content review, and that temporary page was removed. Picker flow
   QA resumed after the user reopened localhost: library display, search, selection,
@@ -445,22 +456,22 @@
   surfaces. Web TypeScript, lint, production build, focused surface/palette
   assertions, and `git diff --check` pass. Lint reports 21 existing warnings;
   signed-in visual review remains pending.
-- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+- `direnv exec . bun run --cwd apps/web tsc --noEmit` - pass after the web UI
   primitive workflow and remediation slices.
-- Web calendar replacement: `pnpm --filter web exec tsc --noEmit`, web lint,
+- Web calendar replacement: `bun run --cwd apps/web tsc --noEmit`, web lint,
   frozen offline install, production build, and `git diff --check` pass. Lint
   reports only existing warnings outside the calendar slice; signed-in visual
   review is still required for responsive calendar states.
-- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+- `direnv exec . bun run --filter web lint` - pass with 7 existing unrelated
   unused-import warnings.
-- `direnv exec . pnpm --filter web build` - pass through compilation,
+- `direnv exec . bun run --filter web build` - pass through compilation,
   TypeScript, page data, all 18 static pages, and route optimization.
-- `pnpm --filter mobile typecheck` - pass
-- `pnpm lint` - pass with 7 existing web warnings outside this slice
-- `pnpm --filter cvx codegen` - pass
-- `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter cvx test` - pass (14 files, 47 tests)
-- `pnpm --filter mobile exec tsc --noEmit` - pass after removing the deprecated
+- `bun run --filter mobile typecheck` - pass
+- `bun run lint` - pass with 7 existing web warnings outside this slice
+- `bun run --filter cvx codegen` - pass
+- `bun run --filter cvx typecheck` - pass
+- `bun run --filter cvx test` - pass (14 files, 47 tests)
+- `bun run --cwd apps/mobile tsc --noEmit` - pass after removing the deprecated
   mobile `baseUrl`, correcting compact density, and reverting the broad visual
   migrations
 - Mobile Vitest suite - pass (14 files, 42 tests)
@@ -475,18 +486,18 @@
   blocked because Expo Go stopped requesting the Metro bundle after reload even
   though Metro `/status` returned `packager-status:running` and `adb reverse`
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
-- `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
+- `bun run --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - pass; web reports 8 pre-existing unused-import warnings and no
+- `bun run lint` - pass; web reports 8 pre-existing unused-import warnings and no
   errors
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
-- `pnpm build` - pass across design tokens, fun facts, Convex, mobile, and web
-- `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
+- `bun run build` - pass across design tokens, fun facts, Convex, mobile, and web
+- `bun run --cwd apps/web tsc --noEmit` and `bun run --filter web build` - pass
   after the compact club-workspace redesign and channel interaction polish;
   signed-in visual QA remains to be run because no browser-control session was
   available.
-- `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
+- `bun run test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex AI guidance and project skills were refreshed with `convex ai-files
@@ -519,9 +530,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
-direnv exec . pnpm lint
-direnv exec . pnpm build
-direnv exec . pnpm test
+bun run --filter cvx codegen
+bun run --filter cvx typecheck
+bun run lint
+bun run build
+bun run test
 ```
