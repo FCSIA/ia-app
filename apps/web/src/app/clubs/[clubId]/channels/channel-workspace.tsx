@@ -1924,6 +1924,60 @@ export function ChannelWorkspace() {
     };
   }, [channelId, latestVisibleActivity, markChannelRead, showWhiteboard, unreadBoundary]);
 
+  const [savingEditId, setSavingEditId] = useState<Id<'clubChannelMessages'> | null>(null);
+
+  const saveEdit = async (
+    messageId: Id<'clubChannelMessages'>,
+    { body, bodyMarkdown, bodyRich, files, removedAttachmentIds }: {
+      body: string;
+      bodyMarkdown: string;
+      bodyRich: ClubChannelMessageRichBody | null;
+      files: File[];
+      removedAttachmentIds: string[];
+    },
+  ) => {
+    const stagedIds: Id<'clubChannelAttachmentUploads'>[] = [];
+    setSavingEditId(messageId);
+    try {
+      const uploads = await Promise.allSettled(
+        files.map(async (file) => {
+          const { storageId, uploadIntentId } = await uploadFileToConvex(
+            { generateUploadUrl: () => generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }) },
+            file,
+          );
+          return finalizeChatAttachment({ uploadIntentId, storageId, fileName: file.name });
+        }),
+      );
+      stagedIds.push(
+        ...uploads.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value.attachmentUploadId] : [],
+        ),
+      );
+      const failed = uploads.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      );
+      if (failed) throw failed.reason;
+      await updateMessage({
+        messageId,
+        body,
+        bodyMarkdown: bodyMarkdown.trim() || undefined,
+        bodyRich: bodyRich ?? undefined,
+        addAttachments: stagedIds.length ? stagedIds : undefined,
+        removeAttachmentIds: removedAttachmentIds.length
+          ? (removedAttachmentIds as Id<'clubChannelMessageAttachments'>[])
+          : undefined,
+      });
+      setEditingMessageId(null);
+    } catch {
+      await Promise.allSettled(
+        stagedIds.map((attachmentUploadId) => discardChatAttachment({ attachmentUploadId })),
+      );
+      toast({ title: "Couldn't save your changes", variant: 'destructive' });
+    } finally {
+      setSavingEditId(null);
+    }
+  };
+
   const submitMessage = async ({
     body,
     bodyMarkdown,
@@ -2233,8 +2287,9 @@ export function ChannelWorkspace() {
               suggestionEntries={suggestionEntries}
               placeholder="Edit message..."
               submitLabel="Save Changes"
-              isPending={false}
-              canAttach={false}
+              isPending={savingEditId === message._id}
+              canAttach
+              existingAttachments={message.attachments}
               onMentionIntent={() => setMentionContextRequested(true)}
               initialBody={message.body}
               initialBodyMarkdown={message.bodyMarkdown}
@@ -2243,14 +2298,7 @@ export function ChannelWorkspace() {
                   ? (message.bodyRich as ClubChannelMessageRichBody)
                   : null
               }
-              onSubmit={({ body, bodyMarkdown, bodyRich }) =>
-                void updateMessage({
-                  messageId: message._id,
-                  body,
-                  bodyMarkdown: bodyMarkdown.trim() || undefined,
-                  bodyRich: bodyRich ?? undefined,
-                }).then(() => setEditingMessageId(null))
-              }
+              onSubmit={(args) => void saveEdit(message._id, args)}
             />
             <Button
               variant="ghost"
