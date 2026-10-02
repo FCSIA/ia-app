@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { ExternalLink, Share } from 'lucide-react';
 import Lightbox, { IconButton, useLightboxState } from 'yet-another-react-lightbox';
 import Counter from 'yet-another-react-lightbox/plugins/counter';
@@ -24,44 +23,33 @@ export type ViewerImage = {
   mimeType?: string;
 };
 
-// Each image is fetched once while it is on screen, so Share can hand the
-// file itself to the share sheet inside the tap. Where the fetch fails, Share
-// falls back to the link.
-const imageFiles = new Map<string, Promise<File | null>>();
+// Each image is fetched once when it comes on screen, so Share can hand the
+// file itself to the share sheet inside the tap. Until it arrives, or where
+// the fetch fails, Share falls back to the link.
+const imageFiles = new Map<string, File | null>();
+const imageFilesLoading = new Set<string>();
 
-function loadImageFile(image: ViewerImage) {
-  let file = imageFiles.get(image.src);
-  if (!file) {
-    file = fetch(image.src)
-      .then((response) => (response.ok ? response.blob() : null))
-      .then((blob) =>
-        blob
-          ? new File([blob], image.fileName, { type: image.mimeType || blob.type || 'image/png' })
-          : null,
-      )
-      .catch(() => null);
-    imageFiles.set(image.src, file);
-  }
-  return file;
+function prefetchImageFile(image: ViewerImage | undefined) {
+  if (!image || imageFiles.has(image.src) || imageFilesLoading.has(image.src)) return;
+  imageFilesLoading.add(image.src);
+  void fetch(image.src)
+    .then((response) => (response.ok ? response.blob() : null))
+    .then((blob) =>
+      blob
+        ? new File([blob], image.fileName, { type: image.mimeType || blob.type || 'image/png' })
+        : null,
+    )
+    .catch(() => null)
+    .then((file) => {
+      imageFiles.set(image.src, file);
+      imageFilesLoading.delete(image.src);
+    });
 }
 
 function ShareImageButton({ images }: { images: ViewerImage[] }) {
   const { currentIndex } = useLightboxState();
   const image = images[currentIndex];
-  const fileRef = useRef<File | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    fileRef.current = null;
-    if (!image) return;
-    let current = true;
-    void loadImageFile(image).then((file) => {
-      if (current) fileRef.current = file;
-    });
-    return () => {
-      current = false;
-    };
-  }, [image]);
 
   if (!image) return null;
 
@@ -71,7 +59,7 @@ function ShareImageButton({ images }: { images: ViewerImage[] }) {
       icon={Share}
       onClick={() => {
         // Decided synchronously: the share sheet needs the tap's activation.
-        const file = fileRef.current;
+        const file = imageFiles.get(image.src);
         const sharing =
           file && canShareFile(file)
             ? shareFile(file, { title: image.fileName })
@@ -128,6 +116,10 @@ export function ImageViewer({
       carousel={{ finite: true, preload: 1, padding: 0, spacing: 16 }}
       animation={{ fade: 200, swipe: 260, zoom: 220 }}
       controller={{ closeOnPullDown: true, closeOnBackdropClick: true }}
+      on={{
+        entering: () => prefetchImageFile(images[index]),
+        view: ({ index: viewed }) => prefetchImageFile(images[viewed]),
+      }}
       zoom={{ maxZoomPixelRatio: 3, scrollToZoom: true }}
       toolbar={{
         buttons: [

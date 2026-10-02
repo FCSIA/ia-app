@@ -885,6 +885,9 @@ function ScrollToReplyTarget({
   return null;
 }
 
+/** What the viewer may do with messages in this channel. */
+type MessagePermissions = { post: boolean; pin: boolean; moderate: boolean };
+
 /** What a double tap adds until someone picks their own, as in Discord. */
 const DEFAULT_DOUBLE_TAP_REACTION: ChannelReaction = 'LIKE';
 
@@ -971,9 +974,7 @@ function MessageRow({
   friendRequestPendingId,
   highlighted,
   jumpedTo,
-  canPost,
-  canPinMessages,
-  canModerateMessages,
+  permissions,
   currentUserId,
   openReactionDetailsOnPress,
   compact = false,
@@ -1006,15 +1007,14 @@ function MessageRow({
   friendRequestPendingId?: string | null;
   highlighted: boolean;
   jumpedTo: boolean;
-  canPost: boolean;
-  canPinMessages: boolean;
-  canModerateMessages: boolean;
+  permissions: MessagePermissions;
   currentUserId?: string;
   openReactionDetailsOnPress: boolean;
   compact?: boolean;
   groupedWithPrevious?: boolean;
 }) {
   const isTouchPrimary = useTouchPrimary();
+  const { post: canPost, pin: canPinMessages, moderate: canModerateMessages } = permissions;
   // Thread replies are always compact; on touch-primary devices every row
   // uses the compact rhythm so more of the conversation fits above the
   // keyboard. Type sizes stay untouched — the win is spacing, not legibility.
@@ -2164,9 +2164,11 @@ export function ChannelWorkspace() {
           friendRequestPendingId={friendRequestPendingId}
           highlighted={matchingIds.has(message._id)}
           jumpedTo={jumpedToMessageId === message._id}
-          canPost={channel?.viewerCanPost ?? true}
-          canPinMessages={canPinMessages}
-          canModerateMessages={canModerateMessages}
+          permissions={{
+            post: channel?.viewerCanPost ?? true,
+            pin: canPinMessages,
+            moderate: canModerateMessages,
+          }}
           openReactionDetailsOnPress={isMobile || isTouchPrimary}
           compact={compact}
           groupedWithPrevious={groupedWithPrevious}

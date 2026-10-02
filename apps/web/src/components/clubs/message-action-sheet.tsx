@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, type ComponentType, type ReactNode } from 'react';
+// flushSync is deliberate: closing the sheet synchronously removes its focus
+// trap before an action focuses the composer, which must happen inside the tap
+// for iOS to raise the keyboard. Nothing here uses View Transitions.
 import { flushSync } from 'react-dom';
 import { Pencil } from 'lucide-react';
 import {
@@ -174,7 +177,7 @@ export function MessageActionSheet({
                         <span
                           key={doubleTapReaction.value}
                           aria-hidden="true"
-                          className="text-[13px] leading-none motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-200"
+                          className="text-[13px] leading-none motion-safe:animate-in motion-safe:zoom-in-50"
                         >
                           {doubleTapReaction.label}
                         </span>
