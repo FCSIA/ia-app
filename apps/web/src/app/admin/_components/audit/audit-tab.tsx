@@ -8,21 +8,33 @@ import { AdminPanel } from '../admin-ui';
 import { AuditDetailSheet } from './audit-detail-sheet';
 import { AuditFilters } from './audit-filters';
 import { AuditTable } from './audit-table';
+import { AuditAdvancedSearch } from './audit-advanced-search';
 
 export function AuditTab() {
   const audit = useAdminAudit('audit');
   const actions = (
     <>
       <TabsSubtle
-        selectedIndex={audit.auditSubView === 'general' ? 0 : 1}
-        onSelect={(index) => audit.setAuditSubView(index === 0 ? 'general' : 'flex')}
-        className="rounded-lg border border-border/70 bg-muted/30 px-1"
+        selectedIndex={['all', 'general', 'flex'].indexOf(audit.auditSubView)}
+        onSelect={(index) =>
+          audit.setAuditSubView(
+            index === 0 ? 'all' : index === 1 ? 'general' : 'flex',
+          )
+        }
+        aria-label="Activity view"
       >
-        <TabsSubtleItem index={0} label="General" className="py-1.5" />
-        <TabsSubtleItem index={1} label="Flex & Events" className="py-1.5" />
+        <TabsSubtleItem index={0} label="All" />
+        <TabsSubtleItem index={1} label="General" />
+        <TabsSubtleItem index={2} label="Flex & Events" />
       </TabsSubtle>
       {audit.hasActiveAuditFilters ? (
-        <Button type="button" variant="ghost" size="sm" leadingIcon={X} onClick={audit.clearAuditFilters}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          leadingIcon={X}
+          onClick={audit.clearAuditFilters}
+        >
           Clear
         </Button>
       ) : null}
@@ -31,7 +43,15 @@ export function AuditTab() {
 
   return (
     <>
-      <AdminPanel title="Audit Log" actions={actions} contentClassName="space-y-5">
+      <AdminPanel
+        title="Audit Log"
+        actions={actions}
+        contentClassName="space-y-5"
+      >
+        <p className="text-sm text-muted-foreground">
+          Who did what, and when. Open Details for the complete recorded
+          information. All activity includes every category.
+        </p>
         <AuditFilters
           auditSearch={audit.auditSearch}
           onAuditSearchChange={audit.setAuditSearch}
@@ -52,6 +72,13 @@ export function AuditTab() {
           auditActionOptions={audit.auditActionOptions}
           auditEntityTypeOptions={audit.auditEntityTypeOptions}
           auditFilterChips={audit.auditFilterChips}
+        />
+        <AuditAdvancedSearch
+          draft={audit.advancedDraft}
+          onDraftChange={audit.setAdvancedDraft}
+          applied={audit.advancedQuery}
+          error={audit.advancedError}
+          onApply={audit.applyAdvancedQuery}
         />
         <AuditTable
           isAuditLoading={audit.isAuditLoading}

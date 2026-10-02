@@ -12,6 +12,24 @@
 
 ## Current Truth
 
+### Audit Log Readability (2026-10-02)
+
+- Audit-only changes are on `codex/admin-audit-log-ux` in the managed
+  `admin-audit-log-ux/ia-app` worktree. The original checkout contains concurrent
+  preferred-name work and the combined local preview; preserve that work.
+- Plain-language labels, related names, complete original details, an All view,
+  bounded advanced search, and pagination through empty batches are implemented.
+- 36 focused tests pass, including complete 620-record history and access gates.
+  Web/backend TypeScript, web lint, and production compilation pass. `direnv`
+  is unavailable on Windows; verification used the installed Node tooling.
+  Production compilation used webpack because Turbopack failed on the isolated
+  verification copy's dependency junctions.
+- Responsive browser review covered 320px, 390px, 768px, and 1440px widths, basic
+  and advanced filters, details, raw data, and keyboard dismissal. The composition
+  awaits the design owner's visual review, including themes and reduced motion.
+- The user asked to test before pushing: commit locally only; do not push or open
+  a PR until the user says it is ready. See `docs/features/audit-log.md`.
+
 ### Convex Usage and Scale Audit (2026-08-31)
 
 - Production `elated-anaconda-301` was inspected read-only. No production

@@ -10,53 +10,52 @@ The audit log records significant system actions for admin review.
 
 ## What It Does
 
-- Stores actor, action, entity, metadata, and timestamp for important writes.
-- Shows newest-first audit rows in the Admin Panel.
-- Supports cursor pagination and a detail view for individual rows.
+- Shows who acted, what happened, the related record, and the exact time in everyday language.
+- Resolves related people, clubs, channels, workshops, and other named records without changing stored audit data. Saved names/titles take precedence; related names reflect current records. Deleted people remain distinguishable from automatic system activity, and their original IDs remain available.
+- Defaults to **All** activity. General and Flex & Events offer narrower views; both historical camel-case and uppercase categories are recognized.
+- Uses cursor pagination across the complete history, newest first. Empty matching batches retain an older-history control. Loaded record counts are not total match counts; continue until **End of history** to find every match.
+- Keeps all original action codes, IDs, timestamps, and metadata in **Details → Original data and IDs**. Whiteboard snapshots and links remain available.
+- Keeps search visible and places the remaining controls in a Filters disclosure. Rows wrap on narrow screens; mobile shows the same timestamp inside the activity cell.
+
+## Search
+
+Basic search includes names, readable action labels, record context, and recorded metadata. The Person field accepts full names and IDs. From/To controls use inclusive boundaries in the browser's local timezone.
+
+**Advanced search** applies a query explicitly, in combination with the selected view and other controls. Invalid drafts show an error and leave the last applied query unchanged. Clear resets both the applied query and its draft.
+
+```text
+person:"Eniola Famakinwa" action:"message posted"
+type:message -action:reaction "room assignments"
+record:Robotics after:2026-10-01 before:2026-10-02
+source:system
+```
+
+Supported fields: `person`, `action`, `type`, `record`, `text`, `source`, `after`, and `before`. Terms combine with AND, match case-insensitive substrings, and support double-quoted phrases. Prefix a term with `-` to exclude it. Plain words search all recorded fields. `source` accepts `person` or `system`. Advanced date terms use inclusive UTC calendar dates. Queries accept original codes, including older actions absent from the dropdown suggestions.
 
 ## Source Files
 
 - Backend: `apps/convex/src/audit/`
-- Shared logger: `apps/convex/src/audit/_lib.ts`
-- Web admin hooks/components: `apps/web/src/app/admin/_hooks/use-admin-audit.ts`
-  and `apps/web/src/app/admin/_components/audit/`
+- Shared logger and hydration: `apps/convex/src/audit/_lib.ts`
+- Bounded context resolution: `apps/convex/src/audit/_context.ts`
+- Shared labels and query grammar: `apps/shared/audit.ts`
+- Web: `apps/web/src/app/admin/_hooks/use-admin-audit.ts` and `apps/web/src/app/admin/_components/audit/`
 
 ## Convex Surface
 
-- `api.audit.events.list`
-- `api.audit.events.listPage`
+- `api.audit.events.list` (bounded legacy/mobile read)
+- `api.audit.events.listPage` (complete cursor history)
+- `api.audit.events.listFilterOptions` (suggestions from the latest 500 events)
 - `api.audit.events.get`
 
-## Data Model
+## Data Model and Permissions
 
-`auditEvents` stores:
+`auditEvents` stores actorId, action, entityType, entityId, meta, and createdAt. Admin-facing reads require ADMIN, SUPER_ADMIN, or SUPPORT_STAFF. Unauthorized clients receive no rows, related names, options, or details.
 
-- `actorId`
-- `action`
-- `entityType`
-- `entityId`
-- `meta`
-- `createdAt`
-
-## Permissions
-
-Admin-facing audit reads are restricted to elevated roles in the Convex query
-layer. Normal users do not read audit rows.
-
-## Side Effects
-
-Domain mutations call `logAuditEvent(ctx, ...)` after meaningful writes such as
-user changes, schedule saves, friend requests, announcement changes,
-moderation updates, event approvals, Flex Friday changes, and channel-message
-posts, edits, deletes, pins, and reaction adds/removals. Whiteboard creates,
-edits, renames, archives, and restores are audited too; see
-[Whiteboards](whiteboards.md).
+Domain mutations call `logAuditEvent` after significant writes, including message changes/reactions and whiteboard edits. Stored event data is not rewritten by name resolution or search.
 
 ## Known Limits
 
-Some admin filters still happen after page hydration because actor names and
-free-form metadata are not all indexed. Add dedicated indexed/search fields
-before large production audit search.
+Full-name, metadata, category, and advanced filters run after each bounded indexed page is hydrated. Date controls range the timestamp index. This preserves access to all records without an unbounded scan, but sparse searches may need multiple older-history requests. Add dedicated indexed/search fields before large production audit search. Related records are read once per page via memoization; unavailable records retain the type and original ID.
 
 ## Related
 
