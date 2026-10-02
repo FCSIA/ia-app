@@ -12,6 +12,26 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.35 — 2026-10-02 (alpha)
+
+### Added
+
+- **clubs** — Club managers can turn whiteboards off for individual channels. ([#133](https://github.com/virajdas/ia-app/pull/133), [`1b1aa2d5`](https://github.com/virajdas/ia-app/commit/1b1aa2d5))
+
+### Improved
+
+- **notifications** — If notifications get turned off on your phone, the dashboard now offers a one-tap way to turn them back on. ([#136](https://github.com/virajdas/ia-app/pull/136), [`9eb82d3f`](https://github.com/virajdas/ia-app/commit/9eb82d3f))
+- **mobile** — Chat read receipts now wait for sent messages to finish saving. ([#134](https://github.com/virajdas/ia-app/pull/134), [`f5d21318`](https://github.com/virajdas/ia-app/commit/f5d21318))
+
+### Fixed
+
+- **clubs** — Club chat on phones no longer slides sideways, opens menus by accident, or starts replies when you swipe through images. ([#141](https://github.com/virajdas/ia-app/pull/141), [`7f037ba2`](https://github.com/virajdas/ia-app/commit/7f037ba2))
+- **notifications** — Signing out, or switching accounts on a shared device, now stops the previous account's notifications there. ([#138](https://github.com/virajdas/ia-app/pull/138), [`5da23f28`](https://github.com/virajdas/ia-app/commit/5da23f28))
+
+### Internal
+
+- Add Azure school environment plan and hosting migration plan. ([`b015a978`](https://github.com/virajdas/ia-app/commit/b015a978))
+
 ## v0.8.34 — 2026-10-01 (alpha)
 
 ### Added
