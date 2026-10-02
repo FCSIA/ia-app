@@ -1132,6 +1132,14 @@ export const schema = defineSchema({
     .index("by_messageId_and_userId", ["messageId", "userId"])
     .index("by_userId", ["userId"]),
 
+  // Everyone a message pinged, with group mentions resolved when it was
+  // posted. Chat highlights a message for exactly the people it notified.
+  clubChannelMessageMentionRecipients: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_messageId_and_userId", ["messageId", "userId"]),
+
   eventCategories: defineTable({
     title: v.string(),
     description: v.optional(v.string()),

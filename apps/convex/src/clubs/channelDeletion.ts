@@ -16,7 +16,8 @@ export const cleanupDeletedMessage = internalMutation({
     if (!message?.deletedAt) return null;
 
     const queryLimit = CHANNEL_MESSAGE_CLEANUP_BATCH_SIZE + 1;
-    const [attachments, reactions, mentions, votes] = await Promise.all([
+    const [attachments, reactions, mentions, mentionRecipients, votes] =
+      await Promise.all([
       ctx.db
         .query("clubChannelMessageAttachments")
         .withIndex("by_messageId_and_createdAt", (q) =>
@@ -36,6 +37,12 @@ export const cleanupDeletedMessage = internalMutation({
         )
         .take(queryLimit),
       ctx.db
+        .query("clubChannelMessageMentionRecipients")
+        .withIndex("by_messageId_and_userId", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .take(queryLimit),
+      ctx.db
         .query("clubChannelMessagePollVotes")
         .withIndex("by_messageId_and_optionId", (q) =>
           q.eq("messageId", message._id),
@@ -50,7 +57,7 @@ export const cleanupDeletedMessage = internalMutation({
       await deleteStoredChatAttachment(ctx, attachment);
       await ctx.db.delete(attachment._id);
     }
-    for (const row of [reactions, mentions, votes]) {
+    for (const row of [reactions, mentions, mentionRecipients, votes]) {
       for (const relation of row.slice(0, CHANNEL_MESSAGE_CLEANUP_BATCH_SIZE)) {
         await ctx.db.delete(relation._id);
       }
@@ -61,6 +68,7 @@ export const cleanupDeletedMessage = internalMutation({
         attachments.length,
         reactions.length,
         mentions.length,
+        mentionRecipients.length,
         votes.length,
       ])
     ) {

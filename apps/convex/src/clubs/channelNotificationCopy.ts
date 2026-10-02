@@ -1,6 +1,7 @@
 export type ChannelNotificationKind =
   | "MESSAGE"
   | "THREAD_REPLY"
+  | "REPLY"
   | "USER_MENTION"
   | "GROUP_MENTION";
 
@@ -15,6 +16,8 @@ export function channelNotificationTitle(input: {
   switch (input.kind) {
     case "THREAD_REPLY":
       return `${authorName} replied in ${channelName}`;
+    case "REPLY":
+      return `${authorName} replied to you in ${channelName}`;
     case "USER_MENTION":
       return `${authorName} mentioned you in ${channelName}`;
     case "GROUP_MENTION":

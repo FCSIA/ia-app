@@ -220,6 +220,12 @@ export const run = internalMutation({
         .take(5000);
       for (const mention of oldMentions) await ctx.db.delete(mention._id);
 
+      const oldMentionRecipients = await ctx.db
+        .query("clubChannelMessageMentionRecipients")
+        .take(5000);
+      for (const recipient of oldMentionRecipients)
+        await ctx.db.delete(recipient._id);
+
       const oldReactions = await ctx.db
         .query("clubChannelMessageReactions")
         .take(5000);
