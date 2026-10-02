@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import {
   BarChart3,
+  ImagePlay,
   MessageCircle,
   Paperclip,
   Pencil,
@@ -26,6 +28,8 @@ import {
 import type { ChatComposerController } from "./use-chat-composer";
 import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 import { chatAuthorName } from "./types";
+import { SchoolGifPicker } from "./school-gif-picker";
+import { extractChatGifLinks } from "~/apps/shared/chat/gifs";
 
 type ChatComposerProps = {
   composer: ChatComposerController;
@@ -73,6 +77,7 @@ export function ChatComposer({
   onSubmit,
 }: ChatComposerProps) {
   const { color } = useTheme();
+  const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const requiresPostingPermission =
     composer.mode.kind === "message" ||
     composer.mode.kind === "reply" ||
@@ -264,6 +269,17 @@ export function ChatComposer({
                     disabled={isPending || !canPickAttachments}
                     onPress={onPickAttachments}
                   />
+                  <ComposerToolButton
+                    icon={ImagePlay}
+                    label="GIF"
+                    disabled={
+                      isPending ||
+                      extractChatGifLinks(
+                        composer.markdownDraft || composer.draft,
+                      ).length >= 5
+                    }
+                    onPress={() => setGifPickerOpen(true)}
+                  />
                   {canCreatePoll ? (
                     <ComposerToolButton
                       icon={BarChart3}
@@ -302,6 +318,19 @@ export function ChatComposer({
           </>
         )}
       </View>
+      {gifPickerOpen ? (
+        <SchoolGifPicker
+          open
+          onClose={() => setGifPickerOpen(false)}
+          onSelect={(gif) => {
+            composer.setRichDraft(
+              `${composer.draft.trimEnd()}${composer.draft.trim() ? "\n" : ""}${gif.url}`,
+              `${composer.markdownDraft.trimEnd()}${composer.markdownDraft.trim() ? "\n" : ""}${gif.url}`,
+            );
+            setGifPickerOpen(false);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

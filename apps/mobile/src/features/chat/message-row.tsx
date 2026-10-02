@@ -35,6 +35,8 @@ import {
   reactionDefinition,
 } from "./quick-reactions";
 import { RichMessageBody } from "./rich-message-body";
+import { ChatGif, ChatGifLinks } from "./chat-gif";
+import { isGifAttachment } from "~/apps/shared/chat/gifs";
 import {
   resistedReplySwipeDistance,
   shouldTriggerSwipeReply,
@@ -64,6 +66,17 @@ type MessageRowProps = {
   onRetry?: (message: ChatMessage) => void;
 };
 
+function partitionAttachments(attachments: ChatAttachment[] = []) {
+  const imageAttachments: ChatAttachment[] = [];
+  const fileAttachments: ChatAttachment[] = [];
+  for (const attachment of attachments) {
+    (isImageAttachment(attachment) ? imageAttachments : fileAttachments).push(
+      attachment,
+    );
+  }
+  return { imageAttachments, fileAttachments };
+}
+
 export const ChatMessageRow = memo(function ChatMessageRow({
   message,
   groupedWithPrevious,
@@ -80,6 +93,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
 }: MessageRowProps) {
   const { color } = useTheme();
   const authorName = chatAuthorName(message);
+  const { imageAttachments, fileAttachments } = partitionAttachments(
+    message.attachments,
+  );
   const reactions = normalizeReactionSummaries(
     message.reactions?.filter((reaction) => reaction.count > 0) ?? [],
   );
@@ -309,6 +325,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   />
                 ) : null}
 
+                <ChatGifLinks text={message.bodyMarkdown || message.body} />
+
                 {message.attachments?.length ? (
                   <View style={{ paddingTop: spacing.xs, gap: spacing.sm }}>
                     <View
@@ -318,9 +336,14 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                         gap: spacing.sm,
                       }}
                     >
-                      {message.attachments
-                        .filter(isImageAttachment)
-                        .map((attachment, index, imageAttachments) => (
+                      {imageAttachments.map((attachment) =>
+                        isGifAttachment(attachment) ? (
+                          <ChatGif
+                            key={attachment._id}
+                            src={attachment.fileUrl}
+                            name={attachment.fileName}
+                          />
+                        ) : (
                           <PressableScale
                             key={attachment._id}
                             accessibilityLabel={`Open image ${attachment.fileName}`}
@@ -353,22 +376,21 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                               style={{ width: "100%", height: "100%" }}
                             />
                           </PressableScale>
-                        ))}
+                        ),
+                      )}
                     </View>
-                    {message.attachments
-                      .filter((attachment) => !isImageAttachment(attachment))
-                      .map((attachment) => (
-                        <FileAttachment
-                          key={attachment._id}
-                          attachment={attachment}
-                          onLongPress={openContextMenu}
-                          onPress={() =>
-                            onOpenAttachment
-                              ? onOpenAttachment(attachment)
-                              : void Linking.openURL(attachment.fileUrl)
-                          }
-                        />
-                      ))}
+                    {fileAttachments.map((attachment) => (
+                      <FileAttachment
+                        key={attachment._id}
+                        attachment={attachment}
+                        onLongPress={openContextMenu}
+                        onPress={() =>
+                          onOpenAttachment
+                            ? onOpenAttachment(attachment)
+                            : void Linking.openURL(attachment.fileUrl)
+                        }
+                      />
+                    ))}
                     {message.attachmentsTruncated ? (
                       <Txt variant="caption" tone="muted">
                         Showing the latest attachments

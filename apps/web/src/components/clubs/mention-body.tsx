@@ -5,10 +5,12 @@ import type { Value } from 'platejs';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
+import { extractChatGifLinks, hideChatGifLinks } from '~/apps/shared/chat/gifs';
 import {
   allowedMessageHref,
   isRichTextLeaf,
   normalizeClubChannelMessageBody,
+  serializeClubChannelMessageMarkdown,
   serializeClubChannelMessagePlainText,
   type ClubChannelMessageRichBody,
   type RichTextLeaf,
@@ -110,10 +112,17 @@ function renderBlockNode(node: RichTextNode, index: number) {
 }
 
 function messageUrlTransform(url: string) {
-  return allowedMessageHref(url) ?? '';
+  return allowedMessageHref(url.replace(/(?:\\|%5c)([_*~])/gi, '$1')) ?? '';
 }
 
 export function MentionBody({ body, bodyMarkdown, bodyRich, className }: MentionBodyProps) {
+  const source = bodyMarkdown || body;
+  if (extractChatGifLinks(source).length) {
+    bodyMarkdown = hideChatGifLinks(bodyMarkdown || serializeClubChannelMessageMarkdown(
+      normalizeClubChannelMessageBody(bodyRich, body) as Value,
+    ), source);
+    if (!bodyMarkdown.trim()) return null;
+  }
   if (bodyMarkdown?.trim()) {
     return (
       <div

@@ -1,7 +1,7 @@
 'use client';
 
 import { useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
-import { AtSign, BarChart3, Bold, FileText, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
+import { AtSign, BarChart3, Bold, FileText, ImagePlay, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
 import { BoldPlugin, ItalicPlugin, UnderlinePlugin } from '@platejs/basic-nodes/react';
@@ -39,6 +39,8 @@ import {
   type MentionableItem,
 } from '@/components/ui/mention-node';
 import { cn } from '@/lib/utils';
+import { SchoolGifPicker } from './school-gif-picker';
+import { extractChatGifLinks } from '~/apps/shared/chat/gifs';
 
 export type ChannelMentionSuggestion = {
   token: string;
@@ -172,6 +174,7 @@ export function ChannelMessageComposer({
   const [richValue, setRichValue] = useState<Value>(initialValue);
   const [pollOpen, setPollOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
@@ -422,6 +425,20 @@ export function ChannelMessageComposer({
                           <BarChart3 data-icon="inline-start" />
                         </InputControlButton>
                       ) : null}
+                      {canAttach ? (
+                        <InputControlButton
+                          type="button"
+                          size="icon-sm"
+                          aria-label="Choose a GIF"
+                          disabled={isPending || extractChatGifLinks(currentBody).length >= 5}
+                          onClick={() => {
+                            setToolsOpen(false);
+                            setGifPickerOpen(true);
+                          }}
+                        >
+                          <ImagePlay data-icon="inline-start" />
+                        </InputControlButton>
+                      ) : null}
                       {!isMarkdownSource && (canAttach || canCreatePoll) ? (
                         <Separator orientation="vertical" className="mx-0.5 h-4" />
                       ) : null}
@@ -486,6 +503,18 @@ export function ChannelMessageComposer({
         </div>
       </MentionablesProvider>
 
+      {canAttach ? (
+        <SchoolGifPicker open={gifPickerOpen} onOpenChange={setGifPickerOpen} onSelect={(gif) => {
+          if (isMarkdownSource) {
+            setMarkdownSource((current) => `${current.trimEnd()}${current.trim() ? '\n' : ''}${gif.url}`);
+          } else {
+            editor.tf.select(editor.api.end([]));
+            if (plainText.trim()) editor.tf.insertBreak();
+            editor.tf.insertText(gif.url);
+          }
+          setGifPickerOpen(false);
+        }} />
+      ) : null}
       {canAttach ? (
         <input
           ref={fileInputRef}

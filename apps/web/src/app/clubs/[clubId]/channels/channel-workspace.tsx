@@ -27,6 +27,7 @@ import {
   Copy,
   FileText,
   History,
+  Link2,
   MessageSquareText,
   MoreHorizontal,
   Pencil,
@@ -165,6 +166,8 @@ import {
 } from '@/components/ui/empty';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
+import { ChatGif, ChatGifLinks } from '@/components/clubs/chat-gif';
+import { isGifAttachment, messageGifUrls } from '~/apps/shared/chat/gifs';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -311,6 +314,10 @@ function MessageAttachmentCard({
   const href = attachment.fileUrl;
   const isImage = isImageAttachment(attachment);
 
+  if (isGifAttachment(attachment)) {
+    return <ChatGif key={href} src={href} name={attachment.fileName} />;
+  }
+
   return (
     <Attachment
       size="sm"
@@ -439,16 +446,19 @@ function MessageAttachmentGallery({
 
 function MessageBody({ message }: { message: ClubChannelMessage }) {
   return (
-    <MentionBody
-      body={message.body}
-      bodyMarkdown={message.bodyMarkdown}
-      bodyRich={
-        Array.isArray(message.bodyRich)
-          ? (message.bodyRich as ClubChannelMessageRichBody)
-          : null
-      }
-      className="!text-[13px] !leading-normal"
-    />
+    <>
+      <MentionBody
+        body={message.body}
+        bodyMarkdown={message.bodyMarkdown}
+        bodyRich={
+          Array.isArray(message.bodyRich)
+            ? (message.bodyRich as ClubChannelMessageRichBody)
+            : null
+        }
+        className="!text-[13px] !leading-normal"
+      />
+      <ChatGifLinks text={message.bodyMarkdown || message.body} />
+    </>
   );
 }
 
@@ -1015,6 +1025,15 @@ function MessageRow({
 }) {
   const isTouchPrimary = useTouchPrimary();
   const { post: canPost, pin: canPinMessages, moderate: canModerateMessages } = permissions;
+  const { toast } = useToast();
+  // Previewed GIF links and GIF uploads, copied from the message's own menu.
+  const gifUrls = message.isDeleted ? [] : messageGifUrls(message);
+  const copyGifUrl = (url: string) => {
+    void copyText(url).then(
+      () => toast({ title: 'GIF URL copied' }),
+      () => toast({ title: 'Could not copy the GIF URL', variant: 'destructive' }),
+    );
+  };
   // Thread replies are always compact; on touch-primary devices every row
   // uses the compact rhythm so more of the conversation fits above the
   // keyboard. Type sizes stay untouched — the win is spacing, not legibility.
@@ -1105,6 +1124,13 @@ function MessageRow({
       ...(hasBody
         ? [{ key: 'copy', label: 'Copy text', icon: Copy, onSelect: () => onCopyText(message) }]
         : []),
+      // The hold sheet replaces the right-click menu on touch, GIF links included.
+      ...gifUrls.map((url, index) => ({
+        key: `gif-${url}`,
+        label: gifUrls.length === 1 ? 'Copy GIF URL' : `Copy GIF ${index + 1} URL`,
+        icon: Link2,
+        onSelect: () => copyGifUrl(url),
+      })),
       ...(canPinMessages && !compact
         ? [
             {
@@ -1572,6 +1598,28 @@ function MessageRow({
               {message.isPinned ? <PinOff /> : <Pin />}
               {message.isPinned ? 'Unpin' : 'Pin'}
             </ContextMenuItem>
+          ) : null}
+          {gifUrls.length === 1 ? (
+            <ContextMenuItem onSelect={() => copyGifUrl(gifUrls[0]!)}>
+              <Link2 />
+              Copy GIF URL
+            </ContextMenuItem>
+          ) : gifUrls.length > 1 ? (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <Link2 />
+                Copy GIF URL
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-36">
+                <ContextMenuGroup>
+                  {gifUrls.map((url, index) => (
+                    <ContextMenuItem key={url} onSelect={() => copyGifUrl(url)}>
+                      GIF {index + 1}
+                    </ContextMenuItem>
+                  ))}
+                </ContextMenuGroup>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
           ) : null}
         </ContextMenuGroup>
         {isAuthor || canModerateMessages ? <ContextMenuSeparator /> : null}
