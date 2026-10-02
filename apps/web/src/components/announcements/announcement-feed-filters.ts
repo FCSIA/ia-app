@@ -23,7 +23,7 @@ type FilterableAnnouncement = {
   targetPathway?: string;
   targetMajorPathways?: string[];
   targetMinorPathways?: string[];
-  author?: { firstName?: string | null; lastName?: string | null } | null;
+  author?: { firstName?: string | null; lastName?: string | null; preferredName?: string | null } | null;
   club?: { name: string } | null;
 };
 
@@ -55,6 +55,7 @@ export function compileAnnouncementFilters(
       announcement.body,
       announcement.author?.firstName,
       announcement.author?.lastName,
+      announcement.author?.preferredName,
       announcement.club?.name,
       announcement.targetType.replaceAll('_', ' '),
       announcement.targetGrade ? `Grade ${announcement.targetGrade}` : undefined,

@@ -1,3 +1,4 @@
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import type { FunctionReturnType } from 'convex/server';
@@ -162,22 +163,22 @@ export function useGlobalCommandActions({
 
     const scheduleActions: CommandAction[] = (schedule?.friends ?? []).slice(0, 12).map((friend) => ({
       id: `schedule-friend-${friend.id}`,
-      label: `${friend.user.firstName} ${friend.user.lastName}`,
+      label: displayName(friend.user),
       detail: 'Schedule friend',
       href: '/schedule?tab=friends',
       Icon: Users,
-      keywords: ['schedule friend', friend.user.uniqueId],
+      keywords: ['schedule friend', friend.user.uniqueId, ...nameSearchValues(friend.user)],
     }));
 
     const peopleActions: CommandAction[] = (globalResults?.people ?? []).map((person) => ({
       id: `person-${person._id}`,
-      label: `${person.firstName} ${person.lastName}`,
+      label: displayName(person),
       detail: 'IA community member',
       href: hasRole(user, 'STUDENT')
-        ? `/schedule?tab=friends&search=${encodeURIComponent(`${person.firstName} ${person.lastName}`)}`
-        : `/admin?search=${encodeURIComponent(`${person.firstName} ${person.lastName}`)}`,
+        ? `/schedule?tab=friends&search=${encodeURIComponent(displayName(person))}`
+        : `/admin?search=${encodeURIComponent(displayName(person))}`,
       Icon: UserRound,
-      keywords: ['person', 'people'],
+      keywords: ['person', 'people', ...nameSearchValues(person)],
     }));
 
     const channelActions: CommandAction[] = (globalResults?.channels ?? []).map((channel) => ({

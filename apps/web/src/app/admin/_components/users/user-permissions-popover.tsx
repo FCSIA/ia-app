@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { ShieldCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
@@ -37,7 +39,7 @@ export function UserPermissionsPopover({
     ),
   );
   const roleSelectionDisabled = !canEdit || isPending;
-  const fullName = `${user.firstName} ${user.lastName}`;
+  const fullName = displayName(user);
 
   return (
     <Popover>
@@ -54,7 +56,7 @@ export function UserPermissionsPopover({
       <PopoverContent align="end" className="w-64 p-3">
         <div className="mb-2">
           <p className="truncate text-xs font-medium text-foreground">
-            {user.firstName} {user.lastName}
+            {displayName(user)}
           </p>
           {!canEdit ? (
             <p className="mt-1 text-[11px] text-muted-foreground">Super Admin only</p>

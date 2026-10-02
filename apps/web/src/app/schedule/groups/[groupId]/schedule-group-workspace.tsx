@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName, greetingName } from '~/apps/shared/user-name';
+
 import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -81,10 +83,10 @@ function ScheduleColumn({
   return (
     <section className={cn('overflow-hidden rounded-xl bg-surface-2 shadow-surface-1', CARD_SURFACE_FOREGROUND)}>
       <div className="flex items-center gap-2.5 bg-surface-3 px-3 py-2.5">
-        <UserAvatar firstName={person.firstName} lastName={person.lastName} className="size-8" />
+        <UserAvatar firstName={person.firstName} lastName={person.lastName} preferredName={person.preferredName} className="size-8" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
-            {person.firstName} {person.lastName}
+            {displayName(person)}
           </p>
         </div>
       </div>
@@ -203,9 +205,9 @@ function GroupWorkspaceHeader({
                     className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     onClick={() => onAddFriend(friend._id)}
                   >
-                    <UserAvatar firstName={friend.firstName} lastName={friend.lastName} className="size-7" />
+                    <UserAvatar firstName={friend.firstName} lastName={friend.lastName} preferredName={friend.preferredName} className="size-7" />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {friend.firstName} {friend.lastName}
+                      {displayName(friend)}
                     </span>
                     <Plus className="size-3.5 text-muted-foreground" />
                   </button>
@@ -280,7 +282,7 @@ function GroupWorkspaceBody({
                 <Card
                   key={member.id}
                   onClick={() => onSelectMember(member.user._id)}
-                  label={`Compare with ${member.user.firstName} ${member.user.lastName}`}
+                  label={`Compare with ${displayName(member.user)}`}
                   selected={selectedMember?.id === member.id}
                   className="min-h-12 px-3 py-2"
                 >
@@ -288,11 +290,12 @@ function GroupWorkspaceBody({
                     <UserAvatar
                       firstName={member.user.firstName}
                       lastName={member.user.lastName}
+                      preferredName={member.user.preferredName}
                       className="size-7"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        {member.user.firstName} {member.user.lastName}
+                        {displayName(member.user)}
                       </p>
                       <p className="truncate text-[11px] text-muted-foreground">
                         {!member.friendshipActive
@@ -312,7 +315,7 @@ function GroupWorkspaceBody({
                         variant="ghost"
                         size="icon-sm"
                         className="shrink-0 text-muted-foreground hover:text-destructive"
-                        aria-label={`Remove ${member.user.firstName} from group`}
+                        aria-label={`Remove ${greetingName(member.user)} from group`}
                         disabled={pendingRemoveId === member.user._id}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -354,7 +357,7 @@ function GroupWorkspaceBody({
                         </p>
                       </div>
                       <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
-                        {attendees.map((person) => person.firstName).join(', ')}
+                        {attendees.map((person) => greetingName(person)).join(', ')}
                       </p>
                     </div>
                   );

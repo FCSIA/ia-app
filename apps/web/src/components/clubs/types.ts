@@ -1,3 +1,4 @@
+import { displayName, nameInitials } from '~/apps/shared/user-name';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 
@@ -37,18 +38,18 @@ export interface AnnouncementSummary {
   body: string;
   createdAt: number | string;
   allowComments: boolean;
-  author?: Pick<ClubPerson, '_id' | 'firstName' | 'lastName'>;
+  author?: Pick<ClubPerson, '_id' | 'firstName' | 'lastName' | 'preferredName'>;
   _count?: {
     comments?: number;
   };
 }
 
-export function fullName(person: Pick<ClubPerson, 'firstName' | 'lastName'>) {
-  return `${person.firstName} ${person.lastName}`.trim();
+export function fullName(person: Pick<ClubPerson, 'firstName' | 'lastName' | 'preferredName'>) {
+  return displayName(person);
 }
 
-export function initialsOf(person: Pick<ClubPerson, 'firstName' | 'lastName'>) {
-  return `${person.firstName.charAt(0)}${person.lastName.charAt(0)}`.toUpperCase();
+export function initialsOf(person: Pick<ClubPerson, 'firstName' | 'lastName' | 'preferredName'>) {
+  return nameInitials(person).toUpperCase();
 }
 
 export function formatClubRole(role?: string | null) {

@@ -1,5 +1,7 @@
 "use client";
 
+import { nameInitials, nameSearchValues } from '~/apps/shared/user-name';
+
 import {
   useDeferredValue,
   useEffect,
@@ -354,8 +356,7 @@ function ManagePeopleDialog({
               {selected ? (
                 <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
-                    {selected.firstName[0]}
-                    {selected.lastName[0]}
+                    {nameInitials(selected).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{fullName(selected)}</p>
@@ -416,8 +417,7 @@ function ManagePeopleDialog({
                             className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
                           >
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                              {student.firstName[0]}
-                              {student.lastName[0]}
+                              {nameInitials(student).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">
@@ -553,10 +553,12 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
       const memberByName = new Map<string, ClubDirectoryEntry[]>();
       for (const person of club.directory) {
         if (person.kind !== "MEMBER") continue;
-        const key = normalizeAssignmentMatch(fullName(person));
-        const matches = memberByName.get(key) ?? [];
-        matches.push(person);
-        memberByName.set(key, matches);
+        const keys = new Set(nameSearchValues(person).map(normalizeAssignmentMatch).filter(Boolean));
+        for (const key of keys) {
+          const matches = memberByName.get(key) ?? [];
+          matches.push(person);
+          memberByName.set(key, matches);
+        }
       }
       const unitByName = new Map<string, typeof hierarchy.units>();
       for (const unit of hierarchy.units) {

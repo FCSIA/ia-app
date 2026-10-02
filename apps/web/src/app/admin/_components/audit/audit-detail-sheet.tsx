@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -65,7 +67,7 @@ export function AuditDetailSheet({
                 <AdminMetric label="When" value={format(new Date(eventDetail.createdAt), 'PPP p')} compact />
                 <AdminMetric
                   label="Actor"
-                  value={eventDetail.actor ? `${eventDetail.actor.firstName} ${eventDetail.actor.lastName}` : 'System'}
+                  value={eventDetail.actor ? displayName(eventDetail.actor) : 'System'}
                   compact
                 />
                 <AdminMetric

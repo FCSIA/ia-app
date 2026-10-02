@@ -46,6 +46,7 @@ import { extractChatGifLinks } from '~/apps/shared/chat/gifs';
 export type ChannelMentionSuggestion = {
   token: string;
   label: string;
+  searchNames?: string[];
   detail: string;
   kind: 'built-in' | 'tag' | 'person' | 'role' | 'unit';
 };
@@ -353,7 +354,7 @@ export function ChannelMessageComposer({
         label: entry.label,
         detail: entry.detail,
         kind: entry.kind,
-        keywords: [entry.label, entry.detail].filter(Boolean),
+        keywords: [entry.label, entry.detail, ...(entry.searchNames ?? [])].filter(Boolean),
       })),
     [suggestionEntries],
   );

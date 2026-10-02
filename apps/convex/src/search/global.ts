@@ -13,6 +13,7 @@ const personResultValidator = v.object({
   _id: v.id("users"),
   firstName: v.string(),
   lastName: v.string(),
+  preferredName: v.optional(v.string()),
   avatarUrl: v.union(v.string(), v.null()),
   isDeveloper: v.optional(v.boolean()),
 });
@@ -96,6 +97,7 @@ export const palette = query({
         _id: person._id,
         firstName: person.firstName,
         lastName: person.lastName,
+        preferredName: person.preferredName,
         avatarUrl: person.avatarUrl ?? null,
         isDeveloper: person.isDeveloper,
       }));

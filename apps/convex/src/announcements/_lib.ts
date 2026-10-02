@@ -8,6 +8,7 @@ const authorValidator = v.union(
     _id: v.id("users"),
     firstName: v.string(),
     lastName: v.string(),
+    preferredName: v.optional(v.string()),
     avatarUrl: v.union(v.string(), v.null()),
     roles: v.array(v.string()),
     isDeveloper: v.optional(v.boolean()),

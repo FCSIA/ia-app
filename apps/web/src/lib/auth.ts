@@ -7,7 +7,7 @@ import type { AppRole } from '~/apps/convex/lib/roles';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
-export type CachedDisplayUser = Pick<AppUser, '_id' | 'firstName' | 'lastName' | 'avatarUrl'>;
+export type CachedDisplayUser = Pick<AppUser, '_id' | 'firstName' | 'lastName' | 'preferredName' | 'avatarUrl'>;
 
 const USER_CACHE_KEY = 'ia_user:v1';
 const LEGACY_USER_CACHE_KEY = 'ia_user';
@@ -31,6 +31,7 @@ export function cacheUser(user: AppUser | null) {
       _id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
+      preferredName: user.preferredName,
       avatarUrl: user.avatarUrl,
     };
     localStorage.setItem(USER_CACHE_KEY, JSON.stringify(display));

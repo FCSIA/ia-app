@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { format } from 'date-fns';
 import { Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -113,7 +115,7 @@ export function AuditTable({
                   </TableCell>
                   <TableCell className={`${d.cell} min-w-0 align-top`}>
                     <div className="truncate font-medium text-foreground">
-                      {event.actor ? `${event.actor.firstName} ${event.actor.lastName}` : 'System'}
+                      {event.actor ? displayName(event.actor) : 'System'}
                     </div>
                   </TableCell>
                   <TableCell className={`${d.cell} min-w-0 align-top`}>

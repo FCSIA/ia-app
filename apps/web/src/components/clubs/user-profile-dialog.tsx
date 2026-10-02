@@ -22,7 +22,7 @@ export type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'F
 
 export type UserProfilePerson = Pick<
   ClubUserRef,
-  '_id' | 'firstName' | 'lastName'
+  '_id' | 'firstName' | 'lastName' | 'preferredName'
 > & Partial<Pick<ClubUserRef, 'avatarUrl' | 'uniqueId' | 'roles'>> & { isDeveloper?: boolean | null };
 
 type UserProfileContentProps = {

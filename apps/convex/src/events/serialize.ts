@@ -8,6 +8,7 @@ const personValidator = v.object({
   _id: v.id("users"),
   firstName: v.string(),
   lastName: v.string(),
+  preferredName: v.optional(v.string()),
   isDeveloper: v.optional(v.boolean()),
 });
 export const serializedEventValidator = schema.doc("events").extend({
@@ -39,6 +40,7 @@ export async function serializeEvent(
           _id: author._id,
           firstName: author.firstName,
           lastName: author.lastName,
+          preferredName: author.preferredName,
           isDeveloper: author.isDeveloper,
         }
       : null,
@@ -64,6 +66,7 @@ export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) 
               _id: sponsor._id,
               firstName: sponsor.firstName,
               lastName: sponsor.lastName,
+              preferredName: sponsor.preferredName,
               isDeveloper: sponsor.isDeveloper,
             }
           : null,

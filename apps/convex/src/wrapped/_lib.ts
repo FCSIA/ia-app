@@ -159,6 +159,7 @@ export type WrappedSummary = {
     userId: string;
     firstName: string;
     lastName: string;
+    preferredName?: string;
     mentions: number;
   } | null;
   pathway: {

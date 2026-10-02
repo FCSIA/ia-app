@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { View } from "react-native";
 import { useQuery } from "@/lib/convex-react";
 import { Check, CircleDashed, MapPin, School } from "lucide-react-native";
@@ -20,7 +21,7 @@ export default function FlexPassScreen() {
   const { color } = useTheme();
   const isLoading = registrations.value === undefined || assignments.value === undefined;
   const items = [...(assignments.value ?? []), ...(registrations.value ?? [])];
-  const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "IA member";
+  const name = displayName(user) || "IA member";
 
   return (
     <Screen

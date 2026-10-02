@@ -32,6 +32,7 @@ export type AuditEventRecord = {
     id: string;
     firstName: string;
     lastName: string;
+    preferredName?: string | null;
     uniqueId: string;
   } | null;
 };
@@ -56,6 +57,7 @@ export type AdminUserRecord = {
   uniqueId: string;
   firstName: string;
   lastName: string;
+  preferredName?: string | null;
   roles?: string[];
   gradeLevel?: number | null;
   major?: string | null;

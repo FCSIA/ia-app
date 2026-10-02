@@ -64,6 +64,7 @@ export const getRoster = query({
         _id: student._id,
         firstName: student.firstName,
         lastName: student.lastName,
+        preferredName: student.preferredName,
         gradeLevel: student.gradeLevel,
         uniqueId: student.uniqueId,
       };

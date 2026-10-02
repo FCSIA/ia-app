@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { Image } from "expo-image";
@@ -60,7 +61,7 @@ export default function ClubSharedScreen() {
       results.filter((item) => {
         if (!normalizedQuery) return true;
         const authorName = item.author
-          ? `${item.author.firstName} ${item.author.lastName}`
+          ? displayName(item.author)
           : "";
         return `${item.fileName} ${item.messagePreview} ${authorName}`
           .toLocaleLowerCase()
@@ -179,7 +180,7 @@ function SharedAttachmentRow({
   onPress,
 }: {
   attachment: ChatAttachment & {
-    author?: { firstName?: string | null; lastName?: string | null } | null;
+    author?: { firstName?: string | null; lastName?: string | null; preferredName?: string | null } | null;
     createdAt: string;
     messagePreview: string;
   };
@@ -189,7 +190,7 @@ function SharedAttachmentRow({
   const { color } = useTheme();
   const image = isImageAttachment(attachment);
   const authorName = attachment.author
-    ? [attachment.author.firstName, attachment.author.lastName].filter(Boolean).join(" ")
+    ? displayName(attachment.author)
     : "Member";
   const details = [authorName, formatAttachmentSize(attachment.size), formatSharedDate(attachment.createdAt)]
     .filter(Boolean)

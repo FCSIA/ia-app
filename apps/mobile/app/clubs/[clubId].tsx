@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo, useState } from "react";
+import { displayName } from '~/apps/shared/user-name';
 import { Alert, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -371,13 +372,7 @@ export default function ClubDetailScreen() {
                   </View>
                   {data.pendingJoinRequests.map(
                     (request: any, index: number) => {
-                      const requesterName =
-                        [
-                          request.requester?.firstName,
-                          request.requester?.lastName,
-                        ]
-                          .filter(Boolean)
-                          .join(" ") || "Community member";
+                      const requesterName = displayName(request.requester) || "Community member";
                       return (
                         <View
                           key={request._id}

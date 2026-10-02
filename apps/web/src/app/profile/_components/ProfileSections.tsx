@@ -1,6 +1,7 @@
 'use client';
 
 import { type Dispatch, type SetStateAction } from 'react';
+import { displayName as profileName } from '~/apps/shared/user-name';
 import {
   Bell,
   Lock,
@@ -28,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
+import { PreferredNameSettings } from './PreferredNameSettings';
 
 const cardClass = cn(
   'border border-border bg-card pb-0',
@@ -128,7 +130,7 @@ export function ProfileSidebar({
   unseenReleases,
   user,
 }: ProfileSidebarProps) {
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Profile';
+  const displayName = profileName(user) || 'Profile';
   const visibleSections = canSeeModeration
     ? PROFILE_SECTIONS
     : PROFILE_SECTIONS.filter((section) => section.id !== 'moderation');
@@ -238,6 +240,11 @@ export function AccountSettingsSection({
 
   return (
     <section aria-label="Account" className="flex min-w-0 flex-col gap-6">
+      {user ? (
+        <section aria-label="Preferred name">
+          <PreferredNameSettings key={`${user._id}:${user.preferredName ?? ''}`} user={user} />
+        </section>
+      ) : null}
       {rows.length > 0 ? (
         <dl className="divide-y divide-border/30">
           {rows.map((row) => <InfoRow key={row.label} {...row} />)}

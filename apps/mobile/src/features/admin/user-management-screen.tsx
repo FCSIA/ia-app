@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { useMutation, usePaginatedQuery } from "@/lib/convex-react";
@@ -134,7 +135,7 @@ export function UserManagementScreen() {
     const nextActive = !selectedUser.isActive;
     Alert.alert(
       nextActive ? "Activate account?" : "Deactivate account?",
-      `${selectedUser.firstName} ${selectedUser.lastName} will ${nextActive ? "regain" : "lose"} access to the app.`,
+      `${displayName(selectedUser)} will ${nextActive ? "regain" : "lose"} access to the app.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -236,11 +237,11 @@ export function UserManagementScreen() {
               leading={(
                 <Avatar
                   uri={user.avatarUrl}
-                  name={`${user.firstName} ${user.lastName}`}
+                  name={displayName(user)}
                   size={42}
                 />
               )}
-              title={`${user.firstName} ${user.lastName}`}
+              title={displayName(user)}
               subtitle={summarizeRoles(user.roles)}
               trailing={!user.isActive ? <Badge label="Inactive" color="red" variant="dot" /> : undefined}
               onPress={() => openUser(user)}
@@ -270,7 +271,7 @@ export function UserManagementScreen() {
       <Sheet
         open={!!selectedUser}
         onClose={closeUser}
-        title={selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : undefined}
+        title={selectedUser ? displayName(selectedUser) : undefined}
         snapPoints={["72%", "92%"]}
       >
         {selectedUser ? (

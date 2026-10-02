@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
@@ -70,7 +71,7 @@ export default function EventDetailScreen() {
       <DataBoundary data={event} emptyTitle="Event unavailable">
         {(item: any) => {
           const canCancel = item.status === "PUBLISHED" && (item.authorId === user?._id || canAdminCancel);
-          const organizer = [item.author?.firstName, item.author?.lastName].filter(Boolean).join(" ");
+          const organizer = displayName(item.author);
 
           return (
             <View style={{ gap: spacing.xl }}>

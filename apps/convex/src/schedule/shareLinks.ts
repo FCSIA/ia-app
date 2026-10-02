@@ -1,3 +1,4 @@
+import { displayName } from '../../../shared/user-name';
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
@@ -256,8 +257,8 @@ export const redeem = mutation({
       friendshipId,
       title: accepted ? "Friend added from your link" : "New friend request",
       body: accepted
-        ? `${user.firstName} ${user.lastName} used your auto-accept friend link.`
-        : `${user.firstName} ${user.lastName} used your link to send a friend request.`,
+        ? `${displayName(user)} used your auto-accept friend link.`
+        : `${displayName(user)} used your link to send a friend request.`,
     });
     return {
       status: accepted ? ("FRIENDS" as const) : ("REQUEST_SENT" as const),

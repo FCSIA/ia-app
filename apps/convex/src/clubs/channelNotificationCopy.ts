@@ -1,3 +1,4 @@
+import { displayName } from '../../../shared/user-name';
 export type ChannelNotificationKind =
   | "MESSAGE"
   | "THREAD_REPLY"
@@ -30,6 +31,7 @@ export function channelNotificationTitle(input: {
 export function channelNotificationAuthorName(author: {
   firstName?: string;
   lastName?: string;
+  preferredName?: string | null;
 }) {
-  return [author.firstName, author.lastName].filter(Boolean).join(" ").trim();
+  return displayName(author);
 }

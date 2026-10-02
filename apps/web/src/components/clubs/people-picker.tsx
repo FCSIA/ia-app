@@ -16,6 +16,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ClubAvatar } from './club-avatar';
 import { ClubDirectoryEntry, ClubUserRef, fullName } from './types';
+import { nameSearchValues } from '~/apps/shared/user-name';
 
 export type SelectablePerson = ClubUserRef &
   Partial<Pick<ClubDirectoryEntry, 'kind' | 'clubRole' | 'customRoleName' | 'roleName'>>;
@@ -54,6 +55,7 @@ export function PeoplePicker({
       const tokens = [
         person.firstName,
         person.lastName,
+        ...nameSearchValues(person),
         fullName(person),
         person.uniqueId,
         person.kind,
