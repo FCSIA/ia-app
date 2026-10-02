@@ -6,6 +6,7 @@ import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
 import { useTouchPrimary } from "@/hooks/use-touch-primary"
+import { lastScrollTime, useScrollActivity } from "@/lib/scroll-activity"
 import { cn } from "@/lib/utils"
 import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes"
 
@@ -23,29 +24,6 @@ const LONG_PRESS_SLOP_PX = 8
 // A touch that lands while content is still gliding only stops the scroll, as
 // it does in native scroll views.
 const SCROLL_SETTLE_MS = 150
-
-let lastScrollAt = -Infinity
-let scrollListeners = 0
-const recordScroll = () => {
-  lastScrollAt = performance.now()
-}
-
-function useScrollTimestamp(enabled: boolean) {
-  React.useEffect(() => {
-    if (!enabled) return
-    if (scrollListeners++ === 0) {
-      document.addEventListener("scroll", recordScroll, {
-        capture: true,
-        passive: true,
-      })
-    }
-    return () => {
-      if (--scrollListeners === 0) {
-        document.removeEventListener("scroll", recordScroll, { capture: true })
-      }
-    }
-  }, [enabled])
-}
 
 type LongPress = { x: number; y: number; startedAt: number; timer: number }
 
@@ -80,7 +58,7 @@ const ContextMenuTrigger = React.forwardRef<
     const pressRef = React.useRef<LongPress | null>(null)
     const touchActiveRef = React.useRef(false)
     const dispatchingRef = React.useRef(false)
-    useScrollTimestamp(managesTouch)
+    useScrollActivity(managesTouch)
 
     const setRefs = React.useCallback(
       (node: HTMLSpanElement | null) => {
@@ -144,7 +122,7 @@ const ContextMenuTrigger = React.forwardRef<
           // Android's own long-press counts only while ours is still intact.
           const press = pressRef.current
           cancelPress()
-          if (press && lastScrollAt < press.startedAt) {
+          if (press && lastScrollTime() < press.startedAt) {
             window.setTimeout(() => openAt(press.x, press.y))
           }
         }}
@@ -155,7 +133,7 @@ const ContextMenuTrigger = React.forwardRef<
           cancelPress()
           const startedAt = performance.now()
           if (event.touches.length !== 1) return
-          if (startedAt - lastScrollAt < SCROLL_SETTLE_MS) return
+          if (startedAt - lastScrollTime() < SCROLL_SETTLE_MS) return
           const touch = event.touches[0]
           const press: LongPress = {
             x: touch.clientX,
@@ -166,7 +144,7 @@ const ContextMenuTrigger = React.forwardRef<
           press.timer = window.setTimeout(() => {
             pressRef.current = null
             // Any scroll since the press began means it was a gesture.
-            if (lastScrollAt < startedAt) openAt(press.x, press.y)
+            if (lastScrollTime() < startedAt) openAt(press.x, press.y)
           }, LONG_PRESS_MS)
           pressRef.current = press
         }}
@@ -336,7 +314,7 @@ const ContextMenuLabel = React.forwardRef<
   <ContextMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2 py-1.5 text-sm font-semibold text-foreground",
+      "select-none px-2 py-1.5 text-sm font-semibold text-foreground",
       inset && "pl-8",
       className
     )}

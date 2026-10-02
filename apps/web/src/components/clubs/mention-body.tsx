@@ -259,7 +259,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
                   href={safeHref}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="relative z-10 -mx-0.5 rounded-sm px-0.5 py-1 touch-manipulation select-text outline-none transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  className="relative z-10 -mx-0.5 rounded-sm px-0.5 py-1 touch-manipulation outline-none transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 >
                   {children}
                 </a>
