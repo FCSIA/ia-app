@@ -83,6 +83,7 @@ import type * as moderation_reports from "../moderation/reports.js";
 import type * as notifications__lib from "../notifications/_lib.js";
 import type * as notifications__pushActivation from "../notifications/_pushActivation.js";
 import type * as notifications__pushDevices from "../notifications/_pushDevices.js";
+import type * as notifications__pushOwnership from "../notifications/_pushOwnership.js";
 import type * as notifications__subscriptionPruning from "../notifications/_subscriptionPruning.js";
 import type * as notifications_delivery from "../notifications/delivery.js";
 import type * as notifications_deliveryPreference from "../notifications/deliveryPreference.js";
@@ -213,6 +214,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/_lib": typeof notifications__lib;
   "notifications/_pushActivation": typeof notifications__pushActivation;
   "notifications/_pushDevices": typeof notifications__pushDevices;
+  "notifications/_pushOwnership": typeof notifications__pushOwnership;
   "notifications/_subscriptionPruning": typeof notifications__subscriptionPruning;
   "notifications/delivery": typeof notifications_delivery;
   "notifications/deliveryPreference": typeof notifications_deliveryPreference;
