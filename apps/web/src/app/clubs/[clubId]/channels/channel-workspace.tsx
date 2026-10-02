@@ -776,6 +776,16 @@ function ReactionButton({
   );
 }
 
+/**
+ * How far from the newest message the chat still counts as "at the bottom":
+ * new messages keep following, and the jump button stays hidden, until the
+ * reader has scrolled about two messages up.
+ */
+const CHAT_SCROLL_EDGE_THRESHOLD = 160;
+/** The jump-to-latest button sits in the corner, clear of message text. */
+const CHAT_SCROLL_BUTTON_CLASS =
+  'inset-s-auto inset-e-3 translate-x-0 rtl:translate-x-0 shadow-md data-[direction=end]:bottom-3';
+
 function ScrollToReplyTarget({
   messageId,
   requestKey,
@@ -1908,6 +1918,7 @@ export function ChannelWorkspace() {
         key={selectedThread._id}
         autoScroll
         defaultScrollPosition="end"
+        scrollEdgeThreshold={CHAT_SCROLL_EDGE_THRESHOLD}
       >
         <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport>
@@ -1922,7 +1933,7 @@ export function ChannelWorkspace() {
               ))}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton />
+          <MessageScrollerButton className={CHAT_SCROLL_BUTTON_CLASS} />
         </MessageScroller>
       </MessageScrollerProvider>
 
@@ -1969,7 +1980,11 @@ export function ChannelWorkspace() {
         onValueChange: setSearch,
       }}
     >
-      <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+      <MessageScrollerProvider
+        autoScroll
+        defaultScrollPosition="end"
+        scrollEdgeThreshold={CHAT_SCROLL_EDGE_THRESHOLD}
+      >
         <ScrollToReplyTarget
           messageId={jumpedToMessageId}
           requestKey={jumpRequestKey}
@@ -2073,7 +2088,7 @@ export function ChannelWorkspace() {
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton />
+          <MessageScrollerButton className={CHAT_SCROLL_BUTTON_CLASS} />
         </MessageScroller>
         )}
       </MessageScrollerProvider>
