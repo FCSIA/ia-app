@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -103,7 +105,7 @@ function ResetPasswordAction({
   const [open, setOpen] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState<string>();
   const [isResetting, setIsResetting] = useState(false);
-  const label = `Reset password for ${user.firstName} ${user.lastName}`;
+  const label = `Reset password for ${displayName(user)}`;
 
   const resetPassword = async () => {
     setIsResetting(true);
@@ -131,8 +133,8 @@ function ResetPasswordAction({
           <AlertDialogTitle>{temporaryPassword ? 'Temporary password created' : 'Reset password?'}</AlertDialogTitle>
           <AlertDialogDescription>
             {temporaryPassword
-              ? `Copy this password and share it securely with ${user.firstName} ${user.lastName}. It is only shown once.`
-              : `This will generate a temporary password for ${user.firstName} ${user.lastName} and mark their account to change it after signing in.`}
+              ? `Copy this password and share it securely with ${displayName(user)}. It is only shown once.`
+              : `This will generate a temporary password for ${displayName(user)} and mark their account to change it after signing in.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {temporaryPassword ? <InputCopy label="Temporary password" value={temporaryPassword} variant="button" /> : null}
@@ -422,12 +424,12 @@ function UserTableSection({
                     checked={selectedUserIds.has(user._id)}
                     onCheckedChange={(checked) => toggleUser(user._id, checked === true)}
                     disabled={!canDeleteUsers || user._id === currentUserId || isDeleteUsersPending}
-                    aria-label={`Select ${user.firstName} ${user.lastName}`}
+                    aria-label={`Select ${displayName(user)}`}
                   />
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
-                    <span className="truncate">{user.firstName} {user.lastName}</span>
+                    <span className="truncate">{displayName(user)}</span>
                     <DeveloperBadge user={user} size={13} />
                   </span>
                 </TableCell>
@@ -473,7 +475,7 @@ function UserTableSection({
                     {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
                       <ImpersonateUserAction
                         userId={user._id}
-                        name={`${user.firstName} ${user.lastName}`}
+                        name={displayName(user)}
                       />
                     ) : (
                       <span aria-hidden className="size-8" />
@@ -481,7 +483,7 @@ function UserTableSection({
                     {user.isActive ? (
                       canDeactivate(user) && user._id !== currentUserId ? (
                         <IconActionButton
-                          label={`Deactivate ${user.firstName} ${user.lastName}`}
+                          label={`Deactivate ${displayName(user)}`}
                           onClick={() => onDeactivate(user._id)}
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
@@ -492,7 +494,7 @@ function UserTableSection({
                       )
                     ) : (
                       <IconActionButton
-                        label={`Activate ${user.firstName} ${user.lastName}`}
+                        label={`Activate ${displayName(user)}`}
                         onClick={() => onActivate(user._id)}
                         className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
                       >

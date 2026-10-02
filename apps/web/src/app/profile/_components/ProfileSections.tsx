@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName as profileName } from '~/apps/shared/user-name';
+
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Bell,
@@ -33,6 +35,7 @@ import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
+import { PreferredNameSettings } from './PreferredNameSettings';
 
 const cardClass = cn(
   'overflow-hidden rounded-2xl border border-border bg-card',
@@ -170,7 +173,7 @@ export function ProfileSidebar({
   unseenReleases,
   user,
 }: ProfileSidebarProps) {
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Profile';
+  const displayName = profileName(user) || 'Profile';
   const visibleSections = canSeeModeration
     ? PROFILE_SECTIONS
     : PROFILE_SECTIONS.filter((section) => section.id !== 'moderation');
@@ -302,6 +305,12 @@ export function AccountSettingsCard({
           ))}
         </div>
       </section>
+      <Separator className="mx-5 w-auto" />
+      {user ? (
+        <section className="p-5" aria-label="Preferred name">
+          <PreferredNameSettings key={`${user._id}:${user.preferredName ?? ''}`} user={user} />
+        </section>
+      ) : null}
       <Separator className="mx-5 w-auto" />
       <section className="p-5" aria-labelledby="password-heading">
         <div className="flex items-center justify-between gap-4">

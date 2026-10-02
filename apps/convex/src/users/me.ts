@@ -12,7 +12,8 @@ import {
   MAX_USER_AVATAR_BYTES,
   MAX_USER_BACKGROUND_BYTES,
 } from "../uploads/limits";
-import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
+import { searchText, toUserSelfProfile, userSelfProfileValidator } from "./_lib";
+import { MAX_PREFERRED_NAME_LENGTH } from "../../../shared/user-name";
 import { clubChannelReactionValidator } from "../validators";
 import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
@@ -58,6 +59,28 @@ export const me = query({
     const user = await getMaybeCurrentAppUserUnchecked(ctx);
     if (!user) return null;
     return toUserSelfProfile(user);
+  },
+});
+
+export const updatePreferredName = mutation({
+  args: { preferredName: v.string() },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const preferredName = args.preferredName.trim().replace(/\s+/gu, " ");
+    if (preferredName.length > MAX_PREFERRED_NAME_LENGTH) {
+      throw new ConvexError(`Preferred name must be ${MAX_PREFERRED_NAME_LENGTH} characters or fewer.`);
+    }
+    if (/[\p{Cc}\p{Cf}]/u.test(preferredName)) {
+      throw new ConvexError("Preferred name cannot contain control characters.");
+    }
+    const updated = { ...user, preferredName: preferredName || undefined };
+    await ctx.db.patch(user._id, {
+      preferredName: updated.preferredName,
+      searchText: searchText(updated),
+      updatedAt: Date.now(),
+    });
+    return toUserSelfProfile(updated);
   },
 });
 

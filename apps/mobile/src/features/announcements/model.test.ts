@@ -24,6 +24,11 @@ const announcements = [
 ];
 
 describe("filterAnnouncements", () => {
+  it("finds an author by their regular or preferred name", () => {
+    const rows = [{ ...announcements[0], author: { ...announcements[0].author, preferredName: "Mari" } }];
+    expect(filterAnnouncements(rows, "all", "mari")).toEqual(rows);
+    expect(filterAnnouncements(rows, "all", "maria lopez")).toEqual(rows);
+  });
   it("combines All, Unread, and Saved state with text search", () => {
     expect(filterAnnouncements(announcements, "all", "picture")).toEqual([
       announcements[1],

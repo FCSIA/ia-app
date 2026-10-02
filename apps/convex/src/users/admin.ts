@@ -1384,7 +1384,7 @@ export const rebuildPrivateUserSearchIndex = internalMutation({
   handler: async (ctx, args) => {
     const page = await ctx.db.query("users").paginate({ numItems: 100, cursor: args.cursor ?? null });
     for (const user of page.page) {
-      await ctx.db.patch(user._id, { searchText: searchText({ uniqueId: user.uniqueId, firstName: user.firstName, lastName: user.lastName }), updatedAt: Date.now() });
+      await ctx.db.patch(user._id, { searchText: searchText(user), updatedAt: Date.now() });
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.users.admin.rebuildPrivateUserSearchIndex, { cursor: page.continueCursor });
     return { updated: page.page.length, isDone: page.isDone, continueCursor: page.continueCursor };

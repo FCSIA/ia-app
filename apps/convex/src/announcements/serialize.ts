@@ -89,6 +89,7 @@ export async function serializeAnnouncement(
           _id: author._id,
           firstName: author.firstName,
           lastName: author.lastName,
+          preferredName: author.preferredName,
           isDeveloper: author.isDeveloper,
         }
       : null,
@@ -133,6 +134,7 @@ async function serializeComment(
           _id: author._id,
           firstName: author.firstName,
           lastName: author.lastName,
+          preferredName: author.preferredName,
           isDeveloper: author.isDeveloper,
         }
       : null,

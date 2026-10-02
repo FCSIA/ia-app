@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -348,10 +349,10 @@ function KeywordRules() {
 
 function reportContext(report: Report) {
   const submitter = report.submitter
-    ? `${report.submitter.firstName} ${report.submitter.lastName}`
+    ? displayName(report.submitter)
     : "Unknown submitter";
   const target = report.reportedUser
-    ? ` · Reported ${report.reportedUser.firstName} ${report.reportedUser.lastName}`
+    ? ` · Reported ${displayName(report.reportedUser)}`
     : report.club
       ? ` · ${report.club.name}`
       : "";

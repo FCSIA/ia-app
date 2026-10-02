@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName as profileName } from '~/apps/shared/user-name';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery as useConvexQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -20,7 +22,7 @@ export default function WrappedPage() {
   useEffect(() => setMounted(true), []);
 
   const user = useCurrentUser();
-  const displayName = user ? `${user.firstName} ${user.lastName}` : 'You';
+  const displayName = user ? profileName(user) : 'You';
   const isAdmin = user !== null && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
   // Recompute availability each mount + tick every 60s so the countdown

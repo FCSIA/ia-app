@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import {
@@ -57,7 +59,7 @@ export function SummaryOverlay({ summary }: { summary: WrappedSummary }) {
       icon: AtSign,
       label: 'Most @',
       value: summary.topMentioned
-        ? `${summary.topMentioned.firstName} ${summary.topMentioned.lastName.charAt(0)}.`
+        ? displayName(summary.topMentioned)
         : '—',
     },
     { icon: Star, label: 'Year', value: shortYear(summary.schoolYearStart) },

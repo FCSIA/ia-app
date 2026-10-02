@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useState } from 'react';
 import { Archive, Inbox, CheckCircle2 } from 'lucide-react';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
@@ -13,13 +15,13 @@ import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
-  submitter: { firstName: string; lastName: string } | null;
+  submitter: { firstName: string; lastName: string; preferredName?: string | null } | null;
   images: Array<{ _id: Id<'feedbackReportImages'>; url: string }>;
   responses: Array<{
     _id: Id<'feedbackReportResponses'>;
     body: string;
     createdAt: number;
-    author: { firstName: string; lastName: string };
+    author: { firstName: string; lastName: string; preferredName?: string | null };
   }>;
 };
 type FeedbackStatus = FeedbackReport['status'];
@@ -154,7 +156,7 @@ function FeedbackList({
                 <p className="text-sm font-medium text-foreground">{report.reason}</p>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                By {report.submitter?.firstName} {report.submitter?.lastName}
+                By {displayName(report.submitter)}
                 {' · '}
                 Submitted {formatDateTime(report._creationTime)}
                 {report.appVersion ? ` · ${report.appVersion}` : ''}
@@ -239,14 +241,14 @@ function FeedbackResponses({
           {report.responses.map((response) => (
             <div key={response._id} className="rounded-lg bg-background p-3 border border-border/40">
               <p className="text-xs font-medium text-muted-foreground">
-                {response.author.firstName} {response.author.lastName}
+                {displayName(response.author)}
               </p>
               <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
             </div>
           ))}
           <form className="space-y-3 pt-3 border-t border-border/40" onSubmit={handleSubmit}>
             <Textarea
-              aria-label={`Respond to feedback from ${report.submitter?.firstName ?? 'submitter'}`}
+              aria-label={`Respond to feedback from ${displayName(report.submitter) || 'submitter'}`}
               placeholder="Write a response for the submitter..."
               value={body}
               onChange={(event) => setBody(event.target.value)}

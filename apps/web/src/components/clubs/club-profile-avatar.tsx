@@ -1,12 +1,14 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useState } from 'react';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { UserProfileDialog } from '@/components/clubs/user-profile-dialog';
 import type { ClubUserRef } from '@/components/clubs/types';
 
 type ClubProfileAvatarProps = {
-  person: Pick<ClubUserRef, '_id' | 'firstName' | 'lastName' | 'avatarUrl' | 'uniqueId' | 'roles'>;
+  person: Pick<ClubUserRef, '_id' | 'firstName' | 'lastName' | 'preferredName' | 'avatarUrl' | 'uniqueId' | 'roles'>;
   className?: string;
   fallbackClassName?: string;
 };
@@ -14,7 +16,7 @@ type ClubProfileAvatarProps = {
 /** A compact, accessible entry point to a member's profile from roster views. */
 export function ClubProfileAvatar({ person, className, fallbackClassName }: ClubProfileAvatarProps) {
   const [open, setOpen] = useState(false);
-  const name = `${person.firstName} ${person.lastName}`.trim();
+  const name = displayName(person);
 
   return (
     <>

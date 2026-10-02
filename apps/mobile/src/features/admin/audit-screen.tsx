@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useDeferredValue, useState } from "react";
 import { View } from "react-native";
 import { useQuery } from "@/lib/convex-react";
@@ -154,7 +155,7 @@ function AuditDetail({ event }: { event: NonNullable<FunctionReturnType<typeof a
         <DetailRow label="Recorded" value={formatDateTime(event.createdAt)} />
         <DetailRow
           label="Actor"
-          value={event.actor ? `${event.actor.firstName} ${event.actor.lastName}` : "System"}
+          value={event.actor ? displayName(event.actor) : "System"}
         />
         <DetailRow label="Entity" value={event.entityType} detail={event.entityId ?? undefined} />
       </View>
@@ -206,7 +207,7 @@ function formatMetadataValue(value: unknown) {
 }
 
 function actorName(event: AuditEvent) {
-  return event.actor ? `${event.actor.firstName} ${event.actor.lastName}` : "System";
+  return event.actor ? displayName(event.actor) : "System";
 }
 
 function humanize(value: string) {

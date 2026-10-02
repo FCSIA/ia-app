@@ -1,3 +1,4 @@
+import { displayName } from '../../../shared/user-name';
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -32,6 +33,7 @@ const userRefValidator = v.object({
   _id: v.id("users"),
   firstName: v.string(),
   lastName: v.string(),
+  preferredName: v.optional(v.string()),
   uniqueId: v.string(),
 });
 
@@ -59,6 +61,7 @@ const reportValidator = docs.moderationReports.extend({
       author: v.object({
         firstName: v.string(),
         lastName: v.string(),
+        preferredName: v.optional(v.string()),
       }),
     }),
   ),
@@ -107,6 +110,7 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
           _id: submitter._id,
           firstName: submitter.firstName,
           lastName: submitter.lastName,
+          preferredName: submitter.preferredName,
           uniqueId: submitter.uniqueId,
         }
       : null,
@@ -115,6 +119,7 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
           _id: reportedUser._id,
           firstName: reportedUser.firstName,
           lastName: reportedUser.lastName,
+          preferredName: reportedUser.preferredName,
           uniqueId: reportedUser.uniqueId,
         }
       : null,
@@ -136,6 +141,7 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
           author: {
             firstName: author?.firstName ?? "School",
             lastName: author?.lastName ?? "staff",
+            preferredName: author?.preferredName,
           },
         };
       }),
@@ -196,7 +202,7 @@ async function createReport(
   await deliverMany(ctx, recipients.map((admin) => admin._id), {
     category: "CONTENT_MODERATED",
     title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
-    body: `${user.firstName} ${user.lastName} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
+    body: `${displayName(user)} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
     href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
     subject: { kind: "moderationReport", reportId },
   });

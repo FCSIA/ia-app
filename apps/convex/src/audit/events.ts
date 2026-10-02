@@ -126,6 +126,7 @@ export const list = query({
         !(
           includes(event.actor?.firstName, actorText) ||
           includes(event.actor?.lastName, actorText) ||
+            includes(event.actor?.preferredName, actorText) ||
           includes(event.actor?.uniqueId, actorText)
         )
       ) {
@@ -139,6 +140,7 @@ export const list = query({
           includes(event.entityId, queryText) ||
           includes(event.actor?.firstName, queryText) ||
           includes(event.actor?.lastName, queryText) ||
+            includes(event.actor?.preferredName, queryText) ||
           includes(event.actor?.uniqueId, queryText)
         )
       ) {
@@ -222,6 +224,7 @@ export const listPage = query({
           !(
             includes(event.actor?.firstName, actorText) ||
             includes(event.actor?.lastName, actorText) ||
+            includes(event.actor?.preferredName, actorText) ||
             includes(event.actor?.uniqueId, actorText)
           )
         ) {
@@ -235,6 +238,7 @@ export const listPage = query({
             includes(event.entityId, queryText) ||
             includes(event.actor?.firstName, queryText) ||
             includes(event.actor?.lastName, queryText) ||
+            includes(event.actor?.preferredName, queryText) ||
             includes(event.actor?.uniqueId, queryText)
           )
         ) {

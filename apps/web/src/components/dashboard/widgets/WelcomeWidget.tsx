@@ -1,5 +1,7 @@
 "use client";
 
+import { greetingName } from '~/apps/shared/user-name';
+
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@/lib/convex-react";
@@ -37,7 +39,7 @@ export function WelcomeWidget() {
     [now, resolvedDay],
   );
 
-  const firstName = user?.firstName ?? "";
+  const firstName = greetingName(user);
   const hour = now.getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";

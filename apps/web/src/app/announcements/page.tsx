@@ -297,6 +297,7 @@ export default function AnnouncementsPage() {
         announcement.body,
         announcement.author?.firstName,
         announcement.author?.lastName,
+        announcement.author?.preferredName,
         announcement.club?.name,
       ]);
     }).sort((left: any, right: any) => {
@@ -324,6 +325,7 @@ export default function AnnouncementsPage() {
         announcement.body,
         announcement.author?.firstName,
         announcement.author?.lastName,
+        announcement.author?.preferredName,
         announcement.club?.name,
       ]),
     );

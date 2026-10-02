@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
+
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -258,7 +260,7 @@ function isImageAttachment(attachment: ClubChannelMessageAttachment) {
 function getSearchableText(message: ClubChannelMessage) {
   return [
     message.body,
-    fullName(message.author),
+    ...nameSearchValues(message.author),
     message.author.uniqueId,
     ...message.attachments.map((a) => a.fileName),
   ]
@@ -2075,7 +2077,8 @@ export function ChannelWorkspace() {
     const people = (mentionContext?.members ?? [])
       .map((person) => ({
         token: person.uniqueId,
-        label: `${person.firstName} ${person.lastName}`.trim(),
+        label: displayName(person),
+        searchNames: nameSearchValues(person),
         detail: '',
         kind: 'person' as const,
       }));

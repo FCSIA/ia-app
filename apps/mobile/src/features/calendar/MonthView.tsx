@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { ChevronLeft, ChevronRight, Plus, Trash2, UserPlus } from "lucide-react-native";
@@ -297,7 +298,7 @@ export function MonthView() {
                   {invite.entry.title}
                 </Txt>
                 <Txt variant="caption" tone="muted" numberOfLines={2}>
-                  {timeRange(invite.entry.startAt, invite.entry.endAt).replace(" - ", "–")} · {invite.sender.firstName} {invite.sender.lastName}
+                  {timeRange(invite.entry.startAt, invite.entry.endAt).replace(" - ", "–")} · {displayName(invite.sender)}
                 </Txt>
               </View>
               <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -416,7 +417,7 @@ export function MonthView() {
             return (
               <ListRow
                 key={friend._id}
-                title={`${friend.firstName} ${friend.lastName}`}
+                title={displayName(friend)}
                 trailing={
                   <Button
                     title={selected ? "Selected" : "Select"}
@@ -540,7 +541,7 @@ function CalendarEntryRow({
         ) : null}
         {entry.sharedBy ? (
           <Txt variant="caption" tone="muted" numberOfLines={1}>
-            Shared by {entry.sharedBy.firstName} {entry.sharedBy.lastName}
+            Shared by {displayName(entry.sharedBy)}
           </Txt>
         ) : null}
       </View>

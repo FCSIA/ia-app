@@ -24,6 +24,7 @@ export type OptimisticMessageAuthor = Pick<
   | "uniqueId"
   | "firstName"
   | "lastName"
+  | "preferredName"
   | "email"
   | "roles"
   | "avatarUrl"

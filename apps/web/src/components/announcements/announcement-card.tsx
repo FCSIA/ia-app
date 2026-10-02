@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin, PinOff } from 'lucide-react';
@@ -45,6 +46,7 @@ export type AnnouncementCardRecord = {
     _id?: string;
     firstName?: string | null;
     lastName?: string | null;
+    preferredName?: string | null;
     isDeveloper?: boolean | null;
   } | null;
   club?: {
@@ -80,7 +82,7 @@ export function AnnouncementCard({
   onBookmarkToggle,
   onPinToggle,
 }: AnnouncementCardProps) {
-  const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
+  const authorName = displayName(announcement.author);
 
   const statusStyle = announcement.status === 'ACTIVE'
     ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'

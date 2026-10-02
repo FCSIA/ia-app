@@ -1,5 +1,7 @@
 "use client";
 
+import { greetingName } from '~/apps/shared/user-name';
+
 import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
@@ -76,7 +78,7 @@ export function FriendScheduleDialog({
         <DialogHeader className="px-6 pt-6 pb-4 mb-0 border-b border-border/40 shrink-0">
           <div className="flex items-center justify-between pr-8">
             <DialogTitle className="text-lg font-semibold">
-              {friend.user.firstName}&apos;s Schedule
+              {greetingName(friend.user)}&apos;s Schedule
             </DialogTitle>
           </div>
         </DialogHeader>

@@ -12,6 +12,22 @@
 
 ## Current Truth
 
+### Preferred Profile Names (2026-10-02)
+
+- Optional preferred names are implemented on web and native with a shared
+  display-name fallback and both-name search. Settings can clear the preference;
+  regular roster/account names remain intact.
+- Verification uses the existing isolated local Convex deployment and web server
+  at localhost:3000. No shared or production deployment was selected or mutated.
+- Backend suite (381 tests), targeted client suite (14 tests), backend/web/native
+  TypeScript, web lint, and production web build pass. Windows has no `direnv`,
+  so checks used the available `pnpm` directly. Native route declarations were
+  refreshed with the installed Expo generator; no device was used.
+- See `docs/features/preferred-names-testing.md` for per-surface test scenarios.
+  The settings composition awaits the design owner's visual review.
+- The checkout also contains concurrent audit-readability work. Preserve those
+  edits and generated files when staging preferred-name changes.
+
 ### Convex Usage and Scale Audit (2026-08-31)
 
 - Production `elated-anaconda-301` was inspected read-only. No production

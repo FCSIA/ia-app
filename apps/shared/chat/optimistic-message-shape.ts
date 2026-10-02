@@ -4,6 +4,7 @@ export type OptimisticMessageShapeAuthor = {
   uniqueId: string;
   firstName: string;
   lastName: string;
+  preferredName?: string | null;
   email?: string | null;
   roles: readonly string[];
   avatarUrl?: string | null;
@@ -79,6 +80,7 @@ export function createOptimisticMessageShape(
       uniqueId: author.uniqueId,
       firstName: author.firstName,
       lastName: author.lastName,
+      preferredName: author.preferredName,
       email: author.email ?? null,
       roles: [...author.roles],
       avatarUrl: author.avatarUrl ?? null,

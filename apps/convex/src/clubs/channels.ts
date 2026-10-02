@@ -1666,6 +1666,7 @@ const channelContextMemberValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
+  preferredName: v.optional(v.string()),
 });
 
 const channelConversationContextValidator = v.union(
@@ -1846,6 +1847,7 @@ export const getMentionContext = query({
             uniqueId: member.uniqueId,
             firstName: member.firstName,
             lastName: member.lastName,
+            preferredName: member.preferredName,
           };
         }),
       )

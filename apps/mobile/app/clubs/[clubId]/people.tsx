@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
@@ -212,9 +213,7 @@ export default function ClubPeopleScreen() {
                 </View>
                 {data.pendingJoinRequests.map((request: any, index: number) => {
                   const requesterName =
-                    [request.requester?.firstName, request.requester?.lastName]
-                      .filter(Boolean)
-                      .join(" ") || "Community member";
+                    displayName(request.requester) || "Community member";
                   return (
                     <View
                       key={request._id}
@@ -309,9 +308,7 @@ export default function ClubPeopleScreen() {
               <View>
                 {(data.directory ?? []).map((person: any, index: number) => {
                   const name =
-                    [person.firstName, person.lastName]
-                      .filter(Boolean)
-                      .join(" ") || "Member";
+                    displayName(person) || "Member";
                   const role =
                     person.kind === "SPONSOR"
                       ? "Sponsor"

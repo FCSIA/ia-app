@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { View } from "react-native";
 import { router } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "lucide-react-native";
@@ -19,7 +20,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
   const bookmark = useMutation(api.announcements.engagement.bookmark);
   const unbookmark = useMutation(api.announcements.engagement.unbookmark);
   const { showToast } = useToast();
-  const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(" ");
+  const authorName = displayName(announcement.author);
   const audience = announcementAudience(announcement);
   const unreadColors = announcementUnreadColors(tokens);
   const isUnread = !announcement.isRead;

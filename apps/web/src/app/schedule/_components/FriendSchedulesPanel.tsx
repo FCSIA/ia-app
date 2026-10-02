@@ -1,5 +1,7 @@
 "use client";
 
+import { displayName, greetingName } from '~/apps/shared/user-name';
+
 import { Search, UserPlus, UsersRound, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { FriendScheduleCard } from "@/components/schedule/friend-schedule-card";
@@ -95,7 +97,7 @@ export function FriendSchedulesPanel() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">
-                          {person.firstName} {person.lastName}
+                          {displayName(person)}
                         </p>
                       </div>
                       {status === "FRIENDS" ? (
@@ -171,13 +173,13 @@ export function FriendSchedulesPanel() {
                       className="flex min-h-10 items-center gap-2 py-1"
                     >
                       <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                        {request.user.firstName} {request.user.lastName}
+                        {displayName(request.user)}
                       </span>
                       <div className="flex shrink-0 gap-1">
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={`Decline ${request.user.firstName}'s request`}
+                          aria-label={`Decline ${greetingName(request.user)}'s request`}
                           disabled={isDeclining || isAccepting}
                           onClick={() =>
                             void runScheduleAction(

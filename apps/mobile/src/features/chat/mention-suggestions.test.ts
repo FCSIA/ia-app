@@ -2,6 +2,15 @@ import { describe, expect, test } from "vitest";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
 
 describe("mobile club chat mention suggestions", () => {
+  test("labels mentions with the preferred name and retains both names for search", () => {
+    const suggestions = buildChatMentionSuggestions({
+      canMentionEveryone: false, tags: [], groups: [],
+      members: [{ uniqueId: "STU001", firstName: "Matthew", lastName: "Kingsly", preferredName: "Matt" }],
+    });
+    expect(suggestions.at(-1)).toMatchObject({
+      token: "STU001", label: "Matt", displayText: "@Matt", searchNames: ["Matthew Kingsly", "Matt"],
+    });
+  });
   test("includes supported groups, custom groups, and people from mention context", () => {
     expect(
       buildChatMentionSuggestions({

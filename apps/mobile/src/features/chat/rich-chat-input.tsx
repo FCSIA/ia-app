@@ -104,7 +104,7 @@ export function RichChatInput({
     return suggestions
       .filter((suggestion) => {
         if (!query) return true;
-        return `${suggestion.token} ${suggestion.label} ${suggestion.detail ?? ""}`
+        return `${suggestion.token} ${suggestion.label} ${suggestion.detail ?? ""} ${(suggestion.searchNames ?? []).join(" ")}`
           .toLowerCase()
           .includes(query);
       })

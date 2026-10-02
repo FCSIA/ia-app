@@ -32,6 +32,7 @@ export function useAdminModeration(activeTab: AdminTabId) {
         r.contentType,
         r.submitter?.firstName,
         r.submitter?.lastName,
+        r.submitter?.preferredName,
         r.status,
       ]
         .filter(Boolean)

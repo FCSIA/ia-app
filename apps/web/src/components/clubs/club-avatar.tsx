@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { ClubUserRef } from './types';
 
 type ClubAvatarProps = {
-  person: Pick<ClubUserRef, 'firstName' | 'lastName' | 'avatarUrl'>;
+  person: Pick<ClubUserRef, 'firstName' | 'lastName' | 'preferredName' | 'avatarUrl'>;
   className?: string;
   fallbackClassName?: string;
 };
@@ -15,6 +15,7 @@ export function ClubAvatar({ person, className, fallbackClassName }: ClubAvatarP
     <UserAvatar
       firstName={person.firstName}
       lastName={person.lastName}
+      preferredName={person.preferredName}
       avatarUrl={person.avatarUrl}
       className={cn('size-10', className)}
       fallbackClassName={cn(

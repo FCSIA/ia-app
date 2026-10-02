@@ -1,3 +1,4 @@
+import { displayName } from '../../../shared/user-name';
 import { ConvexError, v } from "convex/values";
 import {
   paginationOptsValidator,
@@ -164,7 +165,7 @@ async function userNames(ctx: WhiteboardDbCtx, ids: Array<Id<"users"> | undefine
   return new Map(
     unique.map((id, index) => {
       const user = users[index];
-      return [id, user ? `${user.firstName} ${user.lastName}`.trim() : "Former member"];
+      return [id, user ? displayName(user) : "Former member"];
     }),
   );
 }

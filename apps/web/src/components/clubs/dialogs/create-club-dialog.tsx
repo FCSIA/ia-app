@@ -55,6 +55,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         uniqueId: user.uniqueId,
         firstName: user.firstName,
         lastName: user.lastName,
+      preferredName: user.preferredName,
         email: user.email ?? null,
         roles: user.roles,
         avatarUrl: user.avatarUrl ?? null,

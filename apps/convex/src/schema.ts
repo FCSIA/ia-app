@@ -68,6 +68,7 @@ export const schema = defineSchema({
     uniqueId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
+    preferredName: v.optional(v.string()),
     gradeLevel: v.optional(v.number()),
     major: v.optional(pathwayValidator),
     minor: v.optional(pathwayValidator),

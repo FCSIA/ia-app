@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from '@/lib/convex-react';
@@ -78,7 +80,7 @@ export function AnnouncementsWidget() {
                 </div>
                 <CardTitle>{announcement.title}</CardTitle>
                 <CardDescription>
-                  {[announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ') || 'School'} ·{' '}
+                  {displayName(announcement.author) || 'School'} ·{' '}
                   {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
                 </CardDescription>
               </CardHeader>

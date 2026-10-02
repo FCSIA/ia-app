@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName, nameInitials } from '~/apps/shared/user-name';
+
 import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
@@ -50,6 +52,7 @@ type AnnouncementDetail = AnnouncementCardRecord & {
       _id?: string;
       firstName?: string | null;
       lastName?: string | null;
+      preferredName?: string | null;
       isDeveloper?: boolean | null;
     } | null;
   }>;
@@ -92,18 +95,20 @@ function formatName(
   person?: {
     firstName?: string | null;
     lastName?: string | null;
+    preferredName?: string | null;
   } | null,
 ) {
-  return [person?.firstName, person?.lastName].filter(Boolean).join(' ') || 'Unknown author';
+  return displayName(person) || 'Unknown author';
 }
 
 function getInitials(
   person?: {
     firstName?: string | null;
     lastName?: string | null;
+    preferredName?: string | null;
   } | null,
 ) {
-  const initials = [person?.firstName?.[0], person?.lastName?.[0]].filter(Boolean).join('');
+  const initials = nameInitials(person);
   return initials || '?';
 }
 
