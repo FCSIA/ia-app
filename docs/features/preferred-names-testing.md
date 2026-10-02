@@ -29,8 +29,8 @@ free-form message bodies are content and are not rewritten by a profile edit.
 
 | Scenario | How to test | Expected result |
 | --- | --- | --- |
-| Own identity | Profile & Settings, top-right account menu, Dashboard greeting | Preferred name; with no preference, regular full name and the established first-name greeting |
-| Other people's identity | As another club member, open Robotics Club → People and Overview; click Alex's avatar | Preferred name and initials in rows, member lists, and profile dialogs |
+| Own identity | Profile & Settings, top-right account menu, Dashboard greeting | Preferred name; the profile shows the regular name directly below when different. With no preference, regular full name and the established first-name greeting |
+| Other people's identity | As another club member, open Robotics Club → People and Overview; click Alex's avatar or hover a chat author | Preferred name and initials in rows and member lists. Profile dialogs and hover previews show the regular name below the preferred name when different |
 | Directory search | Robotics Club → People: search `Alex Johnson`, then `Lex QA`, then `STU001` | Each finds the same account, displayed as Lex QA |
 | Global search | Another user: open Search everything / Ctrl+K; search both names | Both find the same person under Lex QA (own-account results may be excluded) |
 | Existing chat | Robotics Club → #general: inspect Alex's existing message; open its profile, thread, reply preview, pinned-message list, or reaction list where applicable | Current preferred name on identity labels, even for older messages |

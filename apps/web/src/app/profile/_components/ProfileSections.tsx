@@ -1,7 +1,7 @@
 'use client';
 
 import { type Dispatch, type SetStateAction } from 'react';
-import { displayName as profileName } from '~/apps/shared/user-name';
+import { displayName as profileName, regularName } from '~/apps/shared/user-name';
 import {
   Bell,
   Lock,
@@ -131,6 +131,7 @@ export function ProfileSidebar({
   user,
 }: ProfileSidebarProps) {
   const displayName = profileName(user) || 'Profile';
+  const realName = regularName(user);
   const visibleSections = canSeeModeration
     ? PROFILE_SECTIONS
     : PROFILE_SECTIONS.filter((section) => section.id !== 'moderation');
@@ -147,6 +148,9 @@ export function ProfileSidebar({
               </CardTitle>
               <DeveloperBadge user={user} size={16} />
             </div>
+            {realName && realName !== displayName ? (
+              <p className="mt-1 break-words text-sm text-muted-foreground">{realName}</p>
+            ) : null}
             {user?.roles?.length ? (
               <CardDescription className="mt-2 text-sm leading-5 text-foreground/80">
                 {user.roles.map(friendlyRole).join(' · ')}

@@ -1,4 +1,4 @@
-import { displayName, MAX_PREFERRED_NAME_LENGTH } from '~/apps/shared/user-name';
+import { displayName, regularName, MAX_PREFERRED_NAME_LENGTH } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const { showToast } = useToast();
   const fullName = displayName(user);
+  const realName = regularName(user);
 
   async function pickAvatar() {
     let prepared: PreparedAvatarImage | undefined;
@@ -118,6 +119,9 @@ export default function ProfileScreen() {
             </Txt>
             <DeveloperBadge user={user} size={16} />
           </View>
+          {realName && realName !== fullName ? (
+            <Txt variant="caption" tone="muted">{realName}</Txt>
+          ) : null}
         </View>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
