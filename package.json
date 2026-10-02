@@ -2,7 +2,7 @@
   "name": "ia-app",
   "version": "0.0.1",
   "private": true,
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.2",
   "workspaces": [
     "apps/*",
     "packages/*"
