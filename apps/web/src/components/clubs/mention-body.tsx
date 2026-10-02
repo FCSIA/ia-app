@@ -5,8 +5,25 @@ import type { Value } from 'platejs';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
+import {
+  allowedMessageHref,
+  isRichTextLeaf,
+  normalizeClubChannelMessageBody,
+  serializeClubChannelMessagePlainText,
+  type ClubChannelMessageRichBody,
+  type RichTextLeaf,
+  type RichTextNode,
+} from './mention-serialize';
 
-export type ClubChannelMessageRichBody = Value;
+export {
+  EMPTY_CLUB_CHANNEL_MESSAGE_VALUE,
+  createEmptyClubChannelMessageValue,
+  deserializeClubChannelMessageBody,
+  normalizeClubChannelMessageBody,
+  serializeClubChannelMessageMarkdown,
+  serializeClubChannelMessagePlainText,
+  type ClubChannelMessageRichBody,
+} from './mention-serialize';
 
 type MentionBodyProps = {
   body: string;
@@ -14,131 +31,6 @@ type MentionBodyProps = {
   bodyRich?: ClubChannelMessageRichBody | null;
   className?: string;
 };
-
-type RichTextLeaf = {
-  text: string;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  [key: string]: unknown;
-};
-
-type RichTextElement = {
-  type?: string;
-  key?: string;
-  value?: string;
-  children?: RichTextNode[];
-  [key: string]: unknown;
-};
-
-type RichTextNode = RichTextLeaf | RichTextElement;
-
-export const EMPTY_CLUB_CHANNEL_MESSAGE_VALUE: Value = [
-  { type: 'p', children: [{ text: '' }] },
-];
-
-export function createEmptyClubChannelMessageValue(): Value {
-  return [{ type: 'p', children: [{ text: '' }] }];
-}
-
-function isRichTextLeaf(node: RichTextNode): node is RichTextLeaf {
-  return typeof (node as RichTextLeaf).text === 'string';
-}
-
-function serializeNodePlainText(node: RichTextNode): string {
-  if (isRichTextLeaf(node)) {
-    return node.text;
-  }
-
-  if (node.type === 'mention' && typeof node.value === 'string') {
-    return `@${node.value}`;
-  }
-
-  return (node.children ?? []).map(serializeNodePlainText).join('');
-}
-
-export function serializeClubChannelMessagePlainText(value: Value): string {
-  return (value as RichTextNode[]).map(serializeNodePlainText).join('\n');
-}
-
-function escapeMarkdownText(text: string) {
-  return text.replace(/([\\`*_[\]~])/g, '\\$1');
-}
-
-const inlineMarkdownLinkPattern =
-  /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/gi;
-
-function serializeMarkdownText(text: string) {
-  let markdown = '';
-  let cursor = 0;
-
-  for (const match of text.matchAll(inlineMarkdownLinkPattern)) {
-    const index = match.index;
-    if (index === undefined) continue;
-
-    const [source, label, href] = match;
-    markdown += escapeMarkdownText(text.slice(cursor, index));
-
-    const safeHref = allowedMessageHref(href);
-    markdown += safeHref
-      ? `[${escapeMarkdownText(label)}](${safeHref})`
-      : escapeMarkdownText(source);
-    cursor = index + source.length;
-  }
-
-  return markdown + escapeMarkdownText(text.slice(cursor));
-}
-
-function serializeNodeMarkdown(node: RichTextNode): string {
-  if (isRichTextLeaf(node)) {
-    let content = serializeMarkdownText(node.text);
-    if (!content) return content;
-    if (node.bold) content = `**${content}**`;
-    if (node.italic) content = `_${content}_`;
-    if (node.underline) content = `__${content}__`;
-    return content;
-  }
-
-  if (node.type === 'mention' && typeof node.value === 'string') {
-    const token = typeof node.key === 'string' ? node.key : node.value;
-    return `[@${node.value}](user://${token})`;
-  }
-
-  const content = (node.children ?? []).map(serializeNodeMarkdown).join('');
-  if (node.type === 'blockquote') {
-    return content
-      .split('\n')
-      .map((line) => `> ${line}`)
-      .join('\n');
-  }
-  return content;
-}
-
-export function serializeClubChannelMessageMarkdown(value: Value): string {
-  return (value as RichTextNode[]).map(serializeNodeMarkdown).join('\n\n').trim();
-}
-
-export function deserializeClubChannelMessageBody(body: string): Value {
-  if (!body) {
-    return createEmptyClubChannelMessageValue();
-  }
-
-  return body.split('\n').map((line) => ({
-    type: 'p',
-    children: [{ text: line }],
-  }));
-}
-
-export function normalizeClubChannelMessageBody(
-  bodyRich?: ClubChannelMessageRichBody | null,
-  body = '',
-): Value {
-  if (Array.isArray(bodyRich) && bodyRich.length > 0) {
-    return bodyRich as Value;
-  }
-
-  return deserializeClubChannelMessageBody(body);
-}
 
 function renderLeafContent(leaf: RichTextLeaf, keyBase: string) {
   return leaf.text.split(/(@[A-Za-z0-9_-]+)/g).map((part, index) => {
@@ -217,16 +109,6 @@ function renderBlockNode(node: RichTextNode, index: number) {
   );
 }
 
-function allowedMessageHref(href?: string) {
-  if (!href) return null;
-  try {
-    const url = new URL(href);
-    return ['http:', 'https:', 'user:'].includes(url.protocol) ? href : null;
-  } catch {
-    return null;
-  }
-}
-
 function messageUrlTransform(url: string) {
   return allowedMessageHref(url) ?? '';
 }
@@ -259,7 +141,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
                   href={safeHref}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="relative z-10 -mx-0.5 rounded-sm px-0.5 py-1 touch-manipulation select-text outline-none transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  className="relative z-10 -mx-0.5 rounded-sm px-0.5 py-1 touch-manipulation outline-none transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 >
                   {children}
                 </a>

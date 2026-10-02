@@ -28,6 +28,7 @@ import {
   clubPeopleGroupRuleKindValidator,
   clubJoinRequestStatusValidator,
   clubMentionKindValidator,
+  clubChannelReactionValidator,
   eventStatusValidator,
   eventTypeValidator,
   eventAttendanceStatusValidator,
@@ -84,6 +85,8 @@ export const schema = defineSchema({
     dashboardLayout: v.array(v.string()),
     mobileTabLayout: v.optional(v.array(v.string())),
     use24HourTime: v.optional(v.boolean()),
+    // The reaction a double tap on a chat message adds; 👍 when unset.
+    chatDoubleTapReaction: v.optional(clubChannelReactionValidator),
     avatarUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id("_storage")),
     customBackgroundUrl: v.optional(v.string()),
@@ -1131,6 +1134,14 @@ export const schema = defineSchema({
   })
     .index("by_messageId_and_userId", ["messageId", "userId"])
     .index("by_userId", ["userId"]),
+
+  // Everyone a message pinged, with group mentions resolved when it was
+  // posted. Chat highlights a message for exactly the people it notified.
+  clubChannelMessageMentionRecipients: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_messageId_and_userId", ["messageId", "userId"]),
 
   eventCategories: defineTable({
     title: v.string(),
