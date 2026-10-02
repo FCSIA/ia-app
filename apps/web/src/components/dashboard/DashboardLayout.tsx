@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -48,6 +48,17 @@ import {
 
 const STORAGE_PREFIX = 'ia_dashboard_layout_';
 
+/** Vertical gap between stacked widgets, in px — mirrors the `gap-6` below. */
+const COLUMN_GAP = 24;
+/** Height assumed for a widget that has not been measured yet. */
+const ESTIMATED_WIDGET_HEIGHT = 320;
+/** Ignore sub-pixel and scrollbar noise so packing does not thrash. */
+const HEIGHT_EPSILON = 8;
+/** How long measurements must stay unchanged before the packing is frozen. */
+const PACK_SETTLE_MS = 1200;
+/** Above this many arrangements, fall back to the cheap greedy pack. */
+const MAX_PACK_COMBINATIONS = 4096;
+
 function storageKey(userId: string | null | undefined) {
   return userId ? `${STORAGE_PREFIX}${userId}` : `${STORAGE_PREFIX}anon`;
 }
@@ -76,6 +87,95 @@ function saveLayout(userId: string | null | undefined, layout: string[]) {
   }
 }
 
+/** Rendered height of a column holding `weights`, gaps included. */
+function columnHeight(weights: number[]): number {
+  if (weights.length === 0) return 0;
+  return weights.reduce((sum, w) => sum + w, 0) + COLUMN_GAP * (weights.length - 1);
+}
+
+/** Tallest column for one assignment of widgets to columns. */
+function tallestColumn(weights: number[], assignment: number[], columnCount: number): number {
+  let tallest = 0;
+  for (let column = 0; column < columnCount; column += 1) {
+    const height = columnHeight(weights.filter((_, index) => assignment[index] === column));
+    if (height > tallest) tallest = height;
+  }
+  return tallest;
+}
+
+/**
+ * Drop each widget into whichever column is currently shortest. Cheap, but
+ * order-sensitive: a tall widget arriving last can still leave the columns
+ * lopsided. Used only as the fallback for layouts too large to search.
+ */
+function greedyAssignment(weights: number[], columnCount: number): number[] {
+  const totals = new Array<number>(columnCount).fill(0);
+  return weights.map((weight) => {
+    let target = 0;
+    for (let column = 1; column < columnCount; column += 1) {
+      // Strictly shorter wins, so equal columns fill left-to-right.
+      if (totals[column] < totals[target] - 1) target = column;
+    }
+    totals[target] += weight + COLUMN_GAP;
+    return target;
+  });
+}
+
+/**
+ * Exhaustive search for the assignment with the shortest tallest column, so
+ * the columns end up as level as the widget heights allow. The dashboard holds
+ * a handful of widgets, so the search space stays tiny. Candidates are visited
+ * in lexicographic order and the first best one wins, which keeps earlier
+ * widgets in earlier columns and makes the result stable across renders.
+ */
+function bestAssignment(weights: number[], columnCount: number): number[] {
+  const count = weights.length;
+  const combinations = columnCount ** count;
+  if (combinations > MAX_PACK_COMBINATIONS) return greedyAssignment(weights, columnCount);
+
+  let best: number[] = new Array<number>(count).fill(0);
+  let bestHeight = Number.POSITIVE_INFINITY;
+
+  for (let value = 0; value < combinations; value += 1) {
+    const assignment = new Array<number>(count);
+    let remainder = value;
+    for (let index = count - 1; index >= 0; index -= 1) {
+      assignment[index] = remainder % columnCount;
+      remainder = Math.floor(remainder / columnCount);
+    }
+    const height = tallestColumn(weights, assignment, columnCount);
+    if (height < bestHeight) {
+      bestHeight = height;
+      best = assignment;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Masonry packing by measured height. The old layout split widgets round-robin
+ * (`index % columnCount`), which stranded a tall widget such as the calendar
+ * beside two short ones and left one column running hundreds of pixels longer
+ * than the other.
+ */
+function packColumns(
+  ids: string[],
+  columnCount: number,
+  heights: Record<string, number>,
+): string[][] {
+  if (ids.length === 0) return [];
+  if (columnCount <= 1) return [ids];
+
+  const weights = ids.map((id) => heights[id] ?? ESTIMATED_WIDGET_HEIGHT);
+  const assignment = bestAssignment(weights, columnCount);
+
+  const columns: string[][] = Array.from({ length: columnCount }, () => []);
+  ids.forEach((id, index) => columns[assignment[index]].push(id));
+
+  return columns.filter((column) => column.length > 0);
+}
+
 // ─── Sortable widget wrapper ──────────────────────────────────────────────────
 
 function SortableWidget({
@@ -83,16 +183,40 @@ function SortableWidget({
   widget,
   editing,
   onRemove,
+  onMeasure,
 }: {
   id: string;
   widget: WidgetDefinition;
   editing: boolean;
   onRemove: (id: string) => void;
+  onMeasure?: (id: string, height: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !editing,
   });
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      nodeRef.current = node;
+      setNodeRef(node);
+    },
+    [setNodeRef],
+  );
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node || !onMeasure) return;
+    // Measure right away rather than waiting on the first observer callback.
+    onMeasure(id, node.getBoundingClientRect().height);
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      onMeasure(id, node.getBoundingClientRect().height);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [id, onMeasure]);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -103,39 +227,37 @@ function SortableWidget({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       style={style}
       className={cn(
         'relative',
-        editing ? 'rounded-3xl ring-1 ring-dashed ring-border/70' : '',
+        editing
+          ? 'cursor-grab touch-none rounded-[1.75rem] border border-dashed border-border/80 bg-muted/20 p-2 active:cursor-grabbing'
+          : '',
         isDragging ? 'opacity-40' : '',
       )}
+      {...(editing ? attributes : {})}
+      {...(editing ? listeners : {})}
     >
-      <div>
-        {editing && (
-          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
-            <button
-              type="button"
-              {...attributes}
-              {...listeners}
-              className="flex size-6 cursor-grab items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
-              aria-label={`Drag ${widget.label}`}
-            >
-              <GripVertical className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onRemove(id)}
-              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              aria-label={`Remove ${widget.label}`}
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        )}
-        <div className={editing ? 'opacity-95' : ''}>
-          <Component />
+      {editing ? (
+        <div className="mb-2 flex items-center gap-1.5 px-1.5">
+          <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+            {widget.label}
+          </span>
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => onRemove(id)}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            aria-label={`Remove ${widget.label}`}
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
+      ) : null}
+      <div className={editing ? 'pointer-events-none select-none' : ''}>
+        <Component />
       </div>
     </div>
   );
@@ -146,7 +268,7 @@ function SortableWidget({
 function DragGhost({ widget }: { widget: WidgetDefinition }) {
   const Component = widget.Component;
   return (
-    <div className="pointer-events-none rounded-3xl ring-2 ring-primary/30 scale-[1.02] rotate-[0.5deg]">
+    <div className="pointer-events-none rotate-[0.5deg] scale-[1.02] rounded-[1.75rem] p-2 ring-2 ring-primary/30">
       <Component />
     </div>
   );
@@ -167,7 +289,8 @@ export function DashboardLayout({
   const [layout, setLayout] = useState<string[] | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [columnCount, setColumnCount] = useState(2);
+  const [columnCount, setColumnCount] = useState(1);
+  const [heights, setHeights] = useState<Record<string, number>>({});
 
   // Sensor config — small drag distance to avoid accidental triggers
   const sensors = useSensors(
@@ -175,7 +298,7 @@ export function DashboardLayout({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
   );
 
-  // Track viewport breakpoint to choose 1 vs 2 columns (matches md:1280 ish for masonry).
+  // Track viewport breakpoint to choose 1 vs 2 columns (matches the md: split below).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(min-width: 768px)');
@@ -183,6 +306,15 @@ export function DashboardLayout({
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
+  }, []);
+
+  const handleMeasure = useCallback((id: string, height: number) => {
+    if (height <= 0) return;
+    setHeights((prev) => {
+      const previous = prev[id];
+      if (previous !== undefined && Math.abs(previous - height) < HEIGHT_EPSILON) return prev;
+      return { ...prev, [id]: height };
+    });
   }, []);
 
   // Load persisted layout once user is known
@@ -272,17 +404,34 @@ export function DashboardLayout({
     return { fixedIds: fixed, fullIds: full, columnIds: cols };
   }, [layout, user?.roles]);
 
-  // Distribute valid half-width widgets into N columns by index so the order
-  // remains stable. An odd count necessarily produces a 3/2 split across two
-  // columns; duplicate IDs are removed before this point.
-  const columns = useMemo<string[][]>(() => {
-    if (columnIds.length === 0) return [];
-    const cols: string[][] = Array.from({ length: columnCount }, () => []);
-    for (let i = 0; i < columnIds.length; i++) {
-      cols[i % columnCount].push(columnIds[i]);
-    }
-    return cols;
-  }, [columnIds, columnCount]);
+  // Half-width widgets are packed by measured height so the columns stay level
+  // instead of one running far longer than the other. The packing freezes on
+  // the first full measurement: widgets whose content loads in later (or that
+  // resize) never shuffle between columns under the user. It is measured again
+  // only when the set of widgets or the column count changes.
+  const packKey = `${columnCount}:${[...columnIds].sort().join(',')}`;
+  const [frozenPack, setFrozenPack] = useState<{
+    key: string;
+    heights: Record<string, number>;
+  } | null>(null);
+  const packHeights = frozenPack?.key === packKey ? frozenPack.heights : null;
+
+  // Wait for the measurements to settle before freezing: widgets render short
+  // placeholders while their data loads, and freezing on those would lock in a
+  // lopsided split.
+  useEffect(() => {
+    if (packHeights || columnIds.length === 0) return;
+    if (!columnIds.every((id) => heights[id] !== undefined)) return;
+    const timer = window.setTimeout(() => {
+      setFrozenPack({ key: packKey, heights: { ...heights } });
+    }, PACK_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [packHeights, columnIds, heights, packKey]);
+
+  const columns = useMemo(
+    () => packColumns(columnIds, columnCount, packHeights ?? {}),
+    [columnIds, columnCount, packHeights],
+  );
 
   if (!layout) {
     return (
@@ -411,12 +560,11 @@ export function DashboardLayout({
                   );
                 })}
 
-                {/* Half-width widgets — distributed into N columns by measured
-                    height so widgets pack densely without large gaps. */}
+                {/* Half-width widgets — packed into height-balanced columns. */}
                 {columns.length > 0 && (
-                  <div className="flex flex-col gap-6 md:flex-row">
+                  <div className="flex flex-col gap-6 md:flex-row md:items-start">
                     {columns.map((colIds, colIndex) => (
-                      <div key={colIndex} className="flex flex-1 flex-col gap-6 min-w-0">
+                      <div key={colIndex} className="flex min-w-0 flex-1 flex-col gap-6">
                         {colIds.map((id) => {
                           const widget = WIDGETS[id];
                           if (!widget) return null;
@@ -427,6 +575,7 @@ export function DashboardLayout({
                               widget={widget}
                               editing={editing}
                               onRemove={handleRemove}
+                              onMeasure={handleMeasure}
                             />
                           );
                         })}
