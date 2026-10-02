@@ -113,6 +113,7 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { PresenceAvatar, useMemberPresence } from '@/components/presence/club-presence';
 import { UserProfileContent, UserProfileDialog } from '@/components/clubs/user-profile-dialog';
 import {
   MentionBody,
@@ -583,6 +584,7 @@ function MessageAuthorPreview({
   const isPending = friendRequestPendingId === author._id;
   const [profileOpen, setProfileOpen] = useState(false);
   const [hoverOpen, setHoverOpen] = useState(false);
+  const presence = useMemberPresence(author._id);
 
   const trigger =
     triggerVariant === 'name' ? (
@@ -608,11 +610,13 @@ function MessageAuthorPreview({
           setProfileOpen(true);
         }}
       >
-        <ClubAvatar
-          person={author}
-          className={compact ? 'size-7' : 'size-9'}
-          fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
-        />
+        <PresenceAvatar status={presence}>
+          <ClubAvatar
+            person={author}
+            className={compact ? 'size-7' : 'size-9'}
+            fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+          />
+        </PresenceAvatar>
       </button>
     );
 

@@ -99,6 +99,9 @@ import type * as notifications_push from "../notifications/push.js";
 import type * as notifications_pushDevices from "../notifications/pushDevices.js";
 import type * as notifications_pushExpo from "../notifications/pushExpo.js";
 import type * as notifications_pushNode from "../notifications/pushNode.js";
+import type * as presence__activity from "../presence/_activity.js";
+import type * as presence__status from "../presence/_status.js";
+import type * as presence_status from "../presence/status.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as schedule__lib from "../schedule/_lib.js";
 import type * as schedule_blocks from "../schedule/blocks.js";
@@ -235,6 +238,9 @@ declare const fullApi: ApiFromModules<{
   "notifications/pushDevices": typeof notifications_pushDevices;
   "notifications/pushExpo": typeof notifications_pushExpo;
   "notifications/pushNode": typeof notifications_pushNode;
+  "presence/_activity": typeof presence__activity;
+  "presence/_status": typeof presence__status;
+  "presence/status": typeof presence_status;
   rateLimits: typeof rateLimits;
   "schedule/_lib": typeof schedule__lib;
   "schedule/blocks": typeof schedule_blocks;
@@ -304,4 +310,5 @@ export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
   migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
 };

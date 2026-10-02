@@ -32,6 +32,7 @@ import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubAvatar } from "@/components/clubs/club-avatar";
+import { PresenceAvatar, useMemberPresence } from "@/components/presence/club-presence";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
@@ -1544,6 +1545,7 @@ function PersonRow({
   const [primaryUnitName, ...otherUnitNames] = person.unitNames;
   const unitMembershipLabel = person.unitNames.join(", ");
   const [profileOpen, setProfileOpen] = useState(false);
+  const presence = useMemberPresence(person._id);
 
   return (
     <>
@@ -1554,11 +1556,13 @@ function PersonRow({
           onClick={() => setProfileOpen(true)}
           className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
         >
-          <ClubAvatar
-            person={person}
-            className="size-9"
-            fallbackClassName="text-[11px]"
-          />
+          <PresenceAvatar status={presence}>
+            <ClubAvatar
+              person={person}
+              className="size-9"
+              fallbackClassName="text-[11px]"
+            />
+          </PresenceAvatar>
         </button>
         <div className="min-w-0 flex-1">
           <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground">

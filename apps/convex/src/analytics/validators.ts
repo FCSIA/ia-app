@@ -96,6 +96,16 @@ export const flexDataValidator = v.object({
   uncappedWorkshops: v.number(),
 });
 
+/** People active in the app, counted from anonymous hourly marks. */
+export const engagementDataValidator = v.object({
+  activePeople: v.number(),
+  // People whose first activity of their week fell on this day.
+  newWeekPeople: v.number(),
+  platforms: v.object({ ios: v.number(), android: v.number(), desktop: v.number() }),
+  // People active in each school hour, 0 through 23.
+  hours: v.array(v.number()),
+});
+
 /**
  * A rollup's payload, tagged with the same `kind` as its row. The row stays a
  * plain object (shared doc validators extend every table), while the tag lets
@@ -109,6 +119,7 @@ export const analyticsDataValidator = v.union(
   v.object({ kind: v.literal("moderation"), ...moderationDataValidator.fields }),
   // Keyed by the Flex Friday's date, refreshed while it is near.
   v.object({ kind: v.literal("flex"), ...flexDataValidator.fields }),
+  v.object({ kind: v.literal("engagement"), ...engagementDataValidator.fields }),
 );
 
 export const analyticsKindValidator = v.union(
@@ -118,6 +129,7 @@ export const analyticsKindValidator = v.union(
   v.literal("announcements"),
   v.literal("moderation"),
   v.literal("flex"),
+  v.literal("engagement"),
 );
 
 export const analyticsDailyValidator = v.object({
@@ -136,3 +148,4 @@ export type ChatData = Infer<typeof chatDataValidator>;
 export type AnnouncementsData = Infer<typeof announcementsDataValidator>;
 export type ModerationData = Infer<typeof moderationDataValidator>;
 export type FlexData = Infer<typeof flexDataValidator>;
+export type EngagementData = Infer<typeof engagementDataValidator>;
