@@ -2,15 +2,42 @@
 
 ## Active Focus
 
-- **Branch**: `codex/admin-mobile-layout`.
-- **Goal**: Finish the admin mobile repair and hand it off for design-owner
-  review. The #100 → #111 tooling/backend stack is merged. Production
-  deployment is not authorized.
+- **Branch**: `codex/local-bun-and-mobile-swipe` keeps the admin repair, latest
+  Bun/Nix setup, and swipe fix together locally. Their review branches remain
+  separate.
+- **Goal**: Keep the local shell loaded and hand off the swipe fix for native
+  iPhone verification. Admin PR #148 awaits design-owner review. The #100 → #111
+  tooling/backend stack is merged. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Local Bun/Nix setup (2026-10-02)
+
+- Nix/direnv supplies Bun 1.4.2, matching `packageManager` and CI, alongside
+  Node 24.14.0. The Bun assets use verified release digests; changing
+  `package.json` invalidates the direnv shell cache. CocoaPods is macOS-only.
+- The native Apple Silicon shell builds and loads; both Darwin and Linux
+  architectures evaluate. Frozen install leaves the lockfile unchanged.
+  The dependency/audit regression tests and web typecheck, lint, and build
+  pass with Bun 1.4.2. Existing lint warnings remain.
+- PR #149 contains this setup independently of the admin and swipe changes.
+
+### Mobile sidebar gesture (2026-10-02)
+
+- The shared app-shell gesture owner uses a scoped native non-passive
+  `touchmove` listener. A rightward movement is cancelled before the sidebar
+  reveal, so React's passive delegated listener no longer controls the swipe.
+- Vertical/left gestures, excluded controls, and multi-touch keep their
+  browser behavior. Interrupted or browser-owned gestures cancel the reveal;
+  ownership continues until release when a gesture reverses or opens early.
+- Twelve gesture regression tests pass. The built mobile page has the native
+  listener wired correctly and its explicit sidebar control still works.
+  Native iPhone/PWA Back-gesture verification remains pending because this
+  browser cannot reliably automate touch input. PR #150 remains a draft for
+  that device check.
 
 ### Bun stack refresh (2026-10-02)
 
