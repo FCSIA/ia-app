@@ -983,7 +983,8 @@ async function markChannelDeliveriesReadThrough(
         .lte("sourceCreatedAt", throughCreatedAt),
     )
     .take(CHANNEL_DELIVERY_READ_BATCH_SIZE);
-  for (const row of rows) await ctx.db.patch(row._id, { isRead: true });
+  const readAt = Date.now();
+  for (const row of rows) await ctx.db.patch(row._id, { isRead: true, readAt });
   return rows.length;
 }
 

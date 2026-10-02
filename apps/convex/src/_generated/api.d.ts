@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as analytics__days from "../analytics/_days.js";
+import type * as analytics__summaries from "../analytics/_summaries.js";
+import type * as analytics_dashboard from "../analytics/dashboard.js";
+import type * as analytics_rollups from "../analytics/rollups.js";
+import type * as analytics_validators from "../analytics/validators.js";
 import type * as announcements__lib from "../announcements/_lib.js";
 import type * as announcements_comments from "../announcements/comments.js";
 import type * as announcements_contentValidation from "../announcements/contentValidation.js";
@@ -139,6 +144,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "analytics/_days": typeof analytics__days;
+  "analytics/_summaries": typeof analytics__summaries;
+  "analytics/dashboard": typeof analytics_dashboard;
+  "analytics/rollups": typeof analytics_rollups;
+  "analytics/validators": typeof analytics_validators;
   "announcements/_lib": typeof announcements__lib;
   "announcements/comments": typeof announcements_comments;
   "announcements/contentValidation": typeof announcements_contentValidation;
