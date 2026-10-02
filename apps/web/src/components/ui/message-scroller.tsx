@@ -71,7 +71,9 @@ function MessageScrollerViewport({
       }}
       data-slot="message-scroller-viewport"
       className={cn(
-        'fluid-scrollbar size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain contain-content scroll-fade-y [scrollbar-gutter:stable]',
+        // A chat scrolls only vertically; anything wider is clipped rather than
+        // letting the whole conversation pan sideways on touch screens.
+        'fluid-scrollbar size-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain contain-content scroll-fade-y [scrollbar-gutter:stable]',
         className,
       )}
       onScroll={(event) => {
