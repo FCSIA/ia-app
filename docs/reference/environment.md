@@ -76,6 +76,10 @@ pnpm dev:phone
 Points the web and mobile clients at this machine's network address, then
 starts `pnpm dev`. The phone and the desktop browser can test at the same time.
 
+- Web on the phone: open `http://<address>:3000` (printed by the command).
+- Native app: run `pnpm dev:mobile` in a second terminal and scan the QR code
+  with Expo Go.
+
 | Setup | Works |
 | --- | --- |
 | Mac and phone on the same Wi-Fi | Yes |
@@ -85,8 +89,8 @@ starts `pnpm dev`. The phone and the desktop browser can test at the same time.
 | Android emulator | Run `pnpm sync:convex-env -- --android`, then `pnpm dev` |
 
 Tailscale: install it on the Mac and the phone and sign both in to the same
-account. `pnpm dev:phone` then uses the Mac's Tailscale address when there is
-no shared Wi-Fi.
+account. `pnpm dev:phone` then prefers the Mac's Tailscale address, which works
+on any network.
 
 After a network change, `pnpm dev` re-points the clients automatically. To go
 back to desktop-only:

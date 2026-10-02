@@ -79,15 +79,16 @@ function lanIPv4Addresses() {
 }
 
 /**
- * The address a phone should use: a shared network's private address first,
- * then Tailscale's (100.64.0.0/10), which reaches the phone on any network.
+ * The address a phone should use: Tailscale's (100.64.0.0/10) first, since it
+ * reaches the phone on any network and goes direct on a shared Wi-Fi, then a
+ * shared network's private address.
  */
 function preferredLanIPv4() {
   const addresses = lanIPv4Addresses();
   const isPrivate = (address) =>
     /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(address);
   const isTailscale = (address) => /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(address);
-  return addresses.find(isPrivate) ?? addresses.find(isTailscale) ?? null;
+  return addresses.find(isTailscale) ?? addresses.find(isPrivate) ?? null;
 }
 
 const hostOf = (value) => {
@@ -167,6 +168,15 @@ let mobileEnv = existsSync(mobileEnvPath) ? readFileSync(mobileEnvPath, 'utf8') 
 mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_APP_SCHEME', 'ia-app');
 mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_CONVEX_URL', clientUrl(convexUrl, mobileHost));
 mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_CONVEX_SITE_URL', clientUrl(convexSiteUrl, mobileHost));
+// Expo CLI reads this from .env.local, so `pnpm dev:mobile` serves the app at
+// the same address. Loopback and the emulator alias need no override.
+const packagerHost =
+  mobileHost && !LOOPBACK_HOSTS.has(mobileHost) && mobileHost !== ANDROID_EMULATOR_HOST
+    ? mobileHost
+    : null;
+mobileEnv = packagerHost
+  ? upsert(mobileEnv, 'REACT_NATIVE_PACKAGER_HOSTNAME', packagerHost)
+  : mobileEnv.replace(/^REACT_NATIVE_PACKAGER_HOSTNAME=.*\n?/m, '');
 writeFileSync(mobileEnvPath, mobileEnv.endsWith('\n') ? mobileEnv : `${mobileEnv}\n`, 'utf8');
 
 console.log(`Synced Convex env to apps/web/.env.local`);
@@ -175,6 +185,7 @@ console.log(`  NEXT_PUBLIC_CONVEX_SITE_URL=${clientUrl(convexSiteUrl, webHost)}`
 console.log(`Synced Convex env to apps/mobile/.env.local`);
 console.log(`  EXPO_PUBLIC_CONVEX_URL=${clientUrl(convexUrl, mobileHost)}`);
 console.log(`  EXPO_PUBLIC_CONVEX_SITE_URL=${clientUrl(convexSiteUrl, mobileHost)}`);
+if (packagerHost) console.log(`Phone: open http://${packagerHost}:3000, or run \`pnpm dev:mobile\` and scan the QR code.`);
 if (!mobileHost && !webHost && /127\.0\.0\.1|localhost/.test(convexUrl)) {
   console.log('Tip: `pnpm dev:phone` points a physical phone at this machine.');
 }
