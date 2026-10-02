@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { analyticsDailyValidator } from "./analytics/validators";
 import {
   appRoleValidator,
   courseCatalogSourceValidator,
@@ -216,6 +217,8 @@ export const schema = defineSchema({
       }),
     ),
     isRead: v.boolean(),
+    // When the recipient first read it. Absent on rows read before this was recorded.
+    readAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_userId_and_createdAt", ["userId", "createdAt"])
@@ -279,6 +282,12 @@ export const schema = defineSchema({
   // services cannot tell us when a device drops its subscription (Apple keeps
   // accepting sends to a dead endpoint for over a week), so this is the only
   // record of whether a device can actually receive push.
+  // Daily rollups for the superadmin Analytics tab. See analytics/validators.ts.
+  analyticsDaily: defineTable(analyticsDailyValidator).index("by_kind_and_day", [
+    "kind",
+    "day",
+  ]),
+
   notificationPushDevices: defineTable({
     userId: v.id("users"),
     deviceId: v.string(),

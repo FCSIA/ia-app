@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { ChartLine, ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 import { cn } from '@/lib/utils';
@@ -59,6 +59,9 @@ export function AdminShell({
             ) : null}
             {canManageWrapped ? (
               <TabItem value="wrapped" icon={Sparkles} label="Wrapped" />
+            ) : null}
+            {isSuperAdmin ? (
+              <TabItem value="analytics" icon={ChartLine} label="Analytics" />
             ) : null}
             <TabItem value="audit" icon={FileText} label="Audit Log" />
           </TabsList>
