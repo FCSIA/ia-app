@@ -85,6 +85,7 @@ export default function WhiteboardCanvas({
   // sent. They are retried with the next save that erases something.
   const heldForSpace = useRef(new Map<string, number>());
   const warnedUnsupported = useRef(false);
+  const warnedArchivedUnsent = useRef(false);
   const syncStateRef = useRef(onSyncStateChange);
   useEffect(() => {
     syncStateRef.current = onSyncStateChange;
@@ -147,7 +148,7 @@ export default function WhiteboardCanvas({
 
   const flush = useCallback(async () => {
     flushTimer.current = null;
-    if (!excalidrawAPI || flushing.current || readOnly) return;
+    if (!excalidrawAPI || flushing.current) return;
     const scene = excalidrawAPI.getSceneElementsIncludingDeleted();
     const pending = pendingWhiteboardElements(
       scene,
@@ -155,7 +156,22 @@ export default function WhiteboardCanvas({
       syncedVersions.current,
       SUPPORTED_TYPES,
     );
+    if (!readOnly) warnedArchivedUnsent.current = false;
     if (pending.length === 0) return;
+    // Someone archived the board while these edits waited to be sent. They
+    // stay pending, so restoring the board while it is open still saves them.
+    if (readOnly) {
+      syncStateRef.current?.('error');
+      if (!warnedArchivedUnsent.current) {
+        warnedArchivedUnsent.current = true;
+        toast({
+          title: 'Your latest changes were not saved',
+          description: 'This whiteboard was archived. Restore it to keep editing.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
     // Erasing frees space, so shapes refused for a full board go along again.
     if (heldForSpace.current.size > 0 && pending.some((element) => element.isDeleted)) {
       const pendingIds = new Set(pending.map((element) => element.id));
@@ -252,24 +268,6 @@ export default function WhiteboardCanvas({
     },
     [],
   );
-
-  // Someone archived the board while this person still had unsent edits.
-  useEffect(() => {
-    if (!readOnly || !excalidrawAPI) return;
-    const unsent = pendingWhiteboardElements(
-      excalidrawAPI.getSceneElementsIncludingDeleted(),
-      excalidrawAPI.getAppState(),
-      syncedVersions.current,
-      SUPPORTED_TYPES,
-    );
-    if (unsent.length === 0) return;
-    syncStateRef.current?.('error');
-    toast({
-      title: 'Your latest changes were not saved',
-      description: 'This whiteboard was archived. Restore it to keep editing.',
-      variant: 'destructive',
-    });
-  }, [excalidrawAPI, readOnly, toast]);
 
   const handleChange = useCallback(
     (elements: readonly OrderedExcalidrawElement[], appState: AppState) => {
