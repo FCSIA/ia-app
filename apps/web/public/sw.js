@@ -39,6 +39,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // External media must use the browser's image policy. Fetching it inside
+  // this worker would apply connect-src and block pasted GIF previews.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   // Network-first strategy; fall back to cache for navigation
   if (event.request.mode === 'navigate') {
     event.respondWith(

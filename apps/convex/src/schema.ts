@@ -29,6 +29,7 @@ import {
   clubPeopleGroupRuleKindValidator,
   clubJoinRequestStatusValidator,
   clubMentionKindValidator,
+  clubChannelReactionValidator,
   eventStatusValidator,
   eventTypeValidator,
   eventAttendanceStatusValidator,
@@ -85,6 +86,8 @@ export const schema = defineSchema({
     dashboardLayout: v.array(v.string()),
     mobileTabLayout: v.optional(v.array(v.string())),
     use24HourTime: v.optional(v.boolean()),
+    // The reaction a double tap on a chat message adds; 👍 when unset.
+    chatDoubleTapReaction: v.optional(clubChannelReactionValidator),
     avatarUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id("_storage")),
     customBackgroundUrl: v.optional(v.string()),
@@ -1145,6 +1148,15 @@ export const schema = defineSchema({
     .index("by_uploadIntentId", ["uploadIntentId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
+  // Tenor share pages resolved to their GIF media, so each pasted link is
+  // fetched once rather than by every viewer. Unresolvable links are retried
+  // after an hour.
+  chatGifLinkResolutions: defineTable({
+    url: v.string(),
+    mediaUrl: v.union(v.string(), v.null()),
+    resolvedAt: v.number(),
+  }).index("by_url", ["url"]),
+
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),
     userId: v.id("users"),
@@ -1177,6 +1189,14 @@ export const schema = defineSchema({
   })
     .index("by_messageId_and_userId", ["messageId", "userId"])
     .index("by_userId", ["userId"]),
+
+  // Everyone a message pinged, with group mentions resolved when it was
+  // posted. Chat highlights a message for exactly the people it notified.
+  clubChannelMessageMentionRecipients: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_messageId_and_userId", ["messageId", "userId"]),
 
   eventCategories: defineTable({
     title: v.string(),

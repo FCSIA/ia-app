@@ -13,6 +13,7 @@ import {
   MAX_USER_BACKGROUND_BYTES,
 } from "../uploads/limits";
 import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
+import { clubChannelReactionValidator } from "../validators";
 import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
@@ -97,6 +98,26 @@ export const updateMobileTabLayout = mutation({
     const user = await getCurrentAppUser(ctx);
     await ctx.db.patch(user._id, {
       mobileTabLayout: args.layout,
+      updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(user._id);
+    if (!updated) {
+      throw new ConvexError("User not found.");
+    }
+    return toUserSelfProfile(updated);
+  },
+});
+
+export const updateChatDoubleTapReaction = mutation({
+  args: {
+    reaction: clubChannelReactionValidator,
+  },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(user._id, {
+      chatDoubleTapReaction: args.reaction,
       updatedAt: Date.now(),
     });
 
