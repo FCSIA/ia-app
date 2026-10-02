@@ -2,12 +2,13 @@
 
 ## Active Focus
 
-- **Branch**: `codex/local-bun-and-mobile-swipe` keeps the admin repair, latest
-  Bun/Nix setup, and swipe fix together locally. Their review branches remain
-  separate.
-- **Goal**: Keep the local shell loaded and hand off the swipe fix for native
-  iPhone verification. Admin PR #148 awaits design-owner review. The #100 → #111
-  tooling/backend stack is merged. Production deployment is not authorized.
+- **Integration**: `codex/local-bun-and-mobile-swipe` combines the admin repair,
+  Bun/Nix setup, and swipe fix. Main receives them through PRs #148, #149, and
+  #150; #148 contains the remaining admin changes after #149 and #150 merged.
+- **Goal**: Keep the latest Bun shell and mobile repairs available locally.
+  The user explicitly authorized merging all three branches after the preview
+  and verification handoff. Native iPhone verification remains outstanding.
+  Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -23,7 +24,8 @@
   architectures evaluate. Frozen install leaves the lockfile unchanged.
   The dependency/audit regression tests and web typecheck, lint, and build
   pass with Bun 1.4.2. Existing lint warnings remain.
-- PR #149 contains this setup independently of the admin and swipe changes.
+- PR #149 is merged and contains this setup independently of the admin and
+  swipe changes.
 
 ### Mobile sidebar gesture (2026-10-02)
 
@@ -36,8 +38,8 @@
 - Twelve gesture regression tests pass. The built mobile page has the native
   listener wired correctly and its explicit sidebar control still works.
   Native iPhone/PWA Back-gesture verification remains pending because this
-  browser cannot reliably automate touch input. PR #150 remains a draft for
-  that device check.
+  browser cannot reliably automate touch input. The user authorized merging
+  despite that outstanding device check, and PR #150 is merged.
 
 ### Bun stack refresh (2026-10-02)
 
@@ -66,8 +68,8 @@
 - Browser verification uses synthetic accounts on the isolated anonymous
   backend in the attached `merge-100-111` worktree. The primary dataset was not
   reset. Phone, tablet, desktop, paging, search, selection, and empty-result
-  checks are diagnostic; material visual changes still await design-owner
-  review before merge.
+  checks are diagnostic. The user subsequently authorized merging the
+  combined local branch, including this admin layout repair.
 
 ### Convex Usage and Scale Audit (2026-08-31)
 
