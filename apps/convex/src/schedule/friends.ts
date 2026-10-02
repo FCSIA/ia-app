@@ -15,6 +15,7 @@ import {
   type ScheduleSearchResult,
 } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
+import { clubUserRefValidator, toClubUserRef } from "../clubs/serialize";
 
 const profileFriendValidator = v.object({
   _id: v.id("users"),
@@ -195,6 +196,50 @@ export const getStatuses = query({
 });
 
 /** Relationship-aware profile details for people already visible in club chat. */
+/** Active mutual friends of the viewer and a person, sorted by name. */
+async function loadMutualFriends(
+  ctx: Parameters<typeof getFriendshipBetween>[0],
+  viewerId: Parameters<typeof getFriendshipBetween>[1],
+  personId: Parameters<typeof getFriendshipBetween>[1],
+) {
+  const [viewerFriendIds, personFriendIds] = await Promise.all([
+    acceptedFriendIds(ctx, viewerId),
+    acceptedFriendIds(ctx, personId),
+  ]);
+  const mutualFriendIds = [...personFriendIds]
+    .filter((friendId) => viewerFriendIds.has(friendId))
+    .slice(0, MAX_PROFILE_FRIENDSHIPS);
+  return (
+    await Promise.all(mutualFriendIds.map((friendId) => ctx.db.get(friendId)))
+  )
+    .filter((friend): friend is NonNullable<typeof friend> =>
+      Boolean(friend?.isActive),
+    )
+    .sort(
+      (left, right) =>
+        left.lastName.localeCompare(right.lastName) ||
+        left.firstName.localeCompare(right.firstName),
+    );
+}
+
+/**
+ * Every mutual friend (up to the profile cap), for the expanded list on a
+ * profile; `getProfileContext` returns only the first few for the summary.
+ */
+export const listMutualFriends = query({
+  args: { personId: v.id("users") },
+  returns: v.array(clubUserRefValidator),
+  handler: async (ctx, args) => {
+    const viewer = await getCurrentAppUser(ctx);
+    if (args.personId === viewer._id) return [];
+    const person = await ctx.db.get(args.personId);
+    if (!person?.isActive || !isStudentUser(person) || !isStudentUser(viewer))
+      return [];
+    const friends = await loadMutualFriends(ctx, viewer._id, person._id);
+    return friends.map(toClubUserRef);
+  },
+});
+
 export const getProfileContext = query({
   args: { personId: v.id("users") },
   returns: profileContextValidator,
@@ -211,24 +256,7 @@ export const getProfileContext = query({
       friendship,
       viewer._id,
     );
-    const [viewerFriendIds, personFriendIds] = await Promise.all([
-      acceptedFriendIds(ctx, viewer._id),
-      acceptedFriendIds(ctx, person._id),
-    ]);
-    const mutualFriendIds = [...personFriendIds]
-      .filter((friendId) => viewerFriendIds.has(friendId))
-      .slice(0, MAX_PROFILE_FRIENDSHIPS);
-    const mutualFriendUsers = (
-      await Promise.all(mutualFriendIds.map((friendId) => ctx.db.get(friendId)))
-    )
-      .filter((friend): friend is NonNullable<typeof friend> =>
-        Boolean(friend?.isActive),
-      )
-      .sort(
-        (left, right) =>
-          left.lastName.localeCompare(right.lastName) ||
-          left.firstName.localeCompare(right.firstName),
-      );
+    const mutualFriendUsers = await loadMutualFriends(ctx, viewer._id, person._id);
 
     let scheduleVisibility = "FRIENDS_ONLY" as
       "FRIENDS_ONLY" | "NONE" | "PRIVATE" | "SHARED";

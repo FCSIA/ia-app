@@ -49,6 +49,14 @@ function useScrollTimestamp(enabled: boolean) {
 
 type LongPress = { x: number; y: number; startedAt: number; timer: number }
 
+/**
+ * React delivers events from portaled content (a dialog or popover opened from
+ * inside the trigger) to the trigger's handlers too. Only events that started
+ * inside the trigger's own DOM belong to its menu.
+ */
+const startedInTrigger = (event: React.SyntheticEvent<HTMLElement>) =>
+  event.target instanceof Node && event.currentTarget.contains(event.target)
+
 const ContextMenuTrigger = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Trigger>
@@ -119,6 +127,12 @@ const ContextMenuTrigger = React.forwardRef<
         disabled={disabled || (managesTouch && !opening)}
         onContextMenu={(event) => {
           onContextMenu?.(event)
+          if (!startedInTrigger(event)) {
+            // Keep the menu closed. With a pointer, the Radix handler runs
+            // next and only skips an event whose default was prevented.
+            if (!managesTouch) event.preventDefault()
+            return
+          }
           if (!managesTouch || dispatchingRef.current) return
           event.preventDefault()
           if (!touchActiveRef.current) {
@@ -136,7 +150,7 @@ const ContextMenuTrigger = React.forwardRef<
         }}
         onTouchStart={(event) => {
           onTouchStart?.(event)
-          if (!managesTouch) return
+          if (!managesTouch || !startedInTrigger(event)) return
           touchActiveRef.current = true
           cancelPress()
           const startedAt = performance.now()
