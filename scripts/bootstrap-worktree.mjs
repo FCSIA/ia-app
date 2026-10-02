@@ -13,7 +13,7 @@ let replaceSymlinks = false;
 let dryRun = false;
 
 const usage = () => {
-  console.log(`Usage: pnpm worktree:bootstrap -- [options]
+  console.log(`Usage: bun run worktree:bootstrap -- [options]
 
 Link reusable local setup from the primary worktree into this worktree.
 
@@ -216,9 +216,9 @@ if (linkDependencies) {
     removeSourceNodeModulesLink(path);
   }
   if (dryRun) {
-    console.log("Would install local node_modules from pnpm's shared package store.");
+    console.log("Would install local node_modules from Bun's shared package cache.");
   } else {
-    const result = spawnSync("pnpm", ["install", "--offline", "--frozen-lockfile"], {
+    const result = spawnSync("bun", ["install", "--frozen-lockfile"], {
       cwd: root,
       stdio: "inherit",
     });
@@ -236,10 +236,10 @@ for (const path of localPaths) {
 
 if (convexMode === "shared") {
   if (dryRun) {
-    console.log("Would mark this worktree to start only the web server with pnpm dev.");
+    console.log("Would mark this worktree to start only the web server with bun run dev.");
   } else {
     writeFileSync(modePath, `${JSON.stringify({ convex: "shared" })}\n`, "utf8");
-    console.log("Shared Convex mode: pnpm dev will start only the web server.");
+    console.log("Shared Convex mode: bun run dev will start only the web server.");
   }
 }
 
@@ -248,7 +248,7 @@ if (convexMode === "isolated") {
     console.log("Would create/select this worktree's isolated local Convex backend.");
   } else {
     if (!existsSync(join(root, "node_modules", "convex"))) {
-      throw new Error("Local Convex setup requires dependencies. Run pnpm install or omit --no-dependencies.");
+      throw new Error("Local Convex setup requires dependencies. Run bun install or omit --no-dependencies.");
     }
     const result = spawnSync(process.execPath, [join(root, "scripts", "setup-convex-local.mjs")], {
       cwd: root,

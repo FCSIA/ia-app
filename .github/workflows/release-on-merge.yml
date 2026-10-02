@@ -1,0 +1,85 @@
+name: Publish Release Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tag-release:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    permissions:
+      contents: write
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Validate and create immutable release tag
+        id: release
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "JSON.parse(require('fs').readFileSync('packages/devlog/data/releases.json')).releases[0].version")"
+          tag="v${version}"
+
+          if [[ "$RELEASE_BRANCH" != "release/$tag" ]]; then
+            echo "Release branch $RELEASE_BRANCH does not match generated version $tag." >&2
+            exit 1
+          fi
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            echo "$tag already exists; refusing to move it." >&2
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$MERGE_SHA" ]]; then
+            echo "Checked-out commit does not match the pull request merge commit." >&2
+            exit 1
+          fi
+
+          # A release branch is cut from a specific main commit. For squash
+          # merges, the merge commit's first parent is the main commit that was
+          # current when GitHub applied the PR. These must be identical, or a
+          # stale release PR could publish old release metadata on newer main.
+          git fetch --no-tags origin "pull/${PR_NUMBER}/head:refs/remotes/origin/release-head"
+          fetched_head_sha="$(git rev-parse refs/remotes/origin/release-head)"
+          if [[ "$fetched_head_sha" != "$RELEASE_HEAD_SHA" ]]; then
+            echo "Release PR head changed while the merge event was being processed." >&2
+            exit 1
+          fi
+          release_base_sha="$(git rev-parse refs/remotes/origin/release-head^1)"
+          merge_base_sha="$(git rev-parse "${MERGE_SHA}^1")"
+          recorded_base_sha="$(git show -s --format='%(trailers:key=Release-Base,valueonly)' refs/remotes/origin/release-head | tr -d '[:space:]')"
+          if [[ -z "$recorded_base_sha" || "$recorded_base_sha" != "$release_base_sha" || "$release_base_sha" != "$merge_base_sha" ]]; then
+            echo "Release PR is stale: recorded base ${recorded_base_sha:-missing}, release branch base ${release_base_sha}, merge base ${merge_base_sha}." >&2
+            echo "Update the release branch from current main and rerun release preparation." >&2
+            exit 1
+          fi
+
+          git tag -a "$tag" -m "Release $tag" "$MERGE_SHA"
+          git push origin "$tag"
+          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy released tag
+    needs: tag-release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/prod.yml
+    with:
+      release_tag: ${{ needs.tag-release.outputs.release_tag }}
+    secrets: inherit
