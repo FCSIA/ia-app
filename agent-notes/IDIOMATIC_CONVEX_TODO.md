@@ -52,7 +52,7 @@ first re-reading:
 ## Seed Architecture
 
 - Replace dashboard-only demo seeding with a CLI-oriented flow exposed as
-  `pnpm dev:seed`.
+  `bun run dev:seed`.
 - Generate deterministic JSON import files with fixed-seed `@faker-js/faker`.
 - Store generated files in a gitignored directory by default, for example:
   - `.generated/convex-seed/`
@@ -77,7 +77,7 @@ first re-reading:
 - Confirm whether imports can safely target tables owned by Convex components.
 - Confirm how imports behave for indexes and generated schema validation.
 - Confirm the right workspace command shape. Do not run Convex commands from the
-  repository root; use `pnpm --filter cvx ...`.
+  repository root; use `bun run --filter cvx ...`.
 
 ## Better Auth Tables
 
@@ -108,11 +108,11 @@ first re-reading:
 ## Verification Plan
 
 - Run the narrowest checks first:
-  - `pnpm --filter cvx codegen`
-  - `pnpm --filter cvx typecheck`
+  - `bun run --filter cvx codegen`
+  - `bun run --filter cvx typecheck`
   - focused seed script tests once added
 - Run broader checks before merging:
-  - `pnpm --filter web build`
-  - `pnpm lint`
+  - `bun run --filter web build`
+  - `bun run lint`
 - Test seed flow against a disposable Convex dev deployment before touching any
   shared development deployment.

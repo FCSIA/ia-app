@@ -38,10 +38,10 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 
 ## Worktrees And Deployment Selection
 
-`pnpm worktree:bootstrap` creates/selects an isolated local Convex backend by
-default, so `pnpm dev` is safe to use after bootstrap. Use `--shared-convex`
+`bun run worktree:bootstrap` creates/selects an isolated local Convex backend by
+default, so `bun run dev` is safe to use after bootstrap. Use `--shared-convex`
 only for an explicit short-lived UI task. Shared mode links the primary
-worktree's local state and makes `pnpm dev` start only the web server, avoiding
+worktree's local state and makes `bun run dev` start only the web server, avoiding
 a second Convex watcher. Use `--no-convex` to leave backend configuration
 untouched. See [Git worktrees](worktrees.md) for configuration and opt-out
 options.
@@ -49,35 +49,36 @@ options.
 For ordinary worktree development, initialize each worktree's own local backend:
 
 ```bash
-pnpm setup:convex-local
-pnpm dev
+bun run setup:convex-local
+bun run dev
 ```
 
-`pnpm setup:convex-local` creates or selects the worktree-local deployment,
+`bun run setup:convex-local` creates or selects the worktree-local deployment,
 repairs its local URL pair from the Convex port configuration, generates
 `BETTER_AUTH_SECRET` only when it is missing, defaults `SITE_URL` only when it
-is missing, and then runs `pnpm sync:convex-env`. Existing deployment variables
-are preserved. Use `pnpm sync:convex-env` by itself after ordinary URL or mobile
+is missing, and then runs `bun run sync:convex-env`. Existing deployment variables
+are preserved. Use `bun run sync:convex-env` by itself after ordinary URL or mobile
 host changes; it does not create deployments or modify deployment-scoped
 secrets.
 
 After selection, both `CONVEX_URL` and `CONVEX_SITE_URL` must be local URLs (or
-both must identify the same named cloud deployment). `pnpm sync:convex-env`
+both must identify the same named cloud deployment). `bun run sync:convex-env`
 refuses to copy a mixed local/cloud configuration into the web and mobile apps.
-Use `direnv exec . pnpm ...` when the system Node version is not supported by
-Convex local; the repo shell provides Node 24.
+Use the Nix/direnv shell when the system Node version is not supported by
+Convex local; the repo shell provides Node 24 and the Bun version pinned by
+`packageManager` in `package.json`.
 
 ### Physical-device clients
 
 ```bash
-pnpm dev:phone
+bun run dev:phone
 ```
 
 Points the web and mobile clients at this machine's network address, then
-starts `pnpm dev`. The phone and the desktop browser can test at the same time.
+starts `bun run dev`. The phone and the desktop browser can test at the same time.
 
 - Web on the phone: open `http://<address>:3000` (printed by the command).
-- Native app: run `pnpm dev:mobile` in a second terminal and scan the QR code
+- Native app: run `bun run dev:mobile` in a second terminal and scan the QR code
   with Expo Go.
 
 | Setup | Works |
@@ -85,23 +86,23 @@ starts `pnpm dev`. The phone and the desktop browser can test at the same time.
 | Mac and phone on the same Wi-Fi | Yes |
 | Mac on the phone's hotspot | Needs Tailscale |
 | Phone on cellular, Mac elsewhere | Needs Tailscale |
-| iOS Simulator | Yes, with plain `pnpm dev` |
-| Android emulator | Run `pnpm sync:convex-env -- --android`, then `pnpm dev` |
+| iOS Simulator | Yes, with plain `bun run dev` |
+| Android emulator | Run `bun run sync:convex-env -- --android`, then `bun run dev` |
 
 Tailscale: install it on the Mac and the phone and sign both in to the same
-account. `pnpm dev:phone` then prefers the Mac's Tailscale address, which works
+account. `bun run dev:phone` then prefers the Mac's Tailscale address, which works
 on any network.
 
-After a network change, `pnpm dev` re-points the clients automatically. To go
+After a network change, `bun run dev` re-points the clients automatically. To go
 back to desktop-only:
 
 ```bash
-pnpm sync:convex-env -- --host 127.0.0.1
+bun run sync:convex-env -- --host 127.0.0.1
 ```
 
 HTTPS tunnels need a named cloud dev deployment (below).
 
-A refused or timed-out connection on ports 3210/3211 usually means `pnpm dev`
+A refused or timed-out connection on ports 3210/3211 usually means `bun run dev`
 is not running.
 
 For a feature that needs a public URL, off-LAN mobile-device access, webhooks,
@@ -109,10 +110,10 @@ an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment
 instead:
 
 ```bash
-pnpm --filter cvx exec convex deployment create dev/<feature-name> \
+bun run --cwd apps/convex convex deployment create dev/<feature-name> \
   --type dev --select --expiration "in 7 days"
-pnpm sync:convex-env
-pnpm dev
+bun run sync:convex-env
+bun run dev
 ```
 
 Free and Starter plans allow named deployments, but their usage is summed
@@ -135,7 +136,7 @@ bundle, or git. The action exchanges its signed JWT for a short-lived OAuth toke
 and sends image bytes directly to the Google Vision API.
 
 ```bash
-direnv exec . pnpm --filter cvx exec convex env set GOOGLE_VISION_SERVICE_ACCOUNT_JSON "$(cat service-account.json)"
+direnv exec . bun run --cwd apps/convex convex env set GOOGLE_VISION_SERVICE_ACCOUNT_JSON "$(cat service-account.json)"
 ```
 
 Run this only after selecting the intended non-production or production
@@ -157,7 +158,7 @@ VAPID_SUBJECT=mailto:admin@example.com
 Generate keys with:
 
 ```bash
-pnpm --filter cvx exec web-push generate-vapid-keys
+bun run --cwd apps/convex web-push generate-vapid-keys
 ```
 
 Then set the same public key in the web app and Convex, and keep the private
@@ -167,13 +168,13 @@ key only in Convex:
 # apps/web/.env.local
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
 
-pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
-pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
-pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "..."
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "..."
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
-If `pnpm` is only available through the repo's Nix/direnv shell, run the same
-commands as `direnv exec . pnpm ...`.
+The repo's Nix/direnv shell provides Bun and Node 24 together. After changes to
+the shell configuration, run `direnv allow` and `direnv reload` in the worktree.
 
 ## Mobile / Expo
 

@@ -7,6 +7,61 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.36",
+    "date": "2026-10-02",
+    "title": "Online status, Do Not Disturb, and admin analytics",
+    "commit": "2dc48cde",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "chat",
+        "summary": "Chat read receipts now wait for sent messages to finish saving.",
+        "commit": "f84a4648",
+        "pr": 131
+      },
+      {
+        "category": "Improved",
+        "scope": "chat ",
+        "summary": "Paste images into the composer and add/remove attachments when editing.",
+        "commit": "2dc48cde"
+      },
+      {
+        "category": "Added",
+        "scope": "presence",
+        "summary": "You can now see who is online in your clubs, and turn on Do Not Disturb to pause push notifications.",
+        "commit": "698fb5d8",
+        "pr": 145
+      },
+      {
+        "category": "Improved",
+        "scope": "admin",
+        "summary": "Analytics dashboard for super admins.",
+        "commit": "46a89691",
+        "pr": 144
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Pick which reaction a double tap adds: tap the emoji under the reactions when you hold a message.",
+        "commit": "8ec005be",
+        "pr": 142
+      },
+      {
+        "category": "Improved",
+        "scope": "whiteboards",
+        "summary": "Report archived-board unsent edits from the save path.",
+        "commit": "d2618cb4",
+        "pr": 139
+      },
+      {
+        "category": "Internal",
+        "summary": "One-command phone testing with automatic host.",
+        "commit": "68e6b7c1",
+        "pr": 140
+      }
+    ]
+  },
+  {
     "version": "0.8.35",
     "date": "2026-10-02",
     "commit": "7f037ba2",

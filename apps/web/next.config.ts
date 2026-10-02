@@ -80,6 +80,15 @@ const nextConfig: NextConfig = {
     ),
   ],
 
+  // `/_meta` is the documented deployment marker, but the App Router treats
+  // folders starting with an underscore as private and never routes them, so
+  // the handler lives at /api/meta and this serves it at the public URL.
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: '/_meta', destination: '/api/meta' }],
+    };
+  },
+
   // PWA support via service worker (manual, no paid plugin needed)
   async headers() {
     return [

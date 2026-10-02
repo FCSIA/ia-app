@@ -8,13 +8,13 @@ const convexEnvPath = join(root, 'apps', 'convex', '.env.local');
 const webEnvPath = join(root, 'apps', 'web', '.env.local');
 const mobileEnvPath = join(root, 'apps', 'mobile', '.env.local');
 const args = process.argv.slice(2);
-// `pnpm dev` runs this with --heal: it only rewrites the client URLs when a
+// `bun run dev` runs this with --heal: it only rewrites the client URLs when a
 // saved LAN host is no longer one of this machine's addresses.
 const heal = args.includes('--heal');
 
 if (!existsSync(convexEnvPath)) {
   if (heal) process.exit(0);
-  console.error('Missing apps/convex/.env.local — run `pnpm --filter cvx dev` and link a project first.');
+  console.error('Missing apps/convex/.env.local — run `bun run --filter cvx dev` and link a project first.');
   process.exit(1);
 }
 
@@ -64,7 +64,7 @@ const ANDROID_EMULATOR_HOST = '10.0.2.2';
 const NO_LAN_MESSAGE = [
   'No IPv4 address a phone can reach. iPhone hotspots give the Mac none.',
   'Fix: install Tailscale on the Mac and phone, or share a Wi-Fi network.',
-  'Simulators work without either: `pnpm dev`.',
+  'Simulators work without either: `bun run dev`.',
 ].join('\n');
 
 /** This machine's IPv4 addresses that other devices on its network can reach. */
@@ -168,7 +168,7 @@ let mobileEnv = existsSync(mobileEnvPath) ? readFileSync(mobileEnvPath, 'utf8') 
 mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_APP_SCHEME', 'ia-app');
 mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_CONVEX_URL', clientUrl(convexUrl, mobileHost));
 mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_CONVEX_SITE_URL', clientUrl(convexSiteUrl, mobileHost));
-// Expo CLI reads this from .env.local, so `pnpm dev:mobile` serves the app at
+// Expo CLI reads this from .env.local, so `bun run dev:mobile` serves the app at
 // the same address. Loopback and the emulator alias need no override.
 const packagerHost =
   mobileHost && !LOOPBACK_HOSTS.has(mobileHost) && mobileHost !== ANDROID_EMULATOR_HOST
@@ -185,9 +185,9 @@ console.log(`  NEXT_PUBLIC_CONVEX_SITE_URL=${clientUrl(convexSiteUrl, webHost)}`
 console.log(`Synced Convex env to apps/mobile/.env.local`);
 console.log(`  EXPO_PUBLIC_CONVEX_URL=${clientUrl(convexUrl, mobileHost)}`);
 console.log(`  EXPO_PUBLIC_CONVEX_SITE_URL=${clientUrl(convexSiteUrl, mobileHost)}`);
-if (packagerHost) console.log(`Phone: open http://${packagerHost}:3000, or run \`pnpm dev:mobile\` and scan the QR code.`);
+if (packagerHost) console.log(`Phone: open http://${packagerHost}:3000, or run \`bun run dev:mobile\` and scan the QR code.`);
 if (!mobileHost && !webHost && /127\.0\.0\.1|localhost/.test(convexUrl)) {
-  console.log('Tip: `pnpm dev:phone` points a physical phone at this machine.');
+  console.log('Tip: `bun run dev:phone` points a physical phone at this machine.');
 }
 
 if (mobileHost) {

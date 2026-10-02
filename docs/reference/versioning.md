@@ -39,35 +39,22 @@ packages/devlog/src/releases.generated.ts   generated — consumed by the app
 CHANGELOG.md                            generated — read by maintainers
 ```
 
-`scripts/devlog.mjs` owns both generated files. `pnpm devlog:check` regenerates
+`scripts/devlog.mjs` owns both generated files. `bun run devlog:check` regenerates
 them in memory and fails if either has drifted, so a hand edit cannot survive
 CI. Contributor Validation runs that check on every pull request.
 
 ## Cutting a release
 
-A production deploy uses an approved immutable release tag. The release commit
-is kept on purpose: the deployed bundle reads its version and devlog entries
-from the generated files, and the deploy workflow requires the tag to match
-the latest approved devlog version. `release:ship` runs the whole flow in one
-step so there is no separate manual version-bump commit to write.
-
-An authorized maintainer can run this only from an exact, up-to-date `main`
-checkout (all product changes must already be pushed and approved):
-
-```bash
-pnpm devlog:preview
-pnpm release:ship -- --title="Calendar-first schedules"
-```
-
-Preview first (`--dry-run` on the ship command itself shows the same without
-writing anything). This cuts the release data, commits `CHANGELOG.md` and
-`packages/devlog` as `release: v<version>`, creates the annotated `v<version>`
-tag, and pushes both.
-Pushing the tag starts `Production Deploy` (`.github/workflows/prod.yml`).
-Pass `--minor` for a milestone worth naming, `--yes` to skip the push
-confirmation, `--no-push` to stop after the local commit and tag, and `--sign`
-for a GPG-signed tag. Batch fixes into one release instead of cutting one
-release per commit.
+A production deploy uses an approved immutable release tag. Run the single
+release command from an up-to-date clean `main` checkout; it creates a release
+branch and pull request containing the generated release files. When that PR
+merges, the merge-triggered release workflow
+(`.github/workflows/release-on-merge.yml`)
+creates and pushes the tag; `Production Deploy` (`.github/workflows/prod.yml`)
+is called directly after the tag exists and validates and deploys that existing
+immutable tag. The tag-push trigger remains available for external/manual
+retry paths, but deployment does not depend on workflow recursion from a
+`GITHUB_TOKEN` push. Humans never create or push release tags.
 
 The workflow is read-only. Before installing dependencies or using deployment
 secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
@@ -77,13 +64,28 @@ cannot create a release commit, move `main`, or bypass branch protection. A
 failed deploy leaves the already-approved release commit and tag in place so it
 can be safely retried.
 
-If a direct push to `main` is rejected (branch protection), ship through a
-pull request instead: run with `--no-push`, push the release commit on a
-`release/cd-<version>` branch, merge it, delete the local tag, then create and
-push the tag on the merged `main` commit. The manual fallback is
-`pnpm devlog:cut`, commit `CHANGELOG.md` and `packages/devlog`, open a pull
-request, and tag after the merge. To retry an approved release, manually
-dispatch the workflow with that existing tag name.
+The `main` branch ruleset must require pull requests, the `CI Gate` status, and
+that branches be up to date before merging. The release workflow also compares
+the release branch's recorded base commit with the squash merge's first parent;
+both checks are required so a release PR cannot publish stale release metadata
+after another PR reaches `main`.
+
+To see what the next release would contain, without writing anything:
+
+```bash
+bun run devlog:preview
+```
+
+To prepare one for review from an up-to-date `main` checkout:
+
+```bash
+bun run release --minor
+```
+
+The command prints the pull request URL. Wait for the usual approval and
+validation; merging the release PR begins deployment automatically. Use
+`bun run release --set=1.0.0` for an explicit version or `--dry-run` to inspect
+the proposed release without mutations.
 
 ## How commits become entries
 
@@ -114,7 +116,7 @@ Devlog-scope: clubs
 `Devlog: skip` keeps a commit out of the log entirely.
 
 Writing entries by hand is also fine — `releases.json` is a normal file. Run
-`pnpm devlog:generate` afterwards so the generated outputs match.
+`bun run devlog:generate` afterwards so the generated outputs match.
 
 ## The in-app devlog
 
@@ -138,7 +140,9 @@ version alone.
 
 ## Verifying a deployed build
 
-Every web deployment exposes a small unauthenticated JSON marker at `/_meta`.
+Every web deployment exposes a small unauthenticated JSON marker at `/_meta`
+(a rewrite to the handler in `apps/web/src/app/api/meta/route.ts`; Next.js never
+routes a folder named `_meta`).
 It is deliberately not linked in the product UI, but it is not secret: it only
 returns the service name, release version/channel, display release, and the
 seven-character build commit when one was stamped at build time. It must never

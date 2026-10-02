@@ -61,13 +61,13 @@ Run on at least:
 Validation commands:
 
 ```bash
-pnpm --filter cvx codegen
-pnpm --filter cvx typecheck
-pnpm --filter cvx test
-pnpm --filter mobile typecheck
-pnpm lint
-pnpm build
-pnpm --filter mobile test:maestro
+bun run --filter cvx codegen
+bun run --filter cvx typecheck
+bun run --filter cvx test
+bun run --filter mobile typecheck
+bun run lint
+bun run build
+bun run --filter mobile test:maestro
 ```
 
 Native push requires a supported iOS/Android target, an EAS project id, and the

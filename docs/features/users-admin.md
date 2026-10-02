@@ -16,6 +16,11 @@ User management is handled through Convex functions and the Admin Panel.
 - Activates, deactivates, bulk-deletes, assigns roles, and resets passwords.
 - Stores dashboard layout preferences for each user.
 
+The Admin Panel title appears in the app header. On narrow screens, section
+tabs and user-table columns scroll horizontally within their own areas. Filters
+and selection controls wrap to the available width; pagination stays outside
+the scrolling records so it remains reachable.
+
 ## Source Files
 
 - Backend: `apps/convex/src/users/`

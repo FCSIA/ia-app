@@ -2,10 +2,13 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Make Convex usage scale predictably from the 2026-08-31 production
-  baseline toward a 1,500-user, chat-heavy school rollout, without mutating or
-  deploying to production.
+- **Integration**: `codex/local-bun-and-mobile-swipe` combines the admin repair,
+  Bun/Nix setup, and swipe fix. Main receives them through PRs #148, #149, and
+  #150; #148 contains the remaining admin changes after #149 and #150 merged.
+- **Goal**: Keep the latest Bun shell and mobile repairs available locally.
+  The user explicitly authorized merging all three branches after the preview
+  and verification handoff. Native iPhone verification remains outstanding.
+  Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -27,8 +30,65 @@
 - Responsive browser review covered 320px, 390px, 768px, and 1440px widths, basic
   and advanced filters, details, raw data, and keyboard dismissal. The composition
   awaits the design owner's visual review, including themes and reduced motion.
-- The user asked to test before pushing: commit locally only; do not push or open
-  a PR until the user says it is ready. See `docs/features/audit-log.md`.
+- The user subsequently authorized a draft PR: #152 is open with
+  `sreyassabbani` requested as reviewer. Keep it in draft pending human review.
+  See `docs/features/audit-log.md`.
+
+### Local Bun/Nix setup (2026-10-02)
+
+- Nix/direnv supplies Bun 1.4.2, matching `packageManager` and CI, alongside
+  Node 24.14.0. The Bun assets use verified release digests; changing
+  `package.json` invalidates the direnv shell cache. CocoaPods is macOS-only.
+- The native Apple Silicon shell builds and loads; both Darwin and Linux
+  architectures evaluate. Frozen install leaves the lockfile unchanged.
+  The dependency/audit regression tests and web typecheck, lint, and build
+  pass with Bun 1.4.2. Existing lint warnings remain.
+- PR #149 is merged and contains this setup independently of the admin and
+  swipe changes.
+
+### Mobile sidebar gesture (2026-10-02)
+
+- The shared app-shell gesture owner uses a scoped native non-passive
+  `touchmove` listener. A rightward movement is cancelled before the sidebar
+  reveal, so React's passive delegated listener no longer controls the swipe.
+- Vertical/left gestures, excluded controls, and multi-touch keep their
+  browser behavior. Interrupted or browser-owned gestures cancel the reveal;
+  ownership continues until release when a gesture reverses or opens early.
+- Twelve gesture regression tests pass. The built mobile page has the native
+  listener wired correctly and its explicit sidebar control still works.
+  Native iPhone/PWA Back-gesture verification remains pending because this
+  browser cannot reliably automate touch input. The user authorized merging
+  despite that outstanding device check, and PR #150 is merged.
+
+### Bun stack refresh (2026-10-02)
+
+- PR #100 is merged and retains the newer worktree bootstrap, LAN dev
+  orchestration, deploy marker, and Convex 1.46.0 from main while moving installs
+  and scripts to Bun.
+- PR #111 is merged after #100. It adopts native Convex schema document helpers
+  and generated environment bindings without downgrading Convex 1.46.0 or
+  removing newer schema fields and performance changes.
+- Security dependencies are refreshed, including Next 16.3.8 and image-size
+  2.0.4. node-forge 1.4.0 carries the upstream nested DigestAlgorithm validation
+  patch until a patched release exists; CI tests reproduce and reject the bug.
+- The primary local backend has older whiteboard documents incompatible with
+  the current schema. Use an isolated backend for verification; do not reset
+  the primary dataset.
+
+### Admin mobile layout (2026-10-02)
+
+- The admin title uses the existing app-header slot, including the loading
+  state. Admin tabs and user records use separate horizontal ScrollAreas;
+  the page stays within the viewport width.
+- User filters and bulk-selection controls wrap. Pagination stays in the
+  existing table-panel footer, outside the scrolling records. Names, pathways,
+  and role metadata wrap, and touch action columns reserve space for 44px
+  buttons. Empty results use the existing AdminNotice outside the wide table.
+- Browser verification uses synthetic accounts on the isolated anonymous
+  backend in the attached `merge-100-111` worktree. The primary dataset was not
+  reset. Phone, tablet, desktop, paging, search, selection, and empty-result
+  checks are diagnostic. The user subsequently authorized merging the
+  combined local branch, including this admin layout repair.
 
 ### Convex Usage and Scale Audit (2026-08-31)
 
@@ -195,7 +255,7 @@
   by explicitly initialized loopback Convex deployments, while cloud
   deployments retain an explicit origin allowlist.
 - Same-LAN web PWAs now receive LAN-reachable public Convex URLs from
-  `pnpm sync:convex-env -- --host <LAN IPv4>` while server calls stay on
+  `bun run sync:convex-env -- --host <LAN IPv4>` while server calls stay on
   loopback. Protected-route auth startup renders a branded connection state
   instead of an unexplained blank screen when the backend is slow or
   unreachable.
@@ -257,7 +317,7 @@
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
-  sync via `pnpm sync:convex-env -- --android`.
+  sync via `bun run sync:convex-env -- --android`.
 - Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
   Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
   are reachable from every tab through the shared in-app header, and Profile
@@ -438,7 +498,7 @@
   Tenor viewer URLs normalize to direct media, and the PWA worker leaves external
   images to the browser. React Doctor 0.9.8 reports no new findings. Delete QA
   remains pending.
-  A clean frozen install with pinned pnpm 10.29.3 repaired the stale mobile
+  A clean frozen install with pinned bun run 10.29.3 repaired the stale mobile
   Convex version; mobile TypeScript now passes. All catalog media loaded during
   a temporary content review, and that temporary page was removed. Picker flow
   QA resumed after the user reopened localhost: library display, search, selection,
@@ -463,22 +523,22 @@
   surfaces. Web TypeScript, lint, production build, focused surface/palette
   assertions, and `git diff --check` pass. Lint reports 21 existing warnings;
   signed-in visual review remains pending.
-- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+- `direnv exec . bun run --cwd apps/web tsc --noEmit` - pass after the web UI
   primitive workflow and remediation slices.
-- Web calendar replacement: `pnpm --filter web exec tsc --noEmit`, web lint,
+- Web calendar replacement: `bun run --cwd apps/web tsc --noEmit`, web lint,
   frozen offline install, production build, and `git diff --check` pass. Lint
   reports only existing warnings outside the calendar slice; signed-in visual
   review is still required for responsive calendar states.
-- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+- `direnv exec . bun run --filter web lint` - pass with 7 existing unrelated
   unused-import warnings.
-- `direnv exec . pnpm --filter web build` - pass through compilation,
+- `direnv exec . bun run --filter web build` - pass through compilation,
   TypeScript, page data, all 18 static pages, and route optimization.
-- `pnpm --filter mobile typecheck` - pass
-- `pnpm lint` - pass with 7 existing web warnings outside this slice
-- `pnpm --filter cvx codegen` - pass
-- `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter cvx test` - pass (14 files, 47 tests)
-- `pnpm --filter mobile exec tsc --noEmit` - pass after removing the deprecated
+- `bun run --filter mobile typecheck` - pass
+- `bun run lint` - pass with 7 existing web warnings outside this slice
+- `bun run --filter cvx codegen` - pass
+- `bun run --filter cvx typecheck` - pass
+- `bun run --filter cvx test` - pass (14 files, 47 tests)
+- `bun run --cwd apps/mobile tsc --noEmit` - pass after removing the deprecated
   mobile `baseUrl`, correcting compact density, and reverting the broad visual
   migrations
 - Mobile Vitest suite - pass (14 files, 42 tests)
@@ -493,18 +553,18 @@
   blocked because Expo Go stopped requesting the Metro bundle after reload even
   though Metro `/status` returned `packager-status:running` and `adb reverse`
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
-- `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
+- `bun run --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - pass; web reports 8 pre-existing unused-import warnings and no
+- `bun run lint` - pass; web reports 8 pre-existing unused-import warnings and no
   errors
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
-- `pnpm build` - pass across design tokens, fun facts, Convex, mobile, and web
-- `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
+- `bun run build` - pass across design tokens, fun facts, Convex, mobile, and web
+- `bun run --cwd apps/web tsc --noEmit` and `bun run --filter web build` - pass
   after the compact club-workspace redesign and channel interaction polish;
   signed-in visual QA remains to be run because no browser-control session was
   available.
-- `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
+- `bun run test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex AI guidance and project skills were refreshed with `convex ai-files
@@ -537,9 +597,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
-direnv exec . pnpm lint
-direnv exec . pnpm build
-direnv exec . pnpm test
+bun run --filter cvx codegen
+bun run --filter cvx typecheck
+bun run lint
+bun run build
+bun run test
 ```

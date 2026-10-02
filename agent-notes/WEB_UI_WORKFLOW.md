@@ -18,7 +18,7 @@ visual inspection never substitutes for human design approval.
 4. Confirm this project's shadcn base with:
 
    ```bash
-   direnv exec . pnpm dlx shadcn@latest info --json
+   bunx shadcn@latest info --json
    ```
 
 5. For shadcn components, use the current **Radix** documentation and compare
