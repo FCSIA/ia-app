@@ -281,7 +281,8 @@ export const flex = query({
  */
 export const fillHistory = mutation({
   args: { days: v.number() },
-  returns: v.object({ scheduled: v.number() }),
+  // `days` counts distinct days being filled; `scheduled` counts rollup jobs.
+  returns: v.object({ scheduled: v.number(), days: v.number() }),
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx);
     if (!Number.isInteger(args.days) || args.days < 1 || args.days > maxBackfillDays) {
@@ -290,6 +291,7 @@ export const fillHistory = mutation({
     const today = schoolDayKey(Date.now());
     const lastAnnouncementDay = shiftDay(today, -2);
     let scheduled = 0;
+    const filledDays = new Set<string>();
 
     const existing = await ctx.db
       .query("analyticsDaily")
@@ -323,8 +325,9 @@ export const fillHistory = mutation({
           live: false,
         });
         scheduled += 1;
+        filledDays.add(day);
       }
     }
-    return { scheduled };
+    return { scheduled, days: filledDays.size };
   },
 });

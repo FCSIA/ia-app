@@ -91,6 +91,7 @@ same change.
 
 ## Features
 
+- [Admin analytics](features/analytics.md)
 - [Announcements](features/announcements.md)
 - [Audit log](features/audit-log.md)
 - [Calendar](features/calendar.md)

@@ -181,8 +181,8 @@ describe("admin analytics", () => {
     const second = await superAdmin.mutation(api.analytics.dashboard.fillHistory, { days: 3 });
 
     // Days 09-29..10-01 for three kinds, 09-29..09-30 for announcements, plus today's push reading.
-    expect(first.scheduled).toBe(3 * 3 + 2 + 1);
-    expect(second.scheduled).toBe(0);
+    expect(first).toEqual({ scheduled: 3 * 3 + 2 + 1, days: 3 });
+    expect(second).toEqual({ scheduled: 0, days: 0 });
     const moderation = await superAdmin.query(api.analytics.dashboard.safety, {
       fromDay: "2026-09-29",
       toDay: "2026-10-01",

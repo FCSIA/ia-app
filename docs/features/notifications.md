@@ -59,6 +59,9 @@ browser push delivery for subscribed devices.
 - `notificationPushSubscriptions`
 - `notificationPushDevices`
 
+`notificationDeliveries.readAt` records when a delivery was first read, for
+[admin analytics](analytics.md). Rows read before it was added have no time.
+
 Preference levels are `OFF`, `IN_APP`, `PUSH`, and `TIME_SENSITIVE`. The schema
 also supports category and scope keys such as global, club, and channel scopes.
 
