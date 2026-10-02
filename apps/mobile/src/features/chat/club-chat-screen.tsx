@@ -35,6 +35,7 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { AttachmentViewer } from "./attachment-viewer";
 import { safeRemoteAttachmentUrl } from "./chat-attachments";
 import { chatSafeAreaOffset } from "./chat-keyboard-layout";
+import { ChannelSwitcherSheet } from "./channel-switcher-sheet";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import {
@@ -614,6 +615,19 @@ export function ClubChatScreen({
     [channelId, clubId],
   );
 
+  const [channelSwitcherOpen, setChannelSwitcherOpen] = useState(false);
+  const switchChannel = useCallback(
+    (nextChannelId: string) => {
+      setChannelSwitcherOpen(false);
+      void flushDraft().catch(() => {});
+      void attachments.abandonAttachments();
+      // Replace rather than push so back still returns to wherever the
+      // channel was opened from instead of stepping through every channel.
+      router.replace(`/clubs/${clubId}/channels/${nextChannelId}` as never);
+    },
+    [attachments.abandonAttachments, clubId, flushDraft],
+  );
+
   const openAttachment = useCallback(
     (attachment: ChatAttachment) => {
       if (!isPdfAttachment(attachment)) {
@@ -664,6 +678,12 @@ export function ClubChatScreen({
             <AppDetailHeader
               title={threadRootId ? "Thread" : (channel?.name ?? "Channel")}
               subtitle={threadRootId ? channel?.name : channelContext?.clubName}
+              onTitlePress={
+                threadRootId ? undefined : () => setChannelSwitcherOpen(true)
+              }
+              titleAccessibilityLabel={
+                channel ? `${channel.name} channel, switch channel` : undefined
+              }
               leading={
                 <ChannelHeaderMark
                   thread={!!threadRootId}
@@ -800,6 +820,15 @@ export function ClubChatScreen({
         onTogglePin={handleTogglePin}
         onToggleReaction={handleToggleReaction}
       />
+      {threadRootId ? null : (
+        <ChannelSwitcherSheet
+          open={channelSwitcherOpen}
+          clubId={clubId}
+          currentChannelId={channelId}
+          onClose={() => setChannelSwitcherOpen(false)}
+          onSelect={switchChannel}
+        />
+      )}
       <AttachmentViewer
         attachment={viewedAttachment}
         onClose={() => setViewedAttachment(null)}

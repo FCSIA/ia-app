@@ -49,6 +49,8 @@ import type * as clubs_serialize from "../clubs/serialize.js";
 import type * as clubs_shared from "../clubs/shared.js";
 import type * as clubs_sharedPagination from "../clubs/sharedPagination.js";
 import type * as clubs_tags from "../clubs/tags.js";
+import type * as clubs_whiteboardElements from "../clubs/whiteboardElements.js";
+import type * as clubs_whiteboards from "../clubs/whiteboards.js";
 import type * as courses__lib from "../courses/_lib.js";
 import type * as courses_catalog from "../courses/catalog.js";
 import type * as courses_metadata from "../courses/metadata.js";
@@ -178,6 +180,8 @@ declare const fullApi: ApiFromModules<{
   "clubs/shared": typeof clubs_shared;
   "clubs/sharedPagination": typeof clubs_sharedPagination;
   "clubs/tags": typeof clubs_tags;
+  "clubs/whiteboardElements": typeof clubs_whiteboardElements;
+  "clubs/whiteboards": typeof clubs_whiteboards;
   "courses/_lib": typeof courses__lib;
   "courses/catalog": typeof courses_catalog;
   "courses/metadata": typeof courses_metadata;

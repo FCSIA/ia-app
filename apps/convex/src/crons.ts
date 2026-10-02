@@ -16,6 +16,12 @@ crons.cron(
   {},
 );
 crons.interval(
+  "prune erased whiteboard elements",
+  { hours: 6 },
+  internal.clubs.whiteboards.pruneErasedWhiteboardElements,
+  {},
+);
+crons.interval(
   "refresh external calendar feeds",
   { hours: 6 },
   internal.events.externalCalendarSync.refreshDue,
