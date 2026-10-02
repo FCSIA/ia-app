@@ -5,7 +5,8 @@ import { fetchAuthQuery } from '@/lib/auth-server';
 import { api } from '~/apps/convex/src/_generated/api';
 
 const LEGACY_WEB_HOSTNAME = 'ia-app-alpha.vercel.app';
-const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup']);
+// `/_meta` is the deploy marker; it must answer even when the backend is down.
+const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup', '/_meta']);
 
 function requestHostname(request: NextRequest) {
   const host =
@@ -36,7 +37,7 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next();
     response.headers.set(
       'X-Robots-Tag',
-      pathname === '/pwa-setup' ? 'noindex, nofollow' : 'noindex, follow',
+      pathname === '/pwa-setup' || pathname === '/_meta' ? 'noindex, nofollow' : 'noindex, follow',
     );
     return response;
   }
