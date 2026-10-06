@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   animate,
   motion,
@@ -185,6 +185,7 @@ export function ClubWorkspace({
   const [isResizableNavigationViewport, setIsResizableNavigationViewport] =
     useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const mobileNavigationTransition = useRef(0);
   const mobileNavigationReveal = useMotionValue(0);
   const mobileNavigationX = useTransform(
     mobileNavigationReveal,
@@ -194,10 +195,13 @@ export function ClubWorkspace({
   const reduceMotion = useReducedMotion();
 
   const settleMobileNavigation = (open: boolean) => {
+    const transition = ++mobileNavigationTransition.current;
     if (open) setMobileNavigationOpen(true);
     if (reduceMotion) {
       mobileNavigationReveal.set(open ? 1 : 0);
-      if (!open) setMobileNavigationOpen(false);
+      if (!open && transition === mobileNavigationTransition.current) {
+        setMobileNavigationOpen(false);
+      }
       return;
     }
     void animate(mobileNavigationReveal, open ? 1 : 0, {
@@ -205,7 +209,9 @@ export function ClubWorkspace({
       stiffness: 460,
       damping: 42,
     }).then(() => {
-      if (!open) setMobileNavigationOpen(false);
+      if (!open && transition === mobileNavigationTransition.current) {
+        setMobileNavigationOpen(false);
+      }
     });
   };
 

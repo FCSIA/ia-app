@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { PointRef, TElement } from 'platejs';
+import { IS_ANDROID, type PointRef, type TElement } from 'platejs';
 
 import {
   type ComboboxItemProps,
@@ -143,7 +143,7 @@ const InlineCombobox = ({
   const { props: inputProps, removeInput } = useComboboxInput({
     cancelInputOnBlur: true,
     cursorState,
-    autoFocus: isCreator,
+    autoFocus: isCreator && !IS_ANDROID,
     ref: inputRef,
     onCancelInput: (cause) => {
       if (cause !== 'backspace') {
@@ -159,6 +159,22 @@ const InlineCombobox = ({
       }
     },
   });
+
+  React.useEffect(() => {
+    if (!isCreator || !IS_ANDROID) return;
+
+    // Slate restores Android's IME selection in a frame and then a timer.
+    // Hand focus to the inline input after that restoration, so it cannot
+    // immediately blur the input and cancel a freshly typed mention.
+    let focusFrame: number | undefined;
+    const frame = requestAnimationFrame(() => {
+      focusFrame = requestAnimationFrame(() => inputRef.current?.focus());
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (focusFrame !== undefined) cancelAnimationFrame(focusFrame);
+    };
+  }, [isCreator]);
 
   const [hasEmpty, setHasEmpty] = React.useState(false);
 

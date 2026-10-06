@@ -111,6 +111,12 @@ function useMobileNavigationSwipe(
     if (onProgress) {
       const start = swipeStartRef.current;
       if (!start) return;
+      // A tap or vertical scroll never began a reveal. In particular, do not
+      // start a closing tween immediately before the menu button's click.
+      if (start.axis !== "x") {
+        swipeStartRef.current = null;
+        return;
+      }
       const deltaX = touch.clientX - start.x;
       const deltaY = Math.abs(touch.clientY - start.y);
       if (
@@ -131,9 +137,10 @@ function useMobileNavigationSwipe(
   };
 
   const onTouchCancel = () => {
-    if (!swipeStartRef.current) return;
+    const start = swipeStartRef.current;
+    if (!start) return;
     swipeStartRef.current = null;
-    onCancel?.();
+    if (start.axis === "x") onCancel?.();
   };
 
   if (!onSwipeRight) return {};

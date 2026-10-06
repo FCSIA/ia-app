@@ -153,6 +153,9 @@ function MarkToolButton({
       className={cn(active && 'bg-accent text-accent-foreground')}
       onMouseDown={(event) => {
         event.preventDefault();
+      }}
+      onClick={() => {
+        editor.tf.focus();
         const transform = (
           editor.tf as unknown as Record<string, { toggle?: () => void }>
         )[mark];
@@ -652,7 +655,10 @@ export function ChannelMessageComposer({
                             aria-label="Mention someone"
                             onMouseDown={(event) => {
                               event.preventDefault();
+                            }}
+                            onClick={() => {
                               onMentionIntent?.();
+                              editor.tf.focus();
                               editor.tf.insertText('@');
                               setToolsOpen(false);
                               requestAnimationFrame(() => editor.tf.focus());
