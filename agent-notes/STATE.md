@@ -12,6 +12,25 @@
 
 ## Current Truth
 
+### Android Web Chat Touch Fixes (2026-10-06)
+
+- Commit `c8ca84ba` fixes stale mobile navigation animation callbacks that left
+  the visible pane inert, Android mention-picker focus loss during Slate IME
+  handling, and composer tools acting before a fresh editor had a selection.
+- Verified on the visible Pixel_9 emulator in Android Chrome with the local
+  production web build and existing isolated local Convex deployment. The
+  emulator and localhost:3000/3210/3211 processes are left running for review.
+  No shared or production deployment was changed.
+- Navigation/swipes, mentions, edit/delete confirmation, reply/thread controls,
+  reactions, formatting, attachment upload/readback, GIF sending, search, and
+  overlay dismissal passed. All 17 relevant tests, web TypeScript, lint, and
+  production compilation passed. `direnv` is unavailable; installed Node CLIs
+  were used directly.
+- See `docs/features/android-chat-testing.md` for coverage and limits, including
+  the temporary local backend timeout override used under host load. The
+  separate Expo client, manager-only workflows, and external push delivery were
+  not device-certified. Preserve concurrent audit-readability changes.
+
 ### Preferred Profile Names (2026-10-02)
 
 - Optional preferred names are implemented on web and native with a shared
