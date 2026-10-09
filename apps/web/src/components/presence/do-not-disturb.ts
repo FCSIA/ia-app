@@ -3,6 +3,7 @@
 import { BellRing, Moon } from 'lucide-react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { IconComponent } from '@/lib/icon-context';
 import { api } from '~/apps/convex/src/_generated/api';
 
@@ -15,6 +16,7 @@ const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '
  * every device but notifications keep arriving in the inbox.
  */
 export function useDoNotDisturbMenu() {
+  const isMobile = useIsMobile();
   const status = useQuery(api.presence.status.myStatus);
   const setDoNotDisturb = useMutation(api.presence.status.setDoNotDisturb);
   const clearDoNotDisturb = useMutation(api.presence.status.clearDoNotDisturb);
@@ -52,5 +54,10 @@ export function useDoNotDisturbMenu() {
           { key: 'dnd-on', icon: Moon, label: 'Do not disturb until I turn it off', onSelect: () => turnOn(null) },
         ];
 
-  return { doNotDisturb: status?.doNotDisturb === true, actions };
+  return {
+    doNotDisturb: status?.doNotDisturb === true,
+    actions: isMobile
+      ? actions.filter((action) => action.key === 'dnd-1h' || action.key === 'dnd-off')
+      : actions,
+  };
 }
