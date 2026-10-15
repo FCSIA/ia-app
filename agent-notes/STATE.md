@@ -32,15 +32,17 @@
   warnings), brand/devlog checks, production web build, and an isolated local
   Convex push pass. GitHub webhook activation and production deployment remain
   separate operations; neither was performed.
-- Security prerequisite PR #153 source-patches `braces@3.0.3` after its newly
+- Merged security prerequisite PR #153 source-patches `braces@3.0.3` after its newly
   reported nesting vulnerability blocked the merge gate. Nine audit/dependency
   regression tests and the GitHub security scan pass. The advisory-specific
   patched-version exception expires on 2026-11-01; replace the patch and remove
   the exception when a fixed release or replacement is available.
 - PR #147 remains open: its height-packing algorithm can undo visible manual
   ordering. With heights `{a: 100, b: 100, c: 500}`, both orders `[a, b, c]` and
-  `[a, c, b]` render columns `[[a, b], [c]]`. Decide the intended edit-mode
-  behavior and review the changed edit-mode appearance before merging.
+  `[a, c, b]` render columns `[[a, b], [c]]`. The design owner favors height
+  balancing with a quiet visual cue. The proposed direction is balanced defaults,
+  stable manual placement, and an explicit Balance layout action with Undo;
+  this recommendation and the edit-mode appearance still need owner review.
 - Draft PR #152 still explicitly awaits human visual review. PR #117 has
   unresolved conflicts. Compliance PR #76 remains outside this merge pass.
 
