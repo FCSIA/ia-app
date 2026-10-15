@@ -113,8 +113,13 @@ and scripts; do not regenerate the lockfile with another tool.
 
 Contributor Validation builds the production dependency closure from `bun.lock`
 and scans it with OSV-Scanner. High and critical findings block CI. The temporary
-`node-forge` version exception in `osv-scanner.toml` covers a checked-in upstream
-security patch, whose regression test runs before scanning; it expires on
-2026-11-01. Findings without severity metadata also fail the gate. The raw `bun audit --prod` command is not the CI security gate
+`node-forge` and `braces` version exceptions in `osv-scanner.toml` cover checked-in
+source patches, whose regression tests run before scanning; both expire on
+2026-11-01. The `braces` patch backports the five library changes from upstream
+[proposal #72](https://github.com/micromatch/braces/pull/72), including corrected
+stringify parent handling. It caps string/AST nesting at 100 and rejects cyclic
+AST parent chains. No newer `braces` release was published as of 2026-10-15;
+replace the patch and remove the exception when a fixed release is available.
+Findings without severity metadata also fail the gate. The raw `bun audit --prod` command is not the CI security gate
 because Bun can include workspace tooling and optional-peer resolution paths in
 its output.
