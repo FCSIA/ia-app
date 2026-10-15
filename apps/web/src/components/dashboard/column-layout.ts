@@ -20,9 +20,9 @@ export function balanceColumns(
   order: string[],
   heights: Record<string, number>,
 ): string[][] {
-  const ids = order.filter((id) =>
-    columns.some((column) => column.includes(id)),
-  );
+  const movable = new Set(columns.flat());
+  const membership = columns.map((column) => new Set(column));
+  const ids = order.filter((id) => movable.has(id));
   let best = columns;
   let bestHeight = Math.max(
     ...columns.map((column) => columnHeight(column, heights)),
@@ -35,7 +35,7 @@ export function balanceColumns(
     ids.forEach((id, index) => {
       const target = (mask >> index) & 1;
       candidate[target].push(id);
-      if (!columns[target].includes(id)) moves += 1;
+      if (!membership[target].has(id)) moves += 1;
     });
     const height = Math.max(
       ...candidate.map((column) => columnHeight(column, heights)),

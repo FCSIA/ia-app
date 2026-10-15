@@ -34,7 +34,8 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { LayoutGroup, LazyMotion, useReducedMotion } from 'framer-motion';
+import * as m from 'framer-motion/m';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { ToastAction } from '@/components/ui/toast';
@@ -73,6 +74,9 @@ import {
   withMobileOrder,
   type DashboardArrangement,
 } from './column-layout';
+
+const loadMotionFeatures = () =>
+  import('./dashboard-motion').then((module) => module.default);
 
 const STORAGE_PREFIX = 'ia_dashboard_layout_';
 
@@ -226,7 +230,7 @@ function SortableWidget({
   const Component = widget.Component;
 
   return (
-    <motion.div
+    <m.div
       layout="position"
       layoutId={`dashboard-widget-${id}`}
       transition={{ layout: { duration: reducedMotion ? 0 : 0.22 } }}
@@ -267,7 +271,7 @@ function SortableWidget({
           </div>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -384,23 +388,29 @@ export function DashboardLayout({
     [user?.roles],
   );
   const { fixedIds, fullIds, columnIds } = useMemo(() => {
-    const fixedIds = Object.values(WIDGETS)
-      .filter((w) => w.isFixed && isWidgetAllowed(w, user?.roles))
-      .map((w) => w.id);
-    const dynamic = layout?.filter((id) => !WIDGETS[id]?.isFixed) ?? [];
-    return {
-      fixedIds,
-      fullIds: dynamic.filter((id) => WIDGETS[id]?.size === 'full'),
-      columnIds: dynamic.filter((id) => WIDGETS[id]?.size === 'half'),
-    };
+    const fixedIds: string[] = [];
+    const fullIds: string[] = [];
+    const columnIds: string[] = [];
+    for (const widget of Object.values(WIDGETS)) {
+      if (widget.isFixed && isWidgetAllowed(widget, user?.roles))
+        fixedIds.push(widget.id);
+    }
+    for (const id of layout ?? []) {
+      const widget = WIDGETS[id];
+      if (!widget || widget.isFixed) continue;
+      if (widget.size === 'full') fullIds.push(id);
+      else columnIds.push(id);
+    }
+    return { fixedIds, fullIds, columnIds };
   }, [layout, user?.roles]);
-  const desktopColumns = useMemo(
-    () =>
+  const desktopColumns = useMemo(() => {
+    const allowed = new Set(columnIds);
+    return (
       arrangement?.columns.map((column) =>
-        column.filter((id) => columnIds.includes(id)),
-      ) ?? [[], []],
-    [arrangement, columnIds],
-  );
+        column.filter((id) => allowed.has(id)),
+      ) ?? [[], []]
+    );
+  }, [arrangement, columnIds]);
   const columns = columnCount === 2 ? desktopColumns : [columnIds];
   const measured =
     columnCount === 2 && columnIds.every((id) => heights[id] !== undefined);
@@ -714,87 +724,89 @@ export function DashboardLayout({
             );
           })}
 
-          <LayoutGroup id="dashboard">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={columnCollision}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragOver={handleDragOver}
-              onDragCancel={handleDragCancel}
-            >
-              <SortableContext
-                items={fullIds}
-                strategy={verticalListSortingStrategy}
+          <LazyMotion features={loadMotionFeatures}>
+            <LayoutGroup id="dashboard">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={columnCollision}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDragCancel={handleDragCancel}
               >
-                <div className="space-y-6">
-                  {/* Full-width dynamic widgets */}
-                  {fullIds.map((id) => {
-                    const widget = WIDGETS[id];
-                    if (!widget) return null;
-                    return (
-                      <SortableWidget
-                        key={id}
-                        id={id}
-                        widget={widget}
-                        editing={editing && !isSaving}
-                        onRemove={handleRemove}
-                      />
-                    );
-                  })}
-
-                  {/* Explicit columns preserve the placement shown while dragging. */}
-                  {columns.length > 0 && (
-                    <div className="flex flex-col gap-6 md:flex-row md:items-start">
-                      {columns.map((colIds, colIndex) => (
-                        <WidgetColumn
-                          key={`${columnCount}-${colIndex}`}
-                          ids={colIds}
-                          index={colIndex}
+                <SortableContext
+                  items={fullIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-6">
+                    {/* Full-width dynamic widgets */}
+                    {fullIds.map((id) => {
+                      const widget = WIDGETS[id];
+                      if (!widget) return null;
+                      return (
+                        <SortableWidget
+                          key={id}
+                          id={id}
+                          widget={widget}
                           editing={editing && !isSaving}
-                        >
-                          {colIds.map((id) => {
-                            const widget = WIDGETS[id];
-                            if (!widget) return null;
-                            return (
-                              <SortableWidget
-                                key={id}
-                                id={id}
-                                widget={widget}
-                                editing={editing && !isSaving}
-                                onRemove={handleRemove}
-                                onMeasure={handleMeasure}
-                              />
-                            );
-                          })}
-                        </WidgetColumn>
-                      ))}
-                    </div>
-                  )}
+                          onRemove={handleRemove}
+                        />
+                      );
+                    })}
 
-                  {layout.length === 0 && (
-                    <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
-                      <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
-                      <p className="text-sm font-medium text-foreground">
-                        Your dashboard is empty.
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Click <span className="font-semibold">Customize</span>{' '}
-                        then <span className="font-semibold">Add widget</span>{' '}
-                        to build it up.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </SortableContext>
+                    {/* Explicit columns preserve the placement shown while dragging. */}
+                    {columns.length > 0 && (
+                      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                        {columns.map((colIds, colIndex) => (
+                          <WidgetColumn
+                            key={`${columnCount}-${colIndex}`}
+                            ids={colIds}
+                            index={colIndex}
+                            editing={editing && !isSaving}
+                          >
+                            {colIds.map((id) => {
+                              const widget = WIDGETS[id];
+                              if (!widget) return null;
+                              return (
+                                <SortableWidget
+                                  key={id}
+                                  id={id}
+                                  widget={widget}
+                                  editing={editing && !isSaving}
+                                  onRemove={handleRemove}
+                                  onMeasure={handleMeasure}
+                                />
+                              );
+                            })}
+                          </WidgetColumn>
+                        ))}
+                      </div>
+                    )}
 
-              <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
-                {activeId && activeWidget ? (
-                  <DragGhost widget={activeWidget} />
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </LayoutGroup>
+                    {layout.length === 0 && (
+                      <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
+                        <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
+                        <p className="text-sm font-medium text-foreground">
+                          Your dashboard is empty.
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Click <span className="font-semibold">Customize</span>{' '}
+                          then <span className="font-semibold">Add widget</span>{' '}
+                          to build it up.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </SortableContext>
+
+                <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
+                  {activeId && activeWidget ? (
+                    <DragGhost widget={activeWidget} />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </LayoutGroup>
+          </LazyMotion>
         </div>
       </div>
     </PageFrame>
