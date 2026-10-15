@@ -3,9 +3,10 @@
 ## Active Focus
 
 - **Integration**: The user authorized working through the merge backlog.
-  Feedback issue sync is carried by PR #110, reconciled against current main
-  in the isolated `merge-pr110` worktree. The admin, Bun/Nix, and swipe changes
-  are already on main through PRs #148, #149, and #150.
+  Feedback issue sync (#110) and its security prerequisite (#153) are merged.
+  Dashboard PR #147 is being finished in the isolated `merge-pr147` worktree.
+  The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
+  #149, and #150.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
   Material UI changes still require design-owner review. Native iPhone swipe
   verification remains outstanding. Production deployment is not authorized.
@@ -37,12 +38,25 @@
   regression tests and the GitHub security scan pass. The advisory-specific
   patched-version exception expires on 2026-11-01; replace the patch and remove
   the exception when a fixed release or replacement is available.
-- PR #147 remains open: its height-packing algorithm can undo visible manual
-  ordering. With heights `{a: 100, b: 100, c: 500}`, both orders `[a, b, c]` and
-  `[a, c, b]` render columns `[[a, b], [c]]`. The design owner favors height
-  balancing with a quiet visual cue. The proposed direction is balanced defaults,
-  stable manual placement, and an explicit Balance layout action with Undo;
-  this recommendation and the edit-mode appearance still need owner review.
+- PR #147 implements the design owner's approved direction: height-balanced
+  fresh defaults, stable manual placement, and a quiet **Balance layout** action
+  with Undo. Optional desktop column positions persist alongside the mobile
+  reading order; legacy layouts retain their existing split. Pointer and keyboard
+  moves support empty columns and Escape cancellation. Done awaits a successful
+  save. The previous automatic packing could erase a visible drag; it no longer
+  runs after manual changes.
+- Dashboard verification: all 379 backend tests and five column-layout regressions,
+  backend/web typechecks, web lint (21 existing warnings), production web build,
+  and an isolated local Convex push pass. Browser checks cover manual cross-column
+  placement, balancing/Undo, keyboard ordering/empty-column drops/cancellation,
+  Save/reload, live desktop/390px reflow, light/custom dark themes, and reduced
+  motion. Native touch dragging still needs device review. Material visuals remain
+  awaiting owner review before merging #147.
+- The `merge-pr147` worktree serves the compiled dashboard at
+  `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
+  on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.
+  Before/after Balance captures and a phone capture are in
+  `/tmp/ia-dashboard-review/` for local review.
 - Draft PR #152 still explicitly awaits human visual review. PR #117 has
   unresolved conflicts. Compliance PR #76 remains outside this merge pass.
 

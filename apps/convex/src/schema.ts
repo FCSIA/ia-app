@@ -84,6 +84,7 @@ export const schema = defineSchema({
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
+    dashboardColumns: v.optional(v.array(v.array(v.string()))),
     mobileTabLayout: v.optional(v.array(v.string())),
     use24HourTime: v.optional(v.boolean()),
     // The reaction a double tap on a chat message adds; 👍 when unset.
