@@ -38,6 +38,7 @@
     "date-fns": "^4.1.0",
     "expo": "^57.0.9",
     "expo-build-properties": "^57.0.8",
+    "expo-clipboard": "~57.0.1",
     "expo-constants": "^57.0.8",
     "expo-dev-client": "^57.0.10",
     "expo-device": "^57.0.1",

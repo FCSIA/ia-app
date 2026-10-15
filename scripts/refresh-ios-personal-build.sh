@@ -4,7 +4,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: pnpm mobile:ios:refresh [--verbose] [iPhone UDID]
+Usage: bun run mobile:ios:refresh [--verbose] [iPhone UDID]
 
 Rebuilds and installs the existing Personal Team iOS development build. Run the
 one-time iPhone setup first so Xcode has the Apple Account, Personal Team,
@@ -242,4 +242,4 @@ fi
 echo "Installing the refreshed app..."
 xcrun devicectl device install app --device "$device_udid" "$app_path"
 
-echo "Done. Start Metro with: pnpm --filter mobile dev:client"
+echo "Done. Start Metro with: bun run --filter mobile dev:client"

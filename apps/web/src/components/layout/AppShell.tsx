@@ -67,7 +67,8 @@ export function AppShell({
   const mobileTabBarRef = useRef<HTMLElement>(null);
   const usesVisualViewport = viewportMode === "visual";
   const safePathname = pathname ?? "/dashboard";
-  const swipeHandlers = useMobileNavigationSwipe(
+  useMobileNavigationSwipe(
+    appRootRef,
     onMobileSwipeRight,
     mobileNavigationSwipeOptions,
   );
@@ -230,7 +231,6 @@ export function AppShell({
             ? "fixed inset-x-0 top-0 h-[var(--app-visual-viewport-height,100dvh)] min-h-0 overflow-hidden overscroll-none"
             : "min-h-[100dvh]",
         )}
-        {...swipeHandlers}
       >
         {/* z-40 keeps hover labels above the adjacent workspace sidebar. */}
         <AppShellDesktopNavigation {...navigationProps} />

@@ -16,10 +16,16 @@ type AdminPageLayoutProps = {
 export function AdminPageLayout({ children }: AdminPageLayoutProps) {
   return (
     <AppShell
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Admin Panel
+        </h1>
+      }
+      viewportMode="visual"
       mainClassName={FILL_MAIN_CLASS}
-      pageTransitionClassName="flex min-h-0 flex-1 flex-col"
+      pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
     >
-      <PageFrame className={FILL_PAGE_FRAME_CLASS}>{children}</PageFrame>
+      <PageFrame className={`${FILL_PAGE_FRAME_CLASS} min-w-0`}>{children}</PageFrame>
     </AppShell>
   );
 }

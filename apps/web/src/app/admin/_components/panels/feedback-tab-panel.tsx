@@ -14,6 +14,7 @@ export function FeedbackTabPanel({ canUpdateFeedback = true }: { canUpdateFeedba
       filteredReports={feedback.filteredReports}
       reportMutation={feedback.reportMutation}
       responseMutation={feedback.responseMutation}
+      retryGithubIssueMutation={feedback.retryGithubIssueMutation}
       canUpdateFeedback={canUpdateFeedback}
     />
   );

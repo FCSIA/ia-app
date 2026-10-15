@@ -1,4 +1,5 @@
 import type { ClubChannelReaction } from "~/apps/convex/src/validators";
+import { isGifAttachment } from "../../../../shared/chat/gifs";
 
 export type ChatUser = {
   _id: string;
@@ -124,14 +125,15 @@ export function chatAuthorName(message: ChatMessage) {
 }
 
 export function isImageAttachment(attachment: ChatAttachment) {
+  if (isGifAttachment(attachment)) return true;
   if (attachment.mimeType) {
     return (
-      attachment.mimeType.startsWith("image/") &&
-      attachment.mimeType !== "image/svg+xml"
+      attachment.mimeType.toLowerCase().startsWith("image/") &&
+      attachment.mimeType.split(";", 1)[0].trim().toLowerCase() !== "image/svg+xml"
     );
   }
   const source = `${attachment.fileName} ${attachment.fileUrl}`.toLowerCase();
-  return /\.(avif|heic|heif|jpe?g|png|webp)(?:\?|#|\s|$)/.test(source);
+  return /\.(avif|gif|heic|heif|jpe?g|png|webp)(?:\?|#|\s|$)/.test(source);
 }
 
 export function isPdfAttachment(attachment: ChatAttachment) {

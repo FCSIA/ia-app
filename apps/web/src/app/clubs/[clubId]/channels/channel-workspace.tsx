@@ -27,6 +27,7 @@ import {
   Copy,
   FileText,
   History,
+  Link2,
   MessageSquareText,
   MoreHorizontal,
   Pencil,
@@ -112,6 +113,7 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { PresenceAvatar, useMemberPresence } from '@/components/presence/club-presence';
 import { UserProfileContent, UserProfileDialog } from '@/components/clubs/user-profile-dialog';
 import {
   MentionBody,
@@ -165,6 +167,8 @@ import {
 } from '@/components/ui/empty';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
+import { ChatGif, ChatGifLinks } from '@/components/clubs/chat-gif';
+import { isGifAttachment, messageGifUrls } from '~/apps/shared/chat/gifs';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -311,6 +315,10 @@ function MessageAttachmentCard({
   const href = attachment.fileUrl;
   const isImage = isImageAttachment(attachment);
 
+  if (isGifAttachment(attachment)) {
+    return <ChatGif key={href} src={href} name={attachment.fileName} />;
+  }
+
   return (
     <Attachment
       size="sm"
@@ -439,16 +447,19 @@ function MessageAttachmentGallery({
 
 function MessageBody({ message }: { message: ClubChannelMessage }) {
   return (
-    <MentionBody
-      body={message.body}
-      bodyMarkdown={message.bodyMarkdown}
-      bodyRich={
-        Array.isArray(message.bodyRich)
-          ? (message.bodyRich as ClubChannelMessageRichBody)
-          : null
-      }
-      className="!text-[13px] !leading-normal"
-    />
+    <>
+      <MentionBody
+        body={message.body}
+        bodyMarkdown={message.bodyMarkdown}
+        bodyRich={
+          Array.isArray(message.bodyRich)
+            ? (message.bodyRich as ClubChannelMessageRichBody)
+            : null
+        }
+        className="!text-[13px] !leading-normal"
+      />
+      <ChatGifLinks text={message.bodyMarkdown || message.body} />
+    </>
   );
 }
 
@@ -573,6 +584,7 @@ function MessageAuthorPreview({
   const isPending = friendRequestPendingId === author._id;
   const [profileOpen, setProfileOpen] = useState(false);
   const [hoverOpen, setHoverOpen] = useState(false);
+  const presence = useMemberPresence(author._id);
 
   const trigger =
     triggerVariant === 'name' ? (
@@ -598,11 +610,13 @@ function MessageAuthorPreview({
           setProfileOpen(true);
         }}
       >
-        <ClubAvatar
-          person={author}
-          className={compact ? 'size-7' : 'size-9'}
-          fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
-        />
+        <PresenceAvatar status={presence}>
+          <ClubAvatar
+            person={author}
+            className={compact ? 'size-7' : 'size-9'}
+            fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+          />
+        </PresenceAvatar>
       </button>
     );
 
@@ -1015,6 +1029,15 @@ function MessageRow({
 }) {
   const isTouchPrimary = useTouchPrimary();
   const { post: canPost, pin: canPinMessages, moderate: canModerateMessages } = permissions;
+  const { toast } = useToast();
+  // Previewed GIF links and GIF uploads, copied from the message's own menu.
+  const gifUrls = message.isDeleted ? [] : messageGifUrls(message);
+  const copyGifUrl = (url: string) => {
+    void copyText(url).then(
+      () => toast({ title: 'GIF URL copied' }),
+      () => toast({ title: 'Could not copy the GIF URL', variant: 'destructive' }),
+    );
+  };
   // Thread replies are always compact; on touch-primary devices every row
   // uses the compact rhythm so more of the conversation fits above the
   // keyboard. Type sizes stay untouched — the win is spacing, not legibility.
@@ -1105,6 +1128,13 @@ function MessageRow({
       ...(hasBody
         ? [{ key: 'copy', label: 'Copy text', icon: Copy, onSelect: () => onCopyText(message) }]
         : []),
+      // The hold sheet replaces the right-click menu on touch, GIF links included.
+      ...gifUrls.map((url, index) => ({
+        key: `gif-${url}`,
+        label: gifUrls.length === 1 ? 'Copy GIF URL' : `Copy GIF ${index + 1} URL`,
+        icon: Link2,
+        onSelect: () => copyGifUrl(url),
+      })),
       ...(canPinMessages && !compact
         ? [
             {
@@ -1573,6 +1603,28 @@ function MessageRow({
               {message.isPinned ? 'Unpin' : 'Pin'}
             </ContextMenuItem>
           ) : null}
+          {gifUrls.length === 1 ? (
+            <ContextMenuItem onSelect={() => copyGifUrl(gifUrls[0]!)}>
+              <Link2 />
+              Copy GIF URL
+            </ContextMenuItem>
+          ) : gifUrls.length > 1 ? (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <Link2 />
+                Copy GIF URL
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-36">
+                <ContextMenuGroup>
+                  {gifUrls.map((url, index) => (
+                    <ContextMenuItem key={url} onSelect={() => copyGifUrl(url)}>
+                      GIF {index + 1}
+                    </ContextMenuItem>
+                  ))}
+                </ContextMenuGroup>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          ) : null}
         </ContextMenuGroup>
         {isAuthor || canModerateMessages ? <ContextMenuSeparator /> : null}
         {isAuthor || canModerateMessages ? (
@@ -1871,6 +1923,60 @@ export function ChannelWorkspace() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [channelId, latestVisibleActivity, markChannelRead, showWhiteboard, unreadBoundary]);
+
+  const [savingEditId, setSavingEditId] = useState<Id<'clubChannelMessages'> | null>(null);
+
+  const saveEdit = async (
+    messageId: Id<'clubChannelMessages'>,
+    { body, bodyMarkdown, bodyRich, files, removedAttachmentIds }: {
+      body: string;
+      bodyMarkdown: string;
+      bodyRich: ClubChannelMessageRichBody | null;
+      files: File[];
+      removedAttachmentIds: string[];
+    },
+  ) => {
+    const stagedIds: Id<'clubChannelAttachmentUploads'>[] = [];
+    setSavingEditId(messageId);
+    try {
+      const uploads = await Promise.allSettled(
+        files.map(async (file) => {
+          const { storageId, uploadIntentId } = await uploadFileToConvex(
+            { generateUploadUrl: () => generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }) },
+            file,
+          );
+          return finalizeChatAttachment({ uploadIntentId, storageId, fileName: file.name });
+        }),
+      );
+      stagedIds.push(
+        ...uploads.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value.attachmentUploadId] : [],
+        ),
+      );
+      const failed = uploads.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      );
+      if (failed) throw failed.reason;
+      await updateMessage({
+        messageId,
+        body,
+        bodyMarkdown: bodyMarkdown.trim() || undefined,
+        bodyRich: bodyRich ?? undefined,
+        addAttachments: stagedIds.length ? stagedIds : undefined,
+        removeAttachmentIds: removedAttachmentIds.length
+          ? (removedAttachmentIds as Id<'clubChannelMessageAttachments'>[])
+          : undefined,
+      });
+      setEditingMessageId(null);
+    } catch {
+      await Promise.allSettled(
+        stagedIds.map((attachmentUploadId) => discardChatAttachment({ attachmentUploadId })),
+      );
+      toast({ title: "Couldn't save your changes", variant: 'destructive' });
+    } finally {
+      setSavingEditId(null);
+    }
+  };
 
   const submitMessage = async ({
     body,
@@ -2181,8 +2287,9 @@ export function ChannelWorkspace() {
               suggestionEntries={suggestionEntries}
               placeholder="Edit message..."
               submitLabel="Save Changes"
-              isPending={false}
-              canAttach={false}
+              isPending={savingEditId === message._id}
+              canAttach
+              existingAttachments={message.attachments}
               onMentionIntent={() => setMentionContextRequested(true)}
               initialBody={message.body}
               initialBodyMarkdown={message.bodyMarkdown}
@@ -2191,14 +2298,7 @@ export function ChannelWorkspace() {
                   ? (message.bodyRich as ClubChannelMessageRichBody)
                   : null
               }
-              onSubmit={({ body, bodyMarkdown, bodyRich }) =>
-                void updateMessage({
-                  messageId: message._id,
-                  body,
-                  bodyMarkdown: bodyMarkdown.trim() || undefined,
-                  bodyRich: bodyRich ?? undefined,
-                }).then(() => setEditingMessageId(null))
-              }
+              onSubmit={(args) => void saveEdit(message._id, args)}
             />
             <Button
               variant="ghost"

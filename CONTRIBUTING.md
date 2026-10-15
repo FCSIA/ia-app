@@ -52,11 +52,11 @@ Run the narrowest relevant check while developing, then run the repository
 gate before requesting review:
 
 ```bash
-pnpm brand:check
-pnpm devlog:check
-pnpm lint
-pnpm test
-pnpm build
+bun run brand:check
+bun run devlog:check
+bun run lint
+bun run test
+bun run build
 ```
 
 For Convex schema or function signature changes, also run the codegen and
@@ -76,7 +76,7 @@ Devlog: Clubs can give each unit its own channels and decide who sees them.
 ```
 
 Never edit `CHANGELOG.md` or `packages/devlog/src/releases.generated.ts` by
-hand; both are generated, and `pnpm devlog:check` fails if they drift. See
+hand; both are generated, and `bun run devlog:check` fails if they drift. See
 [versioning and the devlog](docs/reference/versioning.md).
 
 ## Pull requests

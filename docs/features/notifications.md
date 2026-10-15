@@ -59,6 +59,9 @@ browser push delivery for subscribed devices.
 - `notificationPushSubscriptions`
 - `notificationPushDevices`
 
+`notificationDeliveries.readAt` records when a delivery was first read, for
+[admin analytics](analytics.md). Rows read before it was added have no time.
+
 Preference levels are `OFF`, `IN_APP`, `PUSH`, and `TIME_SENSITIVE`. The schema
 also supports category and scope keys such as global, club, and channel scopes.
 
@@ -75,7 +78,7 @@ Each Convex deployment needs its own `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
 and `VAPID_SUBJECT`. Generate a keypair with:
 
 ```bash
-pnpm --filter cvx exec web-push generate-vapid-keys
+bun run --cwd apps/convex web-push generate-vapid-keys
 ```
 
 > **Always pass `--deployment` when setting these.** A bare `convex env set`
@@ -84,12 +87,12 @@ pnpm --filter cvx exec web-push generate-vapid-keys
 > necessarily real production. Production VAPID keys were previously written to
 > the wrong deployment this way, leaving push silently dead in production.
 > Confirm the target first with
-> `pnpm --filter cvx exec convex env get SITE_URL --deployment <name>`.
+> `bun run --cwd apps/convex convex env get SITE_URL --deployment <name>`.
 
 ```bash
-pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>" --deployment <name>
-pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>" --deployment <name>
-pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com" --deployment <name>
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "<public-key>" --deployment <name>
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "<private-key>" --deployment <name>
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com" --deployment <name>
 ```
 
 Use a **separate keypair per deployment**, so a dev backend never holds the
@@ -103,7 +106,7 @@ build and backend from drifting apart.
 Verify a deployment is correctly configured with:
 
 ```bash
-pnpm --filter cvx exec convex run notifications/push:getPublicKey --deployment <name>
+bun run --cwd apps/convex convex run notifications/push:getPublicKey --deployment <name>
 ```
 
 A `null` result means `configureWebPush()` will bail and every send will be

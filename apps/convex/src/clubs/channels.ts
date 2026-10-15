@@ -51,8 +51,10 @@ import {
   type ClubChannelReaction,
 } from "../validators";
 import {
+  MAX_CHANNEL_MESSAGE_ATTACHMENTS,
   assertStagedChatAttachmentIds,
   consumeStagedChatAttachments,
+  deleteStoredChatAttachment,
 } from "../uploads/chatAttachments";
 import {
   MAX_CHANNEL_MENTION_RECIPIENTS,
@@ -1006,7 +1008,8 @@ async function markChannelDeliveriesReadThrough(
         .lte("sourceCreatedAt", throughCreatedAt),
     )
     .take(CHANNEL_DELIVERY_READ_BATCH_SIZE);
-  for (const row of rows) await ctx.db.patch(row._id, { isRead: true });
+  const readAt = Date.now();
+  for (const row of rows) await ctx.db.patch(row._id, { isRead: true, readAt });
   return rows.length;
 }
 
@@ -2410,6 +2413,12 @@ export const updateMessage = mutation({
     body: v.string(),
     bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
+    removeAttachmentIds: v.optional(
+      v.array(v.id("clubChannelMessageAttachments")),
+    ),
+    addAttachments: v.optional(
+      v.array(v.id("clubChannelAttachmentUploads")),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -2424,13 +2433,45 @@ export const updateMessage = mutation({
       args.body,
       args.bodyMarkdown,
     );
-    if (!body) throw new ConvexError("Message cannot be empty");
+    const addIds = args.addAttachments ?? [];
+    const removeIds = args.removeAttachmentIds ?? [];
+    assertStagedChatAttachmentIds(addIds);
+    if (new Set(removeIds).size !== removeIds.length) {
+      throw new ConvexError("An attachment can only be removed once");
+    }
+    const existingAttachments = await ctx.db
+      .query("clubChannelMessageAttachments")
+      .withIndex("by_messageId_and_createdAt", (q) =>
+        q.eq("messageId", message._id),
+      )
+      .take(MAX_CHANNEL_MESSAGE_ATTACHMENTS + 1);
+    const existingIds = new Set(existingAttachments.map((a) => a._id));
+    if (!removeIds.every((id) => existingIds.has(id))) {
+      throw new ConvexError("Attachment not found");
+    }
+    const remainingCount = existingAttachments.length - removeIds.length;
+    if (remainingCount + addIds.length > MAX_CHANNEL_MESSAGE_ATTACHMENTS) {
+      throw new ConvexError("A message can include at most 5 attachments");
+    }
+    if (!body && remainingCount + addIds.length === 0 && !message.pollQuestion) {
+      throw new ConvexError("Message cannot be empty");
+    }
     if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
       throw new ConvexError(
         "Inline images are not supported; attach the image instead",
       );
     }
     assertChannelMessageBodyBounds(body, bodyMarkdown, args.bodyRich);
+    for (const attachment of existingAttachments) {
+      if (!removeIds.includes(attachment._id)) continue;
+      await deleteStoredChatAttachment(ctx, attachment);
+      await ctx.db.delete(attachment._id);
+    }
+    await consumeStagedChatAttachments(ctx, {
+      attachmentUploadIds: addIds,
+      uploaderId: user._id,
+      messageId: message._id,
+    });
     await ctx.db.patch(args.messageId, {
       body,
       bodyMarkdown,
@@ -2450,6 +2491,7 @@ export const updateMessage = mutation({
           bodyMarkdown,
           parentMessageId: message.parentMessageId,
           replyToMessageId: message.replyToMessageId,
+          attachmentCount: remainingCount + addIds.length,
         }),
         previousBodyPreview: message.body.slice(
           0,

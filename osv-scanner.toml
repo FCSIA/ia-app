@@ -1,0 +1,9 @@
+[[IgnoredVulns]]
+id = "GHSA-86w9-cpqp-85rv"
+ignoreUntil = 2026-11-01
+reason = "node-forge 1.4.0 is patched via patches/node-forge@1.4.0.patch with the nested DigestAlgorithm validation from upstream PR 1152 (https://github.com/digitalbazaar/forge/pull/1152); scripts/dependency-security.test.mjs reproduces the vulnerable behavior and verifies its rejection in CI. Remove this version-only exception when an upstream patched release is available."
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-11-01
+reason = "braces 3.0.3 is source-patched via patches/braces@3.0.3.patch with the five lib depth/parent-cycle guards from upstream proposal https://github.com/micromatch/braces/pull/72 (including its corrected stringify parent handling). There is no newer published release as of 2026-10-15. scripts/dependency-security.test.mjs verifies deep string/AST rejection, untrusted maxDepth caps, parent cycles, and ordinary expansion/escaping before scanning. This exception covers the patched version identifier only; remove it when a fixed release or replacement is adopted."

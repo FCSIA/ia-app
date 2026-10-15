@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as analytics__days from "../analytics/_days.js";
+import type * as analytics__summaries from "../analytics/_summaries.js";
+import type * as analytics_dashboard from "../analytics/dashboard.js";
+import type * as analytics_rollups from "../analytics/rollups.js";
+import type * as analytics_validators from "../analytics/validators.js";
 import type * as announcements__lib from "../announcements/_lib.js";
 import type * as announcements_comments from "../announcements/comments.js";
 import type * as announcements_contentValidation from "../announcements/contentValidation.js";
@@ -56,7 +61,6 @@ import type * as courses_catalog from "../courses/catalog.js";
 import type * as courses_metadata from "../courses/metadata.js";
 import type * as courses_seed from "../courses/seed.js";
 import type * as crons from "../crons.js";
-import type * as events__lib from "../events/_lib.js";
 import type * as events_approvals from "../events/approvals.js";
 import type * as events_calendar from "../events/calendar.js";
 import type * as events_calendarInvitePolicy from "../events/calendarInvitePolicy.js";
@@ -77,6 +81,7 @@ import type * as flexFriday_sessions from "../flexFriday/sessions.js";
 import type * as flexFriday_workshops from "../flexFriday/workshops.js";
 import type * as http from "../http.js";
 import type * as moderation_feedbackAccess from "../moderation/feedbackAccess.js";
+import type * as moderation_feedbackGithub from "../moderation/feedbackGithub.js";
 import type * as moderation_keywords from "../moderation/keywords.js";
 import type * as moderation_reportValidation from "../moderation/reportValidation.js";
 import type * as moderation_reports from "../moderation/reports.js";
@@ -94,6 +99,9 @@ import type * as notifications_push from "../notifications/push.js";
 import type * as notifications_pushDevices from "../notifications/pushDevices.js";
 import type * as notifications_pushExpo from "../notifications/pushExpo.js";
 import type * as notifications_pushNode from "../notifications/pushNode.js";
+import type * as presence__activity from "../presence/_activity.js";
+import type * as presence__status from "../presence/_status.js";
+import type * as presence_status from "../presence/status.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as schedule__lib from "../schedule/_lib.js";
 import type * as schedule_blocks from "../schedule/blocks.js";
@@ -139,6 +147,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "analytics/_days": typeof analytics__days;
+  "analytics/_summaries": typeof analytics__summaries;
+  "analytics/dashboard": typeof analytics_dashboard;
+  "analytics/rollups": typeof analytics_rollups;
+  "analytics/validators": typeof analytics_validators;
   "announcements/_lib": typeof announcements__lib;
   "announcements/comments": typeof announcements_comments;
   "announcements/contentValidation": typeof announcements_contentValidation;
@@ -187,7 +200,6 @@ declare const fullApi: ApiFromModules<{
   "courses/metadata": typeof courses_metadata;
   "courses/seed": typeof courses_seed;
   crons: typeof crons;
-  "events/_lib": typeof events__lib;
   "events/approvals": typeof events_approvals;
   "events/calendar": typeof events_calendar;
   "events/calendarInvitePolicy": typeof events_calendarInvitePolicy;
@@ -208,6 +220,7 @@ declare const fullApi: ApiFromModules<{
   "flexFriday/workshops": typeof flexFriday_workshops;
   http: typeof http;
   "moderation/feedbackAccess": typeof moderation_feedbackAccess;
+  "moderation/feedbackGithub": typeof moderation_feedbackGithub;
   "moderation/keywords": typeof moderation_keywords;
   "moderation/reportValidation": typeof moderation_reportValidation;
   "moderation/reports": typeof moderation_reports;
@@ -225,6 +238,9 @@ declare const fullApi: ApiFromModules<{
   "notifications/pushDevices": typeof notifications_pushDevices;
   "notifications/pushExpo": typeof notifications_pushExpo;
   "notifications/pushNode": typeof notifications_pushNode;
+  "presence/_activity": typeof presence__activity;
+  "presence/_status": typeof presence__status;
+  "presence/status": typeof presence_status;
   rateLimits: typeof rateLimits;
   "schedule/_lib": typeof schedule__lib;
   "schedule/blocks": typeof schedule_blocks;
@@ -294,4 +310,5 @@ export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
   migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
 };

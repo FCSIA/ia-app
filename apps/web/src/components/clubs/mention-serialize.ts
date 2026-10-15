@@ -87,6 +87,39 @@ function escapeMarkdownText(text: string) {
   return text.replace(/([\\`*_[\]~])/g, '\\$1');
 }
 
+/**
+ * Splits off the punctuation that ends a sentence rather than a URL, matching
+ * GFM's autolink rules: trailing `?!.,:;*_~` and quotes, and closing
+ * parentheses the URL itself did not open.
+ */
+function splitTrailingUrlPunctuation(url: string) {
+  let end = url.length;
+  while (end > 0) {
+    const char = url[end - 1];
+    if (/[?!.,:;*_~'"]/.test(char)) {
+      end -= 1;
+      continue;
+    }
+    if (char === ')') {
+      const head = url.slice(0, end);
+      if (head.split(')').length > head.split('(').length) {
+        end -= 1;
+        continue;
+      }
+    }
+    break;
+  }
+  return [url.slice(0, end), url.slice(end)] as const;
+}
+
+function serializeMarkdownProse(text: string) {
+  return text.split(/(https?:\/\/[^\s<>]+)/gi).map((part) => {
+    if (!/^https?:\/\//i.test(part)) return escapeMarkdownText(part);
+    const [url, trailing] = splitTrailingUrlPunctuation(part);
+    return `<${url}>${escapeMarkdownText(trailing)}`;
+  }).join('');
+}
+
 const inlineMarkdownLinkPattern =
   /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/gi;
 
@@ -99,7 +132,7 @@ function serializeMarkdownText(text: string) {
     if (index === undefined) continue;
 
     const [source, label, href] = match;
-    markdown += escapeMarkdownText(text.slice(cursor, index));
+    markdown += serializeMarkdownProse(text.slice(cursor, index));
 
     const safeHref = allowedMessageHref(href);
     markdown += safeHref
@@ -108,7 +141,7 @@ function serializeMarkdownText(text: string) {
     cursor = index + source.length;
   }
 
-  return markdown + escapeMarkdownText(text.slice(cursor));
+  return markdown + serializeMarkdownProse(text.slice(cursor));
 }
 
 function serializeNodeMarkdown(node: RichTextNode): string {

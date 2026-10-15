@@ -14,14 +14,14 @@ Convex agent skills for common tasks can be installed by running
 
 ## Local-First Deployment Safety
 
-Before selecting a deployment, starting `convex dev`/`pnpm dev`, or running a
+Before selecting a deployment, starting `convex dev`/`bun run dev`, or running a
 seed reset, read `docs/backend/convex-local-production.md` and
 `docs/reference/environment.md`; for seed work, also read
 `docs/backend/seed-and-reset.md`. Inspect `git worktree list` and the current
 worktree's `apps/convex/.env.local` first.
 
 Use an isolated local deployment by default. Initialize or reselect it with
-`pnpm setup:convex-local`, which preserves existing deployment variables and
+  `bun run setup:convex-local`, which preserves existing deployment variables and
 syncs the local URLs to the clients. A named cloud dev deployment requires a
 specific need such as a public URL, physical-device testing, a webhook, or
 shared dashboard access. Never copy `.env.local` between worktrees or run two

@@ -2,34 +2,68 @@
   "name": "ia-app",
   "version": "0.0.1",
   "private": true,
-  "packageManager": "pnpm@10.29.3",
+  "packageManager": "bun@1.4.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "dev:mobile": "pnpm --filter mobile dev",
-    "dev:mobile:tunnel": "pnpm --filter mobile dev:client:tunnel",
+    "dev:phone": "node scripts/sync-convex-env.mjs --host auto && node scripts/dev.mjs",
+    "dev:mobile": "bun run --filter mobile dev",
+    "dev:mobile:tunnel": "bun run --filter mobile dev:client:tunnel",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "cvx:dev": "pnpm --filter cvx dev",
-    "convex:dev": "pnpm --filter cvx dev",
-    "db:generate": "pnpm --filter cvx codegen",
-    "db:studio": "pnpm --filter cvx exec convex dashboard",
+    "cvx:dev": "bun run --filter cvx dev",
+    "convex:dev": "bun run --filter cvx dev",
+    "db:generate": "bun run --filter cvx codegen",
+    "db:studio": "bun run --cwd apps/convex convex dashboard",
     "setup:convex-local": "node scripts/setup-convex-local.mjs",
     "worktree:bootstrap": "node scripts/bootstrap-worktree.mjs",
-    "mobile:ios": "pnpm --filter mobile ios",
+    "mobile:ios": "bun run --filter mobile ios",
     "mobile:ios:refresh": "bash scripts/refresh-ios-personal-build.sh",
-    "mobile:android": "pnpm --filter mobile android",
+    "mobile:android": "bun run --filter mobile android",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
     "brand:check": "node scripts/generate-brand-assets.mjs --check",
     "devlog:check": "node scripts/devlog.mjs check",
     "devlog:generate": "node scripts/devlog.mjs generate",
     "devlog:preview": "node scripts/devlog.mjs preview",
+    "release": "node scripts/release.mjs",
+    "release:test": "bun test scripts/release.test.mjs",
+    "audit:production": "node scripts/audit-production.mjs",
+    "audit:production:test": "bun test scripts/audit-production.test.mjs scripts/dependency-security.test.mjs",
     "devlog:cut": "node scripts/devlog.mjs cut",
     "release:ship": "node scripts/release-ship.mjs",
     "fluid:update": "node scripts/update-fluid-components.mjs",
     "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "ws": ">=8.21.0",
+    "postcss": ">=8.5.18",
+    "lodash": ">=4.18.0",
+    "sharp": ">=0.35.0",
+    "hono": ">=4.12.34",
+    "effect": ">=3.20.0",
+    "js-yaml": ">=4.3.1",
+    "nanoid": ">=5.1.16",
+    "@xmldom/xmldom": "0.9.12",
+    "browserslist": "4.29.3",
+    "image-size": "2.0.4",
+    "lodash-es": "4.18.1",
+    "node-forge": "1.4.0"
+  },
+  "trustedDependencies": [
+    "bcrypt",
+    "esbuild",
+    "sharp",
+    "unrs-resolver"
+  ],
   "devDependencies": {
     "sharp": "0.35.0",
     "turbo": "^2.10.9",
@@ -37,10 +71,13 @@
     "vercel": "^54.21.1"
   },
   "engines": {
-    "node": ">=20.19.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20.19.0"
   },
   "dependencies": {
     "convex": "1.46.0"
+  },
+  "patchedDependencies": {
+    "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
+    "braces@3.0.3": "patches/braces@3.0.3.patch"
   }
 }

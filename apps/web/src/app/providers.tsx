@@ -16,6 +16,7 @@ import {
 import { ConvexQueryCacheProvider } from '@/components/layout/convex-query-cache-provider';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
+import { PresenceHeartbeat } from '@/components/presence/presence-heartbeat';
 import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
 import { ThemeFavicon } from '@/components/ui/ia-orbit-mark';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ThemeFavicon />
           <CustomThemeBootstrap />
           <PushSubscriptionSync />
+          <PresenceHeartbeat />
           <Suspense fallback={null}>
             <AuthenticatedRouteBoundary>
               <NavigationLoadingProvider>{children}</NavigationLoadingProvider>

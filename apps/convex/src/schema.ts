@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { analyticsDailyValidator } from "./analytics/validators";
 import {
   appRoleValidator,
   courseCatalogSourceValidator,
@@ -216,6 +217,8 @@ export const schema = defineSchema({
       }),
     ),
     isRead: v.boolean(),
+    // When the recipient first read it. Absent on rows read before this was recorded.
+    readAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_userId_and_createdAt", ["userId", "createdAt"])
@@ -279,6 +282,49 @@ export const schema = defineSchema({
   // services cannot tell us when a device drops its subscription (Apple keeps
   // accepting sends to a dead endpoint for over a week), so this is the only
   // record of whether a device can actually receive push.
+  // A user's Do Not Disturb. The row exists only while it is on: expiry deletes
+  // it, so readers never compare against the clock.
+  userStatuses: defineTable({
+    userId: v.id("users"),
+    // When Do Not Disturb ends; null means until the user turns it off.
+    dndUntil: v.union(v.number(), v.null()),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  // The last hour, day, and week each user was active, overwritten in place.
+  // Only used to write each anonymous activity mark once; it holds no history.
+  userActivity: defineTable({
+    userId: v.id("users"),
+    lastHourKey: v.string(),
+    lastDay: v.string(),
+    lastWeek: v.string(),
+    lastDayByPlatform: v.object({
+      ios: v.optional(v.string()),
+      android: v.optional(v.string()),
+      desktop: v.optional(v.string()),
+    }),
+  }).index("by_userId", ["userId"]),
+
+  // One anonymous mark per person per active hour (no user id), counted by the
+  // nightly analytics rollup and deleted as it is counted.
+  activityMarks: defineTable({
+    day: v.string(),
+    hour: v.number(),
+    platform: pushDevicePlatformValidator,
+    // What this mark is the first of for its person: this hour (the heatmap),
+    // day (daily actives), week (weekly actives), or day on this platform.
+    newHour: v.boolean(),
+    newDay: v.boolean(),
+    newWeek: v.boolean(),
+    newPlatformDay: v.boolean(),
+  }).index("by_day", ["day"]),
+
+  // Daily rollups for the superadmin Analytics tab. See analytics/validators.ts.
+  analyticsDaily: defineTable(analyticsDailyValidator).index("by_kind_and_day", [
+    "kind",
+    "day",
+  ]),
+
   notificationPushDevices: defineTable({
     userId: v.id("users"),
     deviceId: v.string(),
@@ -1101,6 +1147,15 @@ export const schema = defineSchema({
   })
     .index("by_uploadIntentId", ["uploadIntentId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
+  // Tenor share pages resolved to their GIF media, so each pasted link is
+  // fetched once rather than by every viewer. Unresolvable links are retried
+  // after an hour.
+  chatGifLinkResolutions: defineTable({
+    url: v.string(),
+    mediaUrl: v.union(v.string(), v.null()),
+    resolvedAt: v.number(),
+  }).index("by_url", ["url"]),
 
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),

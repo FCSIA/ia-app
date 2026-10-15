@@ -1,7 +1,7 @@
 # Deploy an approved, immutable release tag to production.
 #
-# Release data is generated and approved in a normal pull request before a
-# maintainer tags its merged main commit. This workflow is deliberately
+# Release data is generated and approved in a normal pull request before the
+# merge-triggered release workflow creates its tag. This workflow is deliberately
 # read-only: it deploys that exact tagged commit and never writes to main.
 #
 # Required repo secrets:
@@ -15,6 +15,12 @@
 name: Production Deploy
 
 on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Existing vMAJOR.MINOR.PATCH tag on an approved main commit"
+        type: string
+        required: true
   push:
     tags:
       - "v*"
@@ -38,14 +44,13 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
-
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          # Check out the submitted tag and fetch full history so validation can
-          # prove that its commit is already in main before deployment secrets run.
-          ref: ${{ github.event_name == 'push' && github.ref || inputs.release_tag }}
+          # Fetch the submitted tag only. Validation below proves that its
+          # commit is already in main before code or deployment secrets run.
+          ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -86,26 +91,25 @@ jobs:
           echo "sha=${release_sha:0:7}" >> "$GITHUB_OUTPUT"
           echo "version=$release_version" >> "$GITHUB_OUTPUT"
 
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          version: 10.29.3
+          bun-version: 1.4.2
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       # Contributor Validation only runs on pull requests, so a commit pushed
       # straight to main can reach production untested — that is how the
       # 2026-08-12 login outage shipped. Gate the deploy on the same suite.
       - name: Test
-        run: pnpm test
+        run: bun run test
 
       - name: Deploy Convex
-        run: pnpm --filter cvx exec convex deploy --typecheck enable
+        run: bun run --filter cvx deploy -- --typecheck enable
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
@@ -113,7 +117,7 @@ jobs:
         # `--archive=tgz` uploads a tarball, so Vercel's git metadata is absent.
         # Pass the build stamp explicitly instead.
         run: |
-          pnpm exec vercel deploy --prod --yes --archive=tgz \
+          bunx vercel deploy --prod --yes --archive=tgz \
             --build-env NEXT_PUBLIC_APP_COMMIT="${{ steps.release.outputs.sha }}" \
             --token="$VERCEL_TOKEN"
         env:

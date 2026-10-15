@@ -6,8 +6,8 @@ tags: [backend, seed, convex]
 
 [Home](../index.md)
 
-Demo data is managed inside Convex. There are no local `pnpm db:seed`,
-`pnpm db:reset`, or `pnpm db:clear` commands, and seeding does not use a
+Demo data is managed inside Convex. There are no local `bun run db:seed`,
+`bun run db:reset`, or `bun run db:clear` commands, and seeding does not use a
 bootstrap secret. Use the Convex CLI to invoke the internal reset function.
 
 Seeding is not automatic on a new deployment. A fresh deployment has schema and
@@ -18,7 +18,7 @@ functions only until an operator runs the reset action below.
 Run the reset against the isolated local deployment:
 
 ```bash
-pnpm --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:resetAndSeed \
   '{"profile":"development"}'
@@ -27,7 +27,7 @@ pnpm --filter cvx exec convex run \
 Check its asynchronous progress until it reaches `COMPLETE`:
 
 ```bash
-pnpm --filter cvx exec convex run \
+bun run --cwd apps/convex convex run \
   --deployment local \
   bootstrap:seedStatus \
   '{}' \
