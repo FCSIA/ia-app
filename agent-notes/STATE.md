@@ -2,18 +2,49 @@
 
 ## Active Focus
 
-- **Integration**: `codex/local-bun-and-mobile-swipe` combines the admin repair,
-  Bun/Nix setup, and swipe fix. Main receives them through PRs #148, #149, and
-  #150; #148 contains the remaining admin changes after #149 and #150 merged.
-- **Goal**: Keep the latest Bun shell and mobile repairs available locally.
-  The user explicitly authorized merging all three branches after the preview
-  and verification handoff. Native iPhone verification remains outstanding.
-  Production deployment is not authorized.
+- **Integration**: The user authorized working through the merge backlog.
+  Feedback issue sync is carried by PR #110, reconciled against current main
+  in the isolated `merge-pr110` worktree. The admin, Bun/Nix, and swipe changes
+  are already on main through PRs #148, #149, and #150.
+- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
+  Material UI changes still require design-owner review. Native iPhone swipe
+  verification remains outstanding. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Merge backlog reconciliation (2026-10-15)
+
+- PR #151 is closed as superseded: its trial merge produced exactly the current
+  main tree. PR #121 is also closed: its complete patch is equivalent to commit
+  `4841d245`, already incorporated in main and retained by the Bun migration.
+- Local announcement-pagination and UI-follow-up worktrees correspond to
+  already-merged PRs #125 and #128; their older source must not replace newer
+  main behavior.
+- PR #110 retains the current Convex 1.46.0 environment types, presence
+  component, Google Vision configuration, Bun commands, and current feedback
+  permissions. Thirteen focused tests cover status mapping, signed/forged webhooks,
+  repository isolation, duplicate/stale events, and anonymous/student retry
+  refusal, plus mocked issue creation/failure without exporting submitter identity.
+  All 373 backend tests, backend/web typechecks, web lint (21 existing
+  warnings), brand/devlog checks, production web build, and an isolated local
+  Convex push pass. GitHub webhook activation and production deployment remain
+  separate operations; neither was performed.
+- Merged security prerequisite PR #153 source-patches `braces@3.0.3` after its newly
+  reported nesting vulnerability blocked the merge gate. Nine audit/dependency
+  regression tests and the GitHub security scan pass. The advisory-specific
+  patched-version exception expires on 2026-11-01; replace the patch and remove
+  the exception when a fixed release or replacement is available.
+- PR #147 remains open: its height-packing algorithm can undo visible manual
+  ordering. With heights `{a: 100, b: 100, c: 500}`, both orders `[a, b, c]` and
+  `[a, c, b]` render columns `[[a, b], [c]]`. The design owner favors height
+  balancing with a quiet visual cue. The proposed direction is balanced defaults,
+  stable manual placement, and an explicit Balance layout action with Undo;
+  this recommendation and the edit-mode appearance still need owner review.
+- Draft PR #152 still explicitly awaits human visual review. PR #117 has
+  unresolved conflicts. Compliance PR #76 remains outside this merge pass.
 
 ### Local Bun/Nix setup (2026-10-02)
 
