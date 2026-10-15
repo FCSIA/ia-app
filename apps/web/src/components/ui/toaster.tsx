@@ -24,7 +24,7 @@ export function Toaster() {
               props.duration ?? (props.variant === "destructive" ? 6000 : 3000)
             }
           >
-            <div className="grid gap-1">
+            <div className="grid min-w-0 flex-1 gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
                 <ToastDescription>{description}</ToastDescription>
