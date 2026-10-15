@@ -5,6 +5,7 @@ import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useShape } from '@/lib/shape-context';
 import { buildNotificationChannelTree, type NotificationChannelNode } from './notification-channel-tree';
 import type { FunctionReturnType } from 'convex/server';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
@@ -45,6 +46,7 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
 };
 
 export function NotificationSettingsPanel() {
+  const shape = useShape();
   const user = useCurrentUser();
   const preferences = useQuery(api.notifications.preferences.list);
   const [optimisticGlobalEnabled, setOptimisticGlobalEnabled] = useState<
@@ -87,7 +89,7 @@ export function NotificationSettingsPanel() {
             <h2 className="text-sm font-semibold text-foreground">General notifications</h2>
           </div>
         </div>
-        <div className="divide-y divide-border/50">
+        <div className={cn('divide-y divide-border/30 overflow-hidden border border-border/50 bg-card', shape.mergedBg)}>
           {globalSettings.map((setting) => {
             const Icon = CATEGORY_ICONS[setting.key];
             const preference = preferences?.find(
@@ -100,7 +102,7 @@ export function NotificationSettingsPanel() {
             return (
               <div
                 key={setting.key}
-                className="flex min-w-0 items-center justify-between gap-3 py-3"
+                className="flex min-w-0 items-center justify-between gap-3 px-3 py-2.5"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <Icon
@@ -164,6 +166,7 @@ type Channel = ClubNavigation['channels'][number];
 type Unit = ClubNavigation['units'][number];
 
 function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; clubName: string }) {
+  const shape = useShape();
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
   const preferences = useQuery(api.notifications.preferences.list);
   const [optimisticClubEnabled, setOptimisticClubEnabled] = useState<boolean | null>(null);
@@ -188,42 +191,44 @@ function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; c
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="flex min-w-0 items-center gap-2 py-2">
-        <Megaphone className={cn('size-4 shrink-0', clubEnabled ? 'text-primary' : 'text-muted-foreground')} aria-hidden />
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold" title={clubName}>{clubName}</h3>
-        {navigation ? (
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-            {navigation.channels.length} channel{navigation.channels.length === 1 ? '' : 's'}
-          </span>
-        ) : null}
-        <CollapsibleTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`${open ? 'Collapse' : 'Expand'} ${clubName} notification settings`}
-          >
-            <ChevronDown className={cn('transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
-          </Button>
-        </CollapsibleTrigger>
-        <NotificationScopeSwitch
-          category="CLUB_ANNOUNCEMENT"
-          label={`${clubName} notifications`}
-          clubId={clubId}
-          compact
-          className="shrink-0"
-          onOptimisticChange={setOptimisticClubEnabled}
-        />
+      <div className={cn('overflow-hidden border border-border/50 bg-card', shape.mergedBg)}>
+        <div className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2">
+          <Megaphone className={cn('size-4 shrink-0', clubEnabled ? 'text-primary' : 'text-muted-foreground')} aria-hidden />
+          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold" title={clubName}>{clubName}</h3>
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`${open ? 'Collapse' : 'Expand'} ${clubName} notification settings`}
+            >
+              {navigation ? (
+                <span className="tabular-nums">
+                  {navigation.channels.length} channel{navigation.channels.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
+              <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+            </Button>
+          </CollapsibleTrigger>
+          <NotificationScopeSwitch
+            category="CLUB_ANNOUNCEMENT"
+            label={`${clubName} notifications`}
+            clubId={clubId}
+            compact
+            className="shrink-0"
+            onOptimisticChange={setOptimisticClubEnabled}
+          />
+        </div>
+        <CollapsibleContent className="border-t border-border/30 px-3 pb-2">
+          {navigation === undefined ? (
+            <p className="py-3 text-xs text-muted-foreground" role="status">Loading channels…</p>
+          ) : tree.length ? (
+            <NotificationChannelBranches nodes={tree} clubId={clubId} clubEnabled={clubEnabled} />
+          ) : (
+            <p className="py-3 text-xs text-muted-foreground">No channels available.</p>
+          )}
+        </CollapsibleContent>
       </div>
-      <CollapsibleContent>
-        {navigation === undefined ? (
-          <p className="py-3 text-xs text-muted-foreground" role="status">Loading channels…</p>
-        ) : tree.length ? (
-          <NotificationChannelBranches nodes={tree} clubId={clubId} clubEnabled={clubEnabled} />
-        ) : (
-          <p className="py-3 text-xs text-muted-foreground">No channels available.</p>
-        )}
-      </CollapsibleContent>
     </Collapsible>
   );
 }

@@ -10,11 +10,11 @@ import { api } from '~/apps/convex/src/_generated/api';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { useSeenRelease } from '@/components/devlog/use-seen-release';
 import {
-  AccountSettingsCard,
-  AppearanceCard,
-  ModerationAlertsCard,
+  AccountSettingsSection,
+  AppearanceSection,
+  ModerationAlertsSection,
   ProfileSidebar,
-  WhatsNewCard,
+  WhatsNewSection,
 } from './_components/ProfileSections';
 import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
 
@@ -109,7 +109,7 @@ export default function ProfilePage() {
         />
         <div className="min-w-0">
           {visibleSection === 'account' ? (
-            <AccountSettingsCard
+            <AccountSettingsSection
               user={user}
               changing={changingPassword}
               form={passwordForm}
@@ -125,7 +125,7 @@ export default function ProfilePage() {
             <NotificationSettingsPanel />
           ) : null}
           {visibleSection === 'appearance' && mounted ? (
-            <AppearanceCard
+            <AppearanceSection
               theme={theme}
               setTheme={setTheme}
               use24HourTime={user?.use24HourTime ?? false}
@@ -134,9 +134,9 @@ export default function ProfilePage() {
             />
           ) : null}
           {visibleSection === 'moderation' && canSeeModeration ? (
-            <ModerationAlertsCard alerts={moderationAlerts} />
+            <ModerationAlertsSection alerts={moderationAlerts} />
           ) : null}
-          {visibleSection === 'whats-new' ? <WhatsNewCard /> : null}
+          {visibleSection === 'whats-new' ? <WhatsNewSection /> : null}
         </div>
       </div>
     </AppShell>

@@ -21,6 +21,15 @@ tabs and user-table columns scroll horizontally within their own areas. Filters
 and selection controls wrap to the available width; pagination stays outside
 the scrolling records so it remains reachable.
 
+## Profile settings
+
+`/profile` uses one identity/navigation card beside unframed account, notification,
+appearance, moderation, and release-note sections. The selected navigation label
+provides context; panels avoid repeating it as a decorative title or subtitle.
+Useful inner groups and quiet separators remain. The identity block has no
+divider above its navigation. The document reserves a stable scrollbar gutter
+so changing panel height does not move the centered layout horizontally.
+
 ## Source Files
 
 - Backend: `apps/convex/src/users/`

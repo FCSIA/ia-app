@@ -5,7 +5,7 @@
 - **Integration**: The user authorized working through the merge backlog.
   Feedback issue sync (#110) and its security prerequisite (#153) are merged.
   Dashboard PR #147 is squash-merged. Toast/profile geometry corrections are
-  in PR #154. Shared notification settings are being reviewed on
+  in PR #154. Shared notification settings are in PR #155 on
   `feat/shared-notification-settings`, stacked on #154 in the isolated
   `merge-pr147` worktree.
   The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
@@ -64,11 +64,15 @@
   equal 9px profile navigation insets on desktop/390px, and circular avatars in
   the sidebar/editor. Review captures are in `/tmp/ia-ui-geometry-review/`.
 - Notification settings now share `NotificationSettingsPanel` on `/notifications`
-  and `/profile`: redundant subtitles/frames are removed, counts sit inline,
-  chevron disclosure remains separate from switches, required locks do not reserve
+  and `/profile`: redundant subtitles are removed, counts sit inline,
+  channel-count/chevron disclosure remains separate from switches, required locks do not reserve
   an empty trailing slot, and channel rows follow the workspace unit hierarchy
-  with tree connectors. Scoped switches reflect global inheritance and report
-  failed saves. The owner's interaction principles are captured in `.impeccable.md`.
+  with tree connectors. Owner feedback restored the rounded inner option group,
+  compact rows, quiet separators, and distinct club surfaces, without an outer
+  panel frame. Static groups use a single border without an elevation outline
+  stacked on it. Design guidance distinguishes useful grouping from redundant
+  chrome. Scoped switches reflect global inheritance and report failed saves.
+  The owner's interaction principles are captured in `.impeccable.md`.
   Three hierarchy regressions, web typecheck/lint (21 existing warnings), and
   production build pass. Compiled browser checks cover route parity, preference
   persistence/inheritance, parent disabling, keyboard disclosure/switches,
@@ -76,6 +80,16 @@
   themes. Demo clubs are flat; nested placement is covered by focused tests.
   Captures are in `/tmp/ia-notification-settings-review/`. Material visual changes
   await design-owner review; #154 remains open with passing CI.
+- Profile tab panels no longer use the local `SettingsCard` wrapper, whose
+  full-strength frame/header border differed from notification settings. Repeated
+  panel titles/subtitles and the identity divider are removed; account details
+  use a definition list with wrapping values. Useful inner groups remain. The
+  document owns a persistent vertical scrollbar track and stable gutter to avoid
+  a measured 4px shift when taller panels introduce the 8px scrollbar. Compiled
+  checks confirm identical desktop anchors across short/long tabs, all five
+  panels within 390px, and password form open/cancel. Combined channel-count
+  disclosure works by text click and Enter with a 44px touch target. Group
+  borders compute to 1px with no shadow; all switches share one right edge.
 - The `merge-pr147` worktree serves the compiled dashboard at
   `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
   on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.

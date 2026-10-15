@@ -1,6 +1,6 @@
 'use client';
 
-import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { type Dispatch, type SetStateAction } from 'react';
 import {
   Bell,
   Lock,
@@ -20,7 +20,6 @@ import { AppVersionStamp } from '@/components/devlog/devlog-version';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useGifAutoplay } from '@/hooks/use-gif-autoplay';
@@ -34,8 +33,6 @@ const cardClass = cn(
   'border border-border bg-card pb-0',
   CARD_SURFACE_FOREGROUND,
 );
-const headerClass = 'flex flex-row items-start justify-between gap-4 border-b border-border/70 px-5 py-4';
-const contentClass = 'p-5';
 
 const passwordFormSchema = z
   .object({
@@ -56,41 +53,6 @@ type ModerationAlert = {
   body: string;
 };
 
-type SettingsCardProps = {
-  children?: ReactNode;
-  contentClassName?: string;
-  description?: string;
-  icon?: LucideIcon;
-  title: string;
-};
-
-function SettingsCard({
-  children,
-  contentClassName,
-  description,
-  icon: Icon,
-  title,
-}: SettingsCardProps) {
-  return (
-    <Card className={cardClass}>
-      <CardHeader className={headerClass}>
-        <div className="flex min-w-0 items-center gap-3">
-          {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
-          <div className="min-w-0">
-            <CardTitle className="text-base font-semibold leading-tight">{title}</CardTitle>
-            {description ? (
-              <CardDescription className="mt-1 text-xs leading-5 text-foreground/80">{description}</CardDescription>
-            ) : null}
-          </div>
-        </div>
-      </CardHeader>
-      {children ? (
-        <CardContent className={cn(contentClass, contentClassName)}>{children}</CardContent>
-      ) : null}
-    </Card>
-  );
-}
-
 function friendlyRole(role: string) {
   return role
     .toLowerCase()
@@ -109,16 +71,16 @@ function InfoRow({
   mono?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-baseline gap-4 py-3 last:pb-5">
-      <span className="min-w-0 text-sm font-medium text-foreground/80">{label}</span>
-      <span
+    <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-baseline gap-4 py-2.5">
+      <dt className="min-w-0 text-sm font-medium text-foreground/80">{label}</dt>
+      <dd
         className={cn(
-          'truncate text-right text-sm font-medium text-foreground',
+          'min-w-0 break-words text-right text-sm font-medium text-foreground',
           mono && 'font-mono text-xs tracking-wide text-muted-foreground',
         )}
       >
         {value || '—'}
-      </span>
+      </dd>
     </div>
   );
 }
@@ -191,7 +153,6 @@ export function ProfileSidebar({
           </div>
         </div>
       </CardHeader>
-      <Separator className="mx-5 w-auto" />
       <CardContent className="p-2">
         <nav aria-label="Profile settings" className="flex flex-col gap-1">
           {visibleSections.map(({ id, label, icon }) => {
@@ -229,13 +190,13 @@ export function ProfileSidebar({
   );
 }
 
-type AccountSettingsCardProps = ChangePasswordCardProps & {
+type AccountSettingsSectionProps = ChangePasswordCardProps & {
   onSignOut: () => void;
   signingOut: boolean;
   user: AppUser | null;
 };
 
-export function AccountSettingsCard({
+export function AccountSettingsSection({
   changing,
   form,
   onCancel,
@@ -245,13 +206,13 @@ export function AccountSettingsCard({
   setForm,
   signingOut,
   user,
-}: AccountSettingsCardProps) {
+}: AccountSettingsSectionProps) {
   const rows = [
     ...(user?.roles?.includes('STUDENT')
       ? [
           { label: 'Grade', value: user?.gradeLevel || '—' },
-          { label: 'Major Pathway', value: user?.major ? user.major.replace(/_/g, ' ') : '—' },
-          { label: 'Minor Pathway', value: user?.minor ? user.minor.replace(/_/g, ' ') : '—' },
+          { label: 'Major Pathway', value: user?.major ? friendlyRole(user.major) : '—' },
+          { label: 'Minor Pathway', value: user?.minor ? friendlyRole(user.minor) : '—' },
         ]
       : []),
   ];
@@ -276,30 +237,13 @@ export function AccountSettingsCard({
   }
 
   return (
-    <SettingsCard
-      icon={User}
-      title="Account"
-      description="Your school profile and sign-in credentials."
-      contentClassName="p-0"
-    >
-      <section className="px-5 pt-4" aria-labelledby="account-details-heading">
-        <div className="flex items-center gap-2">
-          <User className="size-3.5 text-foreground/70" aria-hidden />
-          <h2
-            id="account-details-heading"
-            className="text-xs font-semibold uppercase tracking-wide text-foreground/80"
-          >
-            Account details
-          </h2>
-        </div>
-        <div className="mt-1">
-          {rows.map((row) => (
-            <InfoRow key={row.label} {...row} />
-          ))}
-        </div>
-      </section>
-      <Separator className="mx-5 w-auto" />
-      <section className="p-5" aria-labelledby="password-heading">
+    <section aria-label="Account" className="flex min-w-0 flex-col gap-6">
+      {rows.length > 0 ? (
+        <dl className="divide-y divide-border/30">
+          {rows.map((row) => <InfoRow key={row.label} {...row} />)}
+        </dl>
+      ) : null}
+      <section aria-labelledby="password-heading">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -308,11 +252,6 @@ export function AccountSettingsCard({
                 Password
               </h2>
             </div>
-            {!changing ? (
-              <p className="mt-1 text-xs leading-5 text-foreground/80">
-                Update your sign-in credentials.
-              </p>
-            ) : null}
           </div>
           {!changing ? (
             <Button variant="tertiary" size="sm" onClick={onStart}>
@@ -378,16 +317,7 @@ export function AccountSettingsCard({
           </form>
         ) : null}
       </section>
-      <Separator className="mx-5 w-auto" />
-      <section className="flex items-center justify-between gap-4 p-5" aria-labelledby="sign-out-heading">
-        <div className="min-w-0">
-          <h2 id="sign-out-heading" className="text-sm font-semibold">
-            Sign out
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-foreground/80">
-            End this session on this device.
-          </p>
-        </div>
+      <div className="border-t border-border/30 pt-4">
         <Button
           type="button"
           variant="tertiary"
@@ -399,12 +329,12 @@ export function AccountSettingsCard({
         >
           Sign out
         </Button>
-      </section>
-    </SettingsCard>
+      </div>
+    </section>
   );
 }
 
-type AppearanceCardProps = {
+type AppearanceSectionProps = {
   theme: string | undefined;
   setTheme: (theme: string) => void;
   use24HourTime: boolean;
@@ -422,23 +352,19 @@ const APPEARANCE_OPTIONS = [
   { id: 'custom', label: 'Custom' },
 ] as const;
 
-export function AppearanceCard({
+export function AppearanceSection({
   theme,
   setTheme,
   use24HourTime,
   savingTimeFormat,
   onUse24HourTimeChange,
-}: AppearanceCardProps) {
+}: AppearanceSectionProps) {
   const { autoplay, setAutoplay } = useGifAutoplay();
   const { toast } = useToast();
   return (
-    <SettingsCard
-      icon={Palette}
-      title="Appearance"
-      description="Set the interface theme for this browser."
-      contentClassName="flex flex-col gap-3"
-    >
+    <section aria-label="Appearance" className="flex min-w-0 flex-col gap-5">
       <RadioGroup
+        aria-label="Theme"
         value={theme ?? 'system'}
         onValueChange={setTheme}
         className="w-full"
@@ -455,17 +381,17 @@ export function AppearanceCard({
 
       {theme === 'custom' ? <CustomThemeEditor /> : null}
 
-      <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
+      <div className="flex items-center justify-between gap-4 border-t border-border/30 pt-4">
         <div>
           <p className="text-sm font-medium text-foreground">Autoplay GIFs</p>
-          <p className="text-xs text-muted-foreground">Play animations automatically in this browser. Turn off to start paused. Reduced motion starts paused; use each animation’s play button.</p>
+          <p className="text-xs text-muted-foreground">Start GIFs automatically in this browser. Reduced motion starts them paused.</p>
         </div>
         <Switch checked={autoplay} aria-label="Autoplay GIFs" onCheckedChange={(next) => {
           try { setAutoplay(next); } catch { toast({ title: 'Could not save playback preference', variant: 'destructive' }); }
         }} />
       </div>
 
-      <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
+      <div className="flex items-center justify-between gap-4 border-t border-border/30 pt-4">
         <div>
           <p className="text-sm font-medium text-foreground">Use 24-hour time</p>
           <p className="text-xs text-muted-foreground">Show times like 13:45 instead of 1:45 PM.</p>
@@ -477,47 +403,39 @@ export function AppearanceCard({
           aria-label="Use 24-hour time"
         />
       </div>
-    </SettingsCard>
+    </section>
   );
 }
 
-export function WhatsNewCard() {
+export function WhatsNewSection() {
   return (
-    <SettingsCard
-      title="What's new"
-      description="Release notes, newest first."
-      contentClassName="flex min-w-0 flex-col gap-5"
-    >
+    <section aria-label="What's new" className="flex min-w-0 flex-col gap-5">
       <DevlogList />
-      <div className="border-t border-border/60 pt-3">
+      <div className="border-t border-border/30 pt-4">
         <AppVersionStamp />
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
           Include this version when you report a problem so we know which build you were on.
         </p>
       </div>
-    </SettingsCard>
+    </section>
   );
 }
 
-export function ModerationAlertsCard({ alerts }: { alerts: ModerationAlert[] }) {
+export function ModerationAlertsSection({ alerts }: { alerts: ModerationAlert[] }) {
   return (
-    <SettingsCard
-      icon={ShieldAlert}
-      title="Moderation Alerts"
-      description="Recent notices that may need staff review."
-    >
+    <section aria-label="Moderation">
       {alerts.length === 0 ? (
         <p className="text-sm text-muted-foreground">No recent flagged content notices.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {alerts.map((alert) => (
-            <div key={alert.id} className="border-b border-border/60 py-2.5 last:border-0">
+            <div key={alert.id} className="border-b border-border/30 py-2.5 last:border-0">
               <p className="text-sm font-medium">{alert.title}</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{alert.body}</p>
             </div>
           ))}
         </div>
       )}
-    </SettingsCard>
+    </section>
   );
 }

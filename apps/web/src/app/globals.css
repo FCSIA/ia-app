@@ -487,6 +487,9 @@
 
   html {
     @apply antialiased;
+    /* Keep centered layouts still when a view starts or stops scrolling. */
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
     overscroll-behavior-y: none;
   }
 
