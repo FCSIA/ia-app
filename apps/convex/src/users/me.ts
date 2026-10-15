@@ -17,7 +17,7 @@ import { clubChannelReactionValidator } from "../validators";
 import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
-import { normalizeDashboardLayout } from "./dashboardLayout";
+import { normalizeDashboardColumns, normalizeDashboardLayout } from "./dashboardLayout";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 const wallpaperColorPattern = /^#[0-9a-f]{6}$/;
@@ -64,12 +64,19 @@ export const me = query({
 export const updateDashboardLayout = mutation({
   args: {
     layout: v.array(v.string()),
+    columns: v.optional(v.array(v.array(v.string()))),
   },
   returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    if (args.columns && args.columns.length !== 2) {
+      throw new ConvexError("Dashboard layouts require two desktop columns.");
+    }
+    const layout = normalizeDashboardLayout(args.layout);
     await ctx.db.patch(user._id, {
-      dashboardLayout: normalizeDashboardLayout(args.layout),
+      dashboardLayout: layout,
+      // Older clients send only an order; discard stale column membership.
+      dashboardColumns: args.columns ? normalizeDashboardColumns(args.columns, layout) : undefined,
       updatedAt: Date.now(),
     });
 
