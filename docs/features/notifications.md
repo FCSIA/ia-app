@@ -71,6 +71,22 @@ The validator includes school announcements, club announcements, club join
 requests, club channel messages, mentions, thread replies, events, Flex Friday,
 content moderation, friend requests, and friend schedule changes.
 
+## Settings surfaces
+
+`NotificationSettingsPanel` is shared by the Settings tab on `/notifications`
+and the Notifications section on `/profile`. Both expose browser push, global
+categories, and club/channel preferences through the same implementation.
+
+Club settings use an inline Radix `Collapsible` with a separate Fluid icon
+button beside the club switch. Expanding a club does not change its preference;
+changing its switch does not expand it. Channel rows follow the workspace's
+`ownerUnitId` / `parentUnitId` hierarchy, preserving ancestor branches and
+omitting units without readable channels. These are nested lists, not an ARIA
+Tree or a popup action menu. The channel switches control mentions; all-message
+alerts remain in channel settings. Scoped switches inherit their category's
+global setting until explicitly overridden, and an off club disables its
+channel controls without erasing their saved choices.
+
 ## Browser Push
 
 Closed-tab delivery uses the browser Push API and the app service worker.

@@ -5,7 +5,9 @@
 - **Integration**: The user authorized working through the merge backlog.
   Feedback issue sync (#110) and its security prerequisite (#153) are merged.
   Dashboard PR #147 is squash-merged. Toast/profile geometry corrections are
-  being finished on `fix/ui-control-geometry` in the isolated `merge-pr147` worktree.
+  in PR #154. Shared notification settings are being reviewed on
+  `feat/shared-notification-settings`, stacked on #154 in the isolated
+  `merge-pr147` worktree.
   The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
   #149, and #150.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
@@ -61,6 +63,19 @@
   browser checks confirm centered 32px toast controls, keyboard Undo and dismissal,
   equal 9px profile navigation insets on desktop/390px, and circular avatars in
   the sidebar/editor. Review captures are in `/tmp/ia-ui-geometry-review/`.
+- Notification settings now share `NotificationSettingsPanel` on `/notifications`
+  and `/profile`: redundant subtitles/frames are removed, counts sit inline,
+  chevron disclosure remains separate from switches, required locks do not reserve
+  an empty trailing slot, and channel rows follow the workspace unit hierarchy
+  with tree connectors. Scoped switches reflect global inheritance and report
+  failed saves. The owner's interaction principles are captured in `.impeccable.md`.
+  Three hierarchy regressions, web typecheck/lint (21 existing warnings), and
+  production build pass. Compiled browser checks cover route parity, preference
+  persistence/inheritance, parent disabling, keyboard disclosure/switches,
+  aligned right edges, 390px/touch layouts, reduced motion, and light/custom
+  themes. Demo clubs are flat; nested placement is covered by focused tests.
+  Captures are in `/tmp/ia-notification-settings-review/`. Material visual changes
+  await design-owner review; #154 remains open with passing CI.
 - The `merge-pr147` worktree serves the compiled dashboard at
   `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
   on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.

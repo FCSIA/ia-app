@@ -4,7 +4,6 @@ import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Bell,
   Lock,
-  LockKeyhole,
   LogOut,
   Palette,
   ShieldAlert,
@@ -18,10 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevlogList } from '@/components/devlog/devlog-list';
 import { AppVersionStamp } from '@/components/devlog/devlog-version';
-import type { NotificationCategoryOption } from '@/components/notifications/notification-category-options';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -30,7 +27,6 @@ import { useGifAutoplay } from '@/hooks/use-gif-autoplay';
 import type { AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
-import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 
@@ -404,79 +400,6 @@ export function AccountSettingsCard({
           Sign out
         </Button>
       </section>
-    </SettingsCard>
-  );
-}
-
-type NotificationPreferencesCardProps = {
-  categories: NotificationCategoryOption[];
-  loading?: boolean;
-  prefMap: Record<string, { enabled?: boolean; locked?: boolean } | undefined>;
-  onToggle: (args: { category: NotificationCategory; enabled: boolean }) => void;
-};
-
-export function NotificationPreferencesCard({
-  categories,
-  loading = false,
-  prefMap,
-  onToggle,
-}: NotificationPreferencesCardProps) {
-  return (
-    <SettingsCard
-      icon={Bell}
-      title="Notification Preferences"
-      description="Choose which personal notification types stay active."
-      contentClassName="p-0"
-    >
-      {categories.map(({ key, label, description, defaultEnabled }) => {
-        const preference = prefMap[`${key}:global`];
-        const enabled = preference ? preference.enabled !== false : defaultEnabled;
-        const locked = preference?.locked === true;
-        const disabled = loading || locked;
-        return (
-          <div
-            key={key}
-            className={cn(
-              'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border/60 px-5 py-4',
-              disabled && 'opacity-65',
-            )}
-          >
-            <div className="min-w-0">
-              <Label
-                htmlFor={`pref-${key}`}
-                className={cn('text-sm font-medium', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}
-              >
-                {label}
-                {locked ? (
-                  <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-normal text-muted-foreground">
-                    <LockKeyhole className="size-3" aria-hidden />
-                    Required
-                  </span>
-                ) : null}
-              </Label>
-              <p
-                id={`pref-${key}-description`}
-                className="mt-1 max-w-prose text-xs leading-5 text-muted-foreground"
-              >
-                {description}
-              </p>
-            </div>
-            <Switch
-              label=""
-              id={`pref-${key}`}
-              aria-describedby={`pref-${key}-description`}
-              checked={enabled}
-              disabled={disabled}
-              onCheckedChange={(nextEnabled) =>
-                onToggle({ category: key, enabled: nextEnabled })
-              }
-            />
-          </div>
-        );
-      })}
-      <p className="px-5 py-3 text-xs leading-5 text-muted-foreground">
-        Admin broadcasts always notify you regardless of these preferences.
-      </p>
     </SettingsCard>
   );
 }
