@@ -1,14 +1,13 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useMutation, usePaginatedQuery } from 'convex/react';
+import { useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
-import { Bell, BellDot, Inbox, Mail, MailOpen, SearchX, Settings } from 'lucide-react';
+import { Bell, BellDot, Inbox, SearchX, Settings } from 'lucide-react';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
@@ -19,6 +18,9 @@ import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notification-category-options';
 import { cn } from '@/lib/utils';
+import { Elevated } from '@/lib/elevated';
+import { dismissAcknowledgedWebNotifications } from '@/lib/push-notifications';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
@@ -58,11 +60,20 @@ function NotificationListSkeleton() {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('inbox');
+  const [documentVisible, setDocumentVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
-  const markAllRead = useMutation(api.notifications.inbox.markAllRead);
+  const acknowledgeInbox = useMutation(api.notifications.inbox.acknowledgeInbox);
   const markRead = useMutation(api.notifications.inbox.markRead);
+  const acknowledgingKeyRef = useRef<string | null>(null);
+  const pendingDismissalRef = useRef<{
+    cutoff: number;
+    deliveryIds: Set<string>;
+  } | null>(null);
+  const mountedRef = useRef(true);
+  const [acknowledging, setAcknowledging] = useState(false);
+  const [dismissalRevision, setDismissalRevision] = useState(0);
 
   const {
     results: notifications,
@@ -70,6 +81,26 @@ export default function NotificationsPage() {
     loadMore: loadMoreNotifications,
   } = usePaginatedQuery(api.notifications.inbox.listPage, {}, { initialNumItems: 50 });
   const isLoading = notificationsStatus === 'LoadingFirstPage';
+
+  useEffect(() => {
+    const syncVisibility = () => setDocumentVisible(document.visibilityState === 'visible');
+    syncVisibility();
+    document.addEventListener('visibilitychange', syncVisibility);
+    return () => document.removeEventListener('visibilitychange', syncVisibility);
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // A failed acknowledgement may retry after the user leaves and returns to
+  // the Inbox, but never continuously for the same visible snapshot.
+  useEffect(() => {
+    if (!documentVisible) acknowledgingKeyRef.current = null;
+  }, [documentVisible]);
 
   const filteredNotifications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -82,18 +113,6 @@ export default function NotificationsPage() {
       return searchable.includes(query);
     });
   }, [notifications, deferredSearch]);
-
-  const [markingAll, setMarkingAll] = useState(false);
-
-  async function handleMarkAllRead() {
-    setMarkingAll(true);
-    try {
-      await markAllRead();
-      toast({ title: 'All marked as read' });
-    } finally {
-      setMarkingAll(false);
-    }
-  }
 
   function handleMarkRead(id: Id<'notificationDeliveries'>) {
     void markRead({ ids: [id] });
@@ -109,6 +128,50 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const hasUnread = unreadCount > 0;
   const hasQuery = deferredSearch.trim().length > 0;
+  const unreadKey = notifications
+    .filter((notification) => !notification.isRead)
+    .map((notification) => notification.id)
+    .join(',');
+
+  useEffect(() => {
+    if (activeTab !== 'inbox' || isLoading || !documentVisible || !unreadKey || acknowledging) return;
+    if (acknowledgingKeyRef.current === unreadKey) return;
+
+    acknowledgingKeyRef.current = unreadKey;
+    setAcknowledging(true);
+    const acknowledgedDeliveryIds = new Set(unreadKey.split(','));
+    void acknowledgeInbox({})
+      .then(({ cutoff }) => {
+        pendingDismissalRef.current = { cutoff, deliveryIds: acknowledgedDeliveryIds };
+        if (mountedRef.current) setDismissalRevision((current) => current + 1);
+      })
+      // Keep this exact snapshot acknowledged after a failure too: retrying a
+      // failing mutation on every render would create a request loop. A new
+      // visible delivery has a new key and gets its own acknowledgement.
+      .catch(() => undefined)
+      .finally(() => {
+        if (mountedRef.current) setAcknowledging(false);
+      });
+  }, [acknowledgeInbox, acknowledging, activeTab, documentVisible, isLoading, unreadKey]);
+
+  useEffect(() => {
+    const pending = pendingDismissalRef.current;
+    if (!pending) return;
+
+    // The acknowledgement may continue in server-side batches. Close only
+    // notifications whose rows have already appeared as read reactively.
+    const readDeliveryIds = new Set(
+      notifications.filter((notification) => notification.isRead).map((notification) => notification.id),
+    );
+    const acknowledgedDeliveryIds = new Set(
+      [...pending.deliveryIds].filter((id) => readDeliveryIds.has(id as Id<'notificationDeliveries'>)),
+    );
+    if (acknowledgedDeliveryIds.size === 0) return;
+
+    for (const id of acknowledgedDeliveryIds) pending.deliveryIds.delete(id);
+    if (pending.deliveryIds.size === 0) pendingDismissalRef.current = null;
+    void dismissAcknowledgedWebNotifications(pending.cutoff, acknowledgedDeliveryIds);
+  }, [dismissalRevision, notifications]);
 
   return (
     <AppShell
@@ -121,34 +184,23 @@ export default function NotificationsPage() {
       <PageFrame className="pt-0">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
 
-          <Tabs defaultValue="inbox" className="w-full">
-            <div className="flex items-center justify-between gap-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div>
               <TabsList>
                 <TabItem value="inbox" icon={Bell} label="Inbox" />
                 <TabItem value="settings" icon={Settings} label="Settings" />
               </TabsList>
-              <Button
-                variant="ghost"
-                onClick={handleMarkAllRead}
-                loading={markingAll}
-                disabled={!hasUnread}
-                className="shrink-0"
-                size="icon-sm"
-                aria-label="Mark all notifications as read"
-                title="Mark all notifications as read"
-              >
-                {hasUnread ? <MailOpen /> : <Mail />}
-              </Button>
             </div>
             <TabPanel value="inbox" className="mt-5">
-              <div>
+              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${CARD_SURFACE_FOREGROUND}`}>
                 <section className="min-w-0">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <SearchInput
                       value={search}
                       onValueChange={setSearch}
                       placeholder="Search notifications..."
-                      className="w-full sm:max-w-md"
+                      className="w-full"
+                      inputClassName="border-border bg-background text-foreground placeholder:text-muted-foreground"
                     />
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {hasQuery
@@ -179,7 +231,7 @@ export default function NotificationsPage() {
                       ) : null}
                     </Empty>
                   ) : (
-                    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+                    <Elevated offset={1} className="overflow-hidden rounded-xl">
                       <ul className="divide-y divide-border/60">
                         {filteredNotifications.map((n) => {
                           const categoryDetails = NOTIFICATION_CATEGORY_DETAILS[n.category];
@@ -239,7 +291,7 @@ export default function NotificationsPage() {
                           );
                         })}
                       </ul>
-                    </div>
+                    </Elevated>
                   )}
 
                   {filteredNotifications.length > 0 && notificationsStatus !== 'Exhausted' ? (
@@ -259,7 +311,9 @@ export default function NotificationsPage() {
               </div>
             </TabPanel>
             <TabPanel value="settings" className="mt-5 max-w-4xl">
-              <NotificationSettingsPanel />
+              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-6 ${CARD_SURFACE_FOREGROUND}`}>
+                <NotificationSettingsPanel />
+              </div>
             </TabPanel>
           </Tabs>
         </div>

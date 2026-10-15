@@ -24,6 +24,13 @@ describe("club channel notification copy", () => {
       channelNotificationTitle({
         authorName: "Matthew Kingsly",
         channelName: "robotics",
+        kind: "REPLY",
+      }),
+    ).toBe("Matthew Kingsly replied to you in #robotics");
+    expect(
+      channelNotificationTitle({
+        authorName: "Matthew Kingsly",
+        channelName: "robotics",
         kind: "USER_MENTION",
       }),
     ).toBe("Matthew Kingsly mentioned you in #robotics");

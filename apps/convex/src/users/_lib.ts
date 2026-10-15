@@ -1,4 +1,4 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { hashPassword } from "better-auth/crypto";
 import { createAuth } from "../auth";
 import { components } from "../_generated/api";
@@ -6,32 +6,42 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { type AppRole } from "../../lib/roles";
 import { incrementUserCounts } from "../stats";
-import { docs } from "../../lib/docs";
+import { schema } from "../schema";
 
-const userProfileFields = {
-  _id: v.id("users"),
-  uniqueId: docs.users.fields.uniqueId,
-  firstName: docs.users.fields.firstName,
-  lastName: docs.users.fields.lastName,
-  roles: docs.users.fields.roles,
-  gradeLevel: docs.users.fields.gradeLevel,
-  major: docs.users.fields.major,
-  minor: docs.users.fields.minor,
-  email: docs.users.fields.email,
-  isActive: docs.users.fields.isActive,
-  avatarUrl: docs.users.fields.avatarUrl,
-};
+const userProfileValidator = schema
+  .doc("users")
+  .pick(
+    "_id",
+    "uniqueId",
+    "firstName",
+    "lastName",
+    "roles",
+    "gradeLevel",
+    "major",
+    "minor",
+    "email",
+    "isActive",
+    "avatarUrl",
+    "isDeveloper",
+  );
 
-export const userSelfProfileValidator = v.object({
-  ...userProfileFields,
-  mustResetPassword: docs.users.fields.mustResetPassword,
-  canReviewFeedback: docs.users.fields.canReviewFeedback,
-  dashboardLayout: docs.users.fields.dashboardLayout,
-  use24HourTime: docs.users.fields.use24HourTime,
-  customBackgroundUrl: docs.users.fields.customBackgroundUrl,
-});
+export const userSelfProfileValidator = userProfileValidator.extend(
+  schema
+    .doc("users")
+    .pick(
+      "mustResetPassword",
+      "canReviewFeedback",
+      "dashboardLayout",
+      "mobileTabLayout",
+      "use24HourTime",
+      "chatDoubleTapReaction",
+      "customBackgroundUrl",
+      "customBackgroundPalette",
+      "customBackgroundTint",
+    ).fields,
+);
 
-export const adminUserProfileValidator = v.object(userProfileFields);
+export const adminUserProfileValidator = userProfileValidator;
 
 export function toUserSelfProfile(user: Doc<"users">) {
   return {
@@ -48,10 +58,15 @@ export function toUserSelfProfile(user: Doc<"users">) {
     mustResetPassword: user.mustResetPassword,
     canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
+    mobileTabLayout: user.mobileTabLayout,
     use24HourTime: user.use24HourTime ?? false,
+    chatDoubleTapReaction: user.chatDoubleTapReaction,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
-  };
+    customBackgroundPalette: user.customBackgroundPalette,
+    customBackgroundTint: user.customBackgroundTint,
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof userSelfProfileValidator>;
 }
 
 export function toAdminUserProfile(user: Doc<"users">) {
@@ -67,7 +82,8 @@ export function toAdminUserProfile(user: Doc<"users">) {
     email: user.email,
     isActive: user.isActive,
     avatarUrl: user.avatarUrl,
-  };
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof adminUserProfileValidator>;
 }
 
 export const temporaryPasswordAlphabet =
@@ -90,7 +106,13 @@ export const listUsersResultValidator = v.object({
   page: v.array(adminUserProfileValidator),
   isDone: v.boolean(),
   continueCursor: v.string(),
-  pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
+  pageStatus: v.optional(
+    v.union(
+      v.literal("SplitRecommended"),
+      v.literal("SplitRequired"),
+      v.null(),
+    ),
+  ),
   splitCursor: v.optional(v.union(v.string(), v.null())),
 });
 
@@ -98,13 +120,15 @@ export const studentImportResultValidator = v.object({
   created: v.number(),
   skipped: v.number(),
   errors: v.array(v.string()),
-  generatedCredentials: v.array(v.object({
-    firstName: v.string(),
-    lastName: v.string(),
-    uniqueId: v.string(),
-    email: v.string(),
-    temporaryPassword: v.string(),
-  })),
+  generatedCredentials: v.array(
+    v.object({
+      firstName: v.string(),
+      lastName: v.string(),
+      uniqueId: v.string(),
+      email: v.string(),
+      temporaryPassword: v.string(),
+    }),
+  ),
 });
 
 // Administrator imports return the same one-time credential envelope as the
@@ -123,7 +147,8 @@ export const studentExportRowValidator = v.object({
   minor: v.union(v.string(), v.null()),
 });
 
-export type Pathway = "INFORMATION_TECHNOLOGY" | "HEALTH_SCIENCE" | "ENGINEERING";
+export type Pathway =
+  "INFORMATION_TECHNOLOGY" | "HEALTH_SCIENCE" | "ENGINEERING";
 
 export type CreateLinkedUserArgs = {
   uniqueId: string;
@@ -186,15 +211,18 @@ export function classifyRoles(roles: AppRole[]) {
     isStudent,
     isTeacherStaff,
     isStudentAdmin,
-    isOtherRole: !isStudent && !isTeacherStaff && !isStudentAdmin && isPrivileged,
+    isOtherRole:
+      !isStudent && !isTeacherStaff && !isStudentAdmin && isPrivileged,
   };
 }
 
 export function generateTemporaryPassword(length = 12) {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes, (byte) =>
-    temporaryPasswordAlphabet[byte % temporaryPasswordAlphabet.length],
+  return Array.from(
+    bytes,
+    (byte) =>
+      temporaryPasswordAlphabet[byte % temporaryPasswordAlphabet.length],
   ).join("");
 }
 
@@ -245,7 +273,9 @@ export function assertCanActOn(
   actor: Pick<Doc<"users">, "roles">,
   target: Pick<Doc<"users">, "roles">,
 ) {
-  if (privilegeTierForRoles(target.roles) >= privilegeTierForRoles(actor.roles)) {
+  if (
+    privilegeTierForRoles(target.roles) >= privilegeTierForRoles(actor.roles)
+  ) {
     throw new ConvexError(
       "You cannot act on an account with equal or greater privileges.",
     );
@@ -300,16 +330,13 @@ export async function setBetterAuthPassword(
   authUserId: string,
   password: string,
 ) {
-  const account = (await ctx.runQuery(
-    components.betterAuth.adapter.findOne,
-    {
-      model: "account",
-      where: [
-        { field: "userId", value: authUserId },
-        { field: "providerId", value: "credential" },
-      ],
-    },
-  )) as { _id: string } | null;
+  const account = (await ctx.runQuery(components.betterAuth.adapter.findOne, {
+    model: "account",
+    where: [
+      { field: "userId", value: authUserId },
+      { field: "providerId", value: "credential" },
+    ],
+  })) as { _id: string } | null;
 
   if (!account) {
     throw new ConvexError("Credential account not found.");
@@ -349,7 +376,10 @@ export async function assertUniqueUserKeys(
   }
 }
 
-export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserArgs) {
+export async function createLinkedUser(
+  ctx: MutationCtx,
+  args: CreateLinkedUserArgs,
+) {
   const uniqueId = normalizeUniqueId(args.uniqueId);
   const roles: AppRole[] = args.roles?.length ? args.roles : ["STUDENT"];
   const email = normalizeEmail(args.email ?? buildStudentEmail(uniqueId));
@@ -411,5 +441,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
 }
 
 export function isStudentUser(user: Doc<"users">) {
-  return user.roles.some((role) => ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role));
+  return user.roles.some((role) =>
+    ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
+  );
 }

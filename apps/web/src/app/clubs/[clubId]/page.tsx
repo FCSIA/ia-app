@@ -1,46 +1,81 @@
-'use client';
+"use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery } from 'convex/react';
-import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { Check, ChevronDown, Clock3, KeyRound, Megaphone, MessageSquareText, Minus, Search, UserPlus, Users } from 'lucide-react';
-import { useClubId } from '../club-route';
-import type { ClubDetail } from '@/components/clubs/types';
-import { AppShell } from '@/components/layout/AppShell';
-import { ClubWorkspace } from '@/components/clubs/club-workspace';
-import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { ClubHero } from '@/components/clubs/club-hero';
-import { fullName } from '@/components/clubs/types';
-import { AnnouncementCard } from '@/components/announcements/announcement-card';
-import { Button } from '@/components/ui/button';
-import { CardGroup } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
-import { SearchInput } from '@/components/ui/search';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { filterBySearchQuery } from '@/lib/search';
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { useSearchParams } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
+import { useMutation, useQuery } from "@/lib/convex-react";
+import { api } from "~/apps/convex/src/_generated/api";
+import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import {
+  Check,
+  ChevronDown,
+  Clock3,
+  KeyRound,
+  Megaphone,
+  MessageSquareText,
+  Minus,
+  Search,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { useClubId } from "../club-route";
+import type { ClubDetail } from "@/components/clubs/types";
+import { AppShell } from "@/components/layout/AppShell";
+import { ClubWorkspace } from "@/components/clubs/club-workspace";
+import { AnnouncementDialog } from "@/components/clubs/dialogs/announcement-dialog";
+import { ClubProfileAvatar } from "@/components/clubs/club-profile-avatar";
+import { ClubHero } from "@/components/clubs/club-hero";
+import { fullName } from "@/components/clubs/types";
+import { AnnouncementCard } from "@/components/announcements/announcement-card";
+import { useAnnouncementFeedClock } from "@/components/announcements/use-announcement-feed-clock";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { Button } from "@/components/ui/button";
+import { Card, CardGroup, CardHeader, CardContent } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { SearchInput } from "@/components/ui/search";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { filterBySearchQuery } from "@/lib/search";
 
 function getMemberLimitState(club: ClubDetail) {
   const memberCount = club._count?.members ?? club.members.length;
   const memberLimit = club.memberLimit ?? null;
-  const remaining = memberLimit == null ? null : Math.max(memberLimit - memberCount, 0);
+  const remaining =
+    memberLimit == null ? null : Math.max(memberLimit - memberCount, 0);
   const isFull = memberLimit != null && memberCount >= memberLimit;
-  const percent = memberLimit == null ? null : Math.min(Math.round((memberCount / memberLimit) * 100), 100);
+  const percent =
+    memberLimit == null
+      ? null
+      : Math.min(Math.round((memberCount / memberLimit) * 100), 100);
 
   return { memberCount, memberLimit, remaining, isFull, percent };
 }
 
 function MemberLimitMeter({ club }: { club: ClubDetail }) {
-  const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
+  const { memberCount, memberLimit, remaining, isFull, percent } =
+    getMemberLimitState(club);
 
   return (
     <div className="space-y-1.5">
@@ -49,7 +84,11 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
           <Users className="size-4 shrink-0 text-primary" />
           <span className="truncate">Capacity</span>
         </span>
-        <span className="shrink-0 tabular-nums text-muted-foreground">{memberLimit == null ? `${memberCount} joined` : `${memberCount}/${memberLimit}`}</span>
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {memberLimit == null
+            ? `${memberCount} joined`
+            : `${memberCount}/${memberLimit}`}
+        </span>
       </div>
       {memberLimit != null ? (
         <div className="space-y-1.5">
@@ -57,14 +96,20 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
             value={percent ?? 0}
             aria-label={`${memberCount} of ${memberLimit} member spots filled`}
             className="h-1 bg-muted"
-            indicatorClassName={isFull ? 'bg-destructive' : 'bg-primary'}
+            indicatorClassName={isFull ? "bg-destructive" : "bg-primary"}
           />
-          <p className={`text-xs leading-4 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
-            {isFull ? 'Full. New members can join when a spot opens.' : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} open.`}
+          <p
+            className={`text-xs leading-4 ${isFull ? "font-medium text-destructive" : "text-muted-foreground"}`}
+          >
+            {isFull
+              ? "Full. New members can join when a spot opens."
+              : `${remaining} ${remaining === 1 ? "spot" : "spots"} open.`}
           </p>
         </div>
       ) : (
-        <p className="text-xs leading-4 text-muted-foreground">No member limit.</p>
+        <p className="text-xs leading-4 text-muted-foreground">
+          No member limit.
+        </p>
       )}
     </div>
   );
@@ -94,9 +139,7 @@ function OverviewSidebarSection({
             />
           </button>
         </CollapsibleTrigger>
-        <CollapsibleContent
-          className="overflow-hidden [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none"
-        >
+        <CollapsibleContent className="overflow-hidden [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none">
           <div className="px-4 pb-4">{children}</div>
         </CollapsibleContent>
       </section>
@@ -108,58 +151,80 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
   const clubId = useClubId();
   const { toast } = useToast();
   const { isFull } = getMemberLimitState(club);
-  const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
+  const respondToJoinRequest = useMutation(
+    api.clubs.invitations.respondToJoinRequest,
+  );
 
   if (!club.pendingJoinRequests?.length) return null;
 
   return (
     <div className="space-y-2">
-        {isFull ? (
-          <div className="border-l-2 border-destructive/60 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            This club is full. Pending requests can be declined, but approvals are disabled until a member spot opens.
-          </div>
-        ) : null}
-        {club.pendingJoinRequests.map((request) => (
-          <div key={request._id} className="flex items-center gap-2 py-1">
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <p className="truncate text-sm font-medium text-foreground">{fullName(request.requester)}</p>
-                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                  <Clock3 className="size-3" />
-                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                </span>
-              </div>
-            </div>
-            <div className="flex shrink-0 gap-1">
-              <Button
-                size="icon-compact"
-                variant="tertiary"
-                aria-label={`Decline ${fullName(request.requester)}'s request`}
-                title="Decline request"
-                onClick={() =>
-                  void respondToJoinRequest({
-                    clubId,
-                    requestId: request._id,
-                    accept: false,
-                  }).then(() => toast({ title: 'Join request updated' }))
-                }
-              ><Minus /></Button>
-              <Button
-                size="icon-compact"
-                disabled={isFull}
-                aria-label={`Approve ${fullName(request.requester)}'s request`}
-                title="Approve request"
-                onClick={() =>
-                  void respondToJoinRequest({
-                    clubId,
-                    requestId: request._id,
-                    accept: true,
-                  }).then(() => toast({ title: 'Join request updated' }))
-                }
-              ><Check /></Button>
+      {isFull ? (
+        <div className="border-l-2 border-destructive/60 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          This club is full. Pending requests can be declined, but approvals are
+          disabled until a member spot opens.
+        </div>
+      ) : null}
+      {club.pendingJoinRequests.map((request) => (
+        <div key={request._id} className="flex items-center gap-2 py-1">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-sm font-medium text-foreground">
+                {fullName(request.requester)}
+              </p>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                <Clock3 className="size-3" />
+                {formatDistanceToNow(new Date(request.createdAt), {
+                  addSuffix: true,
+                })}
+              </span>
             </div>
           </div>
-        ))}
+          <div className="flex shrink-0 gap-1">
+            <Button
+              size="icon-compact"
+              variant="tertiary"
+              aria-label={`Decline ${fullName(request.requester)}'s request`}
+              title="Decline request"
+              onClick={() =>
+                void respondToJoinRequest({
+                  clubId,
+                  requestId: request._id,
+                  accept: false,
+                }).then(() => toast({ title: "Join request updated" }))
+              }
+            >
+              <Minus />
+            </Button>
+            <Button
+              size="icon-compact"
+              disabled={isFull}
+              aria-label={`Approve ${fullName(request.requester)}'s request`}
+              title="Approve request"
+              onClick={() =>
+                void respondToJoinRequest({
+                  clubId,
+                  requestId: request._id,
+                  accept: true,
+                }).then((result) =>
+                  toast(
+                    result.kind === "memberLimitReached"
+                      ? {
+                          title: "Club is full",
+                          description:
+                            "A member spot must open before this request can be approved.",
+                          variant: "destructive",
+                        }
+                      : { title: "Join request updated" },
+                  ),
+                )
+              }
+            >
+              <Check />
+            </Button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -167,7 +232,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
 function RoleRoster({ club }: { club: ClubDetail }) {
   const membersByRole = new Map<string, typeof club.directory>();
   for (const person of club.directory) {
-    if (person.kind !== 'MEMBER' || !person.roleId) continue;
+    if (person.kind !== "MEMBER" || !person.roleId) continue;
     const members = membersByRole.get(person.roleId) ?? [];
     members.push(person);
     membersByRole.set(person.roleId, members);
@@ -183,8 +248,14 @@ function RoleRoster({ club }: { club: ClubDetail }) {
       <div className="space-y-1.5">
         {members.map((member) => (
           <div key={member._id} className="flex items-center gap-2.5">
-            <ClubAvatar person={member} className="size-8" fallbackClassName="text-[10px]" />
-            <p className="min-w-0 truncate text-sm font-medium">{fullName(member)}</p>
+            <ClubProfileAvatar
+              person={member}
+              className="size-8"
+              fallbackClassName="text-[10px]"
+            />
+            <p className="min-w-0 truncate text-sm font-medium">
+              {fullName(member)}
+            </p>
           </div>
         ))}
       </div>
@@ -196,27 +267,54 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
   const clubId = useClubId();
   const { toast } = useToast();
   const [redeemOpen, setRedeemOpen] = useState(false);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState("");
   const { isFull } = getMemberLimitState(club);
   const redeemJoinCode = useMutation(api.clubs.invitations.redeemJoinCode);
 
-  if (club.joinPolicy !== 'REQUEST') return null;
+  if (club.joinPolicy !== "REQUEST") return null;
 
   return (
     <div className="space-y-3">
-      <Button type="button" variant="tertiary" leadingIcon={KeyRound} active={redeemOpen} disabled={isFull} onClick={() => setRedeemOpen((current) => !current)}>
+      <Button
+        type="button"
+        variant="tertiary"
+        leadingIcon={KeyRound}
+        active={redeemOpen}
+        disabled={isFull}
+        onClick={() => setRedeemOpen((current) => !current)}
+      >
         Join code
       </Button>
       {redeemOpen ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:flex-row">
-          <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Enter join code" />
+          <Input
+            value={code}
+            onChange={(event) => setCode(event.target.value.toUpperCase())}
+            placeholder="Enter join code"
+          />
           <Button
-            onClick={() =>
+            onClick={() => {
               void redeemJoinCode({
                 clubId,
                 code: code.trim().toUpperCase(),
-              }).then(() => toast({ title: 'Joined club with code' }))
-            }
+              }).then((result) =>
+                toast(
+                  result.kind === "memberLimitReached"
+                    ? {
+                        title: "Club is full",
+                        description:
+                          "A member spot must open before you can join.",
+                        variant: "destructive",
+                      }
+                    : {
+                        title:
+                          result.kind === "alreadyMember"
+                            ? "Already a member"
+                            : "Joined club with code",
+                      },
+                ),
+              );
+            }}
             disabled={isFull || !code.trim()}
           >
             Join with code
@@ -238,161 +336,300 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   const logoUrl = club.logoUrl;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-8 py-5 sm:py-8">
-      <section className="space-y-5">
-        {(bannerUrl || club.accentColor) && (
-          <div
-            className="h-24 w-full rounded-lg bg-gradient-to-br from-primary/30 via-primary/10 to-muted sm:h-32"
-            style={
-              bannerUrl
-                ? {
-                    backgroundImage: `url(${bannerUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+    <div className="mx-auto w-full max-w-4xl space-y-6 py-5 sm:py-8">
+      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+        <Card className="bg-transparent">
+          <CardContent className="p-5 sm:p-6">
+            <section className="space-y-5">
+              {(bannerUrl || club.accentColor) && (
+                <div
+                  className="h-24 w-full rounded-lg bg-muted sm:h-32"
+                  style={
+                    bannerUrl
+                      ? {
+                          backgroundImage: `url(${bannerUrl})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        }
+                      : club.accentColor
+                        ? {
+                            background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)`,
+                          }
+                        : undefined
                   }
-                : club.accentColor
-                  ? {
-                      background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)`,
-                    }
-                  : undefined
-            }
-          />
-        )}
-        <div className={`space-y-5 ${bannerUrl || club.accentColor ? '-mt-12 px-4 sm:-mt-16 sm:px-6' : ''}`}>
-          {logoUrl && (
-            <div className="size-16 overflow-hidden rounded-lg border-4 border-background bg-muted sm:size-20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoUrl} alt={club.name} className="size-full object-cover" />
-            </div>
-          )}
-          <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{club.name}</h1>
-              <div className="flex items-center gap-1.5">
-                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Open' : club.joinPolicy === 'REQUEST' ? 'Approval' : 'Invite only'}</Badge>
-                {club.memberLimit != null ? (
-                  <Badge variant="solid" color={isFull ? 'red' : 'amber'}>
-                    {isFull ? 'Full' : 'Limited'}
-                  </Badge>
-                ) : null}
-                {club.viewer.hasPendingJoinRequest ? <Badge variant="solid">Request pending</Badge> : null}
-              </div>
-            </div>
-            <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">{club.overview || club.description || 'No club description yet.'}</p>
-          </div>
-          <MemberLimitMeter club={club} />
-          <div className="flex flex-wrap items-center gap-2">
-            {club.joinPolicy === 'OPEN' ? (
-              <Button leadingIcon={UserPlus} onClick={() => void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))} disabled={isFull}>
-                {isFull ? 'Club is full' : 'Join club'}
-              </Button>
-            ) : club.joinPolicy === 'REQUEST' ? (
-              <Button
-                leadingIcon={UserPlus}
-                onClick={() => void requestToJoin({ clubId }).then(() => toast({ title: 'Join request sent' }))}
-                disabled={isFull || club.viewer.hasPendingJoinRequest}
+                />
+              )}
+              <div
+                className={`space-y-5 ${bannerUrl || club.accentColor ? "-mt-12 px-4 sm:-mt-16 sm:px-6" : ""}`}
               >
-                {isFull ? 'Club is full' : club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
-              </Button>
-            ) : null}
-            <RedeemJoinCodePanel club={club} />
-          </div>
-        </div>
-      </section>
+                {logoUrl && (
+                  <div className="size-16 overflow-hidden rounded-lg border-4 border-background bg-muted sm:size-20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoUrl}
+                      alt={club.name}
+                      className="size-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                      {club.name}
+                    </h1>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="solid">
+                        {club.joinPolicy === "OPEN"
+                          ? "Open"
+                          : club.joinPolicy === "REQUEST"
+                            ? "Approval"
+                            : "Invite only"}
+                      </Badge>
+                      {club.memberLimit != null ? (
+                        <Badge variant="solid" color={isFull ? "red" : "amber"}>
+                          {isFull ? "Full" : "Limited"}
+                        </Badge>
+                      ) : null}
+                      {club.viewer.hasPendingJoinRequest ? (
+                        <Badge variant="solid">Request pending</Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="max-w-3xl text-[15px] leading-6 text-foreground/70">
+                    {club.overview || club.description || "No club description yet."}
+                  </p>
+                </div>
+                <MemberLimitMeter club={club} />
+                <div className="flex flex-wrap items-center gap-2">
+                  {club.joinPolicy === "OPEN" ? (
+                    <Button
+                      leadingIcon={UserPlus}
+                      onClick={() => {
+                        void joinOpenClub({ clubId }).then((result) =>
+                          toast(
+                            result.kind === "memberLimitReached"
+                              ? {
+                                  title: "Club is full",
+                                  description:
+                                    "A member spot must open before you can join.",
+                                  variant: "destructive",
+                                }
+                              : {
+                                  title:
+                                    result.kind === "alreadyMember"
+                                      ? "Already a member"
+                                      : "Joined club",
+                                },
+                          ),
+                        );
+                      }}
+                      disabled={isFull}
+                    >
+                      {isFull ? "Club is full" : "Join club"}
+                    </Button>
+                  ) : club.joinPolicy === "REQUEST" ? (
+                    <Button
+                      leadingIcon={UserPlus}
+                      onClick={() =>
+                        void requestToJoin({ clubId }).then(() =>
+                          toast({ title: "Join request sent" }),
+                        )
+                      }
+                      disabled={isFull || club.viewer.hasPendingJoinRequest}
+                    >
+                      {isFull
+                        ? "Club is full"
+                        : club.viewer.hasPendingJoinRequest
+                          ? "Request pending"
+                          : "Request to join"}
+                    </Button>
+                  ) : null}
+                  <RedeemJoinCodePanel club={club} />
+                </div>
+              </div>
+            </section>
+          </CardContent>
+        </Card>
+      </CardGroup>
 
-      <div className="space-y-6 border-t border-border/60 pt-5">
-        <section className="min-w-0">
-          <div className="mb-3">
+      <CardGroup border="outlined" className={`mb-6 overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+        <Card className="bg-transparent">
+          <CardHeader className="pb-3 border-b border-border/40 mb-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <KeyRound className="size-4 text-primary" />
               Sponsors
             </h2>
-          </div>
+          </CardHeader>
+          <CardContent>
             {club.sponsors.length > 0 ? (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {club.sponsors.map((sponsor) => (
-                  <div key={sponsor.userId} className="flex items-center gap-2.5 py-1.5">
-                    <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
+                  <div
+                    key={sponsor.userId}
+                    className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
+                  >
+                    <ClubProfileAvatar
+                      person={sponsor.user}
+                      className="size-10 shrink-0"
+                      fallbackClassName="text-sm"
+                    />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {fullName(sponsor.user)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Club Sponsor</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="py-3 text-sm text-muted-foreground">No sponsors assigned yet.</p>
-            )}
-        </section>
-
-        {club.roles.map((role) => {
-          const members = club.leaders.filter((leader) => leader.roleId === role._id);
-          if (members.length === 0) return null;
-          return (
-            <section key={role._id} className="min-w-0">
-              <h2 className="mb-3 text-sm font-semibold">{role.name}</h2>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {members.map((member) => (
-                  <div key={member.userId} className="flex items-center gap-2.5 py-1.5">
-                    <ClubAvatar person={member.user} className="size-9" fallbackClassName="text-xs" />
-                    <p className="min-w-0 truncate text-sm font-semibold text-foreground">{fullName(member.user)}</p>
-                  </div>
-                ))}
+              <div className="text-center py-6">
+                <Users className="mx-auto size-8 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
               </div>
-            </section>
-          );
-        })}
-      </div>
+            )}
+          </CardContent>
+        </Card>
+      </CardGroup>
+
+      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+        <Card className="bg-transparent">
+          <CardContent className="p-5 sm:p-6">
+            <div className="space-y-6">
+              {club.roles.map((role) => {
+                const members = club.leaders.filter(
+                  (leader) => leader.roleId === role._id,
+                );
+                if (members.length === 0) return null;
+                return (
+                  <section key={role._id} className="min-w-0">
+                    <h2 className="mb-3 text-sm font-semibold flex items-center gap-2">
+                      <Users className="size-4 text-muted-foreground" />
+                      {role.name}
+                    </h2>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {members.map((member) => (
+                        <div
+                          key={member.userId}
+                          className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
+                        >
+                          <ClubProfileAvatar
+                            person={member.user}
+                            className="size-10 shrink-0"
+                            fallbackClassName="text-sm"
+                          />
+                          <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+                            {fullName(member.user)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </CardGroup>
     </div>
   );
 }
 
 export default function ClubOverviewPage() {
+  const announcementNow = useAnnouncementFeedClock();
   const clubId = useClubId();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
   const { toast } = useToast();
   const [announceOpen, setAnnounceOpen] = useState(false);
   const redeemedUnitJoinRef = useRef<string | null>(null);
+  const redeemedClubJoinRef = useRef<string | null>(null);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
-  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
+  const club = useQuery(api.clubs.detail.get, { clubId }) as
+    ClubDetail | undefined;
   const redeemJoinCode = useMutation(api.clubs.invitations.redeemJoinCode);
   const joinUnit = useMutation(api.clubs.hierarchy.join);
 
   useEffect(() => {
-    const code = searchParams?.get('joinCode');
-    if (code && club && !club.viewer.canAccessWorkspace && !getMemberLimitState(club).isFull) {
-      void redeemJoinCode({ clubId, code: code.trim().toUpperCase() }).then(() => toast({ title: 'Joined club with code' }));
+    const code = searchParams?.get("joinCode");
+    const normalizedCode = code?.trim().toUpperCase();
+    if (
+      normalizedCode &&
+      club &&
+      !club.viewer.canAccessWorkspace &&
+      !getMemberLimitState(club).isFull &&
+      redeemedClubJoinRef.current !== normalizedCode
+    ) {
+      redeemedClubJoinRef.current = normalizedCode;
+      void redeemJoinCode({ clubId, code: normalizedCode })
+        .then((result) => {
+          if (result.kind === "memberLimitReached") {
+            toast({
+              title: "Club is full",
+              description: "A member spot must open before you can join.",
+              variant: "destructive",
+            });
+          } else if (result.kind === "alreadyMember") {
+            toast({ title: "Already a member" });
+          } else {
+            toast({ title: "Joined club with code" });
+          }
+        })
+        .catch((error: unknown) => {
+          redeemedClubJoinRef.current = null;
+          toast({
+            title:
+              error instanceof Error ? error.message : "Could not join club",
+            variant: "destructive",
+          });
+        });
     }
   }, [club, clubId, redeemJoinCode, searchParams, toast]);
 
   useEffect(() => {
-    const unitId = searchParams?.get('unitId') as Id<'clubUnits'> | null;
-    const unitCode = searchParams?.get('unitCode');
+    const unitId = searchParams?.get("unitId") as Id<"clubUnits"> | null;
+    const unitCode = searchParams?.get("unitCode");
     if (!unitId || !unitCode) return;
     const redemptionKey = `${unitId}:${unitCode}`;
-    if (!club?.viewer.canAccessWorkspace || redeemedUnitJoinRef.current === redemptionKey) {
+    if (
+      !club?.viewer.canAccessWorkspace ||
+      redeemedUnitJoinRef.current === redemptionKey
+    ) {
       return;
     }
 
     redeemedUnitJoinRef.current = redemptionKey;
     void joinUnit({ clubId, unitId, code: unitCode.trim().toUpperCase() })
-      .then(() => toast({ title: 'Joined club group' }))
+      .then(() => toast({ title: "Joined club group" }))
       .catch((error: unknown) => {
         redeemedUnitJoinRef.current = null;
         toast({
-          title: error instanceof Error ? error.message : 'Could not join club group',
-          variant: 'destructive',
+          title:
+            error instanceof Error
+              ? error.message
+              : "Could not join club group",
+          variant: "destructive",
         });
       });
   }, [club?.viewer.canAccessWorkspace, clubId, joinUnit, searchParams, toast]);
 
-  const announcements = useQuery(api.announcements.feed.list, club?.viewer.canAccessWorkspace ? { clubId: clubId as Id<'clubs'> } : 'skip') ?? [];
+  const announcements =
+    useQuery(
+      api.announcements.feed.list,
+      club?.viewer.canAccessWorkspace
+        ? { clubId: clubId as Id<"clubs">, now: announcementNow }
+        : "skip",
+    ) ?? [];
 
   const filteredAnnouncements = useMemo(() => {
-    return filterBySearchQuery(announcements, deferredSearch, (announcement) => [announcement.title, announcement.body]);
+    return filterBySearchQuery(
+      announcements,
+      deferredSearch,
+      (announcement) => [announcement.title, announcement.body],
+    );
   }, [announcements, deferredSearch]);
 
   if (!club) return null;
@@ -405,14 +642,18 @@ export default function ClubOverviewPage() {
     );
   }
 
-  const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?._id);
-  const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isSponsor = club.sponsors?.some(
+    (sponsor) => sponsor.userId === user?._id,
+  );
+  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
   const canPost = club.viewer.permissions.createAnnouncementDrafts;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
 
   const title = (
     <div className="min-w-0">
-      <h1 className="truncate text-base font-semibold text-foreground">Overview</h1>
+      <h1 className="truncate text-base font-semibold text-foreground">
+        Overview
+      </h1>
     </div>
   );
 
@@ -423,8 +664,11 @@ export default function ClubOverviewPage() {
           <MemberLimitMeter club={club} />
         </OverviewSidebarSection>
 
-        {club.viewer.permissions.manageJoinRequests && club.pendingJoinRequests.length > 0 ? (
-          <OverviewSidebarSection title={`Pending requests (${club.pendingJoinRequests.length})`}>
+        {club.viewer.permissions.manageJoinRequests &&
+        club.pendingJoinRequests.length > 0 ? (
+          <OverviewSidebarSection
+            title={`Pending requests (${club.pendingJoinRequests.length})`}
+          >
             <RequestsPanel club={club} />
           </OverviewSidebarSection>
         ) : null}
@@ -433,9 +677,15 @@ export default function ClubOverviewPage() {
           <div className="space-y-1.5">
             {club.sponsors.map((sponsor) => (
               <div key={sponsor.userId} className="flex items-center gap-2.5">
-                <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
+                <ClubProfileAvatar
+                  person={sponsor.user}
+                  className="size-8"
+                  fallbackClassName="text-[10px]"
+                />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
+                  <p className="truncate text-sm font-medium">
+                    {fullName(sponsor.user)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -450,65 +700,110 @@ export default function ClubOverviewPage() {
   return (
     <ClubWorkspace title={title} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <ClubHero club={club} canEdit={club.viewer.permissions.manageClubSettings} />
+        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
+          <Card className="bg-transparent">
+            <CardContent className="p-0">
+              <ClubHero
+                club={club}
+                canEdit={club.viewer.permissions.manageClubSettings}
+              />
+            </CardContent>
+          </Card>
+        </CardGroup>
 
-        <section className="space-y-2">
-          <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <Megaphone className="size-4 text-primary" />
-              <h2 className="text-base font-semibold">Announcements</h2>
-            </div>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              {deferredSearch &&
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  {filteredAnnouncements.length} of {announcements.length}
-                </span>
-              }
-              {canPost &&
-                <Button size="sm" leadingIcon={Megaphone} onClick={() => setAnnounceOpen(true)}>
-                  {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
-                </Button>
-              }
-              <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="w-full sm:w-60" />
-            </div>
-          </div>
-
-          {filteredAnnouncements.length > 0 ? (
-            <CardGroup>
-              {filteredAnnouncements.map((announcement) => (
-                <AnnouncementCard
-                  key={announcement._id}
-                  announcement={{
-                    ...(announcement as any),
-                    isRead: (announcement as any).isRead ?? true,
-                    targetType: (announcement as any).targetType ?? 'CLUB',
-                    status: (announcement as any).status ?? 'ACTIVE',
-                    isAdminGeneral: (announcement as any).isAdminGeneral ?? false,
-                  }}
-                  compact
-                />
-              ))}
-            </CardGroup>
-          ) : (
-            <Empty className="rounded-lg border bg-muted/20">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">{deferredSearch ? <Search /> : <MessageSquareText />}</EmptyMedia>
-                <EmptyTitle>{deferredSearch ? 'No matches found' : 'No announcements yet'}</EmptyTitle>
-                <EmptyDescription>
-                  {deferredSearch ? 'Try a different search term.' : canPost ? 'Post the first update.' : 'Check back later.'}
-                </EmptyDescription>
-              </EmptyHeader>
-              {deferredSearch && (
-                <Button variant="ghost" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
-                  Clear search
-                </Button>
+        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
+          <Card className="bg-transparent">
+            <CardHeader className="pb-3 border-b border-border/40 mb-4">
+              <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="size-4 text-primary" />
+                  <h2 className="text-base font-semibold">Announcements</h2>
+                </div>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  {deferredSearch && (
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {filteredAnnouncements.length} of {announcements.length}
+                    </span>
+                  )}
+                  {canPost && (
+                    <Button
+                      size="sm"
+                      leadingIcon={Megaphone}
+                      onClick={() => setAnnounceOpen(true)}
+                    >
+                      {canPostDirectAnnouncement
+                        ? "Post announcement"
+                        : "Propose announcement"}
+                    </Button>
+                  )}
+                  <SearchInput
+                    value={search}
+                    onValueChange={setSearch}
+                    placeholder="Search announcements"
+                    size="sm"
+                    className="w-full sm:w-60 border-border/60 focus:border-primary focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredAnnouncements.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredAnnouncements.map((announcement) => (
+                    <AnnouncementCard
+                      key={announcement._id}
+                      announcement={{
+                        ...(announcement as any),
+                        isRead: (announcement as any).isRead ?? true,
+                        targetType: (announcement as any).targetType ?? "CLUB",
+                        status: (announcement as any).status ?? "ACTIVE",
+                        isAdminGeneral:
+                          (announcement as any).isAdminGeneral ?? false,
+                      }}
+                      compact
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Empty className="rounded-lg border bg-muted/20 py-12">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      {deferredSearch ? <Search /> : <MessageSquareText />}
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {deferredSearch ? "No matches found" : "No announcements yet"}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {deferredSearch
+                        ? "Try a different search term."
+                        : canPost
+                          ? "Post the first update."
+                          : "Check back later."}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  {deferredSearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearch("")}
+                      className="mt-2 font-semibold text-accent-500"
+                    >
+                      Clear search
+                    </Button>
+                  )}
+                </Empty>
               )}
-            </Empty>
-          )}
-        </section>
+            </CardContent>
+          </Card>
+        </CardGroup>
       </div>
 
-      <AnnouncementDialog clubId={clubId} open={announceOpen} onOpenChange={setAnnounceOpen} directPost={canPostDirectAnnouncement} />
+      <AnnouncementDialog
+        clubId={clubId}
+        open={announceOpen}
+        onOpenChange={setAnnounceOpen}
+        directPost={canPostDirectAnnouncement}
+      />
     </ClubWorkspace>
   );
 }

@@ -18,6 +18,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
+import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { Elevated } from "@/lib/elevated";
@@ -137,6 +138,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           role="group"
           className={cn(
             `relative flex flex-col gap-0.5 w-72 max-w-full ${shape.container} p-1 select-none`,
+            POPOVER_SURFACE_FOREGROUND,
             className
           )}
           {...props}
@@ -557,6 +559,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                   // min-w tracks the trigger; the available-height guard maps
                   // Base UI's --available-height to Radix's equivalent var.
                   `relative flex flex-col gap-0.5 w-72 max-w-full min-w-[var(--radix-dropdown-menu-trigger-width)] max-h-[min(480px,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto ${shape.container} p-1 select-none outline-none`,
+                  POPOVER_SURFACE_FOREGROUND,
                   className
                 )}
               >

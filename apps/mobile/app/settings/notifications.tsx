@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAction, useConvex, useMutation, useQuery } from "convex/react";
+import { useAction, useConvex, useMutation, useQuery } from "@/lib/convex-react";
 import { Smartphone } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Button, ListRow, Section, Switch, Txt, useToast } from "@/components/ui";

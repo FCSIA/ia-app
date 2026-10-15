@@ -1,169 +1,153 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
-  format,
-  isSameDay,
-  isToday,
-  startOfMonth,
-  startOfWeek,
-} from 'date-fns';
-import { useQuery } from 'convex/react';
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin } from 'lucide-react';
+import type { FunctionReturnType } from 'convex/server';
+import { addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
+import { useQuery } from '@/lib/convex-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Clock3, MapPin } from 'lucide-react';
+
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
+import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { api } from '~/apps/convex/src/_generated/api';
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+type CalendarEntry = FunctionReturnType<typeof api.events.calendar.list>[number];
 
 export function CalendarWidget() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(new Date());
-
   const calStart = startOfWeek(startOfMonth(currentMonth));
   const calEnd = endOfWeek(endOfMonth(currentMonth));
-  const calendarEntries =
-    useQuery(api.events.calendar.list, {
-      startDate: calStart.getTime(),
-      endDate: calEnd.getTime(),
-    }) ?? [];
+  const calendarEntries = useQuery(api.events.calendar.list, {
+    startDate: calStart.getTime(),
+    endDate: calEnd.getTime(),
+  });
 
-  const calendarStart = startOfWeek(startOfMonth(currentMonth));
-  const calendarEnd = endOfWeek(endOfMonth(currentMonth));
-  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  const entriesByDay = useMemo(() => {
+    const grouped = new Map<string, CalendarEntry[]>();
+    for (const entry of calendarEntries ?? []) {
+      const key = format(new Date(entry.startAt), 'yyyy-MM-dd');
+      grouped.set(key, [...(grouped.get(key) ?? []), entry]);
+    }
+    return grouped;
+  }, [calendarEntries]);
 
-  const eventsForDay = (day: Date) =>
-    (calendarEntries as any[]).filter((entry) => isSameDay(new Date(entry.startAt), day));
-
+  const eventsForDay = (day: Date) => entriesByDay.get(format(day, 'yyyy-MM-dd')) ?? [];
   const selectedDayEvents = eventsForDay(selectedDay);
+
+  const DashboardDayButton = (props: React.ComponentProps<typeof CalendarDayButton>) => {
+    const dayEvents = eventsForDay(props.day.date);
+    return (
+      <CalendarDayButton
+        {...props}
+        className={cn(props.className, 'mx-auto size-(--cell-size) min-w-0 rounded-full')}
+      >
+        {props.children}
+        <span className="flex h-1 items-center justify-center gap-0.5" aria-hidden="true">
+          {dayEvents.slice(0, 3).map((entry) => (
+            <span
+              key={entry._id}
+              className={cn(
+                'size-1 rounded-full',
+                props.modifiers.selected ? 'bg-primary-foreground/80' : 'bg-primary/70',
+              )}
+            />
+          ))}
+        </span>
+      </CalendarDayButton>
+    );
+  };
 
   return (
     <Panel
       title="Calendar"
       action={
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-full border border-border/70 bg-background/80 p-1">
+        <>
+          <div className="col-span-2 row-start-2 mt-3 flex items-center justify-self-center sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:mt-0">
             <Button
+              type="button"
               variant="ghost"
-              size="icon"
-              className="size-8 rounded-full"
-              onClick={() =>
-                setCurrentMonth(
-                  new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
-                )
-              }
+              size="icon-sm"
+              className="rounded-full"
+              aria-label="Previous month"
+              onClick={() => setCurrentMonth((month) => addMonths(startOfMonth(month), -1))}
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft />
             </Button>
-            <span className="min-w-28 px-2 text-center text-sm font-medium text-foreground">
+            <span className="min-w-24 whitespace-nowrap text-center text-sm font-semibold text-foreground" aria-live="polite">
               {format(currentMonth, 'MMMM yyyy')}
             </span>
             <Button
+              type="button"
               variant="ghost"
-              size="icon"
-              className="size-8 rounded-full"
-              onClick={() =>
-                setCurrentMonth(
-                  new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
-                )
-              }
+              size="icon-sm"
+              className="rounded-full"
+              aria-label="Next month"
+              onClick={() => setCurrentMonth((month) => addMonths(startOfMonth(month), 1))}
             >
-              <ChevronRight className="size-4" />
+              <ChevronRight />
             </Button>
           </div>
-          <Button asChild variant="ghost" className="rounded-2xl">
-            <Link href="/calendar">
-              Full calendar
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
-      }
-      contentClassName="space-y-5"
-    >
-      <div className="overflow-hidden rounded-[1.7rem] border border-border/70 bg-background/70">
-        <div className="grid grid-cols-7 border-b border-border/70 bg-muted/30">
-          {DAY_LABELS.map((label) => (
-            <div
-              key={label}
-              className="py-3 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground"
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {calendarDays.map((day, index) => {
-            const dayEvents = eventsForDay(day);
-            const inMonth = day.getMonth() === currentMonth.getMonth();
-            const selected = isSameDay(day, selectedDay);
-            const today = isToday(day);
-            const isLastRow = index >= calendarDays.length - 7;
-
-            return (
-              <button
-                key={day.toISOString()}
-                type="button"
-                onClick={() => setSelectedDay(day)}
-                className={[
-                  'flex flex-col items-center justify-center relative aspect-square p-1 transition-colors',
-                  !isLastRow ? 'border-b border-border/70' : '',
-                  index % 7 !== 6 ? 'border-r border-border/70' : '',
-                  inMonth ? 'hover:bg-muted/40' : 'bg-muted/10 text-muted-foreground/40',
-                  selected ? 'bg-accent/25' : '',
-                ].join(' ')}
-              >
-                <div
-                  className={[
-                    'flex size-7 items-center justify-center rounded-full text-sm font-medium',
-                    today ? 'bg-primary text-primary-foreground' : '',
-                    selected && !today ? 'bg-primary/10 text-primary' : '',
-                  ].join(' ')}
-                >
-                  {format(day, 'd')}
-                </div>
-                <div className="mt-1 flex h-1.5 w-full items-center justify-center gap-0.5">
-                  {dayEvents.slice(0, 3).map((entry: any) => (
-                    <div
-                      key={entry._id}
-                      className="size-1 rounded-full bg-primary/60"
-                    />
-                  ))}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="rounded-[1.7rem] border border-border/70 bg-background/80 p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              {format(selectedDay, 'EEEE, MMMM d')}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {selectedDayEvents.length === 0
-                ? 'Nothing scheduled for this day.'
-                : `${selectedDayEvents.length} calendar item${selectedDayEvents.length === 1 ? '' : 's'}`}
-            </p>
+          <div className="col-start-2 row-start-1 justify-self-end sm:col-start-3">
+            <Button asChild variant="ghost" size="icon-sm" className="rounded-full sm:hidden">
+              <Link href="/calendar" aria-label="Full calendar">
+                <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Link href="/calendar">
+                Full calendar
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
-          <CalendarDays className="size-5 text-primary/70" />
+        </>
+      }
+      className="[&>div:first-child]:grid [&>div:first-child]:grid-cols-[1fr_auto] [&>div:first-child]:items-center sm:[&>div:first-child]:grid-cols-[1fr_auto_1fr] [&>div:first-child>div:last-child]:contents"
+      contentClassName="space-y-4"
+    >
+      <Calendar
+        mode="single"
+        month={currentMonth}
+        hideNavigation
+        onMonthChange={setCurrentMonth}
+        selected={selectedDay}
+        onSelect={(day) => {
+          if (day) setSelectedDay(day);
+        }}
+        components={{ DayButton: DashboardDayButton }}
+        className="w-full bg-transparent p-0 [--cell-size:2.75rem]"
+        classNames={{
+          month: 'w-full',
+          month_caption: 'hidden',
+          month_grid: 'w-full',
+          weekdays: 'flex border-b border-border/60 pb-1',
+          weekday: 'flex-1 py-1 text-xs',
+          week: 'mt-1 flex w-full',
+          day: 'h-(--cell-size) flex-1 p-0',
+        }}
+      />
+
+      <div className="border-t border-border/60 pt-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            {format(selectedDay, 'EEEE, MMMM d')}
+          </p>
+          <p className="mt-1 text-sm text-foreground/70">
+            {selectedDayEvents.length === 0
+              ? 'Nothing scheduled for this day.'
+              : `${selectedDayEvents.length} calendar item${selectedDayEvents.length === 1 ? '' : 's'}`}
+          </p>
         </div>
 
         {selectedDayEvents.length > 0 ? (
-          <div className="mt-4 space-y-3">
-            {selectedDayEvents.slice(0, 3).map((entry: any) => (
-              <div
-                key={entry._id}
-                className="rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3"
-              >
+          <div className="mt-3 divide-y divide-border/60">
+            {selectedDayEvents.slice(0, 3).map((entry) => (
+              <div key={entry._id} className="py-3 first:pt-0 last:pb-0">
                 <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-foreground/70">
                   <span className="inline-flex items-center gap-1">
                     <Clock3 className="size-3.5" />
                     {format(new Date(entry.startAt), 'h:mm a')}

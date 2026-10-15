@@ -1,18 +1,31 @@
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
-import type { NotificationCategory } from "../validators";
+import { internalQuery, type MutationCtx } from "../_generated/server";
+import { v } from "convex/values";
+import {
+  notificationCategoryValidator,
+  type NotificationCategory,
+} from "../validators";
 import {
   preferenceAllowsPush,
   resolveNotificationPreference,
 } from "./deliveryPreference";
 
 export type NotificationSubject =
-  | { kind: "announcement"; announcementId: Id<"announcements">; clubId?: Id<"clubs"> }
+  | {
+      kind: "announcement";
+      announcementId: Id<"announcements">;
+      clubId?: Id<"clubs">;
+    }
   | { kind: "event"; eventId: Id<"events">; clubId?: Id<"clubs"> }
   | { kind: "club"; clubId: Id<"clubs"> }
   | { kind: "clubChannel"; clubId: Id<"clubs">; channelId: Id<"clubChannels"> }
-  | { kind: "clubMessage"; clubId: Id<"clubs">; channelId: Id<"clubChannels">; messageId: Id<"clubChannelMessages"> }
+  | {
+      kind: "clubMessage";
+      clubId: Id<"clubs">;
+      channelId: Id<"clubChannels">;
+      messageId: Id<"clubChannelMessages">;
+    }
   | { kind: "flexFriday"; flexFridayId: Id<"flexFridays"> }
   | { kind: "moderationReport"; reportId: Id<"moderationReports"> }
   | { kind: "friendRequest"; friendshipId: Id<"studentScheduleFriends"> }
@@ -26,13 +39,18 @@ type DeliveryInput = {
   body: string;
   href: string;
   subject: NotificationSubject;
+  /** Source message timestamp, supplied by channel fanout to avoid N message reads. */
+  sourceCreatedAt?: number;
 };
 
 function uniqueIds(ids: Id<"users">[]) {
   return Array.from(new Set(ids));
 }
 
-export async function deliverNotification(ctx: MutationCtx, input: DeliveryInput) {
+export async function deliverNotification(
+  ctx: MutationCtx,
+  input: DeliveryInput,
+) {
   const scope = preferenceScope(input.subject);
   const clubScopeKey =
     "clubId" in input.subject && input.subject.clubId
@@ -49,38 +67,112 @@ export async function deliverNotification(ctx: MutationCtx, input: DeliveryInput
     return;
   }
 
-  await ctx.db.insert("notificationDeliveries", {
+  const channelSubject =
+    input.subject.kind === "clubMessage" ? input.subject : null;
+  const message =
+    channelSubject && input.sourceCreatedAt === undefined
+      ? await ctx.db.get(channelSubject.messageId)
+      : null;
+  const sourceCreatedAt = input.sourceCreatedAt ?? message?.createdAt;
+  const receipt =
+    channelSubject && sourceCreatedAt !== undefined
+      ? await ctx.db
+          .query("clubChannelReadReceipts")
+          .withIndex("by_userId_and_channelId", (q) =>
+            q
+              .eq("userId", input.userId)
+              .eq("channelId", channelSubject.channelId),
+          )
+          .unique()
+      : null;
+  const isAlreadyRead =
+    !!receipt &&
+    sourceCreatedAt !== undefined &&
+    receipt.lastReadAt >= sourceCreatedAt;
+
+  const deliveryId = await ctx.db.insert("notificationDeliveries", {
     userId: input.userId,
+    channelId: channelSubject?.channelId,
+    sourceCreatedAt,
     category: input.category,
     title: input.title,
     body: input.body,
     href: input.href,
     subject: input.subject,
-    isRead: false,
+    isRead: isAlreadyRead,
     createdAt: Date.now(),
   });
 
-  if (decision.push) {
-    await ctx.scheduler.runAfter(0, internal.notifications.pushNode.sendForDelivery, {
-      userId: input.userId,
-      category: input.category,
-      title: input.title,
-      body: input.body,
-      href: input.href,
-      scopeKey: scope.scopeKey,
-    });
-    await ctx.scheduler.runAfter(0, internal.notifications.pushExpo.sendForDelivery, {
-      userId: input.userId,
-      category: input.category,
-      title: input.title,
-      body: input.body,
-      href: input.href,
-      scopeKey: scope.scopeKey,
-    });
+  if (decision.push && !isAlreadyRead) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.pushNode.sendForDelivery,
+      { deliveryId },
+    );
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.pushExpo.sendForDelivery,
+      { deliveryId },
+    );
   }
 }
 
-export async function deliverMany(ctx: MutationCtx, userIds: Id<"users">[], input: Omit<DeliveryInput, "userId">) {
+export const getUnreadDeliveryForPush = internalQuery({
+  args: { deliveryId: v.id("notificationDeliveries") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.id("users"),
+      category: notificationCategoryValidator,
+      title: v.string(),
+      body: v.string(),
+      href: v.string(),
+      scopeKey: v.string(),
+      channelId: v.union(v.id("clubChannels"), v.null()),
+      sourceCreatedAt: v.union(v.number(), v.null()),
+      deliveryCreatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const delivery = await ctx.db.get(args.deliveryId);
+    if (!delivery || delivery.isRead) return null;
+    const receipt =
+      delivery.channelId !== undefined && delivery.sourceCreatedAt !== undefined
+        ? await ctx.db
+            .query("clubChannelReadReceipts")
+            .withIndex("by_userId_and_channelId", (q) =>
+              q
+                .eq("userId", delivery.userId)
+                .eq("channelId", delivery.channelId!),
+            )
+            .unique()
+        : null;
+    if (
+      receipt &&
+      delivery.sourceCreatedAt !== undefined &&
+      receipt.lastReadAt >= delivery.sourceCreatedAt
+    ) {
+      return null;
+    }
+    return {
+      userId: delivery.userId,
+      category: delivery.category,
+      title: delivery.title,
+      body: delivery.body,
+      href: delivery.href,
+      scopeKey: preferenceScope(delivery.subject).scopeKey,
+      channelId: delivery.channelId ?? null,
+      sourceCreatedAt: delivery.sourceCreatedAt ?? null,
+      deliveryCreatedAt: delivery.createdAt,
+    };
+  },
+});
+
+export async function deliverMany(
+  ctx: MutationCtx,
+  userIds: Id<"users">[],
+  input: Omit<DeliveryInput, "userId">,
+) {
   for (const userId of uniqueIds(userIds)) {
     await deliverNotification(ctx, { userId, ...input });
   }
@@ -93,7 +185,10 @@ export function preferenceScope(subject: NotificationSubject) {
   if (subject.kind === "club") {
     return { scopeKey: `club:${subject.clubId}` };
   }
-  if ((subject.kind === "announcement" || subject.kind === "event") && subject.clubId) {
+  if (
+    (subject.kind === "announcement" || subject.kind === "event") &&
+    subject.clubId
+  ) {
     return { scopeKey: `club:${subject.clubId}` };
   }
   return { scopeKey: "global" };
@@ -112,12 +207,19 @@ async function deliveryDecision(
       category: "CLUB_ANNOUNCEMENT",
       scopeKey: clubScopeKey,
     });
-    if (clubPreference && (!clubPreference.enabled || clubPreference.level === "OFF")) {
+    if (
+      clubPreference &&
+      (!clubPreference.enabled || clubPreference.level === "OFF")
+    ) {
       return { create: false, push: false };
     }
   }
 
-  const preference = await resolveNotificationPreference(ctx, { userId, category, scopeKey });
+  const preference = await resolveNotificationPreference(ctx, {
+    userId,
+    category,
+    scopeKey,
+  });
   return preferenceDeliveryDecision(category, preference);
 }
 
@@ -143,7 +245,10 @@ export async function activeUsers(ctx: MutationCtx) {
 
 export async function activeAdmins(ctx: MutationCtx) {
   return (await activeUsers(ctx)).filter((user) =>
-    user.roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN" || role === "SUPPORT_STAFF"),
+    user.roles.some(
+      (role) =>
+        role === "ADMIN" || role === "SUPER_ADMIN" || role === "SUPPORT_STAFF",
+    ),
   );
 }
 
@@ -160,10 +265,16 @@ export async function clubAudience(ctx: MutationCtx, clubId: Id<"clubs">) {
     .query("clubSponsors")
     .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
     .collect();
-  return uniqueIds([...members.map((row) => row.userId), ...sponsors.map((row) => row.userId)]);
+  return uniqueIds([
+    ...members.map((row) => row.userId),
+    ...sponsors.map((row) => row.userId),
+  ]);
 }
 
-export async function channelAudience(ctx: MutationCtx, channel: Doc<"clubChannels">) {
+export async function channelAudience(
+  ctx: MutationCtx,
+  channel: Doc<"clubChannels">,
+) {
   if (channel.visibility === "PRIVATE") {
     const members = await ctx.db
       .query("clubChannelMemberships")
@@ -175,7 +286,10 @@ export async function channelAudience(ctx: MutationCtx, channel: Doc<"clubChanne
   return clubAudience(ctx, channel.clubId);
 }
 
-export async function announcementAudience(ctx: MutationCtx, ann: Doc<"announcements">) {
+export async function announcementAudience(
+  ctx: MutationCtx,
+  ann: Doc<"announcements">,
+) {
   if (ann.clubId) return clubAudience(ctx, ann.clubId);
 
   const users = await activeUsers(ctx);
@@ -185,10 +299,13 @@ export async function announcementAudience(ctx: MutationCtx, ann: Doc<"announcem
         ann.targetGrades.length === 0 && ann.targetGrade == null
           ? true
           : user.gradeLevel != null &&
-            (ann.targetGrade === user.gradeLevel || ann.targetGrades.includes(user.gradeLevel));
-      const pathwayTargets = [ann.targetPathway, ...ann.targetMajorPathways, ...ann.targetMinorPathways].filter(
-        (value): value is string => !!value,
-      );
+            (ann.targetGrade === user.gradeLevel ||
+              ann.targetGrades.includes(user.gradeLevel));
+      const pathwayTargets = [
+        ann.targetPathway,
+        ...ann.targetMajorPathways,
+        ...ann.targetMinorPathways,
+      ].filter((value): value is string => !!value);
       const pathwayOk =
         pathwayTargets.length === 0 ||
         (user.major != null && pathwayTargets.includes(user.major)) ||
@@ -208,14 +325,23 @@ export async function eventAudience(ctx: MutationCtx, event: Doc<"events">) {
   return (await activeUsers(ctx)).map((user) => user._id);
 }
 
-export async function flexFridayAudience(ctx: MutationCtx, friday: Doc<"flexFridays">) {
-  const users = friday.type === "TEACHER_PD" ? await activeUsers(ctx) : await activeStudents(ctx);
+export async function flexFridayAudience(
+  ctx: MutationCtx,
+  friday: Doc<"flexFridays">,
+) {
+  const users =
+    friday.type === "TEACHER_PD"
+      ? await activeUsers(ctx)
+      : await activeStudents(ctx);
   return users
     .filter((user) => {
       if (friday.type === "ALL_STUDENT") return user.isStudent;
-      if (friday.type === "GRADE_SPECIFIC") return user.gradeLevel === friday.gradeLevel;
-      if (friday.type === "PATHWAY_SPECIFIC") return user.major === friday.pathway || user.minor === friday.pathway;
-      if (friday.type === "TEACHER_PD") return user.isTeacherStaff || user.roles.includes("TEACHER");
+      if (friday.type === "GRADE_SPECIFIC")
+        return user.gradeLevel === friday.gradeLevel;
+      if (friday.type === "PATHWAY_SPECIFIC")
+        return user.major === friday.pathway || user.minor === friday.pathway;
+      if (friday.type === "TEACHER_PD")
+        return user.isTeacherStaff || user.roles.includes("TEACHER");
       return false;
     })
     .map((user) => user._id);

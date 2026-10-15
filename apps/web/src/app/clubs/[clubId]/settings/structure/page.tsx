@@ -2,7 +2,7 @@
 
 import { ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useClubId } from '../../../club-route';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';

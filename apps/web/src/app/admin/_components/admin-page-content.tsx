@@ -6,6 +6,7 @@ import { hasRole, useCurrentUser } from '@/lib/auth';
 import { AdminPageLayout } from './admin-page-layout';
 import { AdminShell } from './admin-shell';
 import { AdminFillTabPanel, AdminScrollTabPanel } from './admin-tab-panel';
+import { AnalyticsTabPanel } from './panels/analytics-tab-panel';
 import { AuditTabPanel } from './panels/audit-tab-panel';
 import { FeedbackTabPanel } from './panels/feedback-tab-panel';
 import { ModerationTabPanel } from './panels/moderation-tab-panel';
@@ -79,6 +80,12 @@ export function AdminPageContent() {
         {canManageWrapped ? (
           <AdminScrollTabPanel value="wrapped">
             {activeTab === 'wrapped' ? <WrappedTabPanel canManageWrapped={canManageWrapped} /> : null}
+          </AdminScrollTabPanel>
+        ) : null}
+
+        {isSuperAdmin ? (
+          <AdminScrollTabPanel value="analytics">
+            {activeTab === 'analytics' ? <AnalyticsTabPanel /> : null}
           </AdminScrollTabPanel>
         ) : null}
 

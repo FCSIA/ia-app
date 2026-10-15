@@ -8,7 +8,9 @@ export type ClubWorkspaceNavigation = NonNullable<
   FunctionReturnType<typeof api.clubs.detail.getWorkspaceNavigation>
 >;
 export type ClubNavigationSummary = ClubWorkspaceNavigation['myClubs'][number];
-export type ClubNavigationChannel = ClubWorkspaceNavigation['channels'][number];
+export type ClubNavigationChannel = ClubWorkspaceNavigation['channels'][number] & {
+  hasUnreadMessages: boolean;
+};
 export type ClubMyClubs = FunctionReturnType<typeof api.clubs.management.getMyClubs>;
 export type ClubInvite = FunctionReturnType<typeof api.clubs.management.listMyInvites>[number];
 export type ClubChannel = NonNullable<ClubDetail['channels']>[number];

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
@@ -50,6 +50,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 type UnitJoinPolicy = ClubUnit['joinPolicy'];
 
@@ -223,7 +224,7 @@ export function ClubStructureEditor({ club }: { club: ClubDetail }) {
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col p-3 sm:p-5">
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border/70 bg-card lg:grid-cols-[21rem_minmax(0,1fr)]">
+      <div className={cn("grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border/70 bg-card lg:grid-cols-[21rem_minmax(0,1fr)]", CARD_SURFACE_FOREGROUND)}>
           <aside className="flex min-h-0 flex-col border-b bg-muted/25 lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
               <div className="min-w-0">

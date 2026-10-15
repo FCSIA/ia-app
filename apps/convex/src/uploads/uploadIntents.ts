@@ -11,6 +11,7 @@ export const uploadPurposeValidator = v.union(
   v.literal("USER_IMAGE"),
   v.literal("FEEDBACK_IMAGE"),
   v.literal("ANNOUNCEMENT_IMAGE"),
+  v.literal("SCHEDULE_OCR"),
 );
 
 export type UploadPurpose =
@@ -18,7 +19,8 @@ export type UploadPurpose =
   | "CLUB_IMAGE"
   | "USER_IMAGE"
   | "FEEDBACK_IMAGE"
-  | "ANNOUNCEMENT_IMAGE";
+  | "ANNOUNCEMENT_IMAGE"
+  | "SCHEDULE_OCR";
 
 type UploadIntentClaimInput = {
   intent: {
@@ -112,11 +114,22 @@ export const cleanupUploadIntent = internalMutation({
 });
 
 export const prepareUploadValidation = internalMutation({
-  args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), purpose: uploadPurposeValidator },
-  returns: v.object({ url: v.string(), contentType: v.optional(v.string()), size: v.number() }),
+  args: {
+    uploadIntentId: v.id("uploadIntents"),
+    storageId: v.id("_storage"),
+    purpose: uploadPurposeValidator,
+  },
+  returns: v.object({
+    url: v.string(),
+    contentType: v.optional(v.string()),
+    size: v.number(),
+  }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const metadata = await claimUploadIntent(ctx, { ...args, uploaderId: user._id });
+    const metadata = await claimUploadIntent(ctx, {
+      ...args,
+      uploaderId: user._id,
+    });
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) throw new ConvexError("Upload not found");
     return { url, contentType: metadata.contentType, size: metadata.size };
@@ -129,7 +142,12 @@ export const discardRejectedUpload = internalMutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const intent = await ctx.db.get(args.uploadIntentId);
-    if (!intent || intent.uploaderId !== user._id || intent.storageId !== args.storageId) throw new ConvexError("Unauthorized");
+    if (
+      !intent ||
+      intent.uploaderId !== user._id ||
+      intent.storageId !== args.storageId
+    )
+      throw new ConvexError("Unauthorized");
     await ctx.storage.delete(args.storageId).catch(() => {});
     await ctx.db.delete(intent._id);
     return null;

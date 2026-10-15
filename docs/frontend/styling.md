@@ -128,11 +128,29 @@ The current visual direction is warm, clean, and operational:
 
 New web and mobile installs start in dark mode. A theme explicitly selected by
 the user remains persisted locally and is never overwritten by the default.
+Bubblegum is available as paired light and dark palettes so its pink accent can
+remain usable in low-light environments.
 
 Custom palette colors update their paired foreground tokens together. In
 particular, the Secondary color owns card, popover, and muted surfaces, so its
 automatic contrast is applied to each matching foreground token rather than
-only to secondary controls.
+only to secondary controls. Automatic foregrounds choose black or white by
+comparing WCAG contrast ratios. The editor refuses to save Text/Background
+pairs below 4.5:1 or Primary colors below 3:1 against page and card surfaces.
+The Custom theme also exposes a Text color for page content over a background
+image, whose contrast cannot be inferred from a single color token and still
+requires visual review. `surfaceClasses` and `Elevated` scope generic `foreground`
+utilities back to `card-foreground`. Semantic or app-owned opaque containers
+that cannot use `Elevated` compose the same `CARD_SURFACE_FOREGROUND` scope.
+Popup primitives compose `POPOVER_SURFACE_FOREGROUND` instead. Keep page Text
+local to transparent wallpaper substrates; do not add page-specific text-color
+patches for opaque surfaces.
+
+Fluid elevation uses the unlayered `--surface-1` through `--surface-8` and
+`--shadow-1` through `--shadow-8` token families. They derive from the active
+semantic page and card tokens, with dark themes receiving Fluid's progressive
+surface ladder. Do not introduce a second surface or shadow token namespace or
+override this ladder from `@layer base`.
 
 ## Toasts
 

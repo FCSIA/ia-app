@@ -13,6 +13,22 @@ import {
 } from '@/components/ui/sheet';
 import { AdminMetric, AdminNotice } from '../admin-ui';
 import type { AuditEventDetail } from '../../_lib/types';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import { WhiteboardAuditSnapshot } from './whiteboard-audit-snapshot';
+
+/** Whiteboard edit rows can be replayed to show the board after that edit. */
+function whiteboardSnapshotTarget(event: AuditEventDetail) {
+  if (
+    event.entityType !== 'ClubWhiteboard' ||
+    (event.action !== 'CLUB_WHITEBOARD_EDITED' && event.action !== 'CLUB_WHITEBOARD_RESTORED')
+  ) {
+    return null;
+  }
+  const meta = event.meta as { boardId?: unknown; toSeq?: unknown } | null;
+  if (typeof meta?.boardId !== 'string' || typeof meta.toSeq !== 'number') return null;
+  return { boardId: meta.boardId as Id<'clubWhiteboards'>, atSeq: meta.toSeq };
+}
 
 type AuditDetailSheetProps = {
   selectedEventId: string | null;
@@ -27,6 +43,7 @@ export function AuditDetailSheet({
   eventDetail,
   isDetailLoading,
 }: AuditDetailSheetProps) {
+  const snapshotTarget = eventDetail ? whiteboardSnapshotTarget(eventDetail) : null;
   return (
     <Sheet open={!!selectedEventId} onOpenChange={(open) => !open && onSelectedEventIdChange(null)}>
       <SheetContent className="flex h-full w-full flex-col overflow-hidden sm:max-w-xl">
@@ -60,7 +77,7 @@ export function AuditDetailSheet({
               </div>
 
               {eventDetail.entityPreview ? (
-                <div className="rounded-lg border bg-card p-4">
+                <div className={`rounded-lg border bg-card p-4 ${CARD_SURFACE_FOREGROUND}`}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -104,6 +121,8 @@ export function AuditDetailSheet({
                   ) : null}
                 </div>
               ) : null}
+
+              {snapshotTarget ? <WhiteboardAuditSnapshot {...snapshotTarget} /> : null}
 
               {eventDetail.meta ? (
                 <div className="space-y-2">

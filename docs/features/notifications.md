@@ -28,7 +28,9 @@ browser push delivery for subscribed devices.
 - Preference controls: `apps/web/src/components/notifications/`
 - Service worker: `apps/web/public/sw.js`
 - Service worker registration: `apps/web/src/components/pwa/service-worker-registrar.tsx`
-- Subscription drift repair: `apps/web/src/components/notifications/push-subscription-sync.tsx`
+- Subscription drift repair and device reporting: `apps/web/src/components/notifications/push-subscription-sync.tsx`
+- Enabling push and the re-enable prompt state: `apps/web/src/components/notifications/enable-push.ts`
+- Re-enable prompt: `apps/web/src/components/dashboard/PushReenableAnnouncement.tsx`
 - Platform detection: `apps/web/src/lib/pwa.ts`
 - Unread nav badge: `apps/web/src/components/layout/AppShell.tsx`
 
@@ -46,6 +48,8 @@ browser push delivery for subscribed devices.
 - `api.notifications.push.listMine`
 - `api.notifications.push.upsertSubscription`
 - `api.notifications.push.removeSubscription`
+- `api.notifications.pushDevices.reportState`
+- `internal.notifications.pushDevices.healthReport`
 - `api.notifications.pushNode.sendTestToMe`
 
 ## Data Model
@@ -53,6 +57,10 @@ browser push delivery for subscribed devices.
 - `notificationDeliveries`
 - `notificationPreferences`
 - `notificationPushSubscriptions`
+- `notificationPushDevices`
+
+`notificationDeliveries.readAt` records when a delivery was first read, for
+[admin analytics](analytics.md). Rows read before it was added have no time.
 
 Preference levels are `OFF`, `IN_APP`, `PUSH`, and `TIME_SENSITIVE`. The schema
 also supports category and scope keys such as global, club, and channel scopes.
@@ -70,7 +78,7 @@ Each Convex deployment needs its own `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
 and `VAPID_SUBJECT`. Generate a keypair with:
 
 ```bash
-pnpm --filter cvx exec web-push generate-vapid-keys
+bun run --cwd apps/convex web-push generate-vapid-keys
 ```
 
 > **Always pass `--deployment` when setting these.** A bare `convex env set`
@@ -79,12 +87,12 @@ pnpm --filter cvx exec web-push generate-vapid-keys
 > necessarily real production. Production VAPID keys were previously written to
 > the wrong deployment this way, leaving push silently dead in production.
 > Confirm the target first with
-> `pnpm --filter cvx exec convex env get SITE_URL --deployment <name>`.
+> `bun run --cwd apps/convex convex env get SITE_URL --deployment <name>`.
 
 ```bash
-pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>" --deployment <name>
-pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>" --deployment <name>
-pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com" --deployment <name>
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "<public-key>" --deployment <name>
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "<private-key>" --deployment <name>
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com" --deployment <name>
 ```
 
 Use a **separate keypair per deployment**, so a dev backend never holds the
@@ -98,7 +106,7 @@ build and backend from drifting apart.
 Verify a deployment is correctly configured with:
 
 ```bash
-pnpm --filter cvx exec convex run notifications/push:getPublicKey --deployment <name>
+bun run --cwd apps/convex convex run notifications/push:getPublicKey --deployment <name>
 ```
 
 A `null` result means `configureWebPush()` will bail and every send will be
@@ -195,6 +203,61 @@ re-registers an already-granted subscription on load, and
 `subscribeBrowserToPush` replaces a subscription whose `applicationServerKey`
 no longer matches the configured VAPID key. Neither path prompts the user.
 
+**Disable push** leaves notification permission granted, so the sync would
+otherwise re-subscribe on the next launch and undo the choice. It records a
+per-browser opt-out instead, which the sync respects and the next explicit
+enable clears.
+
+### Silent loss on iOS
+
+iOS can drop a Home Screen app's subscription, sometimes resetting its
+notification permission to "ask", without firing `pushsubscriptionchange`.
+Apple's push service keeps answering `201` for the dead endpoint for roughly a
+week before it starts returning `410`. Until then the server believes delivery
+works, and **Send test** counts the dead endpoint as delivered.
+
+Only the device knows what it can receive, so on every launch
+`PushSubscriptionSync` calls `api.notifications.pushDevices.reportState` with a
+per-install device id, its platform, display mode, permission, and the endpoint
+it holds. The server then:
+
+- disables every other endpoint that device registered, since a browser holds at
+  most one subscription. A subscription that could not be read disables nothing;
+- records the report in `notificationPushDevices`, skipping unchanged reports
+  for a few hours so launches don't write every time; and
+- answers whether to offer a re-enable. A device whose permission is back to
+  "ask" after having had push, and that did not opt out, gets a one-tap card on
+  the dashboard. Asking for permission needs a tap, so this cannot be automatic.
+
+Endpoints registered before device reporting have no device id. Each live device
+claims its endpoint on its first launch with this code. For an iOS Home Screen
+app, an unclaimed Apple endpoint from the same kind of device also counts as
+evidence that the device used to have push.
+
+To see how many devices can actually receive push, run the internal health
+report with a start time in milliseconds:
+
+```bash
+pnpm --filter cvx exec convex run notifications/pushDevices:healthReport '{"since": <ms>}' --deployment <name>
+```
+
+`lostPush` counts devices that held a subscription and now cannot receive push
+without having opted out. `unclaimedSubscriptions` counts enabled endpoints that
+no device has reported holding. Until every live device has launched once with
+this code, that includes working devices as well as dead endpoints.
+
+### Shared devices
+
+A web push endpoint or native push token identifies one browser or app install,
+so it delivers only for the account that registered it most recently. Registering
+it disables any other account's row for the same endpoint or token; otherwise
+signing a second account into a shared device kept delivering the first
+account's notifications there. Signing out on the web releases the browser's
+endpoint for that account while the session is still valid. The browser keeps
+its subscription for whoever signs in next. A session that merely expires keeps
+receiving push, since users who don't open the app for a week still expect
+notifications.
+
 The service worker is registered at app startup by `ServiceWorkerRegistrar`.
 This is also what makes the app installable on Android, since Chrome requires
 an active worker with a fetch handler before offering the install prompt.
@@ -221,6 +284,25 @@ when the recipient has an active subscription and a push-enabled preference.
 
 Unread count is currently a bounded read suitable for alpha/demo data. Use a
 counter-backed design before production-scale exact counts.
+
+Inbox and chat read state are not yet converged. Opening the notification inbox
+still requires a manual read action, and reading a club channel advances its
+channel receipt without clearing related notification deliveries. The planned
+behavior is:
+
+- acknowledge the inbox automatically only while its loaded view is foregrounded;
+- reconcile message, mention, and thread-delivery rows through the last visible
+  channel message;
+- make delayed notification fanout and push jobs recheck that read boundary so
+  a read message does not alert later; and
+- process bulk acknowledgement in bounded batches with an entry-time cutoff.
+
+Browser and native notification-center cleanup is best effort and follows a
+successful durable acknowledgement. Web can close matching service-worker
+notifications when the payload carries a delivery ID; Expo can dismiss the
+app's presented notifications and clear its launcher badge, although Android
+launcher badge support varies. Native cold-start notification responses also
+need explicit startup handling before tap routing is considered complete.
 
 Browsers may throttle or drop push events, and users can revoke notification
 permission outside the app. Keep in-app deliveries as the durable source of

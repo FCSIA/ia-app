@@ -1,12 +1,15 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
+import { schema } from "../schema";
+import { countClubChannels, countClubMembers } from "./counts";
 import {
-  clubChannelAudienceKindValidator,
-  clubChannelPostingPolicyValidator,
-  clubChannelVisibilityValidator,
+  getChannelAccess,
+  getChannelAccessForChannels,
+  type ChannelAccessBatchState,
+} from "./channelAccess";
+import {
   clubRolePermissionsValidator,
 } from "../validators";
 
@@ -17,6 +20,7 @@ export const clubUserRefValidator = v.object({
   lastName: v.string(),
   roles: v.array(v.string()),
   avatarUrl: v.union(v.string(), v.null()),
+  isDeveloper: v.optional(v.boolean()),
 });
 
 export const clubViewerStateValidator = v.object({
@@ -32,53 +36,19 @@ export const clubViewerStateValidator = v.object({
   hasPendingJoinRequest: v.boolean(),
 });
 
-export const visibleClubChannelValidator = v.object({
-  _id: v.id("clubChannels"),
-  _creationTime: v.number(),
-  clubId: v.id("clubs"),
-  ownerUnitId: v.optional(v.id("clubUnits")),
-  position: v.optional(v.number()),
-  accessPolicyVersion: v.optional(v.literal(2)),
-  accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
-  accessUnitId: v.optional(v.id("clubUnits")),
-  audienceKind: v.optional(clubChannelAudienceKindValidator),
-  audienceUnitId: v.optional(v.id("clubUnits")),
-  includeDescendants: v.optional(v.boolean()),
-  includeAncestorLeaders: v.optional(v.boolean()),
-  postingPolicy: v.optional(clubChannelPostingPolicyValidator),
-  name: v.string(),
-  description: v.optional(v.string()),
-  visibility: clubChannelVisibilityValidator,
-  createdById: v.id("users"),
-  createdAt: v.number(),
-  updatedAt: v.number(),
+export const visibleClubChannelValidator = schema.doc("clubChannels").extend({
   viewerCanRead: v.boolean(),
   viewerCanPost: v.boolean(),
   memberships: v.array(v.object({ userId: v.id("users") })),
 });
 
-export const workspaceClubChannelValidator = v.object({
-  _id: v.id("clubChannels"),
-  clubId: v.id("clubs"),
-  ownerUnitId: v.optional(v.id("clubUnits")),
-  position: v.optional(v.number()),
-  accessPolicyVersion: v.optional(v.literal(2)),
-  accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
-  accessUnitId: v.optional(v.id("clubUnits")),
-  audienceKind: v.optional(clubChannelAudienceKindValidator),
-  audienceUnitId: v.optional(v.id("clubUnits")),
-  includeDescendants: v.optional(v.boolean()),
-  includeAncestorLeaders: v.optional(v.boolean()),
-  postingPolicy: v.optional(clubChannelPostingPolicyValidator),
-  name: v.string(),
-  description: v.optional(v.string()),
-  visibility: clubChannelVisibilityValidator,
-  createdById: v.id("users"),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  memberships: v.array(v.object({ userId: v.id("users") })),
-  viewerCanPost: v.boolean(),
-});
+export const workspaceClubChannelValidator = schema
+  .doc("clubChannels")
+  .omit("_creationTime")
+  .extend({
+    memberships: v.array(v.object({ userId: v.id("users") })),
+    viewerCanPost: v.boolean(),
+  });
 
 /** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
 export function toClubUserRef(user: Doc<"users">) {
@@ -89,7 +59,8 @@ export function toClubUserRef(user: Doc<"users">) {
     lastName: user.lastName,
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
-  };
+    isDeveloper: user.isDeveloper,
+  } satisfies Infer<typeof clubUserRefValidator>;
 }
 
 export const clubSummaryValidator = v.object({
@@ -150,18 +121,14 @@ export async function clubSummaryWithCounts(
   role?: string | null,
   counts?: { members?: number; channels?: number },
 ) {
-  const memberCount = counts?.members ?? (
-    await ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", club._id))
-      .collect()
-  ).length;
-  const channelCount = counts?.channels ?? (
-    await ctx.db
-      .query("clubChannels")
-      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
-      .collect()
-  ).length;
+  // Callers that already hold the rows pass their own totals. Otherwise the
+  // denormalized counters answer it, and only a club written before those
+  // existed falls back to reading every row — which is what
+  // `backfillClubCounts` removes.
+  const memberCount =
+    counts?.members ?? club.memberCount ?? (await countClubMembers(ctx, club._id));
+  const channelCount =
+    counts?.channels ?? club.channelCount ?? (await countClubChannels(ctx, club._id));
 
   return {
     _id: club._id,
@@ -191,20 +158,42 @@ export async function getVisibleChannels(
   clubId: Id<"clubs">,
   context: ClubContext,
   userId: Id<"users">,
+  preloaded: ChannelAccessBatchState = {},
 ) {
   const channels = await ctx.db
     .query("clubChannels")
     .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", clubId))
     .collect();
 
+  const accessByChannelId = await getChannelAccessForChannels(
+    ctx,
+    channels,
+    context,
+    userId,
+    preloaded,
+  );
+  const membershipsByChannelId = new Map(
+    await Promise.all(
+      channels
+        .filter((channel) => channel.visibility === "PRIVATE")
+        .map(async (channel) => [
+          channel._id,
+          await ctx.db
+            .query("clubChannelMemberships")
+            .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
+            .collect(),
+        ] as const),
+    ),
+  );
   const result = [];
   for (const channel of channels) {
-    const memberships = await ctx.db
-      .query("clubChannelMemberships")
-      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
-      .collect();
+    const memberships = membershipsByChannelId.get(channel._id) ?? [];
     const channelDoc = { ...channel, memberships };
-    const viewer = await toChannelViewerState(ctx, channelDoc, context, userId);
+    const access = accessByChannelId.get(channel._id)!;
+    const viewer = {
+      viewerCanRead: access.canView,
+      viewerCanPost: access.canPost,
+    };
     if (!viewer.viewerCanRead) continue;
 
     result.push({
@@ -221,6 +210,7 @@ export async function getVisibleChannels(
       includeDescendants: channel.includeDescendants,
       includeAncestorLeaders: channel.includeAncestorLeaders,
       postingPolicy: channel.postingPolicy,
+      whiteboardsEnabled: channel.whiteboardsEnabled,
       name: channel.name,
       description: channel.description,
       visibility: channel.visibility,
@@ -235,8 +225,7 @@ export async function getVisibleChannels(
     channels: result.sort(
       (a, b) =>
         (a.position ?? Number.MAX_SAFE_INTEGER) -
-          (b.position ?? Number.MAX_SAFE_INTEGER) ||
-        a.createdAt - b.createdAt,
+          (b.position ?? Number.MAX_SAFE_INTEGER) || a.createdAt - b.createdAt,
     ),
     totalCount: channels.length,
   };

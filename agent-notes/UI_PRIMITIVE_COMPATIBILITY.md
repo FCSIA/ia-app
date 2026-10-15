@@ -26,7 +26,7 @@ primitive contract may be wrong.
 
 ## Registry ownership and updates
 
-`pnpm fluid:update` is preview-only unless the caller supplies both `--write`
+`bun run fluid:update` is preview-only unless the caller supplies both `--write`
 and an explicit component list. It must never overwrite the whole registry in
 one operation.
 
@@ -108,7 +108,7 @@ and a contract mismatch is not buried under padding overrides.
 
 ## Base UI and Radix are different implementations
 
-The project currently reports `base: radix` from `pnpm dlx shadcn@latest info
+The project currently reports `base: radix` from `bunx shadcn@latest info
 --json`. New shadcn projects default to Base UI, but shadcn explicitly says
 working Radix projects do not need to migrate.
 
@@ -130,13 +130,13 @@ References:
 
 ## Required audit workflow
 
-1. Run `direnv exec . pnpm dlx shadcn@latest info --json` and record the
+1. Run `bunx shadcn@latest info --json` and record the
    configured base, style, icon library, aliases, and installed components.
 2. For each Fluid component, explicitly inspect its current live documentation,
    rendered example, Code example, API, exact registry source, and local copy.
    If browser access is unavailable, record the fallback and leave visual QA
    unverified.
-3. Fetch the current shadcn docs for the configured base with `pnpm dlx
+3. Fetch the current shadcn docs for the configured base with `bunx
    shadcn@latest docs <component>`. Compare Base and Radix docs when a migration
    or copied example is involved.
 4. Before updating an installed component, use `add --dry-run` and `add --diff`.

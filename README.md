@@ -23,7 +23,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 | Mobile             | Expo SDK 57, React Native, Expo Router, NativeWind          |
 | Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
 | Design             | Shared `@ia/design-tokens` package                          |
-| Tooling            | pnpm workspaces, Turborepo, EAS                             |
+| Tooling            | Bun workspaces, Turborepo, EAS                             |
 
 ## Project Structure
 
@@ -42,25 +42,27 @@ ia-app/
 
 For a full setup walkthrough, use [Getting Started](docs/reference/getting-started.md).
 
-Requires Node.js 20.19 or newer and pnpm 10.29.3.
+Requires Node.js 20.19 or newer and a separately installed Bun executable.
+CI uses the Bun version recorded in `package.json`; local developers may use a
+newer compatible Bun release.
 
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
 cp .env.example .env
-pnpm install
+bun install
 ```
 
 Start the application (Next.js frontend and Convex dev server in parallel):
 
 ```bash
-pnpm dev
+bun run dev
 ```
 
 Start the native mobile app with Expo:
 
 ```bash
-pnpm dev:mobile
+bun run dev:mobile
 ```
 
 The mobile app has repo-local store assets and production-shaped Expo config.
@@ -70,18 +72,18 @@ School-owned EAS, Apple, Google, and universal-link values are documented in
 Open Convex dashboard:
 
 ```bash
-pnpm --filter cvx exec convex dash
-pnpm --filter cvx exec convex dashboard
+bun run --cwd apps/convex convex dash
+bun run --cwd apps/convex convex dashboard
 ```
 
 > [!IMPORTANT]
-> Do not run `pnpx convex dev`, `npx convex dev`, or other Convex commands from the repository root. This monorepo's Convex app lives in `apps/convex`, so root-level Convex commands can initialize and push an empty `convex/` app. Use `pnpm --filter cvx ...` from the root instead.
+> Do not run `bunx convex dev`, `npx convex dev`, or other Convex commands from the repository root. This monorepo's Convex app lives in `apps/convex`, so root-level Convex commands can initialize and push an empty `convex/` app. Use `bun run --filter cvx ...` from the root instead.
 
 On a new checkout, initialize its local Convex backend and auth environment:
 
 ```bash
-pnpm setup:convex-local
-pnpm dev
+bun run setup:convex-local
+bun run dev
 ```
 
 The setup command generates `BETTER_AUTH_SECRET` and defaults `SITE_URL` only
@@ -92,18 +94,18 @@ Browser push also needs VAPID keys. Generate one key pair, put the public key in
 `apps/web/.env.local`, and set the matching Convex deployment values:
 
 ```bash
-pnpm --filter cvx exec web-push generate-vapid-keys
-pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
-pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
-pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+bun run --cwd apps/convex web-push generate-vapid-keys
+bun run --cwd apps/convex convex env set VAPID_PUBLIC_KEY "<public-key>"
+bun run --cwd apps/convex convex env set VAPID_PRIVATE_KEY "<private-key>"
+bun run --cwd apps/convex convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
 Then seed the small demo profile from the CLI:
 
 ```bash
-pnpm --filter cvx exec convex run --deployment local \
+bun run --cwd apps/convex convex run --deployment local \
   bootstrap:resetAndSeed '{"profile":"development"}'
-pnpm --filter cvx exec convex run --deployment local \
+bun run --cwd apps/convex convex run --deployment local \
   bootstrap:seedStatus '{}' --watch
 ```
 
@@ -111,7 +113,7 @@ It seeds 50 students and 119 staff. Pass `{"profile":"full"}` only for the
 1,500-student full profile. The Convex Dashboard provides the same internal
 functions as an alternative.
 
-`pnpm dev` starts the web and Convex watchers against the selected local
+`bun run dev` starts the web and Convex watchers against the selected local
 deployment. See [Convex Local And Production Runtime](./docs/backend/convex-local-production.md)
 before using a cloud deployment.
 
@@ -120,7 +122,7 @@ Demo seed/reset can also be run from the Convex Dashboard via internal function 
 | Service          | URL                                                    |
 | ---------------- | ------------------------------------------------------ |
 | Web App          | http://localhost:3000                                  |
-| Convex Dashboard | https://dashboard.convex.dev (or run `pnpm db:studio`) |
+| Convex Dashboard | https://dashboard.convex.dev (or run `bun run db:studio`) |
 
 Demo accounts receive random, one-time temporary passwords. After a seed run
 completes, use `bootstrap:claimSeedCredentials` with its run id and store the
@@ -129,27 +131,27 @@ output securely. See [docs/reference/getting-started.md](./docs/reference/gettin
 ## Common Commands
 
 ```bash
-pnpm dev          # Start web app and Convex dev server in parallel
-pnpm dev:mobile   # Start the Expo mobile app
-pnpm --filter cvx exec convex dashboard  # Open local/dev Convex Dashboard console
-pnpm lint         # Lint all workspaces
-pnpm build        # Build all workspaces for production
-pnpm test         # Run test suites
-pnpm fluid:update # Preview updates for every Radix Fluid Functionalism component
+bun run dev          # Start web app and Convex dev server in parallel
+bun run dev:mobile   # Start the Expo mobile app
+bun run --cwd apps/convex convex dashboard  # Open local/dev Convex Dashboard console
+bun run lint         # Lint all workspaces
+bun run build        # Build all workspaces for production
+bun run test         # Run test suites
+bun run fluid:update # Preview updates for every Radix Fluid Functionalism component
 ```
 
 Fluid component refreshes are intentionally dry-run by default. Preview all
 components or narrow the report by name:
 
 ```bash
-pnpm fluid:update
-pnpm fluid:update button select tabs
+bun run fluid:update
+bun run fluid:update button select tabs
 ```
 
 Writing requires an explicit component list:
 
 ```bash
-pnpm fluid:update -- --write select tabs
+bun run fluid:update -- --write select tabs
 ```
 
 App-adapted primitives are protected from automatic replacement because their

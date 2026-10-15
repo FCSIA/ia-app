@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
-import { router } from "expo-router";
+import {
+  Alert,
+  AppState,
+  Linking,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
+import { router, useFocusEffect } from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "@/lib/convex-react";
 import {
   FolderOpen,
   Hash,
@@ -29,6 +35,7 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { AttachmentViewer } from "./attachment-viewer";
 import { safeRemoteAttachmentUrl } from "./chat-attachments";
 import { chatSafeAreaOffset } from "./chat-keyboard-layout";
+import { ChannelSwitcherSheet } from "./channel-switcher-sheet";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import {
@@ -52,6 +59,8 @@ import { normalizeReactionPayload } from "./quick-reactions";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
+import { latestVisibleChatActivity } from "~/apps/shared/chat/activity";
+import { dismissPresentedChannelNotificationsThrough } from "@/lib/push";
 
 type ClubChatScreenProps = {
   clubId: string;
@@ -120,6 +129,10 @@ export function ClubChatScreen({
         : ([...(results as ChatMessage[])].reverse() as ChatMessage[]),
     [paginationStatus, results],
   );
+  const latestVisibleActivity = useMemo(
+    () => latestVisibleChatActivity(messages),
+    [messages],
+  );
   const thread = rawThread as ChatThread | null | undefined;
   const channelContext = rawChannelContext as ClubChatData | null | undefined;
   const mentionContext = rawMentionContext as
@@ -146,6 +159,7 @@ export function ClubChatScreen({
   const reportMessage = useMutation(
     api.moderation.reports.submitClubChannelMessage,
   );
+  const markChannelRead = useMutation(api.clubs.channels.markRead);
   const composer = useChatComposer();
   const attachments = useManagedChatAttachments();
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
@@ -168,6 +182,61 @@ export function ClubChatScreen({
   useEffect(() => {
     setMentionContextRequested(false);
   }, [channelId, clubId]);
+  const lastMarkedActivityRef = useRef(0);
+  const lastReadAttemptAtRef = useRef(0);
+  const [isRouteFocused, setIsRouteFocused] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsRouteFocused(true);
+      return () => setIsRouteFocused(false);
+    }, []),
+  );
+
+  useEffect(() => {
+    lastMarkedActivityRef.current = 0;
+    lastReadAttemptAtRef.current = 0;
+  }, [channelId]);
+
+  useEffect(() => {
+    if (threadRootId || !isRouteFocused || !latestVisibleActivity) return;
+
+    const markVisibleActivityRead = () => {
+      if (AppState.currentState !== "active") return;
+      if (latestVisibleActivity.occurredAt <= lastMarkedActivityRef.current) return;
+
+      const previousActivity = lastMarkedActivityRef.current;
+      lastMarkedActivityRef.current = latestVisibleActivity.occurredAt;
+      lastReadAttemptAtRef.current = Date.now();
+      void markChannelRead({
+        channelId: channelId as Id<"clubChannels">,
+        throughMessageId: latestVisibleActivity.messageId as Id<"clubChannelMessages">,
+      })
+        .then(() =>
+          dismissPresentedChannelNotificationsThrough({
+            channelId,
+            throughCreatedAt: latestVisibleActivity.occurredAt,
+          }),
+        )
+        .catch(() => {
+          if (lastMarkedActivityRef.current === latestVisibleActivity.occurredAt) {
+            lastMarkedActivityRef.current = previousActivity;
+          }
+        });
+    };
+    const delay = Math.max(
+      0,
+      3_000 - (Date.now() - lastReadAttemptAtRef.current),
+    );
+    const timeout = setTimeout(markVisibleActivityRead, delay);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") markVisibleActivityRead();
+    });
+    return () => {
+      clearTimeout(timeout);
+      subscription.remove();
+    };
+  }, [channelId, isRouteFocused, latestVisibleActivity, markChannelRead, threadRootId]);
   const threadRoot = threadRootId
     ? thread === undefined
       ? undefined
@@ -546,6 +615,19 @@ export function ClubChatScreen({
     [channelId, clubId],
   );
 
+  const [channelSwitcherOpen, setChannelSwitcherOpen] = useState(false);
+  const switchChannel = useCallback(
+    (nextChannelId: string) => {
+      setChannelSwitcherOpen(false);
+      void flushDraft().catch(() => {});
+      void attachments.abandonAttachments();
+      // Replace rather than push so back still returns to wherever the
+      // channel was opened from instead of stepping through every channel.
+      router.replace(`/clubs/${clubId}/channels/${nextChannelId}` as never);
+    },
+    [attachments.abandonAttachments, clubId, flushDraft],
+  );
+
   const openAttachment = useCallback(
     (attachment: ChatAttachment) => {
       if (!isPdfAttachment(attachment)) {
@@ -596,6 +678,12 @@ export function ClubChatScreen({
             <AppDetailHeader
               title={threadRootId ? "Thread" : (channel?.name ?? "Channel")}
               subtitle={threadRootId ? channel?.name : channelContext?.clubName}
+              onTitlePress={
+                threadRootId ? undefined : () => setChannelSwitcherOpen(true)
+              }
+              titleAccessibilityLabel={
+                channel ? `${channel.name} channel, switch channel` : undefined
+              }
               leading={
                 <ChannelHeaderMark
                   thread={!!threadRootId}
@@ -732,6 +820,15 @@ export function ClubChatScreen({
         onTogglePin={handleTogglePin}
         onToggleReaction={handleToggleReaction}
       />
+      {threadRootId ? null : (
+        <ChannelSwitcherSheet
+          open={channelSwitcherOpen}
+          clubId={clubId}
+          currentChannelId={channelId}
+          onClose={() => setChannelSwitcherOpen(false)}
+          onSelect={switchChannel}
+        />
+      )}
       <AttachmentViewer
         attachment={viewedAttachment}
         onClose={() => setViewedAttachment(null)}

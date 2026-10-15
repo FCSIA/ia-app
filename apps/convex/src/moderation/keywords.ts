@@ -1,15 +1,23 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../../lib/currentUser";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUser,
+  requireAnyRole,
+  requireAnyRoleSafe,
+} from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { docs } from "../../lib/docs";
+import { schema } from "../schema";
 
 export const list = query({
   args: {},
-  returns: v.array(docs.moderationKeywordRules),
+  returns: v.array(schema.doc("moderationKeywordRules")),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !requireAnyRoleSafe(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) {
+    if (
+      !user ||
+      !requireAnyRoleSafe(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
+    ) {
       return [];
     }
 

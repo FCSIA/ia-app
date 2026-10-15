@@ -1,16 +1,19 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
+import { createDocLoader } from "../../lib/docLoader";
 import { calendarSourceValidator } from "../validators";
-import { calendarEntryValidator } from "./_lib";
+import { schema } from "../schema";
 import {
   getFriendshipBetween,
   isStudentUser,
   requireStudentUser,
   serializeUser,
+  scheduleFriendUserValidator,
 } from "../schedule/_lib";
 import {
   canRespondToCalendarInvite,
@@ -23,20 +26,9 @@ import {
 
 const MAX_CALENDAR_RANGE_MS = 92 * 24 * 60 * 60 * 1000;
 const MAX_CALENDAR_INVITE_RECIPIENTS = 20;
-const calendarEntryOutputValidator = v.object({
-  _id: v.id("calendarEntries"),
-  _creationTime: v.number(),
-  ...calendarEntryValidator,
-  createdAt: v.number(),
+const calendarEntryOutputValidator = schema.doc("calendarEntries").extend({
   inviteId: v.optional(v.id("calendarInvites")),
-  sharedBy: v.optional(
-    v.object({
-      _id: v.id("users"),
-      uniqueId: v.string(),
-      firstName: v.string(),
-      lastName: v.string(),
-    }),
-  ),
+  sharedBy: v.optional(scheduleFriendUserValidator),
 });
 const externalCalendarEntryOutputValidator = v.object({
   _id: v.id("externalCalendarEvents"),
@@ -55,21 +47,40 @@ const calendarListEntryValidator = v.union(
   calendarEntryOutputValidator,
   externalCalendarEntryOutputValidator,
 );
+
+export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvents">) {
+  return {
+    _id: entry._id,
+    _creationTime: entry._creationTime,
+    title: entry.title,
+    description: entry.description,
+    location: entry.location,
+    startAt: entry.startAt,
+    endAt: entry.endAt,
+    tags: entry.tags,
+    source: "EXTERNAL" as const,
+    subscriptionId: entry.subscriptionId,
+    readOnly: true as const,
+  };
+}
+
 const calendarInviteOutputValidator = v.object({
   _id: v.id("calendarInvites"),
   _creationTime: v.number(),
-  status: v.union(v.literal("PENDING"), v.literal("ACCEPTED"), v.literal("DECLINED")),
+  status: v.union(
+    v.literal("PENDING"),
+    v.literal("ACCEPTED"),
+    v.literal("DECLINED"),
+  ),
   createdAt: v.number(),
   entry: calendarEntryOutputValidator,
-  sender: v.object({
-    _id: v.id("users"),
-    uniqueId: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-  }),
+  sender: scheduleFriendUserValidator,
 });
 
-async function acceptedFriendIds(ctx: Parameters<typeof getFriendshipBetween>[0], userId: Parameters<typeof getFriendshipBetween>[1]) {
+async function acceptedFriendIds(
+  ctx: Parameters<typeof getFriendshipBetween>[0],
+  userId: Parameters<typeof getFriendshipBetween>[1],
+) {
   const [outgoing, incoming] = await Promise.all([
     ctx.db
       .query("studentScheduleFriends")
@@ -139,11 +150,7 @@ export const list = query({
         q.eq("userId", user._id).gte("startAt", args.startDate).lte("startAt", args.endDate),
       )
       .take(500) : [];
-    const importedEntries = externalEntries.map((entry) => ({
-      ...entry,
-      source: "EXTERNAL" as const,
-      readOnly: true as const,
-    }));
+    const importedEntries = externalEntries.map(serializeExternalCalendarEntry);
 
     if (!includePersonal) return [...visibleEntries, ...importedEntries];
 
@@ -153,17 +160,27 @@ export const list = query({
         q.eq("recipientId", user._id).eq("status", "ACCEPTED"),
       )
       .take(100);
-    const sharedEntries = [];
-    for (const invite of acceptedInvites) {
-      const [entry, sender, friendship] = await Promise.all([
-        ctx.db.get(invite.calendarEntryId),
-        ctx.db.get(invite.senderId),
-        getFriendshipBetween(ctx, invite.senderId, user._id),
-      ]);
-      if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") continue;
-      if (entry.startAt < args.startDate || entry.startAt > args.endDate) continue;
-      sharedEntries.push({ ...entry, inviteId: invite._id, sharedBy: serializeUser(sender) });
-    }
+    // Resolved together rather than one invite at a time: a month with fifty
+    // shared entries used to cost fifty sequential round trips inside the query.
+    // The loader collapses the repeated sender lookups a prolific sharer causes.
+    const loader = createDocLoader(ctx);
+    const resolvedInvites = await Promise.all(
+      acceptedInvites.map(async (invite) => {
+        const [entry, sender, friendship] = await Promise.all([
+          loader.get(invite.calendarEntryId),
+          loader.get(invite.senderId),
+          getFriendshipBetween(ctx, invite.senderId, user._id),
+        ]);
+        if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") {
+          return null;
+        }
+        if (entry.startAt < args.startDate || entry.startAt > args.endDate) return null;
+        return { ...entry, inviteId: invite._id, sharedBy: serializeUser(sender) };
+      }),
+    );
+    const sharedEntries = resolvedInvites.filter(
+      (entry): entry is NonNullable<typeof entry> => entry !== null,
+    );
 
     return [...visibleEntries, ...sharedEntries, ...importedEntries];
   },
@@ -171,23 +188,15 @@ export const list = query({
 
 export const listEligibleFriends = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("users"),
-      uniqueId: v.string(),
-      firstName: v.string(),
-      lastName: v.string(),
-    }),
-  ),
+  returns: v.array(scheduleFriendUserValidator),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
-    requireStudentUser(user);
+    if (!isStudentUser(user)) return [];
     const friendIds = await acceptedFriendIds(ctx, user._id);
-    const friends = [];
-    for (const friendId of friendIds) {
-      const friend = await ctx.db.get(friendId);
-      if (friend?.isActive && isStudentUser(friend)) friends.push(serializeUser(friend));
-    }
+    const candidates = await Promise.all(friendIds.map((friendId) => ctx.db.get(friendId)));
+    const friends = candidates.flatMap((friend) =>
+      friend?.isActive && isStudentUser(friend) ? [serializeUser(friend)] : [],
+    );
     return friends.sort(
       (left, right) =>
         left.lastName.localeCompare(right.lastName) ||
@@ -207,17 +216,21 @@ export const listPendingInvites = query({
         q.eq("recipientId", user._id).eq("status", "PENDING"),
       )
       .take(100);
-    const results = [];
-    for (const invite of invites) {
-      const [entry, sender, friendship] = await Promise.all([
-        ctx.db.get(invite.calendarEntryId),
-        ctx.db.get(invite.senderId),
-        getFriendshipBetween(ctx, invite.senderId, user._id),
-      ]);
-      if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") continue;
-      results.push({ ...invite, entry, sender: serializeUser(sender) });
-    }
-    return results;
+    const loader = createDocLoader(ctx);
+    const resolved = await Promise.all(
+      invites.map(async (invite) => {
+        const [entry, sender, friendship] = await Promise.all([
+          loader.get(invite.calendarEntryId),
+          loader.get(invite.senderId),
+          getFriendshipBetween(ctx, invite.senderId, user._id),
+        ]);
+        if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") {
+          return null;
+        }
+        return { ...invite, entry, sender: serializeUser(sender) };
+      }),
+    );
+    return resolved.filter((row): row is NonNullable<typeof row> => row !== null);
   },
 });
 
@@ -231,14 +244,21 @@ export const inviteFriends = mutation({
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
     const entry = await ctx.db.get(args.entryId);
-    if (!entry || entry.source !== "PERSONAL" || entry.createdById !== user._id) {
+    if (
+      !entry ||
+      entry.source !== "PERSONAL" ||
+      entry.createdById !== user._id
+    ) {
       throw new ConvexError("You can only share your own personal reminders.");
     }
 
     const friendIds = Array.from(new Set(args.friendIds));
-    if (friendIds.length === 0) throw new ConvexError("Choose at least one friend.");
+    if (friendIds.length === 0)
+      throw new ConvexError("Choose at least one friend.");
     if (friendIds.length > MAX_CALENDAR_INVITE_RECIPIENTS) {
-      throw new ConvexError(`You can invite at most ${MAX_CALENDAR_INVITE_RECIPIENTS} friends at once.`);
+      throw new ConvexError(
+        `You can invite at most ${MAX_CALENDAR_INVITE_RECIPIENTS} friends at once.`,
+      );
     }
 
     for (const friendId of friendIds) {
@@ -246,14 +266,24 @@ export const inviteFriends = mutation({
         ctx.db.get(friendId),
         getFriendshipBetween(ctx, user._id, friendId),
       ]);
-      if (!friend || !canShareCalendarEntryWithFriend({
-        senderId: user._id,
-        recipientId: friendId,
-        recipientIsActive: friend.isActive,
-        recipientIsStudent: isStudentUser(friend),
-        friendshipStatus: friendship?.status === "ACCEPTED" ? "ACCEPTED" : friendship ? "PENDING" : null,
-      })) {
-        throw new ConvexError("Calendar reminders can only be shared with accepted friends.");
+      if (
+        !friend ||
+        !canShareCalendarEntryWithFriend({
+          senderId: user._id,
+          recipientId: friendId,
+          recipientIsActive: friend.isActive,
+          recipientIsStudent: isStudentUser(friend),
+          friendshipStatus:
+            friendship?.status === "ACCEPTED"
+              ? "ACCEPTED"
+              : friendship
+                ? "PENDING"
+                : null,
+        })
+      ) {
+        throw new ConvexError(
+          "Calendar reminders can only be shared with accepted friends.",
+        );
       }
     }
 
@@ -299,13 +329,20 @@ export const respondToInvite = mutation({
       ctx.db.get(invite.calendarEntryId),
       getFriendshipBetween(ctx, invite.senderId, user._id),
     ]);
-    if (!canRespondToCalendarInvite({
-      isRecipient: invite.recipientId === user._id,
-      inviteStatus: invite.status,
-      entryIsPersonal: entry?.source === "PERSONAL",
-      entryOwnedBySender: entry?.createdById === invite.senderId,
-      friendshipStatus: friendship?.status === "ACCEPTED" ? "ACCEPTED" : friendship ? "PENDING" : null,
-    })) {
+    if (
+      !canRespondToCalendarInvite({
+        isRecipient: invite.recipientId === user._id,
+        inviteStatus: invite.status,
+        entryIsPersonal: entry?.source === "PERSONAL",
+        entryOwnedBySender: entry?.createdById === invite.senderId,
+        friendshipStatus:
+          friendship?.status === "ACCEPTED"
+            ? "ACCEPTED"
+            : friendship
+              ? "PENDING"
+              : null,
+      })
+    ) {
       throw new ConvexError("This calendar invitation is no longer available.");
     }
     await ctx.db.patch(invite._id, {
@@ -330,7 +367,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     if (args.source && args.source !== "PERSONAL") {
-      throw new ConvexError("Shared calendar entries must be created by their owning feature");
+      throw new ConvexError(
+        "Shared calendar entries must be created by their owning feature",
+      );
     }
 
     const title = normalizeEventTitle(args.title);
@@ -369,7 +408,9 @@ export const remove = mutation({
 
     const invites = await ctx.db
       .query("calendarInvites")
-      .withIndex("by_calendarEntryId", (q) => q.eq("calendarEntryId", args.entryId))
+      .withIndex("by_calendarEntryId", (q) =>
+        q.eq("calendarEntryId", args.entryId),
+      )
       .take(MAX_CALENDAR_INVITE_RECIPIENTS + 1);
     for (const invite of invites) await ctx.db.delete(invite._id);
     await ctx.db.delete(args.entryId);

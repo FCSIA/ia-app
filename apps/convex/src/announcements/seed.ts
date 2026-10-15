@@ -24,6 +24,9 @@ export const run = internalMutation({
     const lastWeek = now - oneWeek;
 
     if (args.reset) {
+      const oldPins = await ctx.db.query("announcementPins").take(5000);
+      for (const pin of oldPins) await ctx.db.delete(pin._id);
+
       const oldBookmarks = await ctx.db
         .query("announcementBookmarks")
         .take(5000);
@@ -384,7 +387,7 @@ export const run = internalMutation({
 
     const annIds: any[] = [];
     for (const ann of announcements) {
-      const id = await ctx.db.insert("announcements", ann);
+      const id = await ctx.db.insert("announcements", { ...ann, commentCount: 0 });
       annIds.push({ id, title: ann.title });
     }
 

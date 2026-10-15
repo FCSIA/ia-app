@@ -39,18 +39,22 @@ packages/devlog/src/releases.generated.ts   generated — consumed by the app
 CHANGELOG.md                            generated — read by maintainers
 ```
 
-`scripts/devlog.mjs` owns both generated files. `pnpm devlog:check` regenerates
+`scripts/devlog.mjs` owns both generated files. `bun run devlog:check` regenerates
 them in memory and fails if either has drifted, so a hand edit cannot survive
 CI. Contributor Validation runs that check on every pull request.
 
 ## Cutting a release
 
-A production deploy uses an approved immutable release tag. First, cut the
-release data from `main`, commit the generated `CHANGELOG.md` and devlog files,
-and merge those changes through the normal protected-branch pull-request flow.
-After the release commit is in `main`, a designated maintainer creates and
-pushes its `v<version>` tag. That tag starts `Production Deploy`
-(`.github/workflows/prod.yml`).
+A production deploy uses an approved immutable release tag. Run the single
+release command from an up-to-date clean `main` checkout; it creates a release
+branch and pull request containing the generated release files. When that PR
+merges, the merge-triggered release workflow
+(`.github/workflows/release-on-merge.yml`)
+creates and pushes the tag; `Production Deploy` (`.github/workflows/prod.yml`)
+is called directly after the tag exists and validates and deploys that existing
+immutable tag. The tag-push trigger remains available for external/manual
+retry paths, but deployment does not depend on workflow recursion from a
+`GITHUB_TOKEN` push. Humans never create or push release tags.
 
 The workflow is read-only. Before installing dependencies or using deployment
 secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
@@ -60,22 +64,28 @@ cannot create a release commit, move `main`, or bypass branch protection. A
 failed deploy leaves the already-approved release commit and tag in place so it
 can be safely retried.
 
+The `main` branch ruleset must require pull requests, the `CI Gate` status, and
+that branches be up to date before merging. The release workflow also compares
+the release branch's recorded base commit with the squash merge's first parent;
+both checks are required so a release PR cannot publish stale release metadata
+after another PR reaches `main`.
+
 To see what the next release would contain, without writing anything:
 
 ```bash
-pnpm devlog:preview
+bun run devlog:preview
 ```
 
 To prepare one for review from an up-to-date `main` checkout:
 
 ```bash
-pnpm devlog:cut --minor --title="Calendar-first schedules"
+bun run release --minor
 ```
 
-Commit `CHANGELOG.md` and `packages/devlog`, open a pull request, and wait for
-the usual approval and validation. Once it is merged, create `v<version>` on
-that release commit and push the tag to begin deployment. To retry an approved
-release, manually dispatch the workflow with that existing tag name.
+The command prints the pull request URL. Wait for the usual approval and
+validation; merging the release PR begins deployment automatically. Use
+`bun run release --set=1.0.0` for an explicit version or `--dry-run` to inspect
+the proposed release without mutations.
 
 ## How commits become entries
 
@@ -106,7 +116,7 @@ Devlog-scope: clubs
 `Devlog: skip` keeps a commit out of the log entirely.
 
 Writing entries by hand is also fine — `releases.json` is a normal file. Run
-`pnpm devlog:generate` afterwards so the generated outputs match.
+`bun run devlog:generate` afterwards so the generated outputs match.
 
 ## The in-app devlog
 
@@ -127,3 +137,24 @@ The build stamp comes from `NEXT_PUBLIC_APP_COMMIT`, which `next.config.ts`
 fills from `VERCEL_GIT_COMMIT_SHA` or the value the deploy workflow passes with
 `--build-env`. It is empty in local development, and the stamp falls back to the
 version alone.
+
+## Verifying a deployed build
+
+Every web deployment exposes a small unauthenticated JSON marker at `/_meta`
+(a rewrite to the handler in `apps/web/src/app/api/meta/route.ts`; Next.js never
+routes a folder named `_meta`).
+It is deliberately not linked in the product UI, but it is not secret: it only
+returns the service name, release version/channel, display release, and the
+seven-character build commit when one was stamped at build time. It must never
+include configuration, deployment URLs, account data, or other secrets.
+
+The response is explicitly non-cacheable, so an agent or operator can check a
+deployment after a release without signing in or loading the application:
+
+```bash
+curl --fail --silent --show-error https://app.example.edu/_meta
+```
+
+Compare `version` and `build` with the intended release tag and commit. A local
+development build reports `build: null`; that is expected and is not evidence
+of a production deployment.

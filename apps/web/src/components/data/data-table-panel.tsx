@@ -49,12 +49,12 @@ export function DataTablePanel({
   return (
     <Card
       className={cn(
-        'flex flex-col overflow-hidden',
+        'flex min-w-0 flex-col overflow-hidden',
         fillHeight && 'h-full min-h-0 flex-1',
         className,
       )}
     >
-      <CardHeader className="flex shrink-0 flex-col gap-3 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="flex min-w-0 shrink-0 flex-col gap-3 space-y-0 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <CardTitle className="text-sm font-semibold leading-tight">{title}</CardTitle>
           {typeof count === 'number' && (
@@ -63,12 +63,12 @@ export function DataTablePanel({
             </Badge>
           )}
         </div>
-        {toolbar && <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">{toolbar}</div>}
+        {toolbar && <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-1 sm:justify-end">{toolbar}</div>}
       </CardHeader>
       <ScrollArea
         orientation="both"
         viewportRef={contentRef}
-        className="min-h-0 flex-1"
+        className="min-h-0 min-w-0 flex-1"
         viewportClassName={cn(densityClasses.table, contentClassName)}
       >
         {children}

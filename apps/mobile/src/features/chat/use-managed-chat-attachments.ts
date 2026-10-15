@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import { File, type UploadTask } from "expo-file-system";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation } from "@/lib/convex-react";
 import { useToast } from "@/components/ui";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";

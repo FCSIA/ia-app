@@ -57,6 +57,14 @@ await authClient.signIn.username({
 Students and staff do not self-register. Admin workflows create accounts and
 issue/reset passwords.
 
+The desktop visual beside the form shows one pre-dithered campus photo per
+browser tab session (`apps/web/src/app/login/login-images.ts`). The first load
+rolls randomly from the complete image pool, persists the pick in
+`sessionStorage`, and keeps it for the session. A `bg-primary`
+color-blend layer tints the photo with the active theme accent, so Bubblegum
+reads pink while the default theme stays ember. Regenerate artwork after
+adding a photo with `pnpm login:dither`.
+
 ## Current User
 
 Use `useCurrentUser()` for UI gating:
@@ -82,7 +90,7 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 NEXT_PUBLIC_SITE_URL=https://...
 ```
 
-`pnpm setup:convex-local` enables forwarded LAN and tunnel hosts only for the
+`bun run setup:convex-local` enables forwarded LAN and tunnel hosts only for the
 loopback local deployment. Cloud development or preview deployments remain
 allowlisted; add their exact comma-separated web origins to the deployment's
 `BETTER_AUTH_TRUSTED_ORIGINS` value.

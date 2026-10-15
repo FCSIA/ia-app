@@ -34,6 +34,10 @@ export function formatRoleLabel(role: string) {
   return role.replace(/_/g, ' ');
 }
 
+export function formatPathwayLabel(pathway?: string | null) {
+  return pathway ? pathway.replace(/_/g, ' ') : '—';
+}
+
 export function schoolYearLabel(startYear: number) {
   return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
 }

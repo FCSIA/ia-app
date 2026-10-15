@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'l
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
@@ -20,14 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
+import { formatPathwayLabel, formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
+import { InputCopy } from '@/components/ui/input-copy';
 
 const ROLE_BADGE_LIMIT = 2;
-const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
+const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Major', 'Minor', 'Roles', 'Status', 'Actions'] as const;
 
 function roleLabel(role: string) {
   return formatRoleLabel(role);
@@ -40,13 +42,13 @@ function RoleSummary({ roles }: { roles: string[] }) {
 
   return (
     <div
-      className="flex max-w-full flex-nowrap items-center gap-1 overflow-hidden"
+      className="flex max-w-full flex-wrap items-center gap-1"
       aria-label={fullLabel}
       title={fullLabel}
     >
       {visibleRoles.map((role) => (
-        <Badge key={role} variant="solid" size="sm" className="min-w-0 max-w-[118px] shrink-0">
-          <span className="truncate">{roleLabel(role)}</span>
+        <Badge key={role} variant="solid" size="sm">
+          {roleLabel(role)}
         </Badge>
       ))}
       {overflowCount > 0 ? (
@@ -96,13 +98,27 @@ function ResetPasswordAction({
 }: {
   user: AdminUserRecord;
   disabled: boolean;
-  onResetPassword: (user: AdminUserRecord) => void;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
 }) {
   const [open, setOpen] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState<string>();
+  const [isResetting, setIsResetting] = useState(false);
   const label = `Reset password for ${user.firstName} ${user.lastName}`;
 
+  const resetPassword = async () => {
+    setIsResetting(true);
+    const password = await onResetPassword(user);
+    setIsResetting(false);
+    if (password) setTemporaryPassword(password);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setTemporaryPassword(undefined);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <IconActionButton
         label={label}
         disabled={disabled}
@@ -112,22 +128,25 @@ function ResetPasswordAction({
       </IconActionButton>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset password?</AlertDialogTitle>
+          <AlertDialogTitle>{temporaryPassword ? 'Temporary password created' : 'Reset password?'}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will generate a temporary password for {user.firstName} {user.lastName} and mark
-            their account to change it after signing in.
+            {temporaryPassword
+              ? `Copy this password and share it securely with ${user.firstName} ${user.lastName}. It is only shown once.`
+              : `This will generate a temporary password for ${user.firstName} ${user.lastName} and mark their account to change it after signing in.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {temporaryPassword ? <InputCopy label="Temporary password" value={temporaryPassword} variant="button" /> : null}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              onResetPassword(user);
-              setOpen(false);
-            }}
-          >
-            Reset password
-          </AlertDialogAction>
+          {temporaryPassword ? (
+            <AlertDialogCancel>Done</AlertDialogCancel>
+          ) : (
+            <>
+              <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+              <Button type="button" onClick={() => void resetPassword()} disabled={isResetting}>
+                {isResetting ? 'Resetting...' : 'Reset password'}
+              </Button>
+            </>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -205,6 +224,7 @@ function UserTableSection({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
+  onSetDeveloper,
   status,
   canLoadPrevious,
   pageIndex,
@@ -226,19 +246,20 @@ function UserTableSection({
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => void;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
   isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
   status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
   canLoadPrevious: boolean;
   pageIndex: number;
   loadNextPage: () => void;
   loadPreviousPage: () => void;
 }) {
-  const d = dataTableClasses('compact');
+  const d = dataTableClasses('comfortable');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
   const selectableUsers = canDeleteUsers ? users.filter((user) => user._id !== currentUserId) : [];
   const selectedCount = selectedUserIds.size;
@@ -285,12 +306,13 @@ function UserTableSection({
         <SearchInput
           className="w-full min-w-0 sm:w-64"
           placeholder="Search users..."
+          aria-label="Search users"
           value={search}
           onValueChange={onSearchChange}
           size="sm"
         />
         <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
-          <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" />
+          <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" aria-label="Filter users by role" />
           <SelectContent>
             <SelectItem index={0} value="students">Students</SelectItem>
             <SelectItem index={1} value="teachers">Teachers</SelectItem>
@@ -301,7 +323,7 @@ function UserTableSection({
         </Select>
       </div>
       {canDeleteUsers && selectedCount > 0 ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="whitespace-nowrap text-xs text-muted-foreground">
             {selectedCount} selected
           </span>
@@ -321,31 +343,33 @@ function UserTableSection({
           />
         </div>
       ) : null}
-      <div className="flex shrink-0 items-center justify-between gap-2 text-xs text-muted-foreground xl:justify-end">
-        <span className="whitespace-nowrap">
-          Page {pageIndex + 1} · Showing {users.length}
-          {typeof totalCount === 'number' ? ` of ${totalCount}` : ''} user{users.length === 1 ? '' : 's'}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="tertiary"
-            size="sm"
-            onClick={loadPreviousPage}
-            disabled={!canLoadPrevious || status === 'LoadingMore'}
-            leadingIcon={ChevronLeft}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="tertiary"
-            size="sm"
-            onClick={loadNextPage}
-            disabled={status !== 'CanLoadMore'}
-            trailingIcon={ChevronRight}
-          >
-            {status === 'LoadingMore' ? 'Loading...' : 'Next page'}
-          </Button>
-        </div>
+    </div>
+  );
+
+  const pagination = (
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
+      <span role="status">
+        Page {pageIndex + 1} · {users.length} user{users.length === 1 ? '' : 's'} shown
+      </span>
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="tertiary"
+          size="sm"
+          onClick={loadPreviousPage}
+          disabled={!canLoadPrevious || status === 'LoadingMore'}
+          leadingIcon={ChevronLeft}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="tertiary"
+          size="sm"
+          onClick={loadNextPage}
+          disabled={status !== 'CanLoadMore'}
+          trailingIcon={ChevronRight}
+        >
+          {status === 'LoadingMore' ? 'Loading...' : 'Next page'}
+        </Button>
       </div>
     </div>
   );
@@ -354,45 +378,44 @@ function UserTableSection({
     <DataTablePanel
       title={title}
       count={totalCount}
-      density="compact"
+      density="comfortable"
       fillHeight
       toolbar={toolbar}
+      footer={pagination}
     >
-      <Table className={`${d.table} table-fixed`}>
-        <colgroup>
-          <col className="w-10" />
-          <col className="w-[200px]" />
-          <col className="w-[72px]" />
-          <col />
-          <col className="w-[92px]" />
-          <col className="w-[176px]" />
-        </colgroup>
-        <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
-          <TableRow>
-            <TableHead className={d.head}>
-              <Checkbox
-                checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
-                onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
-                disabled={selectableUsers.length === 0 || isDeleteUsersPending}
-                aria-label="Select all users shown on this page"
-              />
-            </TableHead>
-            {USER_TABLE_HEADERS.slice(1).map((header) => (
-              <TableHead key={header} className={d.head}>
-                {header}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.length === 0 ? (
+      {users.length === 0 ? (
+        <AdminNotice message={emptyMessage} />
+      ) : (
+        <Table aria-label={title} className={`${d.table} min-w-[1104px] table-fixed`}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[200px]" />
+            <col className="w-[72px]" />
+            <col className="w-[156px]" />
+            <col className="w-[156px]" />
+            <col className="w-[156px]" />
+            <col className="w-[92px]" />
+            <col className="w-[232px]" />
+          </colgroup>
+          <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
             <TableRow>
-              <TableCell colSpan={USER_TABLE_HEADERS.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
-                {emptyMessage}
-              </TableCell>
+              <TableHead className={d.head}>
+                <Checkbox
+                  checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
+                  onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
+                  disabled={selectableUsers.length === 0 || isDeleteUsersPending}
+                  aria-label="Select all users shown on this page"
+                />
+              </TableHead>
+              {USER_TABLE_HEADERS.slice(1).map((header) => (
+                <TableHead key={header} className={d.head}>
+                  {header}
+                </TableHead>
+              ))}
             </TableRow>
-          ) : (
-            users.map((user, index) => (
+          </TableHeader>
+          <TableBody>
+            {users.map((user, index) => (
               <TableRow key={user._id} index={index} className="h-10">
                 <TableCell className={d.cell}>
                   <Checkbox
@@ -403,10 +426,23 @@ function UserTableSection({
                   />
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>
+                  <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
+                    <span className="min-w-0 break-words">{user.firstName} {user.lastName}</span>
+                    <DeveloperBadge user={user} size={13} />
+                  </span>
                 </TableCell>
                 <TableCell className={d.cell}>
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block break-words">
+                    {formatPathwayLabel(user.major)}
+                  </span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block break-words">
+                    {formatPathwayLabel(user.minor)}
+                  </span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <RoleSummary roles={getUserRoles(user)} />
@@ -417,12 +453,13 @@ function UserTableSection({
                   </Badge>
                 </TableCell>
                 <TableCell className={`${d.cell} overflow-hidden`}>
-                  <div className="grid grid-cols-[2rem_2rem_2rem_2rem] items-center justify-end gap-1">
+                  <div className="grid grid-flow-col auto-cols-[2rem] items-center justify-end gap-1 pointer-coarse:auto-cols-[2.75rem]">
                     <UserPermissionsPopover
                       user={user}
                       isSuperAdmin={isSuperAdmin}
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
+                      onSetDeveloper={onSetDeveloper}
                     />
                     {canResetPassword(user) && user._id !== currentUserId ? (
                       <ResetPasswordAction
@@ -465,10 +502,10 @@ function UserTableSection({
                   </div>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </DataTablePanel>
   );
 }
@@ -503,6 +540,7 @@ export function AdminUsersTab({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
+  onSetDeveloper,
 }: {
   search: string;
   onSearchChange: (value: string) => void;
@@ -527,16 +565,17 @@ export function AdminUsersTab({
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => void;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
   isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {isUsersLoading ? (
           <AdminNotice className="min-h-0 flex-1" message="Loading users..." />
         ) : isUsersError ? (
@@ -571,6 +610,7 @@ export function AdminUsersTab({
             isDeleteUsersPending={isDeleteUsersPending}
             isResetPasswordPending={isResetPasswordPending}
             isAssignRolesPending={isAssignRolesPending}
+            onSetDeveloper={onSetDeveloper}
             onAssignRoles={onAssignRoles}
             status={status}
             canLoadPrevious={canLoadPrevious}

@@ -18,7 +18,7 @@ development and talks to Convex through generated function references.
 - `@shadcn/react` behavior primitives for chat scrolling
 - Plate for rich chat authoring and structured mentions
 - `react-markdown` with `remark-gfm` for read-only message rendering
-- Convex React hooks
+- Convex React hooks, through the `@/lib/convex-react` wrapper
 - Better Auth through `ConvexBetterAuthProvider`
 
 ## Directory Map
@@ -42,6 +42,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 `apps/web/src/app/providers.tsx` wraps the app with:
 
 - `ConvexBetterAuthProvider`
+- `ConvexQueryCacheProvider`
 - `ThemeProvider`
 - `react-hot-toast` toaster
 
@@ -77,6 +78,47 @@ Props are values passed from parent to child:
 Prefer composition over long prop chains. If a parent only passes data through
 several layers, move the shared UI boundary or pass `children`/slots instead.
 This keeps pages easier for future students to reason about.
+
+## Convex Data
+
+Import `useQuery` from `@/lib/convex-react`, not from `convex/react`. The
+wrapper re-exports everything `convex/react` exports and replaces `useQuery`
+with one that keeps its subscription open for a few minutes after the component
+unmounts.
+
+Convex drops a query's cached value as soon as its last subscriber goes away, so
+a plain `useQuery` re-fetches from scratch on every route mount — which is why
+each tab used to open on a skeleton even when nothing had changed. Holding the
+subscription means a returning route reads the value out of the client store on
+its first frame while the socket keeps it fresh.
+
+`ConvexQueryCacheProvider` owns that cache. It sits above the authenticated
+boundary so the cache survives route changes, and clears itself when
+authentication ends — nothing read as one person may outlive that identity.
+
+A tab's *first* visit is warmed by intent rather than up front:
+`apps/web/src/lib/route-prewarm.ts` maps a route to the queries it mounts with,
+and the navigation links start them on `pointerenter` and `focus`. Those
+subscriptions go idle immediately, so they expire on their own after one idle
+window.
+
+Resist the temptation to warm these queries at login instead. Judge a candidate
+by its invalidation set, not by the size of its result: every query worth warming
+here reads shared rows — the announcements feed, the events list, the school
+calendar, the 250 school day blocks behind the schedule — so a session-long
+subscription means one write re-runs that query on every signed-in device,
+including the ones that never open the tab. The cost scales with how many people
+are logged in rather than with who is actually looking, and a bounded window at
+login is the worst version of it: it concentrates that load into the minutes when
+everyone signs in at once.
+
+There is no lead time left to recover on touch, either. Pointer events fire
+`pointerenter` before `pointerdown`, so a tab bar prewarms when the finger lands
+rather than when it lifts — the earliest signal the platform gives.
+
+When a prewarmed query takes arguments the route also computes, derive both from
+one helper. Different arguments are a different subscription, and the tab opens
+cold again.
 
 ## Client Components
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { pickNavigationLoadingFact } from '@ia/fun-facts';
 import { authClient } from '@/lib/auth-client';
@@ -14,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LoadingFact } from '@/components/ui/loading-fact';
 import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { LoginVisual } from './login-visual';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-screen bg-background lg:grid-cols-[minmax(28rem,0.86fr)_minmax(0,1.14fr)]">
       <section className="flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12">
-        <Card className="w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5">
+        <Card className={`w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5 ${CARD_SURFACE_FOREGROUND}`}>
           <CardHeader className="space-y-3 pb-6">
             <div className="mb-1 flex flex-col items-center gap-2 self-center">
               <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">
@@ -125,25 +126,7 @@ export default function LoginPage() {
         </Card>
       </section>
 
-      <section className="relative hidden min-h-screen overflow-hidden bg-primary lg:block" aria-hidden="true">
-        <Image
-          src="/images/login-campus-dithered.webp"
-          alt=""
-          fill
-          priority
-          sizes="(min-width: 1024px) 58vw, 0px"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-primary/10" />
-        <div className="absolute inset-x-0 bottom-0 p-10 text-white">
-          <div className="max-w-lg rounded-2xl border border-white/20 bg-black/25 p-5 backdrop-blur-sm">
-            <p className="text-sm font-medium uppercase tracking-[0.16em] text-white/75">Innovation Academy</p>
-            <p className="mt-2 text-xl font-medium leading-snug">
-              Classes, clubs, events, and school updates in one place.
-            </p>
-          </div>
-        </div>
-      </section>
+      <LoginVisual />
     </main>
   );
 }

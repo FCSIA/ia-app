@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePaginatedQuery, useQuery } from 'convex/react';
+import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import { BookOpen, Search, SlidersHorizontal } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';

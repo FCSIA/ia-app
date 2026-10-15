@@ -10,6 +10,7 @@ import {
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
+  scheduleFriendUserValidator,
   studentScheduleRecordValidator,
   studentVisibility,
 } from "./_lib";
@@ -23,13 +24,6 @@ import { canAddAcceptedFriendToGroup, isScheduleGroupOwner } from "./groupPolicy
 const MAX_GROUPS = 20;
 const MAX_GROUP_MEMBERS = 20;
 
-const userValidator = v.object({
-  _id: v.id("users"),
-  uniqueId: v.string(),
-  firstName: v.string(),
-  lastName: v.string(),
-});
-
 const groupSummaryValidator = v.object({
   id: v.id("studentScheduleGroups"),
   name: v.string(),
@@ -40,7 +34,7 @@ const groupSummaryValidator = v.object({
 
 const groupMemberValidator = v.object({
   id: v.id("studentScheduleGroupMembers"),
-  user: userValidator,
+  user: scheduleFriendUserValidator,
   friendshipActive: v.boolean(),
   visibility: v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("NONE")),
   schedule: v.union(studentScheduleRecordValidator, v.null()),
@@ -68,11 +62,20 @@ async function requireOwnedGroup(
   groupId: Id<"studentScheduleGroups">,
   ownerId: Id<"users">,
 ) {
-  const group = await ctx.db.get(groupId);
-  if (!group || !isScheduleGroupOwner(group.ownerId, ownerId)) {
+  const group = await getOwnedGroupOrNull(ctx, groupId, ownerId);
+  if (!group) {
     throw new ConvexError("Schedule group not found.");
   }
   return group;
+}
+
+export async function getOwnedGroupOrNull(
+  ctx: QueryCtx | MutationCtx,
+  groupId: Id<"studentScheduleGroups">,
+  ownerId: Id<"users">,
+) {
+  const group = await ctx.db.get(groupId);
+  return group && isScheduleGroupOwner(group.ownerId, ownerId) ? group : null;
 }
 
 async function acceptedFriendIds(
@@ -135,7 +138,7 @@ export const listMine = query({
 
 export const listEligibleFriends = query({
   args: {},
-  returns: v.array(userValidator),
+  returns: v.array(scheduleFriendUserValidator),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
@@ -155,17 +158,21 @@ export const listEligibleFriends = query({
 
 export const get = query({
   args: { groupId: v.id("studentScheduleGroups") },
-  returns: v.object({
-    group: groupSummaryValidator,
-    owner: userValidator,
-    ownerSchedule: v.union(studentScheduleRecordValidator, v.null()),
-    members: v.array(groupMemberValidator),
-    clusters: v.array(sharedClassClusterValidator),
-  }),
+  returns: v.union(
+    v.object({
+      group: groupSummaryValidator,
+      owner: scheduleFriendUserValidator,
+      ownerSchedule: v.union(studentScheduleRecordValidator, v.null()),
+      members: v.array(groupMemberValidator),
+      clusters: v.array(sharedClassClusterValidator),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
-    const group = await requireOwnedGroup(ctx, args.groupId, user._id);
+    const group = await getOwnedGroupOrNull(ctx, args.groupId, user._id);
+    if (!group) return null;
     const memberRows = await ctx.db
       .query("studentScheduleGroupMembers")
       .withIndex("by_groupId_and_addedAt", (q) => q.eq("groupId", group._id))

@@ -2,14 +2,159 @@
 
 ## Active Focus
 
-- **Branch**: `codex/security-audit-remediation`
-- **Goal**: Land the complete remediation for
-  `docs/reference/security-audit-2026-08-09.md` without touching production.
+- **Integration**: The user authorized working through the merge backlog.
+  Feedback issue sync is carried by PR #110, reconciled against current main
+  in the isolated `merge-pr110` worktree. The admin, Bun/Nix, and swipe changes
+  are already on main through PRs #148, #149, and #150.
+- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
+  Material UI changes still require design-owner review. Native iPhone swipe
+  verification remains outstanding. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Merge backlog reconciliation (2026-10-15)
+
+- PR #151 is closed as superseded: its trial merge produced exactly the current
+  main tree. PR #121 is also closed: its complete patch is equivalent to commit
+  `4841d245`, already incorporated in main and retained by the Bun migration.
+- Local announcement-pagination and UI-follow-up worktrees correspond to
+  already-merged PRs #125 and #128; their older source must not replace newer
+  main behavior.
+- PR #110 retains the current Convex 1.46.0 environment types, presence
+  component, Google Vision configuration, Bun commands, and current feedback
+  permissions. Ten focused tests cover status mapping, signed/forged webhooks,
+  repository isolation, duplicate/stale events, and anonymous/student retry
+  refusal. All 370 backend tests, backend/web typechecks, web lint (21 existing
+  warnings), brand/devlog checks, production web build, and an isolated local
+  Convex push pass. GitHub webhook activation and production deployment remain
+  separate operations; neither was performed.
+- PR #147 remains open: its height-packing algorithm can undo visible manual
+  ordering. With heights `{a: 100, b: 100, c: 500}`, both orders `[a, b, c]` and
+  `[a, c, b]` render columns `[[a, b], [c]]`. Decide the intended edit-mode
+  behavior and review the changed edit-mode appearance before merging.
+- Draft PR #152 still explicitly awaits human visual review. PR #117 has
+  unresolved conflicts. Compliance PR #76 remains outside this merge pass.
+
+### Local Bun/Nix setup (2026-10-02)
+
+- Nix/direnv supplies Bun 1.4.2, matching `packageManager` and CI, alongside
+  Node 24.14.0. The Bun assets use verified release digests; changing
+  `package.json` invalidates the direnv shell cache. CocoaPods is macOS-only.
+- The native Apple Silicon shell builds and loads; both Darwin and Linux
+  architectures evaluate. Frozen install leaves the lockfile unchanged.
+  The dependency/audit regression tests and web typecheck, lint, and build
+  pass with Bun 1.4.2. Existing lint warnings remain.
+- PR #149 is merged and contains this setup independently of the admin and
+  swipe changes.
+
+### Mobile sidebar gesture (2026-10-02)
+
+- The shared app-shell gesture owner uses a scoped native non-passive
+  `touchmove` listener. A rightward movement is cancelled before the sidebar
+  reveal, so React's passive delegated listener no longer controls the swipe.
+- Vertical/left gestures, excluded controls, and multi-touch keep their
+  browser behavior. Interrupted or browser-owned gestures cancel the reveal;
+  ownership continues until release when a gesture reverses or opens early.
+- Twelve gesture regression tests pass. The built mobile page has the native
+  listener wired correctly and its explicit sidebar control still works.
+  Native iPhone/PWA Back-gesture verification remains pending because this
+  browser cannot reliably automate touch input. The user authorized merging
+  despite that outstanding device check, and PR #150 is merged.
+
+### Bun stack refresh (2026-10-02)
+
+- PR #100 is merged and retains the newer worktree bootstrap, LAN dev
+  orchestration, deploy marker, and Convex 1.46.0 from main while moving installs
+  and scripts to Bun.
+- PR #111 is merged after #100. It adopts native Convex schema document helpers
+  and generated environment bindings without downgrading Convex 1.46.0 or
+  removing newer schema fields and performance changes.
+- Security dependencies are refreshed, including Next 16.3.8 and image-size
+  2.0.4. node-forge 1.4.0 carries the upstream nested DigestAlgorithm validation
+  patch until a patched release exists; CI tests reproduce and reject the bug.
+- The primary local backend has older whiteboard documents incompatible with
+  the current schema. Use an isolated backend for verification; do not reset
+  the primary dataset.
+
+### Admin mobile layout (2026-10-02)
+
+- The admin title uses the existing app-header slot, including the loading
+  state. Admin tabs and user records use separate horizontal ScrollAreas;
+  the page stays within the viewport width.
+- User filters and bulk-selection controls wrap. Pagination stays in the
+  existing table-panel footer, outside the scrolling records. Names, pathways,
+  and role metadata wrap, and touch action columns reserve space for 44px
+  buttons. Empty results use the existing AdminNotice outside the wide table.
+- Browser verification uses synthetic accounts on the isolated anonymous
+  backend in the attached `merge-100-111` worktree. The primary dataset was not
+  reset. Phone, tablet, desktop, paging, search, selection, and empty-result
+  checks are diagnostic. The user subsequently authorized merging the
+  combined local branch, including this admin layout repair.
+
+### Convex Usage and Scale Audit (2026-08-31)
+
+- Production `elated-anaconda-301` was inspected read-only. No production
+  function was run, no deployment was selected for mutation, and no data was
+  changed.
+- The current production dataset has 172 application users. Better Auth has 77
+  users with currently valid sessions; 29 distinct users had session activity
+  in the sampled 24-hour window and 77 in the sampled seven-day window.
+- The dashboard screenshots cover roughly August 6-31: 756K function calls and
+  1.05 GB database I/O, of which 98.9% was reads. That is about 29K calls and
+  40.4 MB of I/O per day. Using the 29 recently active users as a directional
+  DAU denominator gives roughly 1,000 calls per active-user day and 1.4-2.7 MB
+  of database I/O per active-user day, depending on whether the period average
+  or August 31 is used.
+- A post-PR #90 production log sample of 1,000 completed executions over about
+  65 minutes read 7.64 MB / 16,692 documents. The dominant uncached reads were
+  `clubs/detail:getWorkspaceNavigation` (~281 KB / 711 documents per uncached
+  execution), `schedule/dashboard:get` (~127 KB / 212 documents),
+  `courses/catalog:list` (~89 KB / 106 documents), `clubs/channels:list`
+  (~383 KB / 976 documents), and `clubs/detail:get` (~331 KB / 841 documents).
+- The 72-hour Convex health insights had no high-read or resource-limit event;
+  they contained only four write-contention retries. This means no single
+  execution crossed the insight thresholds, not that the aggregate read rate
+  is scale-ready.
+- Current fixes batch channel access state across sibling channels, reuse
+  already-loaded club unit state, avoid fetching public-channel membership
+  lists, batch repeated message-author reads, hydrate each schedule course only
+  once, bound unfiltered course candidate reads by the requested limit, and
+  move the mobile Home dashboard from the full friend-schedule query to the
+  day query.
+- Workspace navigation and channel activity are now separate subscriptions.
+  Message creation no longer patches `clubChannels.lastMessageAt`, so a hot
+  channel does not invalidate the broad club/structure/membership navigation
+  query for every viewer. A compact activity query reads only the newest
+  indexed message per visible channel plus the viewer's receipts. Web and
+  native chat advance receipts only while visible, throttle them to at most one
+  attempt every three seconds, and the mutation skips no-op writes.
+- Message audit events retain a 240-character preview, lengths, attachments,
+  poll, reply, actor, and entity context instead of duplicating each message's
+  full plain-text and Markdown payload into `auditEvents`.
+- Convex Professional is likely sufficient for the realistic 1,500-user school
+  workload after these optimizations, but the literal 3-10 messages per minute
+  from all 1,500 users is a stress ceiling rather than a normal human workload.
+  It implies 47.52M-158.4M messages in a 22-day, eight-hour school-month, or
+  194.4M-648M if sustained 24/7. The current one-scheduled-notification-job per
+  message architecture already makes that at least two function executions per
+  message before reactive subscribers, receipt writes, mentions, or push jobs.
+  Load testing and a reverse notification-subscriber index are required before
+  promising that ceiling on the Professional S256 deployment class.
+- PR #90's documented one-time production refreshes still appear outstanding:
+  `courseCatalogMetadata` is empty and `appStats.roleGroupCountsReady` is
+  absent. An authorized operator must explicitly approve running
+  `internal.courses.metadata.refresh` and
+  `internal.stats.rebuildUserCounts` against production.
+- The next chat scale work is to avoid scheduling a notification job for every
+  ordinary message when all-message notifications are opt-in, materialize or
+  batch per-message reactions/polls/attachments so a 30/50-message page does
+  not perform N-per-message reads, and run a production-shaped load test that
+  measures subscription fanout and S256 concurrency. The legacy optional
+  `clubChannels.lastMessageAt` field remains for compatibility and can be
+  removed in a later narrow migration after deployed clients no longer read it.
 
 ### Security Audit Remediation (2026-08-09)
 
@@ -99,13 +244,22 @@
 
 ### Frontend and Routing
 
+- The official production web origin is `https://app.fcsia.com`. It is attached
+  to Vercel Production, and Convex production `elated-anaconda-301` has
+  `SITE_URL`, `NEXT_PUBLIC_SITE_URL`, and `BETTER_AUTH_TRUSTED_ORIGINS` set to
+  that origin. The unauthenticated `/api/auth/get-session` endpoint responds
+  successfully from the new domain. The former
+  `https://ia-app-alpha.vercel.app` hostname now serves a static migration
+  notice before authentication with a link to an unlisted, platform-specific
+  Home Screen installation guide, while the official domain continues to serve
+  the application.
 - Web authentication now stays on the browser's current origin, so local LAN
   addresses and development tunnels retain the session cookie. The web auth
   proxy rejects cross-origin POSTs; arbitrary forwarded hosts are accepted only
   by explicitly initialized loopback Convex deployments, while cloud
   deployments retain an explicit origin allowlist.
 - Same-LAN web PWAs now receive LAN-reachable public Convex URLs from
-  `pnpm sync:convex-env -- --host <LAN IPv4>` while server calls stay on
+  `bun run sync:convex-env -- --host <LAN IPv4>` while server calls stay on
   loopback. Protected-route auth startup renders a branded connection state
   instead of an unexplained blank screen when the backend is slow or
   unreachable.
@@ -119,6 +273,32 @@
   schedule screenshot before applying Monday-Thursday classes and saving.
 - The calendar follows active theme tokens, Flex Friday uses the compact app
   shell hierarchy, and Cmd+K searches people plus access-checked club channels.
+- The web calendar now uses the current Radix ReUI event-calendar source instead
+  of a hand-built scheduler. Desktop offers month, week, day, and agenda; mobile
+  intentionally offers agenda and day only. The Dashboard calendar uses the
+  shared date-calendar adapter, and the ReUI registry is pinned to Radix Nova so
+  the old `new-york` style cannot resolve Base UI source into this Radix app.
+  Its compact picker keeps header actions inline, removes the selected-today
+  cell backdrop, and preserves event-dot contrast on selected dates.
+- The calendar route uses the bounded visual-viewport shell so agenda and day
+  own working internal scrollports. Agenda keeps descriptions hidden and uses
+  a one-line, horizontally scrollable title region with edge-aware overflow
+  fades; the connection dialog documents immediate first sync plus automatic
+  six-hour refreshes.
+- Web Custom appearance is available in production again. Its palette schema
+  now owns both the editor slots and CSS-variable mapping, exposes page Text for
+  wallpaper legibility, validates restored local colors, and selects automatic
+  black/white foregrounds by WCAG contrast rather than a luminance cutoff.
+  Follow-up feedback from v0.8.20 showed page foreground leaking into opaque
+  club cards and reaction popups. Raised surfaces and app-owned card containers
+  now share one card-foreground scope, while all popup families use the paired
+  popover scope; wallpaper text stays local to the page substrate. Fluid's
+  unlayered surface ladder now gives Custom the same dark-surface cascade level
+  as Bubblegum Dark, and invalid custom Text/Background or Primary/surface
+  contrast combinations are rejected before application or local persistence.
+  Custom wallpaper uploads sample up to three distinct image colors on the
+  client; the chosen raised-surface tint and candidate colors persist on the
+  user's account, with a neutral fallback for older unsampled wallpapers.
 - `/courses` is included in protected route middleware.
 - Club channel message queries include both `clubId` and `channelId`.
 - Event creation UI only offers eligible clubs to non-general creators and
@@ -141,7 +321,7 @@
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
-  sync via `pnpm sync:convex-env -- --android`.
+  sync via `bun run sync:convex-env -- --android`.
 - Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
   Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
   are reachable from every tab through the shared in-app header, and Profile
@@ -189,8 +369,11 @@
   indexed lookups.
 - Web club pages now use a compact, channel-first workspace inspired by Discord's
   conversational density: the shared club/channel navigation is available on
-  desktop and mobile, mobile right-swipes begin the navigation reveal animation
-  before touch release, messages render
+  desktop and mobile, installed mobile PWAs use a scrollable club rail beside
+  the channel pane, and right-swipes begin the spring reveal before touch release.
+  Shell-level right swipes are otherwise disabled; the global More panel opens
+  only from its explicit navigation control.
+  Messages render
   as a flat hover-action timeline, and the
   club directory, overview, people, tags, and composer use tighter flat rows
   instead of spacious nested cards. Channel reactions now stay in document flow,
@@ -302,18 +485,64 @@
 
 ### Verification (latest)
 
-- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+- Chat read receipts: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both
+  clients. Saved reply boundaries still advance receipts.
+- Issue #126 GIF support on `codex/chat-gif-support`: uploaded GIFs and pasted
+  GIPHY/Tenor links (previews load only from their media CDNs) autoplay, with a compact corner play/pause control on
+  web and mobile. The approved picker now searches a fixed catalog of nine
+  existing online Tenor reaction GIFs; it contains no generated media or open
+  provider search. Selection appends a media link to the draft. Open GIF controls
+  are removed. Web and mobile TypeScript, lint
+  (existing warnings), production build, and focused upload/access/deletion and
+  mobile attachment tests pass. Isolated web component QA verified still
+  previews, playback, keyboard pause, and unavailable media; its temporary route
+  was removed. Signed-in local send, Tenor resolution, playback, and keyboard
+  pause now pass at localhost:3000; the isolated backend runs on 3210/3211.
+  Tenor viewer URLs normalize to direct media, and the PWA worker leaves external
+  images to the browser. React Doctor 0.9.8 reports no new findings. Delete QA
+  remains pending.
+  A clean frozen install with pinned bun run 10.29.3 repaired the stale mobile
+  Convex version; mobile TypeScript now passes. All catalog media loaded during
+  a temporary content review, and that temporary page was removed. Picker flow
+  QA resumed after the user reopened localhost: library display, search, selection,
+  and preserving existing draft text pass. Reduced-motion users start paused;
+  normal playback is automatic. Filename/status chrome and previewed URL text are
+  removed. Copy GIF URL lives in each message's own context menu (web) and actions
+  sheet (mobile), so GIFs never open a second menu; web clipboard QA passes. Appearance includes a persisted browser/device autoplay preference;
+  web persistence and immediate updates across open chats pass. The regression
+  suites pass 20 tests, and React Doctor has no new findings. Mobile-width playback
+  controls pass; native device, theme, and reduced-motion visual review remain
+  pending. Only the isolated local
+  deployment was updated; shared and production deployments were not changed.
+  Convex runtime follow-up: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both clients.
+  Saved reply boundaries still advance receipts. Local sending no longer logs the
+  error; backend typecheck passes. A repeated esbuild warning refers to the parent
+  `../tsconfig.json` outside this repo extending unavailable Astro configuration;
+  no backend function compilation failure is associated with it.
+
+- Custom-theme surface follow-up: card and popup foreground scopes are now
+  consistent across schedule, notification, shell, club, admin, and shared UI
+  surfaces. Web TypeScript, lint, production build, focused surface/palette
+  assertions, and `git diff --check` pass. Lint reports 21 existing warnings;
+  signed-in visual review remains pending.
+- `direnv exec . bun run --cwd apps/web tsc --noEmit` - pass after the web UI
   primitive workflow and remediation slices.
-- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+- Web calendar replacement: `bun run --cwd apps/web tsc --noEmit`, web lint,
+  frozen offline install, production build, and `git diff --check` pass. Lint
+  reports only existing warnings outside the calendar slice; signed-in visual
+  review is still required for responsive calendar states.
+- `direnv exec . bun run --filter web lint` - pass with 7 existing unrelated
   unused-import warnings.
-- `direnv exec . pnpm --filter web build` - pass through compilation,
+- `direnv exec . bun run --filter web build` - pass through compilation,
   TypeScript, page data, all 18 static pages, and route optimization.
-- `pnpm --filter mobile typecheck` - pass
-- `pnpm lint` - pass with 7 existing web warnings outside this slice
-- `pnpm --filter cvx codegen` - pass
-- `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter cvx test` - pass (14 files, 47 tests)
-- `pnpm --filter mobile exec tsc --noEmit` - pass after removing the deprecated
+- `bun run --filter mobile typecheck` - pass
+- `bun run lint` - pass with 7 existing web warnings outside this slice
+- `bun run --filter cvx codegen` - pass
+- `bun run --filter cvx typecheck` - pass
+- `bun run --filter cvx test` - pass (14 files, 47 tests)
+- `bun run --cwd apps/mobile tsc --noEmit` - pass after removing the deprecated
   mobile `baseUrl`, correcting compact density, and reverting the broad visual
   migrations
 - Mobile Vitest suite - pass (14 files, 42 tests)
@@ -328,18 +557,18 @@
   blocked because Expo Go stopped requesting the Metro bundle after reload even
   though Metro `/status` returned `packager-status:running` and `adb reverse`
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
-- `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
+- `bun run --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - pass; web reports 8 pre-existing unused-import warnings and no
+- `bun run lint` - pass; web reports 8 pre-existing unused-import warnings and no
   errors
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
-- `pnpm build` - pass across design tokens, fun facts, Convex, mobile, and web
-- `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
+- `bun run build` - pass across design tokens, fun facts, Convex, mobile, and web
+- `bun run --cwd apps/web tsc --noEmit` and `bun run --filter web build` - pass
   after the compact club-workspace redesign and channel interaction polish;
   signed-in visual QA remains to be run because no browser-control session was
   available.
-- `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
+- `bun run test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex AI guidance and project skills were refreshed with `convex ai-files
@@ -372,9 +601,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
-direnv exec . pnpm lint
-direnv exec . pnpm build
-direnv exec . pnpm test
+bun run --filter cvx codegen
+bun run --filter cvx typecheck
+bun run lint
+bun run build
+bun run test
 ```

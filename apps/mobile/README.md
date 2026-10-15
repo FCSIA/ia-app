@@ -7,13 +7,13 @@ stored in `expo-secure-store`.
 ## Local Setup
 
 ```bash
-pnpm install
-pnpm --filter cvx dev
-pnpm dev:mobile
+bun install
+bun run --filter cvx dev
+bun run dev:mobile
 ```
 
-`pnpm dev:mobile` starts Expo in Expo Go mode for compatible simulators and
-Android devices. Use `pnpm --filter mobile dev:client` after installing a
+`bun run dev:mobile` starts Expo in Expo Go mode for compatible simulators and
+Android devices. Use `bun run --filter mobile dev:client` after installing a
 development build. A physical iPhone whose App Store Expo Go does not support
 this project's SDK must use a development build.
 
@@ -27,13 +27,13 @@ you are testing:
 
 ```powershell
 # Android Studio emulator
-pnpm sync:convex-env -- --android
+bun run sync:convex-env -- --android
 
 # Physical iPhone on the same Wi-Fi as the laptop
-pnpm sync:convex-env -- --host "<your Wi-Fi IPv4>"
+bun run sync:convex-env -- --host "<your Wi-Fi IPv4>"
 
-pnpm --filter cvx dev
-pnpm dev:mobile
+bun run --filter cvx dev
+bun run dev:mobile
 ```
 
 Use the current Wi-Fi IPv4 address for the iPhone command if it changes. The
@@ -78,7 +78,7 @@ zsh -c '
   export EXPO_IOS_PERSONAL_TEAM=1
   export IOS_BUNDLE_IDENTIFIER=is.sreyas.innovationacademy.dev
 
-  pnpm --filter mobile exec expo prebuild --platform ios --clean --no-install
+bun run --filter mobile exec expo prebuild --platform ios --clean --no-install
   cd apps/mobile/ios
   pod install
   open InnovationAcademy.xcworkspace
@@ -92,7 +92,7 @@ use macOS BSD tar instead of GNU tar from the Nix CocoaPods closure. The
 environment cleanup works in ordinary macOS shells and prevents environment
 managers or CI tooling from overriding Xcode's compiler and iPhone SDK. After
 the app is installed, restart Metro with
-`pnpm --filter mobile dev:client`; a native rebuild is only needed after a
+`bun run --filter mobile dev:client`; a native rebuild is only needed after a
 native dependency or app-config change.
 
 ### Renewing a Personal Team build
@@ -100,7 +100,7 @@ native dependency or app-config change.
 After the one-time setup, connect and unlock one iPhone, then run:
 
 ```bash
-pnpm mobile:ios:refresh
+bun run mobile:ios:refresh
 ```
 
 The command finds the only paired physical iOS device that Xcode can see, then
@@ -111,7 +111,7 @@ if there are zero or multiple devices. In the latter case, either disconnect
 the other device or select one explicitly:
 
 ```bash
-pnpm mobile:ios:refresh -- "<iPhone UDID>"
+bun run mobile:ios:refresh -- "<iPhone UDID>"
 ```
 
 The phone must already be trusted, and the Apple Account must already be signed
@@ -124,7 +124,7 @@ unplugged. For a phone that is not on the Mac's network, keep the Mac awake and
 online, then start Metro through Expo's development-client tunnel:
 
 ```bash
-pnpm dev:mobile:tunnel
+bun run dev:mobile:tunnel
 ```
 
 Open the printed QR code or `exp+innovation-academy://` URL on the phone. The
@@ -181,8 +181,8 @@ production Convex environment variables.
 ## Verification
 
 ```bash
-pnpm --filter mobile typecheck
-pnpm --filter mobile test:maestro
+bun run --filter mobile typecheck
+bun run --filter mobile test:maestro
 ```
 
 Maestro flows live in `apps/mobile/maestro` and require a built simulator/device

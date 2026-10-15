@@ -12,6 +12,7 @@ import {
   isStudentUser,
   requireStudentUser,
   serializeUser,
+  scheduleFriendUserValidator,
 } from "./_lib";
 import {
   decideFriendLinkRedemption,
@@ -29,13 +30,6 @@ const linkSummaryValidator = v.object({
   lastUsedAt: v.union(v.string(), v.null()),
   createdAt: v.string(),
   tokenHint: v.string(),
-});
-
-const ownerValidator = v.object({
-  _id: v.id("users"),
-  uniqueId: v.string(),
-  firstName: v.string(),
-  lastName: v.string(),
 });
 
 function toLinkSummary(link: Doc<"studentFriendShareLinks">) {
@@ -148,7 +142,7 @@ export const preview = query({
   returns: v.object({
     state: v.union(v.literal("ACTIVE"), v.literal("INVALID"), v.literal("SELF")),
     mode: v.union(friendShareLinkModeValidator, v.null()),
-    owner: v.union(ownerValidator, v.null()),
+    owner: v.union(scheduleFriendUserValidator, v.null()),
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -185,7 +179,7 @@ export const redeem = mutation({
       v.literal("ALREADY_FRIENDS"),
     ),
     friendshipId: v.id("studentScheduleFriends"),
-    owner: ownerValidator,
+    owner: scheduleFriendUserValidator,
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);

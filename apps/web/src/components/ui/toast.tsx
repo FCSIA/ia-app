@@ -44,11 +44,23 @@ const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+>(({ className, variant, onSwipeEnd, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
       ref={ref}
-      className={cn(toastVariants({ variant }), className)}
+      className={cn(
+        toastVariants({ variant }),
+        // Radix disables selection for swipe-to-dismiss. Desktop mouse drags
+        // select text instead, while touch toasts retain their swipe behavior.
+        "[@media(pointer:fine)]:!select-text",
+        className,
+      )}
+      onSwipeEnd={(event) => {
+        if (event.detail.originalEvent.pointerType === "mouse") {
+          event.preventDefault()
+        }
+        onSwipeEnd?.(event)
+      }}
       {...props}
     />
   )

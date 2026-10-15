@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { format, differenceInMinutes } from "date-fns";
 import { CheckCircle2, ChevronRight, Clock, RefreshCw, SlidersHorizontal, Timer } from "lucide-react-native";
-import { pickNavigationLoadingFact } from "@ia/fun-facts";
+import { pickDailySchoolMessage, pickNavigationLoadingFact } from "@ia/fun-facts";
 import { AppHeader } from "@/components/app-header";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
@@ -35,14 +35,14 @@ import {
   useLiveCurrentUser,
   type AppUser,
 } from "@/lib/auth";
+import { upcomingCalendarWindow } from "@/lib/calendar-window";
 import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { useAnnouncementFeedClock } from "@/features/announcements/use-announcement-feed-clock";
 
 const EMPTY_ARGS = {};
-const UNREAD_ANNOUNCEMENTS_ARGS = { unreadOnly: true };
-
 export default function DashboardScreen() {
   const cachedUser = useCurrentUser();
   const liveUser = useLiveCurrentUser();
@@ -65,15 +65,14 @@ function DashboardLoading() {
 }
 
 function OperationalDashboardScreen({ user }: { user: AppUser }) {
+  const announcementNow = useAnnouncementFeedClock();
   const { color } = useTheme();
   const schoolDay = useMemo(getDashboardSchoolDay, []);
-  const calendarWindow = useMemo(() => {
-    const startDate = Date.now();
-    return { startDate, endDate: startDate + 30 * 24 * 60 * 60 * 1000 };
-  }, []);
-  const schedule = useQuery(api.schedule.dashboard.get, EMPTY_ARGS);
-  const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
-  const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
+  const schedule = useDashboardSchedule();
+  const announcements = useQuery(api.announcements.feed.list, { unreadOnly: true, now: announcementNow });
+  const pinnedAnnouncements = useQuery(api.announcements.feed.listPinned, { limit: 20, now: announcementNow }) ?? [];
+  const announcementCards = announcements ? [...pinnedAnnouncements.filter((item) => !item.isRead), ...announcements.filter((item) => !pinnedAnnouncements.some((pin) => pin._id === item._id))] : undefined;
+  const calendarEntries = useUpcomingCalendarEntries();
   const flexFridays = useQuery(api.flexFriday.fridays.list, EMPTY_ARGS);
   const nextFlexFriday = resolveNextFlexFriday(flexFridays ?? []);
 
@@ -99,7 +98,7 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
           <HomeSkeleton count={3} />
         ) : (
           <HomeSurface>
-            {announcements.length ? announcements.slice(0, 3).map((item: any, index: number) => (
+            {announcementCards?.length ? announcementCards.slice(0, 3).map((item: any, index: number) => (
               <HomeRow
                 key={item._id}
                 divider={index > 0}
@@ -174,15 +173,14 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
 }
 
 function StudentDashboardScreen({ user }: { user: AppUser }) {
+  const announcementNow = useAnnouncementFeedClock();
   const { color } = useTheme();
   const schoolDay = useMemo(getDashboardSchoolDay, []);
-  const calendarWindow = useMemo(() => {
-    const startDate = Date.now();
-    return { startDate, endDate: startDate + 30 * 24 * 60 * 60 * 1000 };
-  }, []);
-  const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
-  const liveSchedule = useQuery(api.schedule.dashboard.get, EMPTY_ARGS);
-  const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
+  const announcements = useQuery(api.announcements.feed.list, { unreadOnly: true, now: announcementNow });
+  const pinnedAnnouncements = useQuery(api.announcements.feed.listPinned, { limit: 20, now: announcementNow }) ?? [];
+  const announcementCards = announcements ? [...pinnedAnnouncements.filter((item) => !item.isRead), ...announcements.filter((item) => !pinnedAnnouncements.some((pin) => pin._id === item._id))] : undefined;
+  const liveSchedule = useDashboardSchedule();
+  const calendarEntries = useUpcomingCalendarEntries();
   const myClubs = useQuery(api.clubs.management.getMyClubs, EMPTY_ARGS);
   const flexCredits = useQuery(api.flexFriday.credits.getMyCredits, EMPTY_ARGS);
   const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, EMPTY_ARGS);
@@ -227,7 +225,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
             <HomeSkeleton count={3} />
           ) : (
             <HomeSurface>
-              {announcements.length ? announcements.slice(0, 3).map((item: any, index: number) => (
+              {announcementCards?.length ? announcementCards.slice(0, 3).map((item: any, index: number) => (
                 <HomeRow
                   key={item._id}
                   divider={index > 0}
@@ -600,6 +598,36 @@ function HomeSkeleton({ count = 1 }: { count?: number }) {
 
 type DashboardSchoolDay = ReturnType<typeof getDashboardSchoolDay>;
 
+/**
+ * "Coming up" calendar entries for the next 30 days.
+ *
+ * The window is anchored to midnight rather than the current instant so the
+ * query arguments hold for the whole day, which is what lets the keep-alive and
+ * the tab prewarm reuse one subscription instead of opening a fresh one on
+ * every mount. The backend filters on `startAt >= startDate`, so entries that
+ * already started earlier today come back too and are dropped here — the
+ * section is meant to show only what has yet to begin, and the cutoff is fixed
+ * at mount exactly as the old `Date.now()` window fixed it.
+ */
+function useUpcomingCalendarEntries() {
+  const range = useMemo(upcomingCalendarWindow, []);
+  const startedBefore = useMemo(() => Date.now(), []);
+  const entries = useQuery(api.events.calendar.list, range);
+  return useMemo(
+    () => entries?.filter((entry: any) => entry.startAt >= startedBefore),
+    [entries, startedBefore],
+  );
+}
+
+function useDashboardSchedule() {
+  const dateKey = format(new Date(), "yyyy-MM-dd");
+  const resolvedDay = useQuery(api.schedule.dashboard.getDay, { dateKey });
+  return useMemo(
+    () => resolvedDay === undefined ? undefined : { resolvedDay },
+    [resolvedDay],
+  );
+}
+
 function getDashboardSchoolDay() {
   const today = new Date().getDay();
   const weekdays = [
@@ -745,6 +773,21 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
     () => resolveSchoolDayStatus(schedule, schoolDay, now),
     [schedule, schoolDay, now],
   );
+  const dayContext = getDashboardDayContext(schedule, schoolDay);
+  const hasPersonalSchedule = getAppPersona(user) !== "student" || Boolean(schedule?.mySchedule);
+  const lastBlockEnd = dayContext.blocks.reduce(
+    (latest: number, block: any) => Math.max(latest, timeToMinutes(block.endTime)),
+    -1,
+  );
+  const schoolIsOver =
+    dayContext.isToday &&
+    lastBlockEnd >= 0 &&
+    now.getHours() * 60 + now.getMinutes() >= lastBlockEnd;
+  const quietMessage = !hasPersonalSchedule || dayContext.blocks.length === 0
+    ? pickDailySchoolMessage("no-school", `${user?._id ?? "guest"}:${format(now, "yyyy-MM-dd")}`)
+    : schoolIsOver
+      ? pickDailySchoolMessage("school-over", `${user?._id ?? "guest"}:${format(now, "yyyy-MM-dd")}`)
+      : null;
   
   const firstName = user?.firstName ?? "";
   const hour = now.getHours();
@@ -754,31 +797,41 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
     <Card style={{ padding: spacing.xl, gap: spacing.xl, marginBottom: spacing.xs, marginTop: spacing.xs }}>
       <View style={{ flexDirection: "column", gap: spacing.xl }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: spacing.md }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-            <Clock size={20} color={color("primary")} opacity={0.6} />
-            <Txt style={{ fontSize: 32, fontWeight: "800", lineHeight: 38, fontVariant: ["tabular-nums"] }}>
-              {format(now, "h:mm")}
+          {quietMessage ? (
+            <Txt variant="label" tone="muted">
+              {quietMessage}
             </Txt>
-          </View>
-          <Txt variant="caption" tone="muted">
-            {format(now, "EEEE, MMM d")}
-          </Txt>
+          ) : (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                <Clock size={20} color={color("primary")} opacity={0.6} />
+                <Txt style={{ fontSize: 32, fontWeight: "800", lineHeight: 38, fontVariant: ["tabular-nums"] }}>
+                  {format(now, "h:mm")}
+                </Txt>
+              </View>
+              <Txt variant="caption" tone="muted">
+                {format(now, "EEEE, MMM d")}
+              </Txt>
+            </>
+          )}
         </View>
 
         <View style={{ flex: 1, gap: spacing.md }}>
           <Txt variant="title" style={{ fontSize: 28, lineHeight: 34 }}>
             {greeting}{firstName ? `, ${firstName}` : ""}.
           </Txt>
-          <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
-            <Txt variant="overline" tone="muted">Current Status</Txt>
-            <Txt variant="section">{schoolStatus.title}</Txt>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs }}>
-              {schoolStatus.subtitle === "In progress" && (
-                <Badge label="Active" color="green" />
-              )}
-              <Txt variant="caption" tone="muted">{schoolStatus.meta ?? schoolStatus.subtitle}</Txt>
+          {!quietMessage ? (
+            <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
+              <Txt variant="overline" tone="muted">Current Status</Txt>
+              <Txt variant="section">{schoolStatus.title}</Txt>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs }}>
+                {schoolStatus.subtitle === "In progress" && (
+                  <Badge label="Active" color="green" />
+                )}
+                <Txt variant="caption" tone="muted">{schoolStatus.meta ?? schoolStatus.subtitle}</Txt>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </View>
     </Card>

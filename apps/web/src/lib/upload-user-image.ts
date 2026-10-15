@@ -9,27 +9,30 @@ type UploadClient = {
   }>;
 };
 
-type SaveUserImage = (args: {
+type SaveUserImage<TResult> = (args: {
   kind: 'avatar' | 'background';
   uploadIntentId: Id<'uploadIntents'>;
   storageId: Id<'_storage'>;
   mimeType: string;
   size: number;
-}) => Promise<unknown>;
+  wallpaperPalette?: string[];
+}) => Promise<TResult>;
 
-export async function uploadUserImage(
+export async function uploadUserImage<TResult>(
   convex: UploadClient,
-  saveUserImage: SaveUserImage,
+  saveUserImage: SaveUserImage<TResult>,
   kind: ImageCompressPreset,
   file: File,
-) {
+  wallpaperPalette?: string[],
+): Promise<TResult> {
   const compressed = await compressImageForUpload(file, kind);
   const { storageId, uploadIntentId } = await uploadFileToConvex(convex, compressed);
-  await saveUserImage({
+  return saveUserImage({
     kind,
     uploadIntentId,
     storageId,
     mimeType: compressed.type,
     size: compressed.size,
+    ...(kind === 'background' ? { wallpaperPalette } : {}),
   });
 }

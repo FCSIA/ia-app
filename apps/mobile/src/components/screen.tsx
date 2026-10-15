@@ -5,13 +5,14 @@ import {
   type ScrollViewProps,
 } from "react-native";
 import { router, useSegments } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, ChevronDown } from "lucide-react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import type { ReactNode } from "react";
 import { IconButton } from "@/components/ui/icon-button";
+import { PressableScale } from "@/components/ui/pressable-scale";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
@@ -163,12 +164,44 @@ export function AppDetailHeader({
   subtitle,
   leading,
   action,
+  onTitlePress,
+  titleAccessibilityLabel,
 }: {
   title: string;
   subtitle?: string | null;
   leading?: ReactNode;
   action?: ReactNode;
+  /** Makes the title a button, marked with a chevron, e.g. to switch views. */
+  onTitlePress?: () => void;
+  titleAccessibilityLabel?: string;
 }) {
+  const { color } = useTheme();
+  const titleBlock = (
+    <>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+        <Txt
+          variant="section"
+          numberOfLines={1}
+          style={{ flexShrink: 1, fontSize: 16, lineHeight: 19 }}
+        >
+          {title}
+        </Txt>
+        {onTitlePress ? (
+          <ChevronDown
+            size={16}
+            color={color("mutedForeground")}
+            strokeWidth={2.2}
+          />
+        ) : null}
+      </View>
+      {subtitle ? (
+        <Txt variant="caption" tone="muted" numberOfLines={1}>
+          {subtitle}
+        </Txt>
+      ) : null}
+    </>
+  );
+
   return (
     <View
       style={{
@@ -187,20 +220,19 @@ export function AppDetailHeader({
         onPress={() => router.back()}
       />
       {leading}
-      <View style={{ minWidth: 0, flex: 1, gap: 1 }}>
-        <Txt
-          variant="section"
-          numberOfLines={1}
-          style={{ fontSize: 16, lineHeight: 19 }}
+      {onTitlePress ? (
+        <PressableScale
+          accessibilityLabel={titleAccessibilityLabel ?? title}
+          haptic={false}
+          hitSlop={4}
+          onPress={onTitlePress}
+          style={{ minWidth: 0, flex: 1, minHeight: 44, justifyContent: "center", gap: 1 }}
         >
-          {title}
-        </Txt>
-        {subtitle ? (
-          <Txt variant="caption" tone="muted" numberOfLines={1}>
-            {subtitle}
-          </Txt>
-        ) : null}
-      </View>
+          {titleBlock}
+        </PressableScale>
+      ) : (
+        <View style={{ minWidth: 0, flex: 1, gap: 1 }}>{titleBlock}</View>
+      )}
       {action}
     </View>
   );

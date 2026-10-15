@@ -6,3 +6,5 @@
 - delete /tags
 
 - search for people, channels in cmd+k
+
+- [ ] Chat attachment display-size controls: persist an author-only `Compact` / `Standard` / `Large` choice per image attachment, exposed from the message action menu. Do not implement until every human on the development team explicitly confirms the product behavior, authorization rules, and cross-web/mobile presentation.

@@ -1,8 +1,9 @@
 import { View } from "react-native";
 import { router } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "lucide-react-native";
-import { useMutation } from "convex/react";
+import { useMutation } from "@/lib/convex-react";
 import { PressableScale, Txt, useToast } from "@/components/ui";
+import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
 import { announcementUnreadColors } from "@/features/announcements/unread-colors";
 import { relativeTime } from "@/lib/format";
@@ -116,6 +117,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
             >
               {authorName || "Innovation Academy"}
             </Txt>
+            <DeveloperBadge user={announcement.author} size={12} />
             <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>·</Txt>
             <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>
               {relativeTime(announcement.createdAt)}

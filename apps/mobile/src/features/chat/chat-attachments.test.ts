@@ -6,9 +6,16 @@ import {
   safeRemoteAttachmentUrl,
   validatePickedChatAttachment,
 } from "./chat-attachments";
-import { isPdfAttachment } from "./types";
+import { isImageAttachment, isPdfAttachment } from "./types";
 
 describe("mobile managed chat attachments", () => {
+  test("renders GIFs as images even when legacy MIME metadata is absent", () => {
+    const attachment = { _id: "gif", fileName: "dance.GIF", fileUrl: "https://files.example.edu/gif" };
+    expect(isImageAttachment(attachment)).toBe(true);
+    expect(isImageAttachment({ ...attachment, mimeType: "application/octet-stream" })).toBe(true);
+    expect(isImageAttachment({ ...attachment, mimeType: "IMAGE/GIF" })).toBe(true);
+    expect(isImageAttachment({ ...attachment, mimeType: "image/svg+xml" })).toBe(false);
+  });
   test("validates size, names, and active content before upload", () => {
     expect(
       validatePickedChatAttachment({

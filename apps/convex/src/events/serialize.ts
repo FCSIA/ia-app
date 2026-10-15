@@ -1,26 +1,36 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { eventApprovalValidator, eventValidator } from "./_lib";
+import { createDocLoader, type DocLoader } from "../../lib/docLoader";
+import { schema } from "../schema";
 
-const personValidator = v.object({ _id: v.id("users"), firstName: v.string(), lastName: v.string() });
-export const serializedEventValidator = v.object({
-  _id: v.id("events"), _creationTime: v.number(), ...eventValidator,
-  createdAt: v.number(), updatedAt: v.number(),
+const personValidator = v.object({
+  _id: v.id("users"),
+  firstName: v.string(),
+  lastName: v.string(),
+  isDeveloper: v.optional(v.boolean()),
+});
+export const serializedEventValidator = schema.doc("events").extend({
   author: v.union(personValidator, v.null()),
   club: v.union(v.object({ _id: v.id("clubs"), name: v.string() }), v.null()),
 });
-export const serializedEventDetailValidator = v.object({
-  ...serializedEventValidator.fields,
-  approvals: v.array(v.object({
-    _id: v.id("eventApprovals"), _creationTime: v.number(), ...eventApprovalValidator,
-    createdAt: v.number(), sponsor: v.union(personValidator, v.null()),
-  })),
+export const serializedEventDetailValidator = serializedEventValidator.extend({
+  approvals: v.array(
+    schema.doc("eventApprovals").extend({
+      sponsor: v.union(personValidator, v.null()),
+    }),
+  ),
 });
 
-export async function serializeEvent(ctx: QueryCtx, event: Doc<"events">) {
-  const author = await ctx.db.get(event.authorId);
-  const club = event.clubId ? await ctx.db.get(event.clubId) : null;
+export async function serializeEvent(
+  ctx: QueryCtx,
+  event: Doc<"events">,
+  loader: DocLoader = createDocLoader(ctx),
+) {
+  const [author, club] = await Promise.all([
+    loader.get(event.authorId),
+    event.clubId ? loader.get(event.clubId) : Promise.resolve(null),
+  ]);
 
   return {
     ...event,
@@ -29,6 +39,7 @@ export async function serializeEvent(ctx: QueryCtx, event: Doc<"events">) {
           _id: author._id,
           firstName: author.firstName,
           lastName: author.lastName,
+          isDeveloper: author.isDeveloper,
         }
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
@@ -36,7 +47,8 @@ export async function serializeEvent(ctx: QueryCtx, event: Doc<"events">) {
 }
 
 export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) {
-  const base = await serializeEvent(ctx, event);
+  const loader = createDocLoader(ctx);
+  const base = await serializeEvent(ctx, event, loader);
   const approvals = await ctx.db
     .query("eventApprovals")
     .withIndex("by_eventId_and_sponsorId", (q) => q.eq("eventId", event._id))
@@ -44,7 +56,7 @@ export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) 
 
   const serializedApprovals = await Promise.all(
     approvals.map(async (approval) => {
-      const sponsor = await ctx.db.get(approval.sponsorId);
+      const sponsor = await loader.get(approval.sponsorId);
       return {
         ...approval,
         sponsor: sponsor
@@ -52,6 +64,7 @@ export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) 
               _id: sponsor._id,
               firstName: sponsor.firstName,
               lastName: sponsor.lastName,
+              isDeveloper: sponsor.isDeveloper,
             }
           : null,
       };
@@ -59,4 +72,10 @@ export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) 
   );
 
   return { ...base, approvals: serializedApprovals };
+}
+
+/** Serialize a list of events, reading each distinct author and club once. */
+export async function serializeEvents(ctx: QueryCtx, events: Doc<"events">[]) {
+  const loader = createDocLoader(ctx);
+  return Promise.all(events.map((event) => serializeEvent(ctx, event, loader)));
 }

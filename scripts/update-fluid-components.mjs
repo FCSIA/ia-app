@@ -37,8 +37,8 @@ const adaptedComponents = new Set([
 
 if (process.argv.includes("--help")) {
   console.log(`Usage:
-  pnpm fluid:update [component...]
-  pnpm fluid:update -- --write component...
+  bun run fluid:update [component...]
+  bun run fluid:update -- --write component...
 
 Preview current Radix Fluid Functionalism registry changes. With no component
 names, every component is previewed.
@@ -109,7 +109,7 @@ const args = [
   ...(write ? ["--yes"] : ["--dry-run"]),
 ];
 
-const result = spawnSync("pnpm", args, {
+const result = spawnSync("bun", args, {
   cwd: root,
   stdio: "inherit",
 });

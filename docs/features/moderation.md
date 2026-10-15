@@ -37,6 +37,7 @@ reports.
 - `api.moderation.reports.update`
 - `api.moderation.reports.listMyFeedback`
 - `api.moderation.reports.addFeedbackResponse`
+- `api.moderation.reports.retryGithubIssueSync`
 
 ## Data Model
 
@@ -56,7 +57,7 @@ append-only records linked to general feedback and limited to 25 per item.
 Authenticated users can submit reports and read only their own general-feedback
 history. Teachers and elevated roles can list reports. Admin, super admin, and
 support staff roles can update report review state. Only super admins can add
-staff responses to general feedback; submitters have no reply mutation or
+staff responses to general feedback or retry GitHub issue creation; submitters have no reply mutation or
 composer. Keyword management is admin-only.
 
 ## Side Effects

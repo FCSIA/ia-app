@@ -1,7 +1,8 @@
-import type { CourseSummary } from '@/components/courses/types';
+import type { CourseSummary } from "@/components/courses/types";
 
 export type OcrScheduleRow = {
-  periodNumber: number;
+  id: string;
+  periodNumber: number | null;
   sourceText: string;
   className: string;
   matchedCourse: CourseSummary | null;
@@ -15,25 +16,29 @@ export type ImportedScheduleRow = {
 };
 
 const PERIOD_WITH_LABEL = /\b(?:period|per\.?|p)\s*#?\s*(\d{1,2})\b/i;
-const LEADING_PERIOD = /^\s*(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:period|[-|])\s*(.*)$/i;
+const LEADING_PERIOD =
+  /^\s*(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:period|[-|])\s*(.*)$/i;
 const LEADING_NUMBER = /^\s*(\d{1,2})\s+([^:]{3,})$/;
-const IGNORED_LINE = /^(?:schedule|calendar|term|quarter|semester|teacher|room|attendance|grades?|today|day|week|agenda|no scheduled course)$/i;
+const IGNORED_LINE =
+  /^(?:schedule|calendar|term|quarter|semester|teacher|room|attendance|grades?|today|day|week|agenda|no scheduled course)$/i;
 const DETAIL_LINE = /^(?:teacher|instructor|room|staff|start|end|time)\b/i;
-const WEEKDAY_LINE = /^(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i;
-const TIME_LINE = /^\d{1,2}:\d{2}\s*(?:am|pm)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?$/i;
+const WEEKDAY_LINE =
+  /^(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i;
+const TIME_LINE =
+  /^\d{1,2}:\d{2}\s*(?:am|pm)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?$/i;
 
 function normalize(value: string) {
   return value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
 function bigrams(value: string) {
-  const compact = normalize(value).replace(/\s/g, '');
+  const compact = normalize(value).replace(/\s/g, "");
   const result = new Set<string>();
   for (let index = 0; index < compact.length - 1; index += 1) {
     result.add(compact.slice(index, index + 2));
@@ -53,30 +58,46 @@ function courseMatchScore(candidate: string, course: CourseSummary) {
   const normalizedTitle = normalize(course.title);
   if (!normalizedCandidate || !normalizedTitle) return 0;
   if (normalizedCandidate.includes(normalizedTitle)) return 0.99;
-  if (normalizedTitle.includes(normalizedCandidate) && normalizedCandidate.length >= 6) {
+  if (
+    normalizedTitle.includes(normalizedCandidate) &&
+    normalizedCandidate.length >= 6
+  ) {
     return 0.9;
   }
-  if (normalizedTitle.startsWith(normalizedCandidate) && normalizedCandidate.length >= 4) {
+  if (
+    normalizedTitle.startsWith(normalizedCandidate) &&
+    normalizedCandidate.length >= 4
+  ) {
     return 0.84;
   }
   if (
     course.courseNumbers.some((number) => {
       const normalizedNumber = normalize(number);
-      return normalizedNumber.length >= 3 && normalizedCandidate.includes(normalizedNumber);
+      return (
+        normalizedNumber.length >= 3 &&
+        normalizedCandidate.includes(normalizedNumber)
+      );
     })
   ) {
     return 0.92;
   }
 
-  const candidateTokens = new Set(normalizedCandidate.split(' ').filter((token) => token.length > 1));
-  const titleTokens = new Set(normalizedTitle.split(' ').filter((token) => token.length > 1));
+  const candidateTokens = new Set(
+    normalizedCandidate.split(" ").filter((token) => token.length > 1),
+  );
+  const titleTokens = new Set(
+    normalizedTitle.split(" ").filter((token) => token.length > 1),
+  );
   const tokenScore = overlapScore(candidateTokens, titleTokens);
-  const bigramScore = overlapScore(bigrams(normalizedCandidate), bigrams(normalizedTitle));
+  const bigramScore = overlapScore(
+    bigrams(normalizedCandidate),
+    bigrams(normalizedTitle),
+  );
   return tokenScore * 0.62 + bigramScore * 0.38;
 }
 
 function meaningfulLine(value: string) {
-  const line = value.replace(/\s+/g, ' ').trim();
+  const line = value.replace(/\s+/g, " ").trim();
   if (
     line.length < 3 ||
     IGNORED_LINE.test(line) ||
@@ -90,7 +111,11 @@ function meaningfulLine(value: string) {
 }
 
 function bestCourseMatch(candidates: string[], courses: CourseSummary[]) {
-  let best: { course: CourseSummary; confidence: number; sourceText: string } | null = null;
+  let best: {
+    course: CourseSummary;
+    confidence: number;
+    sourceText: string;
+  } | null = null;
   for (const candidate of candidates) {
     for (const course of courses) {
       const confidence = courseMatchScore(candidate, course);
@@ -108,7 +133,7 @@ export function parseInfiniteCampusSchedule(
 ): OcrScheduleRow[] {
   const lines: string[] = [];
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+/g, ' ').trim();
+    const line = rawLine.replace(/\s+/g, " ").trim();
     if (line) lines.push(line);
   }
   const grouped = new Map<number, string[]>();
@@ -116,15 +141,16 @@ export function parseInfiniteCampusSchedule(
 
   for (const line of lines) {
     const labeledMatch = line.match(PERIOD_WITH_LABEL);
-    const leadingMatch = line.match(LEADING_PERIOD) ?? line.match(LEADING_NUMBER);
+    const leadingMatch =
+      line.match(LEADING_PERIOD) ?? line.match(LEADING_NUMBER);
     const period = Number(labeledMatch?.[1] ?? leadingMatch?.[1] ?? 0);
     if (period >= 1 && period <= 12) {
       currentPeriod = period;
       const remainder = line
-        .replace(PERIOD_WITH_LABEL, '')
-        .replace(LEADING_PERIOD, '$2')
-        .replace(LEADING_NUMBER, '$2')
-        .replace(/^\s*[-:|]+\s*/, '')
+        .replace(PERIOD_WITH_LABEL, "")
+        .replace(LEADING_PERIOD, "$2")
+        .replace(LEADING_NUMBER, "$2")
+        .replace(/^\s*[-:|]+\s*/, "")
         .trim();
       const meaningfulRemainder = meaningfulLine(remainder);
       if (!grouped.has(period)) grouped.set(period, []);
@@ -137,18 +163,22 @@ export function parseInfiniteCampusSchedule(
   }
 
   if (grouped.size === 0) {
-    const seen = new Set<string>();
     const rows: OcrScheduleRow[] = [];
     for (const line of lines) {
-      const match = bestCourseMatch([line], courses);
-      if (!match || match.confidence < 0.72 || seen.has(match.course.id)) continue;
-      seen.add(match.course.id);
+      const candidate = meaningfulLine(line);
+      if (!candidate) continue;
+      const match = bestCourseMatch([candidate], courses);
+      const matchedCourse =
+        match && match.confidence >= 0.72 ? match.course : null;
       rows.push({
-        periodNumber: rows.length + 1,
-        sourceText: line,
-        className: match.course.title,
-        matchedCourse: match.course,
-        confidence: match.confidence,
+        id: `unassigned-${rows.length}`,
+        // A course-name-only reading has no evidence for its canonical period.
+        // It must be assigned explicitly in the review table before it can apply.
+        periodNumber: null,
+        sourceText: candidate,
+        className: matchedCourse?.title ?? candidate,
+        matchedCourse,
+        confidence: match?.confidence ?? 0,
       });
       if (rows.length >= 12) break;
     }
@@ -156,20 +186,25 @@ export function parseInfiniteCampusSchedule(
   }
 
   const rows: OcrScheduleRow[] = [];
-  const groupedEntries = Array.from(grouped.entries()).sort(([left], [right]) => left - right);
+  const groupedEntries = Array.from(grouped.entries()).sort(
+    ([left], [right]) => left - right,
+  );
   for (const [periodNumber, values] of groupedEntries) {
-    const candidates = values.length ? [...values, values.join(' ')] : [];
+    const candidates = values.length ? [...values, values.join(" ")] : [];
     const match = bestCourseMatch(candidates, courses);
     const fallbackName = values[0] ?? `Period ${periodNumber}`;
-    const matchedCourse = match && match.confidence >= 0.56 ? match.course : null;
+    const matchedCourse =
+      match && match.confidence >= 0.56 ? match.course : null;
     const row = {
+      id: `period-${periodNumber}`,
       periodNumber,
       sourceText: match?.sourceText ?? fallbackName,
       className: matchedCourse?.title ?? fallbackName,
       matchedCourse,
       confidence: match?.confidence ?? 0,
     };
-    if (row.matchedCourse || row.className !== `Period ${row.periodNumber}`) rows.push(row);
+    if (row.matchedCourse || row.className !== `Period ${row.periodNumber}`)
+      rows.push(row);
   }
   return rows;
 }

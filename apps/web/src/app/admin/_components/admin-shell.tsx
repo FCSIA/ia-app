@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { ChartLine, ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
 type AdminShellProps = {
@@ -23,18 +24,14 @@ export function AdminShell({
   children,
 }: AdminShellProps) {
   return (
-    <div className="grid h-full min-h-0 w-full flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)]">
-      <h1 className="pb-3 text-xl font-bold text-foreground lg:col-start-1 lg:row-start-1">
-        Admin Panel
-      </h1>
-
+    <div className="admin-shell flex h-full min-h-0 min-w-0 w-full flex-1 flex-col">
       <Tabs
         value={activeTab}
         onValueChange={(value) => onTabChange(value as AdminTabId)}
-        className="contents"
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
       >
-        <div className="mb-3 min-w-0 max-w-full justify-self-start overflow-x-auto lg:col-start-2 lg:row-start-1 lg:justify-self-end">
-          <TabsList>
+        <ScrollArea orientation="horizontal" className="min-w-0 w-full shrink-0" viewportClassName="pb-2">
+          <TabsList aria-label="Admin sections">
             <TabItem value="users" icon={Users} label="Users" />
             {isSuperAdmin ? (
               <TabItem value="schedule" icon={ContactRound} label="Student roster" />
@@ -53,11 +50,14 @@ export function AdminShell({
             {canManageWrapped ? (
               <TabItem value="wrapped" icon={Sparkles} label="Wrapped" />
             ) : null}
+            {isSuperAdmin ? (
+              <TabItem value="analytics" icon={ChartLine} label="Analytics" />
+            ) : null}
             <TabItem value="audit" icon={FileText} label="Audit Log" />
           </TabsList>
-        </div>
+        </ScrollArea>
 
-        <div className="col-start-1 row-start-3 flex min-h-0 lg:col-span-2 lg:row-start-2">
+        <div className="flex min-h-0 min-w-0 flex-1">
           {children}
         </div>
       </Tabs>

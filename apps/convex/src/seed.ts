@@ -463,7 +463,7 @@ export const run = internalMutation({
   handler: async (ctx, args) => {
     if (!isLocalDemoSeedEnabled(process.env.ALLOW_LOCAL_DEMO_SEED)) {
       throw new Error(
-        "Demo seed is disabled. Run it only on an isolated local deployment configured by pnpm setup:convex-local.",
+        "Demo seed is disabled. Run it only on an isolated local deployment configured by bun run setup:convex-local.",
       );
     }
     const profile = args.profile ?? "development";

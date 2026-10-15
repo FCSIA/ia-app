@@ -10,6 +10,7 @@ export const ADMIN_TABS = [
   'moderation',
   'feedback',
   'wrapped',
+  'analytics',
   'audit',
 ] as const;
 
@@ -30,6 +31,7 @@ export function resolveAdminTab(
   if (requestedTab === 'administrator-roster' && isSuperAdmin) return 'administrator-roster';
   if (requestedTab === 'feedback' && isSuperAdmin) return 'feedback';
   if (requestedTab === 'wrapped' && canManageWrapped) return 'wrapped';
+  if (requestedTab === 'analytics' && isSuperAdmin) return 'analytics';
   if (
     requestedTab === 'users' ||
     requestedTab === 'moderation' ||

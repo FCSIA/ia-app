@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { ChevronDown, CircleHelp, ShieldCheck } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/checkbox-group";
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
@@ -43,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -132,6 +134,9 @@ function ChannelSettingsEditor({
 }) {
   const { toast } = useToast();
   const updateChannel = useMutation(api.clubs.channels.update);
+  const setWhiteboardsEnabled = useMutation(api.clubs.whiteboards.setEnabledForChannel);
+  const savedWhiteboards = channel.whiteboardsEnabled !== false;
+  const [whiteboards, setWhiteboards] = useState(savedWhiteboards);
   const [name, setName] = useState(channel.name);
   const [description, setDescription] = useState(channel.description ?? "");
   const [roleIds, setRoleIds] = useState<string[]>(
@@ -173,7 +178,8 @@ function ChannelSettingsEditor({
     postingPolicy !==
       (channel.postingPolicy === "CLUB_MANAGERS"
         ? "CLUB_MANAGERS"
-        : "AUDIENCE");
+        : "AUDIENCE") ||
+    whiteboards !== savedWhiteboards;
 
   const save = async () => {
     setSaving(true);
@@ -187,6 +193,9 @@ function ChannelSettingsEditor({
         memberIds: memberIds as Id<"users">[],
         postingPolicy,
       });
+      if (whiteboards !== savedWhiteboards) {
+        await setWhiteboardsEnabled({ channelId: channel._id, enabled: whiteboards });
+      }
       toast({ title: "Channel saved" });
     } catch (error) {
       toast({
@@ -333,6 +342,20 @@ function ChannelSettingsEditor({
               </Select>
             </Field>
           </div>
+
+          <Separator />
+
+          <Field orientation="horizontal" className="items-center">
+            <FieldContent>
+              <FieldLabel htmlFor="channel-whiteboards">Whiteboards</FieldLabel>
+              <FieldDescription>Shared drawing boards in this channel.</FieldDescription>
+            </FieldContent>
+            <Switch
+              id="channel-whiteboards"
+              checked={whiteboards}
+              onCheckedChange={setWhiteboards}
+            />
+          </Field>
         </CardContent>
         {hasUnsavedChanges ? (
           <CardFooter className="justify-end">
