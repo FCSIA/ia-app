@@ -27,6 +27,7 @@ const webhookSecret = "synthetic-feedback-webhook-secret";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -184,5 +185,64 @@ describe("GitHub feedback retries", () => {
       githubIssueSyncState: "FAILED",
       githubIssueSyncError: "GITHUB_FEEDBACK_TOKEN is not configured",
     });
+  });
+});
+
+describe("GitHub feedback issue creation", () => {
+  it("creates one issue with feedback text and no submitter identity", async () => {
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-feedback-token");
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
+      number: 456,
+      html_url: "https://github.com/virajdas/ia-app/issues/456",
+    }, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { t, reportId } = await fixture();
+    await t.run((ctx) => ctx.db.patch(reportId, {
+      githubIssueNumber: undefined, githubIssueSyncState: "PENDING",
+    }));
+
+    await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
+    await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, request] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://api.github.com/repos/virajdas/ia-app/issues");
+    expect(request?.method).toBe("POST");
+    expect(request?.headers).toMatchObject({ Authorization: "Bearer synthetic-feedback-token" });
+    const payload = JSON.parse(String(request?.body));
+    expect(Object.keys(payload).sort()).toEqual(["body", "title"]);
+    expect(payload.body).toContain("Synthetic feedback for webhook verification.");
+    expect(payload.body).not.toContain("FEEDBACK-STUDENT");
+    expect(payload.body).not.toContain("Test Student");
+    expect(await t.run((ctx) => ctx.db.get(reportId))).toMatchObject({
+      githubIssueNumber: 456,
+      githubIssueUrl: "https://github.com/virajdas/ia-app/issues/456",
+      githubIssueSyncState: "SYNCED",
+      githubIssueSyncError: null,
+    });
+  });
+
+  it("records a GitHub API failure while retaining the feedback", async () => {
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-feedback-token");
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 403 })));
+    const { t, reportId } = await fixture();
+    await t.run((ctx) => ctx.db.patch(reportId, {
+      githubIssueNumber: undefined, githubIssueSyncState: "PENDING",
+    }));
+    await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
+    expect(await t.run((ctx) => ctx.db.get(reportId))).toMatchObject({
+      status: "PENDING",
+      githubIssueSyncState: "FAILED",
+      githubIssueSyncError: "GitHub issue creation failed (403)",
+    });
+  });
+
+  it("does not send moderation reports to GitHub", async () => {
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-feedback-token");
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const { t, reportId } = await fixture("ANNOUNCEMENT");
+    await t.run((ctx) => ctx.db.patch(reportId, { githubIssueNumber: undefined }));
+    await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

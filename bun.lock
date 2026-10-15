@@ -240,6 +240,7 @@
   ],
   "patchedDependencies": {
     "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
+    "braces@3.0.3": "patches/braces@3.0.3.patch",
   },
   "overrides": {
     "@types/react": "19.2.7",
