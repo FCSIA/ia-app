@@ -98,14 +98,32 @@
   lint (21 existing warnings), production build, and 390px keyboard/touch checks
   pass. These additions remain in #155 awaiting owner visual review.
 - The owner authorized parallel feedback, clubs landing, and announcements
-  passes in isolated worktrees. Clubs PR #156 removes the conflicting outer
-  frame around the approved CardGroup and aligns Discover to the same width;
-  typecheck/lint/build and desktop/390px interaction checks pass. Feedback work
-  distinguishes GENERAL feedback from moderation notifications and preserves
-  existing notification opt-outs. Announcements work addresses feed actions
-  and inconsistent past-feed filters. These changes are separate review slices;
-  no new UI merge or shared/production backend deployment is authorized by
-  agent visual QA.
+  passes in isolated worktrees, stacked on #155. Clubs PR #156 removes the
+  conflicting outer frame around the approved CardGroup and aligns Discover
+  to the same width; typecheck/lint/build and desktop/390px interaction checks
+  pass. Preview: `http://localhost:3002/clubs`.
+- Feedback PR #157 simplifies `/report`, distinguishes GENERAL feedback from
+  moderation notifications (including source-linked legacy inbox records), and
+  preserves existing moderation opt-outs until Feedback is configured. All 383
+  backend tests, backend/web/mobile typechecks, web lint, and production build
+  pass. Independent source review found no blocking compatibility/permission
+  issue. Browser checks cover desktop/390px, light/dark, attachment add/remove,
+  and keyboard behavior; populated history is not browser-verified. Preview:
+  `http://localhost:3001/report`. New backend code is not on the local watcher.
+- Announcements PR #158 simplifies metadata/action layout, exposes common
+  filters, and applies the same matcher to current/past records. Its narrow
+  backend guard excludes non-expiring ACTIVE posts from the recent-expiration
+  stream. All 379 backend tests, backend/web typechecks, web lint, production
+  build, and three web filter tests pass. The registered Past-query test covers
+  expiry boundaries but does not reproduce the old engine bug: convex-test's
+  comparator differs from documented Convex missing-value ordering. No backend
+  push occurred. Compiled desktop/390px checks, read/save restoration, Saved
+  filtering, empty search recovery, and independent comments navigation pass.
+  Preview: `http://localhost:3003/announcements`; captures are in
+  `/tmp/ia-announcements-review/`. The root agent finished QA/PR creation after
+  the announcements subagent exhausted its usage allowance.
+- All new material visuals remain awaiting design-owner review. Agent QA does
+  not authorize merging them or deploying to a shared/production backend.
 - The `merge-pr147` worktree serves the compiled dashboard at
   `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
   on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.
