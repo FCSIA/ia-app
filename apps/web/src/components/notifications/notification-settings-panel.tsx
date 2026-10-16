@@ -19,6 +19,7 @@ import {
   Hash,
   FolderOpen,
   Megaphone,
+  MessageSquareText,
   ShieldAlert,
   Presentation,
   RefreshCcw,
@@ -41,6 +42,7 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   EVENT: CalendarDays,
   FLEX_FRIDAY: Presentation,
   CONTENT_MODERATED: ShieldAlert,
+  FEEDBACK: MessageSquareText,
   FRIEND_REQUEST: Users,
   FRIEND_SCHEDULE_CHANGE: RefreshCcw,
 };

@@ -12,7 +12,7 @@ import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
-import { notificationValidator, toNotification } from "./_lib";
+import { notificationValidator, toNotifications } from "./_lib";
 
 export const list = query({
   args: {
@@ -37,7 +37,7 @@ export const list = query({
           );
 
     const rows = await queryBase.order("desc").take(limit);
-    return rows.map(toNotification);
+    return toNotifications(ctx, rows);
   },
 });
 
@@ -83,7 +83,7 @@ export const listPage = query({
     const result = await queryBase.order("desc").paginate(args.paginationOpts);
     return {
       ...result,
-      page: result.page.map(toNotification),
+      page: await toNotifications(ctx, result.page),
     };
   },
 });

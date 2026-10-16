@@ -20,7 +20,14 @@ export const list = query({
         q.eq("userId", user._id),
       )
       .take(500);
-    return rows.map(toPreference);
+    const preferences = rows.map(toPreference);
+    const hasFeedback = rows.some((row) => row.category === "FEEDBACK" && row.scopeKey === "global");
+    const legacy = rows.find((row) => row.category === "CONTENT_MODERATED" && row.scopeKey === "global");
+    if (!hasFeedback && legacy) {
+      // Expose the effective inherited value without writing a migration row.
+      preferences.push({ ...toPreference(legacy), category: "FEEDBACK", locked: false });
+    }
+    return preferences;
   },
 });
 

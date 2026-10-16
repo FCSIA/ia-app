@@ -244,7 +244,7 @@ export const applyGithubIssueState = internalMutation({
     if (report.status !== "RESOLVED" && args.status === "RESOLVED") {
       await deliverNotification(ctx, {
         userId: report.submitterId,
-        category: "CONTENT_MODERATED",
+        category: "FEEDBACK",
         title: "Your feedback was resolved",
         body: reviewNote,
         href: "/report",

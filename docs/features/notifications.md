@@ -69,7 +69,14 @@ also supports category and scope keys such as global, club, and channel scopes.
 
 The validator includes school announcements, club announcements, club join
 requests, club channel messages, mentions, thread replies, events, Flex Friday,
-content moderation, friend requests, and friend schedule changes.
+content moderation, feedback, friend requests, and friend schedule changes.
+
+Feedback submissions, staff replies, and resolution updates use `FEEDBACK`,
+separate from safety/moderation notices. Both inbox APIs classify older
+`CONTENT_MODERATED` deliveries by the linked report's `GENERAL` content type;
+titles and URLs do not determine the category. Historical deliveries are not
+rewritten. A feedback preference inherits the user's previous global moderation
+preference until explicitly set, preserving opt-outs and delivery levels.
 
 ## Settings surfaces
 
