@@ -1,14 +1,18 @@
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin, PinOff } from 'lucide-react';
+import { Archive, Bookmark, Clock, Ellipsis, MessageCircle, Pin, PinOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
+import { AnnouncementAudience } from '@/components/announcements/announcement-audience-label';
+import type { AnnouncementAudienceInput } from '@/components/announcements/announcement-audience';
 import { Badge } from '@/components/ui/badge';
 import type { BadgeColor } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
+import { DropdownContent, DropdownMenu, DropdownTrigger } from '@/components/ui/dropdown';
+import { MenuItem } from '@/components/ui/menu-item';
 import { cn } from '@/lib/utils';
 
 export const ANNOUNCEMENT_BADGE_TEXT_CLASS = 'text-[11px] leading-none';
@@ -27,7 +31,7 @@ export const ANNOUNCEMENT_TAG_LABELS: Record<string, string> = {
   CLUB: 'Club',
 };
 
-export type AnnouncementCardRecord = {
+export type AnnouncementCardRecord = AnnouncementAudienceInput & {
   _id: string;
   title: string;
   body: string;
@@ -52,9 +56,7 @@ export type AnnouncementCardRecord = {
     name: string;
   } | null;
   clubId?: string;
-  _count?: {
-    comments?: number;
-  } | null;
+  commentCount?: number;
 };
 
 type AnnouncementCardProps = {
@@ -64,6 +66,8 @@ type AnnouncementCardProps = {
   className?: string;
   footer?: ReactNode;
   index?: number;
+  /** Omit only the ordering label already named by the surrounding section. */
+  orderingContext?: 'personal-pins' | 'featured' | 'latest';
   onArchive?: (announcementId: string) => void;
   onBookmarkToggle?: (announcement: AnnouncementCardRecord) => void;
   onPinToggle?: (announcement: AnnouncementCardRecord) => void;
@@ -88,6 +92,7 @@ function AnnouncementPreview({
   className,
   footer,
   index,
+  orderingContext,
   onArchive,
   onBookmarkToggle,
   onPinToggle,
@@ -101,40 +106,38 @@ function AnnouncementPreview({
     EXPIRED: { label: 'Expired', color: 'gray' },
     ARCHIVED: { label: 'Archived', color: 'gray' },
   }[announcement.status] as { label: string; color: BadgeColor } | undefined;
-  const audience = announcement.club?.name
-    || ANNOUNCEMENT_TAG_LABELS[announcement.targetType]
-    || (announcement.targetType === 'INTERSECTION' ? 'Combined audience' : announcement.targetType.replaceAll('_', ' '));
   const createdAt = new Date(announcement.createdAt);
   const audienceMetadata = <>
-    <span>{audience}</span>
-    {announcement.isPinned ? <span>Pinned for you</span> : null}
-    {announcement.isPromoted ? <span>Featured</span> : null}
+    <AnnouncementAudience announcement={announcement} />
+    {orderingContext !== 'personal-pins' && announcement.isPinned ? <span>Pinned for you</span> : null}
+    {orderingContext !== 'featured' && announcement.isPromoted ? <span>Featured</span> : null}
     {status ? <Badge variant="solid" size="sm" color={status.color}>{status.label}</Badge> : null}
   </>;
+  const canPin = !!onPinToggle && announcement.status === 'ACTIVE';
+  const canArchiveAnnouncement = canArchive && !!onArchive && announcement.status === 'ACTIVE';
 
   return (
     <Card
       index={index}
       href={`/announcements/${announcement._id}`}
+      attention={!announcement.isRead}
       label={`Open announcement: ${announcement.title} (${announcement.isRead ? 'Read' : 'Unread'})`}
       className={cn('announcement-card relative', className)}
       data-read-state={announcement.isRead ? 'read' : 'unread'}
     >
       <CardContent className="px-4 pt-4 sm:px-5">
-        {!widget ? (
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            {audienceMetadata}
-          </div>
-        ) : null}
+        {!widget ? <div className="flex min-h-6 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+          {!announcement.isRead ? <Badge size="md" color="gray">Unread</Badge> : null}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">{audienceMetadata}</div>
+        </div> : null}
         <h3 className={cn(
-          'leading-snug',
+          'leading-snug text-foreground',
+          !widget && 'mt-2',
           presentation === 'compact' ? 'line-clamp-1' : 'line-clamp-2',
           widget ? 'text-sm' : 'text-base',
-          announcement.isRead ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground',
-        )}>
-          {announcement.title}
-        </h3>
-        {!widget ? <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p> : null}
+          announcement.isRead ? 'font-normal' : 'font-semibold',
+        )}>{announcement.title}</h3>
+        {!widget ? <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p> : null}
       </CardContent>
       <CardFooter className={cn('flex items-center justify-between gap-y-2 px-4 sm:px-5', widget ? 'gap-x-2 pt-1' : 'flex-wrap gap-x-4 pt-3')}>
         <div className={cn('flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground', widget ? 'flex-1 text-xs' : 'text-sm')}>
@@ -155,7 +158,7 @@ function AnnouncementPreview({
         </div>
         <div className={cn('flex flex-wrap items-center gap-1', widget ? 'shrink-0' : 'max-w-full')}>
           <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
-            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
+            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly={widget || presentation === 'compact'} variant="ghost" />
           </Tooltip>
           {onBookmarkToggle ? (
             <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
@@ -163,10 +166,11 @@ function AnnouncementPreview({
                 variant="ghost"
                 size="icon-sm"
                 active={announcement.isBookmarked}
+                aria-pressed={!!announcement.isBookmarked}
                 onClick={() => onBookmarkToggle(announcement)}
                 aria-label={`${announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}: ${announcement.title}`}
               >
-                {announcement.isBookmarked ? <BookmarkCheck /> : <Bookmark />}
+                <Bookmark fill={announcement.isBookmarked ? 'currentColor' : 'none'} className={announcement.isBookmarked ? 'text-primary' : undefined} />
               </Button>
             </Tooltip>
           ) : null}
@@ -174,30 +178,21 @@ function AnnouncementPreview({
             <Tooltip content="Open comments">
               <Button asChild variant="ghost" size={widget ? 'icon-sm' : 'sm'} leadingIcon={widget ? undefined : MessageCircle}>
                 <Link href={`/announcements/${announcement._id}#comments`} aria-label={`Open comments: ${announcement.title}`}>
-                  {widget ? <MessageCircle /> : `${announcement._count?.comments || 0} comments`}
+                  {widget ? <MessageCircle /> : announcement.commentCount ? announcement.commentCount : 'Reply'}
                 </Link>
               </Button>
             </Tooltip>
           ) : null}
-          {onPinToggle && announcement.status === 'ACTIVE' ? (
-            <Tooltip content={announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'}>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                active={announcement.isPinned}
-                onClick={() => onPinToggle(announcement)}
-                aria-label={`${announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'}: ${announcement.title}`}
-              >
-                {announcement.isPinned ? <PinOff /> : <Pin />}
-              </Button>
-            </Tooltip>
-          ) : null}
-          {canArchive && announcement.status === 'ACTIVE' && onArchive ? (
-            <Tooltip content="Archive announcement">
-              <Button variant="ghost" size="icon-sm" onClick={() => onArchive(announcement._id)} aria-label={`Archive announcement: ${announcement.title}`}>
-                <Archive />
-              </Button>
-            </Tooltip>
+          {canPin || canArchiveAnnouncement ? (
+            <DropdownMenu>
+              <DropdownTrigger render={
+                <Button id={`announcement-more-${announcement._id}`} variant="ghost" size="icon-sm" aria-label={`More actions: ${announcement.title}`}><Ellipsis /></Button>
+              } />
+              <DropdownContent align="end">
+                {canPin ? <MenuItem index={0} icon={announcement.isPinned ? PinOff : Pin} label={announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'} onSelect={() => onPinToggle?.(announcement)} /> : null}
+                {canArchiveAnnouncement ? <MenuItem index={canPin ? 1 : 0} icon={Archive} label="Archive announcement" onSelect={() => onArchive?.(announcement._id)} /> : null}
+              </DropdownContent>
+            </DropdownMenu>
           ) : null}
         </div>
         {footer ? <div className="w-full">{footer}</div> : null}

@@ -8,6 +8,7 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AnnouncementWidgetCard } from '@/components/announcements/announcement-card';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { CardGroup } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
@@ -31,19 +32,17 @@ export function AnnouncementsWidget() {
 
   return (
     <Panel
-      title="Announcements"
+      title={<span className="inline-flex flex-wrap items-center gap-2">Announcements<Badge size="md" color="gray">Unread</Badge></span>}
       action={
-        <Button asChild size="sm" variant="ghost" trailingIcon={ArrowRight}>
-          <Link href="/announcements">
-            Open feed
-          </Link>
+        <Button asChild size="icon-sm" variant="ghost">
+          <Link href="/announcements" aria-label="Open announcement feed"><ArrowRight /></Link>
         </Button>
       }
       contentClassName="px-3 pb-3 pt-0 sm:px-4 sm:pb-4"
     >
       {unreadAnnouncements.length > 0 ? (
         <div>
-          <CardGroup aria-label="Unread announcements">
+          <CardGroup separated aria-label="Unread announcements">
             {unreadAnnouncements.map((announcement) => (
               <AnnouncementWidgetCard
                 key={announcement._id}

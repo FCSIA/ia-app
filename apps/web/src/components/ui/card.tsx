@@ -260,6 +260,10 @@ interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "onClick"> {
   label?: string;
   /** Persistent selected state, on top of the transient proximity hover. */
   selected?: boolean;
+  /** Content needs attention (for example, unread). Supplies a quiet neutral
+   *  surface independently of selection; callers supply the visible and
+   *  accessible explanation. Selection takes visual precedence. */
+  attention?: boolean;
   disabled?: boolean;
   /** Shows a dismiss (✕) button in the corner. */
   dismissible?: boolean;
@@ -276,6 +280,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       external,
       label,
       selected = false,
+      attention = false,
       disabled = false,
       dismissible = false,
       onDismiss,
@@ -369,7 +374,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
           aria-label={label}
-          className="absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[inherit]"
+          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", shape.container)}
         />
       ) : (
         <button
@@ -377,7 +382,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           onClick={onClick}
           aria-label={label}
           aria-pressed={selected || undefined}
-          className="absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[inherit]"
+          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", shape.container)}
         />
       )
     ) : null;
@@ -418,6 +423,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           data-slot="card"
           data-proximity-index={index}
           data-selected={selected || undefined}
+          data-attention={attention || undefined}
           data-orientation={orientation}
           aria-disabled={disabled || undefined}
           className={cn(
@@ -438,14 +444,21 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           )}
           {...props}
         >
-          {/* Persistent selected fill + dividers sit behind the static content
+          {/* Persistent attention/selection fill + dividers sit behind static content
               (-z-10); the stretched overlay (z-20) sits above content so the
               whole card is clickable, and actions/dismiss (z-30) rise above the
               overlay to stay independently interactive. */}
-          {selected && (
+          {(selected || attention) && (
             <span
               aria-hidden
-              className={cn("absolute inset-0 -z-10 bg-active pointer-events-none", shape.container)}
+              data-slot="card-state-surface"
+              className={cn(
+                // These translucent tokens allow the group hover underneath to
+                // remain visible without tinting content or changing geometry.
+                "absolute inset-0 -z-10 pointer-events-none",
+                selected ? "bg-active" : "bg-hover",
+                shape.container
+              )}
             />
           )}
 

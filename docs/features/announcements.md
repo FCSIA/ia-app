@@ -35,22 +35,38 @@ also clears the search. Both the current feed and the expanded past section use
 the same matcher, including human-readable grade and pathway metadata. Results
 reflect the loaded pages; loading more continues the current filter.
 
-The shared announcement preview uses stronger titles for unread posts and
-quieter titles for read posts. State remains recognizable without color and is
-included in the card's accessible name. Audience, author, and time are secondary
-text. The dashboard derives a compact preview from the same component, with the
-title followed by metadata beside independent actions. It omits the excerpt and
-repeated decorative icons. Both use the approved CardGroup for shared hover and
-quiet separators. Neither surface uses a left accent border that conflicts with
-the Card's rounded hover treatment. Panel headings and actions share a row when
-they fit, wrapping according to the available space rather than a viewport cutoff.
+Unread posts use the owner-approved shared Card attention state: a neutral,
+rounded surface, an explicit Unread label, and a stronger title. Read posts
+return to the page substrate without a repeated Read badge; both states retain
+foreground title contrast. Reading preserves ordering in All.
+Attention is independent of selection and composes with the shared translucent
+hover layer. Focus uses the same Card-owned corners. Read state is also included
+in the card's accessible name. Audience metadata shows actual
+grades and pathways: a graduation-cap badge identifies grade numbers, while
+pathway and club names remain readable text. The list, dashboard, club previews,
+and detail share the same audience model, including legacy/array targeting and
+intersection conditions. Accessible text preserves the complete audience.
+
+The dashboard derives a compact preview from the same component, with the title
+followed by metadata beside independent actions. Its header establishes that the
+collection is unread, so individual previews omit repeated read labels and the
+excerpt. Both surfaces use the approved separated CardGroup layout so adjacent
+rounded surfaces have breathing room, with shared proximity hover. Neither uses
+a left accent border that conflicts with the rounded
+hover treatment. Panel headings and actions share a row when they fit, wrapping
+according to the available space rather than a viewport cutoff.
 
 Personal pins are labeled “Pinned for you” and keep posts at the top of that
-user's feed. Admin-promoted posts are labeled “Featured,” including the composer
+user's feed. The full feed groups personal pins, Featured, and Latest without
+reordering posts when their read state changes. Pin/unpin keeps keyboard focus
+with the moved post's action trigger. Admin-promoted posts are labeled “Featured,” including the composer
 option “Feature for one month.” Saved is the personal bookmark collection; it is
 not presented as another form of pinning. The shared Card owns navigation, while
-its action footer keeps read/save/comments/pin/archive controls independent of
-that destination. Actions remain visible in the dashboard. Failed read/save
+its action footer keeps read/save/comments independent of that destination;
+personal pin and archive commands are in the existing Dropdown action menu.
+Saved bookmarks use a filled primary-color icon. Comment counts use the
+serialized count rather than the obsolete relation-count field. Actions remain
+visible in the dashboard. Failed read/save
 writes surface a toast so users can retry.
 
 ## Source Files

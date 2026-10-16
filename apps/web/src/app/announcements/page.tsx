@@ -1,13 +1,13 @@
 'use client';
 
-import { useDeferredValue, useMemo, useReducer, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAction, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -267,6 +267,23 @@ export default function AnnouncementsPage() {
     });
   }, [dataWithPins, deferredSearch, filters]);
 
+  // These groups explain the ordering the feed already uses. Read state never
+  // changes a post's position in All; only the explicit Unread filter removes it.
+  const feedSections = useMemo(() => [
+    { id: 'personal-pins' as const, label: 'Pinned for you', items: filtered.filter((entry) => entry.isPinned) },
+    { id: 'featured' as const, label: 'Featured', items: filtered.filter((entry) => !entry.isPinned && entry.isPromoted) },
+    { id: 'latest' as const, label: 'Latest', items: filtered.filter((entry) => !entry.isPinned && !entry.isPromoted) },
+  ].filter((section) => section.items.length > 0), [filtered]);
+  const pendingPinFocus = useRef<{ id: string; pinned: boolean } | null>(null);
+  useEffect(() => {
+    const pending = pendingPinFocus.current;
+    if (!pending || !filtered.some((entry) => entry._id === pending.id && !!entry.isPinned === pending.pinned)) return;
+    // Pinning moves the record to another section and remounts its card. Keep
+    // keyboard users with the record instead of returning focus to the body.
+    document.getElementById(`announcement-more-${pending.id}`)?.focus();
+    pendingPinFocus.current = null;
+  }, [filtered]);
+
   const filteredPastAnnouncements = useMemo(() =>
     pastAllAnnouncements.filter((announcement) => matchesAnnouncementFilters(announcement, filters, deferredSearch)),
   [deferredSearch, filters, pastAllAnnouncements]);
@@ -520,9 +537,9 @@ export default function AnnouncementsPage() {
               dispatchFilters({ readFilter: value === 'unread' ? 'unread' : 'all', savedFilter: value === 'saved' ? 'saved' : 'all' });
             }}
           >
-            <FilterToggleItem value="all"><FilterToggleIcon><Inbox aria-hidden /></FilterToggleIcon>All</FilterToggleItem>
-            <FilterToggleItem value="unread"><FilterToggleIcon><Mail aria-hidden /></FilterToggleIcon>Unread</FilterToggleItem>
-            <FilterToggleItem value="saved"><FilterToggleIcon><Bookmark aria-hidden /></FilterToggleIcon>Saved</FilterToggleItem>
+            <FilterToggleItem value="all"><FilterToggleIcon><Inbox aria-hidden className={readFilter === 'all' && savedFilter === 'all' ? 'text-primary' : undefined} /></FilterToggleIcon>All</FilterToggleItem>
+            <FilterToggleItem value="unread"><FilterToggleIcon><Mail aria-hidden className={readFilter === 'unread' ? 'text-primary' : undefined} /></FilterToggleIcon>Unread</FilterToggleItem>
+            <FilterToggleItem value="saved"><FilterToggleIcon><Bookmark aria-hidden fill={savedFilter === 'saved' ? 'currentColor' : 'none'} className={savedFilter === 'saved' ? 'text-primary' : undefined} /></FilterToggleIcon>Saved</FilterToggleItem>
           </ToggleGroup>
           {hasActiveFilters ? (
             <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
@@ -729,107 +746,118 @@ export default function AnnouncementsPage() {
                 {filtered.length} matching announcement{filtered.length === 1 ? '' : 's'} in the loaded feed
               </p>
             )}
-            <CardGroup aria-label="Current announcements">
-              {(filtered as any[]).map((announcement) => {
-                const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
-                const announcementId = announcement._id as Id<'announcements'>;
-                const isReviewPending = reviewPending?.id === announcement._id;
-                const approving = isReviewPending && reviewPending?.action === 'approve';
-                const rejecting = isReviewPending && reviewPending?.action === 'reject';
-                return (
-                  <AnnouncementCard
-                    key={announcement._id}
-                    announcement={announcement}
-                    canArchive={canArchiveAnnouncement}
-                    onArchive={(id: string) => {
-                      void archiveAnnouncement({
-                        announcementId: id as Id<'announcements'>,
-                      })
-                        .then(() => toast({ title: 'Archived' }))
-                        .catch((error: unknown) =>
-                          toast({
-                            title: error instanceof Error ? error.message : 'Failed to archive',
-                            variant: 'destructive',
-                          }),
-                        );
-                    }}
-                    onBookmarkToggle={(entry) => {
-                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
-                      void toggle({
-                        announcementId: entry._id as Id<'announcements'>,
-                      }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
-                    }}
-                    onPinToggle={canPin ? (entry) => {
-                      const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
-                      void toggle({
-                        announcementId: entry._id as Id<'announcements'>,
-                      })
-                        .then(() => toast({ title: entry.isPinned ? 'Announcement unpinned' : 'Announcement pinned' }))
-                        .catch((error: unknown) =>
-                          toast({
-                            title: error instanceof Error ? error.message : 'Could not update pin',
-                            variant: 'destructive',
-                          }),
-                        );
-                    } : undefined}
-                    footer={
-                      announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
-                        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
-                          <span className="text-xs text-muted-foreground">Sponsor review required</span>
-                          <Button
-                            size="sm"
-                            leadingIcon={Check}
-                            loading={approving}
-                            disabled={isReviewPending}
-                            onClick={() => {
-                              setReviewPending({
-                                id: announcement._id,
-                                action: 'approve',
+            {feedSections.map((section) => (
+              <section key={section.id} aria-labelledby={`announcements-${section.id}`}>
+                <h2 id={`announcements-${section.id}`} className="flex items-center gap-2 px-4 text-sm font-medium text-foreground sm:px-5">
+                  {section.id === 'personal-pins' ? <Pin aria-hidden="true" className="size-3.5" fill="currentColor" strokeWidth={1.5} /> : null}
+                  {section.label}
+                </h2>
+                <CardGroup separated aria-label={`${section.label} announcements`}>
+                  {(section.items as any[]).map((announcement) => {
+                    const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
+                    const announcementId = announcement._id as Id<'announcements'>;
+                    const isReviewPending = reviewPending?.id === announcement._id;
+                    const approving = isReviewPending && reviewPending?.action === 'approve';
+                    const rejecting = isReviewPending && reviewPending?.action === 'reject';
+                    return (
+                      <AnnouncementCard
+                        key={announcement._id}
+                        announcement={announcement}
+                        orderingContext={section.id}
+                        canArchive={canArchiveAnnouncement}
+                        onArchive={(id: string) => {
+                          void archiveAnnouncement({
+                            announcementId: id as Id<'announcements'>,
+                          })
+                            .then(() => toast({ title: 'Archived' }))
+                            .catch((error: unknown) =>
+                              toast({
+                                title: error instanceof Error ? error.message : 'Failed to archive',
+                                variant: 'destructive',
+                              }),
+                            );
+                        }}
+                        onBookmarkToggle={(entry) => {
+                          const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
+                          void toggle({
+                            announcementId: entry._id as Id<'announcements'>,
+                          }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
+                        }}
+                        onPinToggle={canPin ? (entry) => {
+                          pendingPinFocus.current = { id: entry._id, pinned: !entry.isPinned };
+                          const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
+                          void toggle({
+                            announcementId: entry._id as Id<'announcements'>,
+                          })
+                            .then(() => toast({ title: entry.isPinned ? 'Announcement unpinned' : 'Announcement pinned' }))
+                            .catch((error: unknown) => {
+                              pendingPinFocus.current = null;
+                              toast({
+                                title: error instanceof Error ? error.message : 'Could not update pin',
+                                variant: 'destructive',
                               });
-                              void approveAnnouncement({ announcementId })
-                                .then(() => toast({ title: 'Announcement published' }))
-                                .catch((error: unknown) =>
-                                  toast({
-                                    title: error instanceof Error ? error.message : 'Failed to publish',
-                                    variant: 'destructive',
-                                  }),
-                                )
-                                .finally(() => setReviewPending(null));
-                            }}
-                          >
-                            Publish
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="tertiary"
-                            leadingIcon={X}
-                            loading={rejecting}
-                            disabled={isReviewPending}
-                            onClick={() => {
-                              setReviewPending({
-                                id: announcement._id,
-                                action: 'reject',
-                              });
-                              void rejectAnnouncement({ announcementId })
-                                .then(() => toast({ title: 'Announcement sent back' }))
-                                .catch((error: unknown) =>
-                                  toast({
-                                    title: error instanceof Error ? error.message : 'Failed to reject',
-                                    variant: 'destructive',
-                                  }),
-                                )
-                                .finally(() => setReviewPending(null));
-                            }}
-                          >
-                            Send back
-                          </Button>
-                        </div>
-                      ) : null
-                    }
-                  />
-                );
-              })}
-            </CardGroup>
+                            });
+                        } : undefined}
+                        footer={
+                          announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
+                            <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
+                              <span className="text-xs text-muted-foreground">Sponsor review required</span>
+                              <Button
+                                size="sm"
+                                leadingIcon={Check}
+                                loading={approving}
+                                disabled={isReviewPending}
+                                onClick={() => {
+                                  setReviewPending({
+                                    id: announcement._id,
+                                    action: 'approve',
+                                  });
+                                  void approveAnnouncement({ announcementId })
+                                    .then(() => toast({ title: 'Announcement published' }))
+                                    .catch((error: unknown) =>
+                                      toast({
+                                        title: error instanceof Error ? error.message : 'Failed to publish',
+                                        variant: 'destructive',
+                                      }),
+                                    )
+                                    .finally(() => setReviewPending(null));
+                                }}
+                              >
+                                Publish
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="tertiary"
+                                leadingIcon={X}
+                                loading={rejecting}
+                                disabled={isReviewPending}
+                                onClick={() => {
+                                  setReviewPending({
+                                    id: announcement._id,
+                                    action: 'reject',
+                                  });
+                                  void rejectAnnouncement({ announcementId })
+                                    .then(() => toast({ title: 'Announcement sent back' }))
+                                    .catch((error: unknown) =>
+                                      toast({
+                                        title: error instanceof Error ? error.message : 'Failed to reject',
+                                        variant: 'destructive',
+                                      }),
+                                    )
+                                    .finally(() => setReviewPending(null));
+                                }}
+                              >
+                                Send back
+                              </Button>
+                            </div>
+                          ) : null
+                        }
+                      />
+                    );
+                  })}
+                </CardGroup>
+              </section>
+            ))}
             {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
@@ -855,7 +883,7 @@ export default function AnnouncementsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <CardGroup aria-label="Past announcements">
+                <CardGroup separated aria-label="Past announcements">
                   {filteredPastAnnouncements.map((announcement: any) => (
                     <AnnouncementCard
                       key={announcement._id}

@@ -154,6 +154,14 @@ References:
 
 ## Direct-child and motion contracts
 
+The design owner approved Card's independent `attention` state for unread
+announcements (2026-10-16). Card owns its neutral translucent surface and shape;
+the existing Group hover remains visible beneath it. Selection takes precedence
+and retains its own semantics. Callers supply an explanation through visible
+context and an accessible name; attention never implies `aria-pressed`. Do not
+recreate the surface or its corners on feature pages. The stretched focus target
+uses the same shape token as the surface and Group hover.
+
 Fluid proximity components register item geometry. A component can render with
 no errors while silently losing the shared moving highlight if an index or ref
 is swallowed by an intermediate component.
