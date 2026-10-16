@@ -7,7 +7,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Check, ChevronDown, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronUp, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +24,7 @@ import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
-import { matchesSearchQuery } from '@/lib/search';
+import { matchesAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -53,16 +53,6 @@ const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
 type ClubFilterOption = {
   id: string;
   name: string;
-};
-
-type FeedFilters = {
-  activeTag: string | null;
-  selectedClubIds: string[];
-  readFilter: 'all' | 'unread' | 'read';
-  savedFilter: 'all' | 'saved' | 'pinned';
-  selectedGrades: number[];
-  selectedMajorPathways: string[];
-  selectedMinorPathways: string[];
 };
 
 const defaultFeedFilters: FeedFilters = {
@@ -243,17 +233,15 @@ export default function AnnouncementsPage() {
   const rejectAnnouncement = useMutation(api.announcements.feed.reject);
 
   const availableTags = useMemo(() => {
-    if (!dataWithPins) return [];
     const tags = new Set<string>();
-    dataWithPins.forEach((announcement: any) => tags.add(announcement.targetType));
+    [...dataWithPins, ...pastAllAnnouncements].forEach((announcement: any) => tags.add(announcement.targetType));
     return Array.from(tags).sort();
-  }, [dataWithPins]);
+  }, [dataWithPins, pastAllAnnouncements]);
 
   const availableClubs = useMemo<ClubFilterOption[]>(() => {
-    if (!dataWithPins) return [];
     const clubsById = new Map<string, ClubFilterOption>();
 
-    dataWithPins.forEach((announcement: any) => {
+    [...dataWithPins, ...pastAllAnnouncements].forEach((announcement: any) => {
       if (announcement.club?._id && announcement.club?.name) {
         clubsById.set(announcement.club._id, {
           id: announcement.club._id,
@@ -263,71 +251,23 @@ export default function AnnouncementsPage() {
     });
 
     return Array.from(clubsById.values()).sort((left, right) => left.name.localeCompare(right.name));
-  }, [dataWithPins]);
+  }, [dataWithPins, pastAllAnnouncements]);
 
   const filtered = useMemo(() => {
     if (!dataWithPins) return [];
 
-    const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return dataWithPins.filter((announcement: any) => {
-      if (activeTag && announcement.targetType !== activeTag) return false;
-      if (readFilter === 'unread' && announcement.isRead) return false;
-      if (readFilter === 'read' && !announcement.isRead) return false;
-      if (savedFilter === 'saved' && !announcement.isBookmarked) return false;
-      if (savedFilter === 'pinned' && !announcement.isPinned) return false;
-      if (selectedGrades.length > 0 && !selectedGrades.some((grade) => announcement.targetGrade === grade || announcement.targetGrades?.includes?.(grade))) {
-        return false;
-      }
-      if (
-        selectedMajorPathways.length > 0 &&
-        !selectedMajorPathways.some((pathway) => announcement.targetPathway === pathway || announcement.targetMajorPathways?.includes?.(pathway))
-      ) {
-        return false;
-      }
-      if (selectedMinorPathways.length > 0 && !selectedMinorPathways.some((pathway) => announcement.targetMinorPathways?.includes?.(pathway))) {
-        return false;
-      }
-
-      if (selectedClubIds.length > 0 && !selectedClubIds.includes(announcement.clubId ?? '')) {
-        return false;
-      }
-
-      return matchesSearchQuery(normalizedSearch, [
-        announcement.title,
-        announcement.body,
-        announcement.author?.firstName,
-        announcement.author?.lastName,
-        announcement.club?.name,
-      ]);
-    }).sort((left: any, right: any) => {
+    return dataWithPins.filter((announcement) =>
+      matchesAnnouncementFilters(announcement, filters, deferredSearch),
+    ).sort((left: any, right: any) => {
       if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
       if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
-  }, [activeTag, dataWithPins, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
+  }, [dataWithPins, deferredSearch, filters]);
 
-  const newestAnnouncementId = useMemo(() => {
-    const activeAnnouncements = dataWithPins.filter((announcement: any) => announcement.status === 'ACTIVE');
-    return activeAnnouncements.reduce<any | null>((latest, announcement) => {
-      if (!latest) return announcement;
-      return new Date(announcement.createdAt).getTime() > new Date(latest.createdAt).getTime()
-        ? announcement
-        : latest;
-    }, null)?._id ?? null;
-  }, [dataWithPins]);
-
-  const filteredPastAnnouncements = useMemo(() => {
-    const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return pastAllAnnouncements.filter((announcement: any) =>
-      matchesSearchQuery(normalizedSearch, [
-        announcement.title,
-        announcement.body,
-        announcement.author?.firstName,
-        announcement.author?.lastName,
-        announcement.club?.name,
-      ]),
-    );
-  }, [deferredSearch, pastAllAnnouncements]);
+  const filteredPastAnnouncements = useMemo(() =>
+    pastAllAnnouncements.filter((announcement) => matchesAnnouncementFilters(announcement, filters, deferredSearch)),
+  [deferredSearch, filters, pastAllAnnouncements]);
 
   const [reviewPending, setReviewPending] = useState<{
     id: string;
@@ -413,8 +353,8 @@ export default function AnnouncementsPage() {
       }
     >
       <div className="mx-auto max-w-4xl">
-        <div className="mb-5 flex items-center gap-2">
-          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" inputClassName="bg-background" />
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1 basis-full sm:basis-40" inputClassName="bg-background" />
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
               <Button variant="secondary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
@@ -553,14 +493,34 @@ export default function AnnouncementsPage() {
           </Popover>
           {canPost ? (
             <Button
-              size="sm"
+              className="ml-auto"
               leadingIcon={Plus}
               onClick={() => {
                 setShowNew(true);
               }}
             >
-              New
+              New announcement
             </Button>
+          ) : null}
+        </div>
+
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+          <RadioGroup
+            aria-label="Announcement feed"
+            orientation="horizontal"
+            className="w-auto flex-wrap"
+            value={readFilter === 'unread' && savedFilter === 'all' ? 'unread' : readFilter === 'all' ? savedFilter : ''}
+            onValueChange={(value) => dispatchFilters({
+              readFilter: value === 'unread' ? 'unread' : 'all',
+              savedFilter: value === 'saved' || value === 'pinned' ? value : 'all',
+            })}
+          >
+            {['all', 'unread', 'saved', 'pinned'].map((value, index) => (
+              <RadioItem key={value} index={index} value={value} label={value[0].toUpperCase() + value.slice(1)} />
+            ))}
+          </RadioGroup>
+          {hasActiveFilters ? (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
           ) : null}
         </div>
 
@@ -734,7 +694,7 @@ export default function AnnouncementsPage() {
 
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
-        ) : dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
+        ) : !hasActiveFilters && dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
           <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
             <Card className="bg-transparent">
               <CardContent className="text-center py-16 pt-6">No announcements yet</CardContent>
@@ -745,9 +705,6 @@ export default function AnnouncementsPage() {
             <Card className="bg-transparent">
               <CardContent className="pt-6 text-center py-16">
                 <p className="text-muted-foreground">No announcements match your filters.</p>
-                <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
-                  Clear filters
-                </Button>
                 {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
                 {pinnedStatus === 'CanLoadMore' ? <Button variant="tertiary" size="sm" className="mt-2" onClick={() => loadMorePins(30)}>Load more pinned announcements</Button> : null}
               </CardContent>
@@ -764,7 +721,7 @@ export default function AnnouncementsPage() {
             ) : null}
             {hasActiveFilters && (
               <p className="px-1 text-xs text-muted-foreground">
-                {filtered.length} of {dataWithPins.length} announcement{dataWithPins.length === 1 ? '' : 's'}
+                {filtered.length} matching announcement{filtered.length === 1 ? '' : 's'} in the loaded feed
               </p>
             )}
             <div className="space-y-4">
@@ -778,7 +735,6 @@ export default function AnnouncementsPage() {
                   <AnnouncementCard
                     key={announcement._id}
                     announcement={announcement}
-                    className={!announcement.isRead && announcement._id === newestAnnouncementId ? 'border-l-2 border-l-primary' : undefined}
                     canArchive={canArchiveAnnouncement}
                     onArchive={(id: string) => {
                       void archiveAnnouncement({
@@ -796,7 +752,7 @@ export default function AnnouncementsPage() {
                       const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
                       void toggle({
                         announcementId: entry._id as Id<'announcements'>,
-                      }).catch(() => undefined);
+                      }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
                     }}
                     onPinToggle={canPin ? (entry) => {
                       const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
@@ -875,29 +831,16 @@ export default function AnnouncementsPage() {
 
         <Collapsible open={pastOpen} onOpenChange={setPastOpen} className="mt-8">
           <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left text-card-foreground transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Archive className="size-4 text-muted-foreground" aria-hidden />
-                Past Announcements
-                {pastFeedStatus !== 'LoadingFirstPage' ? (
-                  <Badge size="sm" color="gray">{pastAllAnnouncements.length}</Badge>
-                ) : null}
-              </span>
-              <ChevronDown
-                className={`size-4 text-muted-foreground transition-transform ${pastOpen ? 'rotate-180' : ''}`}
-                aria-hidden
-              />
-            </button>
+            <Button variant="ghost" leadingIcon={Archive} trailingIcon={pastOpen ? ChevronUp : ChevronDown} active={pastOpen}>
+              Past announcements
+            </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-4">
             {pastFeedStatus === 'LoadingFirstPage' || expiredStatus === 'LoadingFirstPage' || archivedStatus === 'LoadingFirstPage' || rejectedStatus === 'LoadingFirstPage' || recentlyExpiredStatus === 'LoadingFirstPage' ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Loading past announcements…</p>
             ) : filteredPastAnnouncements.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-                No past announcements.
+                {hasActiveFilters ? 'No past announcements match your filters.' : 'No past announcements.'}
                 {canLoadMorePast ? (
                   <div className="mt-3 flex justify-center"><Button variant="tertiary" disabled={!canLoadPastNow || isLoadingMorePast} onClick={() => {
                     if (pastFeedStatus === 'CanLoadMore') loadMorePastAnnouncements(20);
@@ -915,7 +858,7 @@ export default function AnnouncementsPage() {
                       const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
                       void toggle({
                         announcementId: entry._id as Id<'announcements'>,
-                      }).catch(() => undefined);
+                      }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
                     }}
                   />
                 ))}

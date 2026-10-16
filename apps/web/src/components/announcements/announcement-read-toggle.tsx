@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useMutation } from '@/lib/convex-react';
 import { Mail, MailOpen } from 'lucide-react';
@@ -29,6 +30,7 @@ export function AnnouncementReadToggle({
 }: AnnouncementReadToggleProps) {
   const markRead = useMutation(api.announcements.engagement.markRead);
   const markUnread = useMutation(api.announcements.engagement.markUnread);
+  const { toast } = useToast();
   const [pending, setPending] = useState(false);
   const label = isRead ? 'Mark unread' : 'Mark read';
   const ReadStateIcon = isRead ? Mail : MailOpen;
@@ -43,11 +45,11 @@ export function AnnouncementReadToggle({
       aria-label={iconOnly ? label : undefined}
       onClick={(event) => {
         onClick?.(event);
-        if (event.defaultPrevented) return;
+        if (event.defaultPrevented || pending) return;
         setPending(true);
         const action = isRead ? markUnread : markRead;
         void action({ announcementId: announcementId as Id<'announcements'> })
-          .catch(() => undefined)
+          .catch(() => toast({ title: 'Could not update read status', variant: 'destructive' }))
           .finally(() => setPending(false));
       }}
     >

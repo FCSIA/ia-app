@@ -27,6 +27,20 @@ a club, inside club workflows.
 - Authors can use the visual editor for common formatting or switch to Markdown
   for links, lists, tables, code blocks, and other supported Markdown.
 
+## Feed interaction
+
+The feed exposes All, Unread, Saved, and Pinned as radio choices. Search and the
+advanced audience/read/saved filters compose with these choices; clearing filters
+also clears the search. Both the current feed and the expanded past section use
+the same matcher, including human-readable grade and pathway metadata. Results
+reflect the loaded pages; loading more continues the current filter.
+
+Announcement previews keep the title and excerpt on the full reading width.
+Audience, author, and time are secondary text; unread and pin/featured state stay
+visible without repeating saved state as a badge. The shared Card owns navigation,
+while its action footer keeps read/save/comments/pin/archive controls independent
+of that destination. Failed read/save writes surface a toast so users can retry.
+
 ## Source Files
 
 - Backend: `apps/convex/src/announcements/`
