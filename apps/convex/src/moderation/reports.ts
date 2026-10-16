@@ -213,7 +213,7 @@ async function createReport(
     ctx,
     recipients.map((admin) => admin._id),
     {
-      category: "CONTENT_MODERATED",
+      category: isFeedback ? "FEEDBACK" : "CONTENT_MODERATED",
       title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
       body: `${user.firstName} ${user.lastName} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
       href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
@@ -464,7 +464,7 @@ export const update = mutation({
     ) {
       await deliverNotification(ctx, {
         userId: report.submitterId,
-        category: "CONTENT_MODERATED",
+        category: "FEEDBACK",
         title: "Your feedback was resolved",
         body: args.reviewNote || "School staff reviewed your feedback.",
         href: "/report",
@@ -554,7 +554,7 @@ export const addFeedbackResponse = mutation({
 
     await deliverNotification(ctx, {
       userId: report.submitterId,
-      category: "CONTENT_MODERATED",
+      category: "FEEDBACK",
       title: "School staff replied to your feedback",
       body,
       href: "/report",

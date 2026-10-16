@@ -146,6 +146,17 @@ describe("GitHub feedback webhook", () => {
     expect((await t.run((ctx) => ctx.db.get(reportId)))?.status).toBe("PENDING");
   });
 
+  it("classifies GitHub resolutions as feedback notifications", async () => {
+    const { t, userId } = await fixture();
+    await t.mutation(internal.moderation.feedbackGithub.applyGithubIssueState, {
+      issueNumber: 123, status: "RESOLVED", githubUpdatedAt: 10,
+    });
+    const rows = await t.run((ctx) => ctx.db.query("notificationDeliveries")
+      .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", userId)).collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ category: "FEEDBACK", title: "Your feedback was resolved" });
+  });
+
   it("does not update a moderation report that is not general feedback", async () => {
     const { t, reportId } = await fixture("ANNOUNCEMENT");
     vi.stubEnv("GITHUB_FEEDBACK_WEBHOOK_SECRET", webhookSecret);

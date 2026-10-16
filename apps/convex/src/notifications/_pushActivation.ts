@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { resolveNotificationPreference } from "./deliveryPreference";
 import type { NotificationCategory } from "../validators";
 
 const pushDefaultCategories: NotificationCategory[] = [
@@ -12,6 +13,7 @@ const pushDefaultCategories: NotificationCategory[] = [
   "EVENT",
   "FLEX_FRIDAY",
   "CONTENT_MODERATED",
+  "FEEDBACK",
   "FRIEND_REQUEST",
   "FRIEND_SCHEDULE_CHANGE",
 ];
@@ -42,9 +44,13 @@ export async function activatePushPreferences(
       )
       .unique();
 
+    const effectivePreference = globalPreference ?? (category === "FEEDBACK"
+      ? await resolveNotificationPreference(ctx, { userId, category, scopeKey: "global" })
+      : null);
+
     // A global OFF preference is an explicit opt-out and wins over a
     // device-level opt-in for the whole category.
-    if (globalPreference?.enabled === false || globalPreference?.level === "OFF") {
+    if (effectivePreference?.enabled === false || effectivePreference?.level === "OFF") {
       continue;
     }
 

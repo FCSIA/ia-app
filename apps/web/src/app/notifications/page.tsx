@@ -34,6 +34,7 @@ const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
   EVENT: 'green',
   FLEX_FRIDAY: 'pink',
   CONTENT_MODERATED: 'red',
+  FEEDBACK: 'gray',
   FRIEND_REQUEST: 'cyan',
   FRIEND_SCHEDULE_CHANGE: 'orange',
 };
