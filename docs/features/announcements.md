@@ -29,17 +29,29 @@ a club, inside club workflows.
 
 ## Feed interaction
 
-The feed exposes All, Unread, Saved, and Pinned as radio choices. Search and the
-advanced audience/read/saved filters compose with these choices; clearing filters
+The feed exposes All, Unread, and Saved as labeled icon toggle choices. Search
+and the advanced audience/read/saved filters compose with these choices; clearing filters
 also clears the search. Both the current feed and the expanded past section use
 the same matcher, including human-readable grade and pathway metadata. Results
 reflect the loaded pages; loading more continues the current filter.
 
-Announcement previews keep the title and excerpt on the full reading width.
-Audience, author, and time are secondary text; unread and pin/featured state stay
-visible without repeating saved state as a badge. The shared Card owns navigation,
-while its action footer keeps read/save/comments/pin/archive controls independent
-of that destination. Failed read/save writes surface a toast so users can retry.
+The shared announcement preview uses stronger titles for unread posts and
+quieter titles for read posts. State remains recognizable without color and is
+included in the card's accessible name. Audience, author, and time are secondary
+text. The dashboard derives a compact preview from the same component, with the
+title followed by metadata beside independent actions. It omits the excerpt and
+repeated decorative icons. Both use the approved CardGroup for shared hover and
+quiet separators. Neither surface uses a left accent border that conflicts with
+the Card's rounded hover treatment. Panel headings and actions share a row when
+they fit, wrapping according to the available space rather than a viewport cutoff.
+
+Personal pins are labeled “Pinned for you” and keep posts at the top of that
+user's feed. Admin-promoted posts are labeled “Featured,” including the composer
+option “Feature for one month.” Saved is the personal bookmark collection; it is
+not presented as another form of pinning. The shared Card owns navigation, while
+its action footer keeps read/save/comments/pin/archive controls independent of
+that destination. Actions remain visible in the dashboard. Failed read/save
+writes surface a toast so users can retry.
 
 ## Source Files
 

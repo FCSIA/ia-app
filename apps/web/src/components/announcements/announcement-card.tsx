@@ -69,9 +69,21 @@ type AnnouncementCardProps = {
   onPinToggle?: (announcement: AnnouncementCardRecord) => void;
 };
 
-export function AnnouncementCard({
+export function AnnouncementCard({ compact = false, ...props }: AnnouncementCardProps) {
+  return <AnnouncementPreview {...props} presentation={compact ? 'compact' : 'feed'} />;
+}
+
+export function AnnouncementWidgetCard(props: Omit<AnnouncementCardProps, 'compact'>) {
+  return <AnnouncementPreview {...props} presentation="widget" />;
+}
+
+type AnnouncementPreviewProps = Omit<AnnouncementCardProps, 'compact'> & {
+  presentation: 'feed' | 'compact' | 'widget';
+};
+
+function AnnouncementPreview({
   announcement,
-  compact = false,
+  presentation,
   canArchive = false,
   className,
   footer,
@@ -79,7 +91,8 @@ export function AnnouncementCard({
   onArchive,
   onBookmarkToggle,
   onPinToggle,
-}: AnnouncementCardProps) {
+}: AnnouncementPreviewProps) {
+  const widget = presentation === 'widget';
   const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
 
   const status = {
@@ -92,39 +105,44 @@ export function AnnouncementCard({
     || ANNOUNCEMENT_TAG_LABELS[announcement.targetType]
     || (announcement.targetType === 'INTERSECTION' ? 'Combined audience' : announcement.targetType.replaceAll('_', ' '));
   const createdAt = new Date(announcement.createdAt);
+  const audienceMetadata = <>
+    <span>{audience}</span>
+    {announcement.isPinned ? <span>Pinned for you</span> : null}
+    {announcement.isPromoted ? <span>Featured</span> : null}
+    {status ? <Badge variant="solid" size="sm" color={status.color}>{status.label}</Badge> : null}
+  </>;
 
   return (
     <Card
       index={index}
       href={`/announcements/${announcement._id}`}
-      label={`Open announcement: ${announcement.title}`}
+      label={`Open announcement: ${announcement.title} (${announcement.isRead ? 'Read' : 'Unread'})`}
       className={cn('announcement-card relative', className)}
+      data-read-state={announcement.isRead ? 'read' : 'unread'}
     >
       <CardContent className="px-4 pt-4 sm:px-5">
-        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span>{audience}</span>
-          {!announcement.isRead ? (
-            <span className="inline-flex items-center gap-1.5 text-foreground">
-              <span aria-hidden className="size-1.5 rounded-full bg-primary" />
-              Unread
-            </span>
-          ) : null}
-          {announcement.isPinned ? (
-            <span className="inline-flex items-center gap-1"><Pin aria-hidden className="size-3.5" />Pinned</span>
-          ) : announcement.isPromoted ? (
-            <span className="inline-flex items-center gap-1"><Pin aria-hidden className="size-3.5" />Featured</span>
-          ) : null}
-          {status ? <Badge variant="solid" size="sm" color={status.color}>{status.label}</Badge> : null}
-        </div>
-        <h3 className={cn('text-base font-medium leading-snug text-foreground', compact ? 'line-clamp-1' : 'line-clamp-2')}>
+        {!widget ? (
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {audienceMetadata}
+          </div>
+        ) : null}
+        <h3 className={cn(
+          'leading-snug',
+          presentation === 'compact' ? 'line-clamp-1' : 'line-clamp-2',
+          widget ? 'text-sm' : 'text-base',
+          announcement.isRead ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground',
+        )}>
           {announcement.title}
         </h3>
-        <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p>
+        {!widget ? <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p> : null}
       </CardContent>
-      <CardFooter className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-3 sm:px-5">
-        <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground sm:basis-auto">
-          <span>{authorName || 'Unknown author'}<DeveloperBadge user={announcement.author} size={12} className="ml-1" /></span>
-          <span aria-hidden>·</span>
+      <CardFooter className={cn('flex items-center justify-between gap-y-2 px-4 sm:px-5', widget ? 'gap-x-2 pt-1' : 'flex-wrap gap-x-4 pt-3')}>
+        <div className={cn('flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground', widget ? 'flex-1 text-xs' : 'text-sm')}>
+          {widget ? audienceMetadata : null}
+          {!widget ? <>
+            <span>{authorName || 'Unknown author'}<DeveloperBadge user={announcement.author} size={12} className="ml-1" /></span>
+            <span aria-hidden>·</span>
+          </> : null}
           <time dateTime={createdAt.toISOString()} title={createdAt.toLocaleString()}>
             {formatDistanceToNow(createdAt, { addSuffix: true })}
           </time>
@@ -135,38 +153,40 @@ export function AnnouncementCard({
             </span>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-1">
+        <div className={cn('flex flex-wrap items-center gap-1', widget ? 'shrink-0' : 'max-w-full')}>
           <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
             <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
           </Tooltip>
           {onBookmarkToggle ? (
-            <Tooltip content={announcement.isBookmarked ? 'Remove bookmark' : 'Save announcement'}>
+            <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 active={announcement.isBookmarked}
                 onClick={() => onBookmarkToggle(announcement)}
-                aria-label={`${announcement.isBookmarked ? 'Remove bookmark' : 'Save announcement'}: ${announcement.title}`}
+                aria-label={`${announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}: ${announcement.title}`}
               >
                 {announcement.isBookmarked ? <BookmarkCheck /> : <Bookmark />}
               </Button>
             </Tooltip>
           ) : null}
           {announcement.allowComments ? (
-            <Button asChild variant="ghost" size="sm" leadingIcon={MessageCircle}>
-              <Link href={`/announcements/${announcement._id}#comments`}>
-                {announcement._count?.comments || 0} comments
-              </Link>
-            </Button>
+            <Tooltip content="Open comments">
+              <Button asChild variant="ghost" size={widget ? 'icon-sm' : 'sm'} leadingIcon={widget ? undefined : MessageCircle}>
+                <Link href={`/announcements/${announcement._id}#comments`} aria-label={`Open comments: ${announcement.title}`}>
+                  {widget ? <MessageCircle /> : `${announcement._count?.comments || 0} comments`}
+                </Link>
+              </Button>
+            </Tooltip>
           ) : null}
           {onPinToggle && announcement.status === 'ACTIVE' ? (
-            <Tooltip content={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}>
+            <Tooltip content={announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'}>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 active={announcement.isPinned}
                 onClick={() => onPinToggle(announcement)}
-                aria-label={`${announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}: ${announcement.title}`}
+                aria-label={`${announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'}: ${announcement.title}`}
               >
                 {announcement.isPinned ? <PinOff /> : <Pin />}
               </Button>

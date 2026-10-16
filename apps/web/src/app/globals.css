@@ -427,15 +427,10 @@
     backdrop-filter: blur(12px);
   }
 
-  .custom[data-custom-wallpaper] .admin-shell,
-  .custom[data-custom-wallpaper] .announcement-card {
+  .custom[data-custom-wallpaper] .admin-shell {
     background-color: hsl(var(--card) / 0.52);
     outline: 1px solid hsl(var(--border) / 0.7);
     outline-offset: -1px;
-  }
-
-  .custom[data-custom-wallpaper] .announcement-card {
-    outline-color: hsl(var(--foreground) / 0.3);
   }
 
   .dark {

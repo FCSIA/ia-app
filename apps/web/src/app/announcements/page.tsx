@@ -7,7 +7,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Check, ChevronDown, ChevronUp, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,8 @@ import { SearchInput } from '@/components/ui/search';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
+import { ToggleGroup } from '@/components/ui/toggle-group';
+import { FilterToggleIcon, FilterToggleItem } from '@/components/ui/filter-toggle-group';
 import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
 import { matchesAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { Label } from '@/components/ui/label';
@@ -396,8 +398,8 @@ export default function AnnouncementsPage() {
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Saved state</FieldLegend>
                   <RadioGroup value={savedFilter} onValueChange={(value) => dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })} orientation="horizontal" className="w-full flex-wrap">
-                    {['all', 'saved', 'pinned'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} className="min-w-[calc(50%-0.125rem)] flex-1" />
+                    {['all', 'saved'].map((value, index) => (
+                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : 'Saved'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
                   </RadioGroup>
                 </FieldSet>
@@ -505,20 +507,23 @@ export default function AnnouncementsPage() {
         </div>
 
         <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-          <RadioGroup
+          <ToggleGroup
+            type="single"
             aria-label="Announcement feed"
             orientation="horizontal"
-            className="w-auto flex-wrap"
+            variant="outline"
+            size="sm"
+            className="justify-start gap-2"
             value={readFilter === 'unread' && savedFilter === 'all' ? 'unread' : readFilter === 'all' ? savedFilter : ''}
-            onValueChange={(value) => dispatchFilters({
-              readFilter: value === 'unread' ? 'unread' : 'all',
-              savedFilter: value === 'saved' || value === 'pinned' ? value : 'all',
-            })}
+            onValueChange={(value) => {
+              if (!value) return;
+              dispatchFilters({ readFilter: value === 'unread' ? 'unread' : 'all', savedFilter: value === 'saved' ? 'saved' : 'all' });
+            }}
           >
-            {['all', 'unread', 'saved', 'pinned'].map((value, index) => (
-              <RadioItem key={value} index={index} value={value} label={value[0].toUpperCase() + value.slice(1)} />
-            ))}
-          </RadioGroup>
+            <FilterToggleItem value="all"><FilterToggleIcon><Inbox aria-hidden /></FilterToggleIcon>All</FilterToggleItem>
+            <FilterToggleItem value="unread"><FilterToggleIcon><Mail aria-hidden /></FilterToggleIcon>Unread</FilterToggleItem>
+            <FilterToggleItem value="saved"><FilterToggleIcon><Bookmark aria-hidden /></FilterToggleIcon>Saved</FilterToggleItem>
+          </ToggleGroup>
           {hasActiveFilters ? (
             <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
           ) : null}
@@ -672,7 +677,7 @@ export default function AnnouncementsPage() {
                         checked={form.promoted}
                         onChange={(event) => setForm({ ...form, promoted: event.target.checked })}
                       />
-                      Pin for one month
+                      Feature for one month
                     </label>
                   ) : null}
                 </div>
@@ -724,7 +729,7 @@ export default function AnnouncementsPage() {
                 {filtered.length} matching announcement{filtered.length === 1 ? '' : 's'} in the loaded feed
               </p>
             )}
-            <div className="space-y-4">
+            <CardGroup aria-label="Current announcements">
               {(filtered as any[]).map((announcement) => {
                 const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                 const announcementId = announcement._id as Id<'announcements'>;
@@ -824,7 +829,7 @@ export default function AnnouncementsPage() {
                   />
                 );
               })}
-            </div>
+            </CardGroup>
             {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
@@ -850,18 +855,20 @@ export default function AnnouncementsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredPastAnnouncements.map((announcement: any) => (
-                  <AnnouncementCard
-                    key={announcement._id}
-                    announcement={announcement}
-                    onBookmarkToggle={(entry) => {
-                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
-                      void toggle({
-                        announcementId: entry._id as Id<'announcements'>,
-                      }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
-                    }}
-                  />
-                ))}
+                <CardGroup aria-label="Past announcements">
+                  {filteredPastAnnouncements.map((announcement: any) => (
+                    <AnnouncementCard
+                      key={announcement._id}
+                      announcement={announcement}
+                      onBookmarkToggle={(entry) => {
+                        const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
+                        void toggle({
+                          announcementId: entry._id as Id<'announcements'>,
+                        }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
+                      }}
+                    />
+                  ))}
+                </CardGroup>
                 {canLoadMorePast ? (
                   <div className="flex justify-center">
                     <Button

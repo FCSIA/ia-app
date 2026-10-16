@@ -48,6 +48,5 @@ describe('announcement feed filters', () => {
     const selection = { ...filters, selectedGrades: [11], selectedMajorPathways: ['INFORMATION_TECHNOLOGY'], selectedMinorPathways: ['ENGINEERING'] };
     expect(matchesAnnouncementFilters(announcement, selection, '')).toBe(true);
     expect(matchesAnnouncementFilters(announcement, { ...selection, selectedMinorPathways: ['INFORMATION_TECHNOLOGY'] }, '')).toBe(false);
-    expect(matchesAnnouncementFilters(announcement, { ...filters, savedFilter: 'pinned' }, '')).toBe(false);
   });
 });

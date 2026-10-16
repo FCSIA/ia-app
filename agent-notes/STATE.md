@@ -132,6 +132,34 @@
 - Draft PR #152 still explicitly awaits human visual review. PR #117 has
   unresolved conflicts. Compliance PR #76 remains outside this merge pass.
 
+### Announcement feed and dashboard preview (2026-10-16)
+
+- PR #158 (`feat/announcements-feed-clarity`) is stacked on #155 and remains
+  awaiting design-owner visual review. The announcement feed uses labeled icon
+  choices for All, Unread, and Saved. Personal pins control ordering and are
+  labeled “Pinned for you”; publisher priority is “Featured.”
+- Feed, club previews, and dashboard previews share announcement anatomy and
+  independent actions. Unread titles use stronger weight and contrast; their
+  accessible names also include read state. Owner feedback removed repeated
+  decorative envelopes and status icons. The dashboard shows the title followed
+  by metadata beside actions, without an excerpt or a left accent border.
+  Existing CardGroup owns rounded hover and quiet separators.
+- Shared Panel headers now wrap according to content width, keeping headings
+  and actions together when they fit. Mobile announcement previews measure
+  about 100px per entry at 390px, with 44px touch controls and a consistent 1.5px
+  resting action-icon stroke. Full-feed actions wrap within narrow cards.
+- Three web filter tests, web typecheck, lint (21 existing warnings), and the
+  production build pass. Browser checks cover keyboard filtering, read/save
+  synchronization and personal pin ordering, with demo preferences restored;
+  320px/390px layouts, light/dark/custom themes without a wallpaper, and rounded
+  hover with reduced motion were checked. Captures are in
+  `/tmp/ia-announcement-state-review/`. Visual review remains the owner's decision.
+- The compiled preview runs at `http://localhost:3003/announcements` and
+  `/dashboard`, sharing the existing isolated demo backend on 3210/3211 with the
+  other UI previews. No reseeding or backend push was performed. PR #158's prior
+  expiry guard has backend test coverage but is not certified against that live
+  watcher. Creation, archive, approval, and deletion were not exercised.
+
 ### Local Bun/Nix setup (2026-10-02)
 
 - Nix/direnv supplies Bun 1.4.2, matching `packageManager` and CI, alongside

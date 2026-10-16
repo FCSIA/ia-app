@@ -4,7 +4,7 @@ export type FeedFilters = {
   activeTag: string | null;
   selectedClubIds: string[];
   readFilter: 'all' | 'unread' | 'read';
-  savedFilter: 'all' | 'saved' | 'pinned';
+  savedFilter: 'all' | 'saved';
   selectedGrades: number[];
   selectedMajorPathways: string[];
   selectedMinorPathways: string[];
@@ -36,7 +36,6 @@ export function matchesAnnouncementFilters(
   if (filters.readFilter === 'unread' && announcement.isRead) return false;
   if (filters.readFilter === 'read' && !announcement.isRead) return false;
   if (filters.savedFilter === 'saved' && !announcement.isBookmarked) return false;
-  if (filters.savedFilter === 'pinned' && !announcement.isPinned) return false;
   if (filters.selectedClubIds.length > 0 && !filters.selectedClubIds.includes(announcement.clubId ?? '')) return false;
   if (filters.selectedGrades.length > 0 && !filters.selectedGrades.some((grade) =>
     announcement.targetGrade === grade || announcement.targetGrades?.includes(grade))) return false;

@@ -134,8 +134,8 @@ export function Panel({
       )}
     >
       {title || description || action ? (
-        <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-6 pt-6">
+          <div className="min-w-0 flex-auto space-y-1.5">
             {title ? (
               <h3 className="text-lg font-semibold tracking-tight text-foreground">
                 {title}
