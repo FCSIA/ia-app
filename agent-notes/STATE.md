@@ -90,6 +90,22 @@
   panels within 390px, and password form open/cancel. Combined channel-count
   disclosure works by text click and Enter with a 44px touch target. Group
   borders compute to 1px with no shadow; all switches share one right edge.
+- Profile typography now uses readable secondary labels without all-caps
+  tracking or unnecessary monospace. Release titles appear once and wrap;
+  scope labels stack above changes on narrow screens. The custom theme editor
+  composes the shared Fluid Tabs adapter with named panels and arrow/Home/End
+  keyboard navigation, replacing manually implemented tabs. Web typecheck,
+  lint (21 existing warnings), production build, and 390px keyboard/touch checks
+  pass. These additions remain in #155 awaiting owner visual review.
+- The owner authorized parallel feedback, clubs landing, and announcements
+  passes in isolated worktrees. Clubs PR #156 removes the conflicting outer
+  frame around the approved CardGroup and aligns Discover to the same width;
+  typecheck/lint/build and desktop/390px interaction checks pass. Feedback work
+  distinguishes GENERAL feedback from moderation notifications and preserves
+  existing notification opt-outs. Announcements work addresses feed actions
+  and inconsistent past-feed filters. These changes are separate review slices;
+  no new UI merge or shared/production backend deployment is authorized by
+  agent visual QA.
 - The `merge-pr147` worktree serves the compiled dashboard at
   `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
   on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.
