@@ -8,8 +8,8 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AnnouncementWidgetCard } from '@/components/announcements/announcement-card';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { CardGroup } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty';
 import { useToast } from '@/hooks/use-toast';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
@@ -32,7 +32,7 @@ export function AnnouncementsWidget() {
 
   return (
     <Panel
-      title={<span className="inline-flex flex-wrap items-center gap-2">Announcements<Badge size="md" color="gray">Unread</Badge></span>}
+      title="Unread Announcements"
       action={
         <Button asChild size="icon-sm" variant="ghost">
           <Link href="/announcements" aria-label="Open announcement feed"><ArrowRight /></Link>
@@ -62,9 +62,11 @@ export function AnnouncementsWidget() {
           ) : null}
         </div>
       ) : (
-        <div className="border border-dashed border-border/70 bg-background/45 px-4 py-8 text-sm text-foreground/70">
-          No unread announcements.
-        </div>
+        <Empty>
+          <EmptyHeader>
+            <EmptyDescription>No unread announcements.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
     </Panel>
   );

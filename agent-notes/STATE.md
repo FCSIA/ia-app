@@ -132,52 +132,60 @@
 - Draft PR #152 still explicitly awaits human visual review. PR #117 has
   unresolved conflicts. Compliance PR #76 remains outside this merge pass.
 
-### Announcement feed and dashboard preview (2026-10-16)
+### Announcement feed and dashboard preview (2026-10-17)
 
 - PR #158 (`feat/announcements-feed-clarity`) is stacked on #155 and remains
   awaiting design-owner visual review. The owner approved an independent shared
-  Card attention state. It now owns the neutral translucent unread surface;
-  selection takes precedence without changing attention into `aria-pressed`.
-  Surface, proximity hover, and stretched keyboard focus use the same shape
-  token. Existing selected/active divider behavior is unchanged.
-- The independent corrections are implemented: concrete grade/pathway/club
-  audiences share one model across feed, dashboard, club preview, and detail.
-  Legacy scalar and array targets are merged; intersection conditions retain
-  AND/OR meaning in accessible text. Numeric grade badges have a graduation-cap
-  context. Missing targeting no longer becomes an invented School-wide label.
-  Cards now use serialized `commentCount`; the obsolete relation-count field
-  always displayed zero.
-- The full feed groups Pinned for you, Featured, and Latest to explain its
-  existing ordering. A featured post remains labeled Featured within personal
-  pins. Reading does not reorder All. Pin/unpin restores keyboard focus to the
-  moved post's More trigger. Read/save/comments remain independent; pin/archive
-  are commands in the existing Fluid Dropdown. Saved bookmarks use the same
-  filled primary-color glyph in cards and the Saved filter.
-- Unread cards combine the shared attention surface, explicit Unread label, and
-  stronger title; read cards retain foreground contrast without a Read badge.
-  Feed/past/widget use the existing separated CardGroup layout so adjacent
-  rounded surfaces do not touch. Single-line metadata keeps a 24px row to avoid
-  the tested read toggle changing card height; unusually long audience metadata
-  can still wrap differently when its Unread label disappears.
-  The unread-only dashboard names its state once in the widget header and omits
-  repeated per-entry read labels. Entries remain about 100px at 390px with 44px
-  touch controls. The owner must review the broader visual direction.
-- Ten focused audience/filter tests, web typecheck, lint (21 existing warnings),
-  and production build pass. Browser checks cover mixed read states, saved
-  filtering and filled icons, pin/unpin ordering/focus, rounded focus and
-  translucent hover layering, light/dark/custom themes without a wallpaper,
-  reduced-motion preference, and 320px/390px announcement geometry. The new
-  attention surface is static; existing Card proximity motion was not changed.
-  The dashboard's existing calendar overflows at 320px because its
-  seven 44px day targets exceed the available width; this separate primitive
-  issue was diagnosed and not patched with announcement layout overrides.
+  Card attention state. Card owns its neutral translucent unread surface and
+  matching focus/hover corners; selection retains its own semantics.
+- Concrete grade/pathway/club audiences share one model across feed, dashboard,
+  club preview, and detail. Legacy scalar/array targets are merged; intersection
+  conditions preserve their AND/OR meaning in accessible text. Numeric grade
+  badges have a graduation-cap context. Missing targeting no longer becomes an
+  invented School-wide label. Serialized `commentCount` replaces the obsolete
+  relation-count field that always displayed zero.
+- The full feed groups Pinned for you, Important, and Latest. Important describes
+  publisher priority, distinct from personal pins and Saved. Reading preserves
+  ordering in All; pin/unpin restores focus to the moved post's More trigger.
+  Per-card Unread pills are removed. Feed/past cards retain quiet outlines in
+  both states, while unread attention and title weight provide emphasis without
+  removing a read post's boundary. Saved uses the existing outlined active Button
+  plus a filled primary icon, distinct from transient hover.
+- Desktop feed choices, search, Filters, and New occupy one toolbar row. Narrow
+  screens deliberately use two rows. Headings have a separate gap before cards.
+  Read/Saved use compact Select controls; audience facets use FieldSet/Legend
+  and registered RadioGroup/CheckboxGroup rows within a bounded ScrollArea.
+  Zero-comment actions use an icon so all four 44px controls fit together at
+  320px. The dashboard title is Unread Announcements; its empty state composes
+  the shared unframed Empty inside the existing widget boundary.
+- Shared defects are repaired at their owners: RadioGroup resolves both pointer
+  coordinates for wrapped rows; nested popup portals share the overlay layer;
+  Select and Dropdown share fixed 12px/8px/10px shell/item/focus geometry. The
+  trigger retains global shape. Fixed values avoid the app's `rounded-lg` token
+  resolving to 16px instead of the registry's expected 8px.
+- Default Light/Dark borders/dividers now follow the scoped surface foreground.
+  Explicit Custom Accent, Bubblegum, and opaque high-contrast border palettes
+  are preserved. Their contrast was not retuned; `border-input` is unchanged.
+- Fifteen focused audience/filter/hover-geometry tests, web typecheck, lint
+  (21 existing warnings), and production build pass. Browser checks cover
+  combined Read/Saved filters, nested menu visibility/Escape/focus return,
+  composer targeting, wrapped radio hit testing, 320px/390px action geometry,
+  section rhythm, saved vs hover, and Light/Dark/Contrast/Custom token behavior.
+  Read toggling retains the tested card's 176px height and document position.
+  Owner changes made all demo posts read during review; temporary QA toggles
+  were restored to that state. The populated and empty widget were checked at
+  390px. Earlier pin/order, audience, custom-theme, and reduced-motion checks
+  remain applicable; attention is static and existing proximity motion is unchanged.
 - The compiled preview runs at `http://localhost:3003/announcements` and
-  `/dashboard`, sharing the existing isolated demo backend on 3210/3211. The
-  stopped backend runtime was restarted directly from its existing database and
-  stored modules; no reseeding, schema push, or deployment was performed. This
-  does not certify the prior expiry fix against that runtime. Creation, archive,
-  approval, and deletion were not exercised. Review captures are in
+  `/dashboard`, sharing the existing isolated demo backend on 3210/3211.
+  No reseeding, schema push, or deployment was performed. This does not certify
+  the prior expiry fix against that runtime. Creation, archive, approval, and
+  deletion were not exercised. Current captures are in
+  `/tmp/ia-announcement-interaction-review/`; earlier captures remain in
   `/tmp/ia-announcement-redesign-review/`.
+- The dashboard's existing calendar independently overflows at 320px because its
+  seven 44px day targets exceed the available width. It remains a separate
+  primitive issue, outside this announcement change.
 
 ### Local Bun/Nix setup (2026-10-02)
 

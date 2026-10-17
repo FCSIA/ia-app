@@ -67,7 +67,7 @@ type AnnouncementCardProps = {
   footer?: ReactNode;
   index?: number;
   /** Omit only the ordering label already named by the surrounding section. */
-  orderingContext?: 'personal-pins' | 'featured' | 'latest';
+  orderingContext?: 'personal-pins' | 'important' | 'latest';
   onArchive?: (announcementId: string) => void;
   onBookmarkToggle?: (announcement: AnnouncementCardRecord) => void;
   onPinToggle?: (announcement: AnnouncementCardRecord) => void;
@@ -110,7 +110,7 @@ function AnnouncementPreview({
   const audienceMetadata = <>
     <AnnouncementAudience announcement={announcement} />
     {orderingContext !== 'personal-pins' && announcement.isPinned ? <span>Pinned for you</span> : null}
-    {orderingContext !== 'featured' && announcement.isPromoted ? <span>Featured</span> : null}
+    {orderingContext !== 'important' && announcement.isPromoted ? <span>Important</span> : null}
     {status ? <Badge variant="solid" size="sm" color={status.color}>{status.label}</Badge> : null}
   </>;
   const canPin = !!onPinToggle && announcement.status === 'ACTIVE';
@@ -126,9 +126,8 @@ function AnnouncementPreview({
       data-read-state={announcement.isRead ? 'read' : 'unread'}
     >
       <CardContent className="px-4 pt-4 sm:px-5">
-        {!widget ? <div className="flex min-h-6 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-          {!announcement.isRead ? <Badge size="md" color="gray">Unread</Badge> : null}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">{audienceMetadata}</div>
+        {!widget ? <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          {audienceMetadata}
         </div> : null}
         <h3 className={cn(
           'leading-snug text-foreground',
@@ -163,7 +162,7 @@ function AnnouncementPreview({
           {onBookmarkToggle ? (
             <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
               <Button
-                variant="ghost"
+                variant={announcement.isBookmarked ? 'tertiary' : 'ghost'}
                 size="icon-sm"
                 active={announcement.isBookmarked}
                 aria-pressed={!!announcement.isBookmarked}
@@ -176,9 +175,9 @@ function AnnouncementPreview({
           ) : null}
           {announcement.allowComments ? (
             <Tooltip content="Open comments">
-              <Button asChild variant="ghost" size={widget ? 'icon-sm' : 'sm'} leadingIcon={widget ? undefined : MessageCircle}>
+              <Button asChild variant="ghost" size={widget || !announcement.commentCount ? 'icon-sm' : 'sm'} leadingIcon={widget || !announcement.commentCount ? undefined : MessageCircle}>
                 <Link href={`/announcements/${announcement._id}#comments`} aria-label={`Open comments: ${announcement.title}`}>
-                  {widget ? <MessageCircle /> : announcement.commentCount ? announcement.commentCount : 'Reply'}
+                  {widget || !announcement.commentCount ? <MessageCircle /> : announcement.commentCount}
                 </Link>
               </Button>
             </Tooltip>

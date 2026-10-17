@@ -36,9 +36,9 @@ the same matcher, including human-readable grade and pathway metadata. Results
 reflect the loaded pages; loading more continues the current filter.
 
 Unread posts use the owner-approved shared Card attention state: a neutral,
-rounded surface, an explicit Unread label, and a stronger title. Read posts
-return to the page substrate without a repeated Read badge; both states retain
-foreground title contrast. Reading preserves ordering in All.
+rounded surface and a stronger title. The full feed gives every post the same
+quiet outline, so reading changes emphasis without removing its boundary.
+Per-post read badges are omitted; both states retain foreground title contrast. Reading preserves ordering in All.
 Attention is independent of selection and composes with the shared translucent
 hover layer. Focus uses the same Card-owned corners. Read state is also included
 in the card's accessible name. Audience metadata shows actual
@@ -47,27 +47,43 @@ pathway and club names remain readable text. The list, dashboard, club previews,
 and detail share the same audience model, including legacy/array targeting and
 intersection conditions. Accessible text preserves the complete audience.
 
-The dashboard derives a compact preview from the same component, with the title
+The dashboard's “Unread Announcements” widget derives a compact preview from the same component, with the title
 followed by metadata beside independent actions. Its header establishes that the
 collection is unread, so individual previews omit repeated read labels and the
-excerpt. Both surfaces use the approved separated CardGroup layout so adjacent
+excerpt. Its empty state uses the shared unframed Empty composition within the
+existing widget boundary. Both surfaces use the approved separated CardGroup layout so adjacent
 rounded surfaces have breathing room, with shared proximity hover. Neither uses
 a left accent border that conflicts with the rounded
 hover treatment. Panel headings and actions share a row when they fit, wrapping
 according to the available space rather than a viewport cutoff.
 
 Personal pins are labeled “Pinned for you” and keep posts at the top of that
-user's feed. The full feed groups personal pins, Featured, and Latest without
+user's feed. The full feed groups personal pins, Important, and Latest without
 reordering posts when their read state changes. Pin/unpin keeps keyboard focus
-with the moved post's action trigger. Admin-promoted posts are labeled “Featured,” including the composer
-option “Feature for one month.” Saved is the personal bookmark collection; it is
+with the moved post's action trigger. Admin-promoted posts are labeled “Important,” including the composer
+option “Mark important for one month.” Saved is the personal bookmark collection; it is
 not presented as another form of pinning. The shared Card owns navigation, while
 its action footer keeps read/save/comments independent of that destination;
 personal pin and archive commands are in the existing Dropdown action menu.
-Saved bookmarks use a filled primary-color icon. Comment counts use the
-serialized count rather than the obsolete relation-count field. Actions remain
+Saved bookmarks use a filled primary-color icon and the existing outlined,
+active Button treatment. The persistent circle differs from an unsaved button's
+transient hover surface. Comment counts use the
+serialized count rather than the obsolete relation-count field. With no comments,
+the action uses its recognizable icon instead of a redundant Reply label, keeping
+the four touch actions together at 320px. Actions remain
 visible in the dashboard. Failed read/save
 writes surface a toast so users can retry.
+
+The desktop toolbar places feed choices, search, filters, and New together.
+Narrow layouts deliberately split search/filter controls from feed/create
+controls. Section headings have a separate gap before the cards. Filter headings
+align with the leading controls, while the shared primitives retain ownership of
+option padding and corners. Read and Saved use compact Select controls; the
+bounded ScrollArea preserves access to long facet lists. Select and Dropdown
+share fixed concentric popup corners, independent of the trigger shape and
+application radius token. Nested portals share an overlay layer so the inner
+menu paints above its parent and restores focus when dismissed. RadioGroup resolves hover in two dimensions so wrapping choices
+cannot highlight a different option from the pointer target.
 
 ## Source Files
 

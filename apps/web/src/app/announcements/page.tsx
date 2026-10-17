@@ -7,7 +7,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,10 +28,13 @@ import { FilterToggleIcon, FilterToggleItem } from '@/components/ui/filter-toggl
 import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
 import { matchesAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { Label } from '@/components/ui/label';
-import { FieldLegend, FieldSet } from '@/components/ui/field';
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
@@ -237,7 +240,7 @@ export default function AnnouncementsPage() {
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
     [...dataWithPins, ...pastAllAnnouncements].forEach((announcement: any) => tags.add(announcement.targetType));
-    return Array.from(tags).sort();
+    return Object.keys(ANNOUNCEMENT_SCOPE_LABELS).filter((tag) => tags.has(tag));
   }, [dataWithPins, pastAllAnnouncements]);
 
   const availableClubs = useMemo<ClubFilterOption[]>(() => {
@@ -271,7 +274,7 @@ export default function AnnouncementsPage() {
   // changes a post's position in All; only the explicit Unread filter removes it.
   const feedSections = useMemo(() => [
     { id: 'personal-pins' as const, label: 'Pinned for you', items: filtered.filter((entry) => entry.isPinned) },
-    { id: 'featured' as const, label: 'Featured', items: filtered.filter((entry) => !entry.isPinned && entry.isPromoted) },
+    { id: 'important' as const, label: 'Important', items: filtered.filter((entry) => !entry.isPinned && entry.isPromoted) },
     { id: 'latest' as const, label: 'Latest', items: filtered.filter((entry) => !entry.isPinned && !entry.isPromoted) },
   ].filter((section) => section.items.length > 0), [filtered]);
   const pendingPinFocus = useRef<{ id: string; pinned: boolean } | null>(null);
@@ -372,178 +375,289 @@ export default function AnnouncementsPage() {
       }
     >
       <div className="mx-auto max-w-4xl">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1 basis-full sm:basis-40" inputClassName="bg-background" />
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="secondary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
-                Filters
-                {activeFilterCount > 0 ? (
-                  <Badge size="sm" color="blue">
-                    {activeFilterCount}
-                  </Badge>
-                ) : null}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              className="w-[min(44rem,calc(100vw-2rem))] overflow-hidden p-0"
-              aria-labelledby="announcement-filters-title"
-            >
-              <div className="max-h-[min(38rem,var(--radix-popover-content-available-height))] overflow-y-auto p-3">
-                <div className="mb-2 flex items-baseline justify-between gap-3">
-                  <h3 id="announcement-filters-title" className="text-sm font-semibold text-foreground">
-                    Filters
-                  </h3>
-                  {activeFilterCount > 0 ? (
-                    <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
-                      Reset
-                    </Button>
-                  ) : null}
-                </div>
-
-                <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-                <FieldSet className="min-w-0 gap-0">
-                  <FieldLegend variant="label">Read state</FieldLegend>
-                  <RadioGroup value={readFilter} onValueChange={(value) => dispatchFilters({ readFilter: value as FeedFilters['readFilter'] })} orientation="horizontal" className="w-full flex-wrap">
-                    {['all', 'unread', 'read'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} className="min-w-[calc(50%-0.125rem)] flex-1" />
-                    ))}
-                  </RadioGroup>
-                </FieldSet>
-
-                <FieldSet className="min-w-0 gap-0">
-                  <FieldLegend variant="label">Saved state</FieldLegend>
-                  <RadioGroup value={savedFilter} onValueChange={(value) => dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })} orientation="horizontal" className="w-full flex-wrap">
-                    {['all', 'saved'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : 'Saved'} className="min-w-[calc(50%-0.125rem)] flex-1" />
-                    ))}
-                  </RadioGroup>
-                </FieldSet>
-
-                {availableTags.length > 0 ? (
-                  <FieldSet className="min-w-0 gap-0">
-                    <FieldLegend variant="label">Audience scope</FieldLegend>
-                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => dispatchFilters({ activeTag: value === 'all' ? null : value })} orientation="horizontal" className="w-full flex-wrap">
-                      {['all', ...availableTags].map((tag, index) => (
-                        <RadioItem
-                          key={tag}
-                          index={index}
-                          value={tag}
-                          label={tag === 'all' ? 'Any' : ANNOUNCEMENT_SCOPE_LABELS[tag] || tag.replace(/_/g, ' ')}
-                          className="min-w-[calc(50%-0.125rem)] flex-1"
-                        />
-                      ))}
-                    </RadioGroup>
-                  </FieldSet>
-                ) : null}
-
-                <FieldSet className="min-w-0 gap-0">
-                  <FieldLegend variant="label">Grade</FieldLegend>
-                  <CheckboxGroup
-                    checkedIndices={new Set(GRADE_OPTIONS.flatMap((grade, index) => (selectedGrades.includes(grade) ? [index] : [])))}
-                    className="w-full"
-                  >
-                    {GRADE_OPTIONS.map((grade, index) => (
-                      <CheckboxItem
-                        key={grade}
-                        index={index}
-                        label={`Grade ${grade}`}
-                        checked={selectedGrades.includes(grade)}
-                        onToggle={() => dispatchFilters((current) => ({ selectedGrades: toggleFilterValue(current.selectedGrades, grade) }))}
-                      />
-                    ))}
-                  </CheckboxGroup>
-                </FieldSet>
-
-                {[
-                  {
-                    label: 'Major pathway',
-                    selected: selectedMajorPathways,
-                    key: 'selectedMajorPathways' as const,
-                  },
-                  {
-                    label: 'Minor pathway',
-                    selected: selectedMinorPathways,
-                    key: 'selectedMinorPathways' as const,
-                  },
-                ].map(({ label, selected, key }) => (
-                  <FieldSet key={label} className="min-w-0 gap-0">
-                    <FieldLegend variant="label">{label}</FieldLegend>
-                    <CheckboxGroup
-                      checkedIndices={new Set(PATHWAY_OPTIONS.flatMap((pathway, index) => (selected.includes(pathway.value) ? [index] : [])))}
-                      className="w-full"
-                    >
-                      {PATHWAY_OPTIONS.map((pathway, index) => (
-                        <CheckboxItem
-                          key={pathway.value}
-                          index={index}
-                          label={pathway.label}
-                          checked={selected.includes(pathway.value)}
-                          onToggle={() => dispatchFilters((current) => ({ [key]: toggleFilterValue(current[key], pathway.value) }))}
-                        />
-                      ))}
-                    </CheckboxGroup>
-                  </FieldSet>
-                ))}
-
-                {availableClubs.length > 0 ? (
-                  <FieldSet className="min-w-0 gap-0 md:col-span-2">
-                    <FieldLegend variant="label">Club</FieldLegend>
-                    <CheckboxGroup
-                      checkedIndices={new Set(availableClubs.flatMap((club, index) => (selectedClubIds.includes(club.id) ? [index] : [])))}
-                      className="w-full"
-                    >
-                      {availableClubs.map((club, index) => (
-                        <CheckboxItem
-                          key={club.id}
-                          index={index}
-                          label={club.name}
-                          checked={selectedClubIds.includes(club.id)}
-                          onToggle={() => dispatchFilters((current) => ({ selectedClubIds: toggleFilterValue(current.selectedClubIds, club.id) }))}
-                        />
-                      ))}
-                    </CheckboxGroup>
-                  </FieldSet>
-                ) : null}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          {canPost ? (
-            <Button
-              className="ml-auto"
-              leadingIcon={Plus}
-              onClick={() => {
-                setShowNew(true);
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 lg:grid-cols-[auto_minmax(10rem,1fr)_auto_auto]">
+            <ToggleGroup
+              type="single"
+              aria-label="Announcement feed"
+              orientation="horizontal"
+              variant="outline"
+              size="sm"
+              className="col-start-1 row-start-2 justify-start gap-1 lg:row-start-1"
+              value={
+                readFilter === 'unread' && savedFilter === 'all'
+                  ? 'unread'
+                  : readFilter === 'all'
+                    ? savedFilter
+                    : ''
+              }
+              onValueChange={(value) => {
+                if (!value) return;
+                dispatchFilters({
+                  readFilter: value === 'unread' ? 'unread' : 'all',
+                  savedFilter: value === 'saved' ? 'saved' : 'all',
+                });
               }}
             >
-              New announcement
-            </Button>
-          ) : null}
-        </div>
+              <FilterToggleItem value="all">
+                <FilterToggleIcon>
+                  <Inbox
+                    aria-hidden
+                    className={readFilter === 'all' && savedFilter === 'all' ? 'text-primary' : undefined}
+                  />
+                </FilterToggleIcon>
+                All
+              </FilterToggleItem>
+              <FilterToggleItem value="unread">
+                <FilterToggleIcon>
+                  <Mail aria-hidden className={readFilter === 'unread' ? 'text-primary' : undefined} />
+                </FilterToggleIcon>
+                Unread
+              </FilterToggleItem>
+              <FilterToggleItem value="saved">
+                <FilterToggleIcon>
+                  <Bookmark
+                    aria-hidden
+                    fill={savedFilter === 'saved' ? 'currentColor' : 'none'}
+                    className={savedFilter === 'saved' ? 'text-primary' : undefined}
+                  />
+                </FilterToggleIcon>
+                Saved
+              </FilterToggleItem>
+            </ToggleGroup>
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Search announcements"
+              size="sm"
+              className="col-start-1 row-start-1 min-w-0 lg:col-start-2"
+              inputClassName="bg-background"
+            />
+            <div className="col-start-2 row-start-1 lg:col-start-3">
+              <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
+                    Filters
+                    {activeFilterCount > 0 ? (
+                      <Badge size="sm" color="blue">
+                        {activeFilterCount}
+                      </Badge>
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-[min(42rem,calc(100vw-2rem))]"
+                  aria-labelledby="announcement-filters-title"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3 px-4">
+                    <h3 id="announcement-filters-title" className="text-sm font-medium text-foreground">
+                      Filters
+                    </h3>
+                    {activeFilterCount > 0 ? (
+                      <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
+                        Reset
+                      </Button>
+                    ) : null}
+                  </div>
+                  <ScrollArea
+                    className="max-h-[min(36rem,calc(var(--radix-popover-content-available-height)-5rem))]"
+                    viewportClassName="max-h-[min(36rem,calc(var(--radix-popover-content-available-height)-5rem))]"
+                  >
+                    <div className="flex flex-col gap-5 p-1">
+                      <FieldGroup className="grid gap-3 px-3 sm:grid-cols-2">
+                        <Field orientation="horizontal">
+                          <FieldLabel htmlFor="announcement-read-filter">Read</FieldLabel>
+                          <Select
+                            size="compact"
+                            value={readFilter}
+                            onValueChange={(value) =>
+                              dispatchFilters({ readFilter: value as FeedFilters['readFilter'] })
+                            }
+                          >
+                            <SelectTrigger id="announcement-read-filter" />
+                            <SelectContent>
+                              <SelectItem index={0} value="all">
+                                Any
+                              </SelectItem>
+                              <SelectItem index={1} value="unread">
+                                Unread
+                              </SelectItem>
+                              <SelectItem index={2} value="read">
+                                Read
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field orientation="horizontal">
+                          <FieldLabel htmlFor="announcement-saved-filter">Saved</FieldLabel>
+                          <Select
+                            size="compact"
+                            value={savedFilter}
+                            onValueChange={(value) =>
+                              dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })
+                            }
+                          >
+                            <SelectTrigger id="announcement-saved-filter" />
+                            <SelectContent>
+                              <SelectItem index={0} value="all">
+                                Any
+                              </SelectItem>
+                              <SelectItem index={1} value="saved">
+                                Saved
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </FieldGroup>
+                      <Separator />
+                      <FieldGroup className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                        {availableTags.length > 0 ? (
+                          <FieldSet className="min-w-0 gap-0">
+                            <FieldLegend variant="label" className="px-3">
+                              Audience
+                            </FieldLegend>
+                            <RadioGroup
+                              value={activeTag ?? 'all'}
+                              onValueChange={(value) =>
+                                dispatchFilters({ activeTag: value === 'all' ? null : value })
+                              }
+                              className="w-full"
+                            >
+                              {['all', ...availableTags].map((tag, index) => (
+                                <RadioItem
+                                  key={tag}
+                                  index={index}
+                                  value={tag}
+                                  label={
+                                    tag === 'all' ? 'Any' : ANNOUNCEMENT_SCOPE_LABELS[tag] || tag.replace(/_/g, ' ')
+                                  }
+                                />
+                              ))}
+                            </RadioGroup>
+                          </FieldSet>
+                        ) : null}
 
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-          <ToggleGroup
-            type="single"
-            aria-label="Announcement feed"
-            orientation="horizontal"
-            variant="outline"
-            size="sm"
-            className="justify-start gap-2"
-            value={readFilter === 'unread' && savedFilter === 'all' ? 'unread' : readFilter === 'all' ? savedFilter : ''}
-            onValueChange={(value) => {
-              if (!value) return;
-              dispatchFilters({ readFilter: value === 'unread' ? 'unread' : 'all', savedFilter: value === 'saved' ? 'saved' : 'all' });
-            }}
-          >
-            <FilterToggleItem value="all"><FilterToggleIcon><Inbox aria-hidden className={readFilter === 'all' && savedFilter === 'all' ? 'text-primary' : undefined} /></FilterToggleIcon>All</FilterToggleItem>
-            <FilterToggleItem value="unread"><FilterToggleIcon><Mail aria-hidden className={readFilter === 'unread' ? 'text-primary' : undefined} /></FilterToggleIcon>Unread</FilterToggleItem>
-            <FilterToggleItem value="saved"><FilterToggleIcon><Bookmark aria-hidden fill={savedFilter === 'saved' ? 'currentColor' : 'none'} className={savedFilter === 'saved' ? 'text-primary' : undefined} /></FilterToggleIcon>Saved</FilterToggleItem>
-          </ToggleGroup>
-          {hasActiveFilters ? (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
-          ) : null}
+                        <FieldSet className="min-w-0 gap-0">
+                          <FieldLegend variant="label" className="px-3">
+                            Grade
+                          </FieldLegend>
+                          <CheckboxGroup
+                            checkedIndices={
+                              new Set(
+                                GRADE_OPTIONS.flatMap((grade, index) =>
+                                  selectedGrades.includes(grade) ? [index] : [],
+                                ),
+                              )
+                            }
+                            className="w-full"
+                          >
+                            {GRADE_OPTIONS.map((grade, index) => (
+                              <CheckboxItem
+                                key={grade}
+                                index={index}
+                                label={`Grade ${grade}`}
+                                checked={selectedGrades.includes(grade)}
+                                onToggle={() =>
+                                  dispatchFilters((current) => ({
+                                    selectedGrades: toggleFilterValue(current.selectedGrades, grade),
+                                  }))
+                                }
+                              />
+                            ))}
+                          </CheckboxGroup>
+                        </FieldSet>
+
+                        {[
+                          {
+                            label: 'Major pathway',
+                            selected: selectedMajorPathways,
+                            key: 'selectedMajorPathways' as const,
+                          },
+                          {
+                            label: 'Minor pathway',
+                            selected: selectedMinorPathways,
+                            key: 'selectedMinorPathways' as const,
+                          },
+                        ].map(({ label, selected, key }) => (
+                          <FieldSet key={label} className="min-w-0 gap-0">
+                            <FieldLegend variant="label" className="px-3">
+                              {label}
+                            </FieldLegend>
+                            <CheckboxGroup
+                              checkedIndices={
+                                new Set(
+                                  PATHWAY_OPTIONS.flatMap((pathway, index) =>
+                                    selected.includes(pathway.value) ? [index] : [],
+                                  ),
+                                )
+                              }
+                              className="w-full"
+                            >
+                              {PATHWAY_OPTIONS.map((pathway, index) => (
+                                <CheckboxItem
+                                  key={pathway.value}
+                                  index={index}
+                                  label={pathway.label}
+                                  checked={selected.includes(pathway.value)}
+                                  onToggle={() =>
+                                    dispatchFilters((current) => ({
+                                      [key]: toggleFilterValue(current[key], pathway.value),
+                                    }))
+                                  }
+                                />
+                              ))}
+                            </CheckboxGroup>
+                          </FieldSet>
+                        ))}
+
+                        {availableClubs.length > 0 ? (
+                          <FieldSet className="min-w-0 gap-0 sm:col-span-2">
+                            <FieldLegend variant="label" className="px-3">
+                              Club
+                            </FieldLegend>
+                            <CheckboxGroup
+                              checkedIndices={
+                                new Set(
+                                  availableClubs.flatMap((club, index) =>
+                                    selectedClubIds.includes(club.id) ? [index] : [],
+                                  ),
+                                )
+                              }
+                              className="w-full"
+                            >
+                              {availableClubs.map((club, index) => (
+                                <CheckboxItem
+                                  key={club.id}
+                                  index={index}
+                                  label={club.name}
+                                  checked={selectedClubIds.includes(club.id)}
+                                  onToggle={() =>
+                                    dispatchFilters((current) => ({
+                                      selectedClubIds: toggleFilterValue(current.selectedClubIds, club.id),
+                                    }))
+                                  }
+                                />
+                              ))}
+                            </CheckboxGroup>
+                          </FieldSet>
+                        ) : null}
+                      </FieldGroup>
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+            </div>
+            {canPost ? (
+              <Button
+                className="col-start-2 row-start-2 lg:col-start-4 lg:row-start-1"
+                onClick={() => setShowNew(true)}
+                aria-label="New announcement"
+              >
+                New
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <Dialog open={showNew} onOpenChange={setShowNew}>
@@ -694,7 +808,7 @@ export default function AnnouncementsPage() {
                         checked={form.promoted}
                         onChange={(event) => setForm({ ...form, promoted: event.target.checked })}
                       />
-                      Feature for one month
+                      Mark important for one month
                     </label>
                   ) : null}
                 </div>
@@ -733,7 +847,7 @@ export default function AnnouncementsPage() {
             </Card>
           </CardGroup>
         ) : (
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             {pinnedStatus === 'CanLoadMore' || pinnedStatus === 'LoadingMore' ? (
               <div className="flex justify-center">
                 <Button variant="tertiary" disabled={pinnedStatus !== 'CanLoadMore'} onClick={() => loadMorePins(30)}>
@@ -742,17 +856,20 @@ export default function AnnouncementsPage() {
               </div>
             ) : null}
             {hasActiveFilters && (
-              <p className="px-1 text-xs text-muted-foreground">
-                {filtered.length} matching announcement{filtered.length === 1 ? '' : 's'} in the loaded feed
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {filtered.length} matching announcement{filtered.length === 1 ? '' : 's'} in the loaded feed
+                </p>
+                <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
+              </div>
             )}
             {feedSections.map((section) => (
-              <section key={section.id} aria-labelledby={`announcements-${section.id}`}>
-                <h2 id={`announcements-${section.id}`} className="flex items-center gap-2 px-4 text-sm font-medium text-foreground sm:px-5">
+              <section key={section.id} aria-labelledby={`announcements-${section.id}`} className="flex flex-col gap-3">
+                <h2 id={`announcements-${section.id}`} className="flex items-center gap-2 text-sm font-medium text-foreground">
                   {section.id === 'personal-pins' ? <Pin aria-hidden="true" className="size-3.5" fill="currentColor" strokeWidth={1.5} /> : null}
                   {section.label}
                 </h2>
-                <CardGroup separated aria-label={`${section.label} announcements`}>
+                <CardGroup separated border="outlined" aria-label={`${section.label} announcements`}>
                   {(section.items as any[]).map((announcement) => {
                     const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                     const announcementId = announcement._id as Id<'announcements'>;
@@ -883,7 +1000,7 @@ export default function AnnouncementsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <CardGroup separated aria-label="Past announcements">
+                <CardGroup separated border="outlined" aria-label="Past announcements">
                   {filteredPastAnnouncements.map((announcement: any) => (
                     <AnnouncementCard
                       key={announcement._id}
