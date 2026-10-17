@@ -34,8 +34,7 @@ import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 import { cn } from "@/lib/utils";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
 import { createPhoenixEasterEggMatcher, isPhoenixEasterEggKey } from "@/lib/phoenix-easter-egg";
-import { useToast } from "@/hooks/use-toast";
-import { useFoundersQuest } from "@/hooks/use-founders-quest";
+import { useFoundersQuest, useRecordBonusEgg } from "@/hooks/use-founders-quest";
 import { QUEST_KEY_DISPLAY_MS, visibleQuestKeyCount } from "@/lib/founders-quest";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
@@ -63,8 +62,8 @@ export function AppShell({
   const router = useRouter();
   const user = useCurrentUser();
   const { progress: questProgress } = useFoundersQuest();
+  const recordBonusEgg = useRecordBonusEgg();
   const [questClock, setQuestClock] = useState(() => Date.now());
-  const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -116,15 +115,12 @@ export function AppShell({
         return;
       }
       if (matchPhoenix(event.key, Date.now())) {
-        toast({
-          title: 'You found the Phoenix key!',
-          description: 'A little secret for curious IA App explorers.',
-        });
+        void recordBonusEgg('phoenix');
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [toast]);
+  }, [recordBonusEgg]);
 
   useEffect(() => {
     setMobileOpen(false);

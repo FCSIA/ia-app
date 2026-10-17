@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export type QuestKey = 'copper' | 'jade' | 'crystal';
+export type BonusEgg = 'phoenix' | 'today' | 'funFact';
 
 export function useFoundersQuest() {
   const user = useCurrentUser();
@@ -46,4 +47,19 @@ export function useRecordQuestKey() {
       return false;
     }
   }, [recordDiscovery, toast]);
+}
+
+export function useRecordBonusEgg() {
+  const recordBonusDiscovery = useMutation(api.easterEggs.finders.recordBonusDiscovery);
+  const { toast } = useToast();
+  return useCallback(async (egg: BonusEgg) => {
+    try {
+      const found = await recordBonusDiscovery({ egg });
+      if (found) toast({ title: 'Hidden secret found', description: 'Your discovery was saved to your profile.' });
+      return found;
+    } catch (error) {
+      toast({ title: 'Secret not saved', description: error instanceof Error ? error.message : 'Try again in a moment.', variant: 'destructive' });
+      return false;
+    }
+  }, [recordBonusDiscovery, toast]);
 }

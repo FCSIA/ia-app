@@ -4,7 +4,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import { listCompletedForUser, progressForUser, recordForUser } from "./finders";
+import { listCompletedForUser, progressForUser, recordBonusForUser, recordForUser } from "./finders";
 
 const modules = import.meta.glob("../**/*.*s");
 
@@ -39,7 +39,7 @@ describe("Founders' Quest halls", () => {
     expect(await t.run((ctx) => recordForUser(ctx, user, "copper"))).toBe(true);
     expect(await t.run((ctx) => recordForUser(ctx, user, "copper"))).toBe(false);
     expect(await t.run((ctx) => progressForUser(ctx, user))).toEqual({
-      keys: ["copper"], complete: false, completedAt: null,
+      keys: ["copper"], bonusEggs: [], bonusComplete: false, complete: false, completedAt: null,
     });
     await expect(t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 })))
       .rejects.toThrow();
@@ -48,10 +48,28 @@ describe("Founders' Quest halls", () => {
     expect(await t.run((ctx) => recordForUser(ctx, user, "crystal"))).toBe(true);
 
     const rows = await t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 }));
-    expect(rows.page).toEqual([{ id: expect.any(String), name: "Alex Johnson", isYou: true }]);
+    expect(rows.page).toEqual([{ id: expect.any(String), name: "Alex Johnson", isYou: true, bonusComplete: false }]);
     expect(await t.run((ctx) => progressForUser(ctx, user))).toEqual({
-      keys: ["copper", "jade", "crystal"], complete: true, completedAt: expect.any(Number),
+      keys: ["copper", "jade", "crystal"], bonusEggs: [], bonusComplete: false, complete: true, completedAt: expect.any(Number),
     });
+  });
+
+  it("adds a special finder marker after all bonus secrets, without opening the halls", async () => {
+    const { t, user } = await fixture();
+    expect(await t.run((ctx) => recordBonusForUser(ctx, user, "phoenix"))).toBe(true);
+    expect(await t.run((ctx) => recordBonusForUser(ctx, user, "phoenix"))).toBe(false);
+    expect(await t.run((ctx) => recordBonusForUser(ctx, user, "today"))).toBe(true);
+    await expect(t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 }))).rejects.toThrow();
+    expect(await t.run((ctx) => recordBonusForUser(ctx, user, "funFact"))).toBe(true);
+    expect(await t.run((ctx) => progressForUser(ctx, user))).toMatchObject({
+      keys: [], bonusEggs: ["phoenix", "today", "funFact"], bonusComplete: true, complete: false,
+    });
+    await expect(t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 }))).rejects.toThrow();
+    await t.run((ctx) => recordForUser(ctx, user, "copper"));
+    await t.run((ctx) => recordForUser(ctx, user, "jade"));
+    await t.run((ctx) => recordForUser(ctx, user, "crystal"));
+    const rows = await t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 }));
+    expect(rows.page).toMatchObject([{ bonusComplete: true }]);
   });
 
   it("requires a signed-in account for public progress, hall, and claims", async () => {

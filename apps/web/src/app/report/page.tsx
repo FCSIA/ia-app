@@ -10,6 +10,8 @@ import { PageFrame } from '@/components/layout/page-frame';
 import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFileToConvex } from '@/lib/convex-upload';
@@ -29,6 +31,7 @@ type SelectedImage = {
 
 export default function ReportPage() {
   const [message, setMessage] = useState('');
+  const [feedbackKind, setFeedbackKind] = useState<'BUG' | 'OTHER'>('OTHER');
   const [images, setImages] = useState<SelectedImage[]>([]);
   const imageUrls = useRef(new Set<string>());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +39,7 @@ export default function ReportPage() {
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeFeedbackImage = useAction(api.uploads.files.finalizeFeedbackImage);
   const myFeedback = useQuery(api.moderation.reports.listMyFeedback) ?? [];
+  const bugReward = useQuery(api.moderation.bugRewards.myReward);
   const { toast } = useToast();
   const trimmedMessage = message.trim();
 
@@ -95,10 +99,12 @@ export default function ReportPage() {
         contentType: 'GENERAL',
         contentId: 'report-page',
         reason: trimmedMessage,
+        feedbackKind,
         imageUploadIds,
         appVersion: formatVersion(APP_VERSION, RELEASE_CHANNEL),
       });
       setMessage('');
+      setFeedbackKind('OTHER');
       setImages((current) => {
         current.forEach((image) => {
           URL.revokeObjectURL(image.previewUrl);
@@ -145,6 +151,17 @@ export default function ReportPage() {
             </CardHeader>
             <CardContent className="px-4 pb-4">
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="feedback-kind" className="text-sm font-medium text-foreground">Feedback type</label>
+              <Select value={feedbackKind} onValueChange={(value) => setFeedbackKind(value as 'BUG' | 'OTHER')}>
+                <SelectTrigger id="feedback-kind" placeholder="Choose feedback type" />
+                <SelectContent>
+                  <SelectItem value="OTHER" index={0}>Idea or other feedback</SelectItem>
+                  <SelectItem value="BUG" index={1}>Bug report</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Only bugs confirmed by a developer count toward Bug Hunter tags.</p>
+            </div>
             <Textarea
               aria-label="Share your feedback"
               placeholder="Share an idea, request, concern, or other feedback..."
@@ -207,6 +224,7 @@ export default function ReportPage() {
           <Card className="bg-transparent">
             <CardHeader className="pb-3 border-b border-border/40 mb-4">
               <CardTitle className="text-lg font-semibold text-foreground">Your feedback</CardTitle>
+              {bugReward ? <BugHunterTag user={{ approvedBugCount: bugReward.approvedCount, bugTagColor: bugReward.color }} /> : null}
             </CardHeader>
             <CardContent className="px-4 pb-4">
           {myFeedback.length === 0 ? (
@@ -219,6 +237,9 @@ export default function ReportPage() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     {feedback.status.toLowerCase()} · {formatDistanceToNow(new Date(feedback.createdAt), { addSuffix: true })}
                   </p>
+                  {feedback.feedbackKind === 'BUG' ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{feedback.bugApprovedAt ? 'Developer-approved bug' : 'Bug awaiting developer approval'}</p>
+                  ) : null}
                   {feedback.reviewNote ? (
                     <div className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm text-foreground">
                       {feedback.reviewNote}

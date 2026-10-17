@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame, HeroBand } from '@/components/layout/page-frame';
 import { HallAccess } from '@/components/quest/hall-access';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import styles from './finder-wall.module.css';
@@ -20,7 +21,7 @@ function FinderPlaques() {
     <section className={styles.wall} aria-label="Completed finder plaques">
       <header className={styles.wallHeader}>
         <h2>Finders</h2>
-        <p>Every name here belongs to someone who found all three keys.</p>
+        <p>Every name here belongs to someone who found all three keys. Bonus discoverers earn a special mark.</p>
       </header>
       {status === 'LoadingFirstPage' ? (
         <p className={styles.wallMessage}>Loading names…</p>
@@ -29,6 +30,7 @@ function FinderPlaques() {
           {results.map((finder) => (
             <li key={finder.id} className={styles.plaque} data-yours={finder.isYou} aria-label={finder.isYou ? `${finder.name}, your plaque` : finder.name}>
               <span>{finder.name}</span>
+              {finder.bonusComplete ? <Badge size="sm" color="amber" title="Found all bonus secrets">Secret Finder</Badge> : null}
             </li>
           ))}
         </ol>

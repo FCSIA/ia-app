@@ -34,6 +34,7 @@ type FeedbackResponseMutation = (args: {
   body: string;
 }) => Promise<void>;
 type RetryGithubIssueMutation = (reportId: Id<'moderationReports'>) => Promise<void>;
+type ApproveBugMutation = (reportId: Id<'moderationReports'>) => Promise<void>;
 
 export function FeedbackTab({
   feedbackSearch,
@@ -43,6 +44,8 @@ export function FeedbackTab({
   reportMutation,
   responseMutation,
   retryGithubIssueMutation,
+  approveBugMutation,
+  canApproveBugs = false,
   canUpdateFeedback = true,
 }: {
   feedbackSearch: string;
@@ -52,6 +55,8 @@ export function FeedbackTab({
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
   retryGithubIssueMutation: RetryGithubIssueMutation;
+  approveBugMutation: ApproveBugMutation;
+  canApproveBugs?: boolean;
   canUpdateFeedback?: boolean;
 }) {
   const [view, setView] = useState<'active' | 'resolved' | 'archive'>('active');
@@ -88,6 +93,8 @@ export function FeedbackTab({
             reportMutation={reportMutation}
             responseMutation={responseMutation}
             retryGithubIssueMutation={retryGithubIssueMutation}
+            approveBugMutation={approveBugMutation}
+            canApproveBugs={canApproveBugs}
             canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
@@ -99,6 +106,8 @@ export function FeedbackTab({
             reportMutation={reportMutation}
             responseMutation={responseMutation}
             retryGithubIssueMutation={retryGithubIssueMutation}
+            approveBugMutation={approveBugMutation}
+            canApproveBugs={canApproveBugs}
             canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
@@ -110,6 +119,8 @@ export function FeedbackTab({
             reportMutation={reportMutation}
             responseMutation={responseMutation}
             retryGithubIssueMutation={retryGithubIssueMutation}
+            approveBugMutation={approveBugMutation}
+            canApproveBugs={canApproveBugs}
             canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
@@ -125,6 +136,8 @@ function FeedbackList({
   reportMutation,
   responseMutation,
   retryGithubIssueMutation,
+  approveBugMutation,
+  canApproveBugs,
   canUpdateFeedback,
 }: {
   reports: FeedbackReport[];
@@ -133,6 +146,8 @@ function FeedbackList({
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
   retryGithubIssueMutation: RetryGithubIssueMutation;
+  approveBugMutation: ApproveBugMutation;
+  canApproveBugs: boolean;
   canUpdateFeedback: boolean;
 }) {
   if (reports.length === 0) {
@@ -159,6 +174,7 @@ function FeedbackList({
                 >
                   {report.status}
                 </Badge>
+                {report.feedbackKind === 'BUG' ? <Badge size="sm" color={report.bugApprovedAt ? 'emerald' : 'blue'}>{report.bugApprovedAt ? 'Approved bug' : 'Bug report'}</Badge> : null}
                 <p className="text-sm font-medium text-foreground">{report.reason}</p>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -183,6 +199,9 @@ function FeedbackList({
                     </Button>
                   ) : null}
                 </div>
+              ) : null}
+              {canApproveBugs && report.feedbackKind === 'BUG' && !report.bugApprovedAt && report.status !== 'DISMISSED' ? (
+                <Button className="mt-3" size="sm" variant="secondary" onClick={() => void approveBugMutation(report._id)}>Approve confirmed bug</Button>
               ) : null}
               {report.images.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">

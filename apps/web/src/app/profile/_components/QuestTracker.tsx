@@ -11,14 +11,14 @@ const KEYS = ['Copper', 'Jade', 'Crystal'] as const;
 
 export function QuestTracker() {
   const { progress, supported } = useFoundersQuest();
-  if (!supported || !progress?.keys.length) return null;
+  if (!supported || !progress || (!progress.keys.length && !progress.bonusEggs.length)) return null;
 
   return (
     <div className="mt-5">
       <SettingsCard
         icon={KeyRound}
         title="Founders’ Quest"
-        description={progress.complete ? 'All three keys found. Both halls are open.' : `${progress.keys.length} of 3 keys found.`}
+        description={progress.complete ? 'Both halls are open.' : `${progress.keys.length} of 3 keys found.`}
       >
         <ol className="grid grid-cols-3 gap-2" aria-label="Quest keys">
           {KEYS.map((key, index) => {
@@ -33,6 +33,7 @@ export function QuestTracker() {
             );
           })}
         </ol>
+        <p className="mt-3 text-sm text-muted-foreground">Bonus secrets: {progress.bonusEggs.length} of 3 found. Find all three for a special Hall of Finders marker.</p>
         {progress.complete ? (
           <div className="mt-5 flex flex-wrap gap-2">
             <Button asChild size="sm" leadingIcon={DoorOpen}>

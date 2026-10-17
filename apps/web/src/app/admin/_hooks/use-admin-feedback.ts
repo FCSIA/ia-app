@@ -16,6 +16,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
   const updateReport = useMutation(api.moderation.reports.update);
   const addFeedbackResponse = useMutation(api.moderation.reports.addFeedbackResponse);
   const retryGithubIssueSync = useMutation(api.moderation.reports.retryGithubIssueSync);
+  const approveBug = useMutation(api.moderation.bugRewards.approve);
 
   const filteredReports = useMemo(() => {
     const query = deferredFeedbackSearch.trim().toLowerCase();
@@ -87,6 +88,16 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     }
   }
 
+  async function approveBugMutation(reportId: Id<'moderationReports'>) {
+    try {
+      const count = await approveBug({ reportId });
+      toast({ title: 'Bug approved', description: `This student now has ${count} approved ${count === 1 ? 'bug' : 'bugs'}.` });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : 'Unable to approve bug', variant: 'destructive' });
+      throw error;
+    }
+  }
+
   return {
     feedbackSearch,
     setFeedbackSearch,
@@ -95,5 +106,6 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     reportMutation,
     responseMutation,
     retryGithubIssueMutation,
+    approveBugMutation,
   };
 }

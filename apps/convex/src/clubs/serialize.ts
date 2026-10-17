@@ -21,6 +21,8 @@ export const clubUserRefValidator = v.object({
   roles: v.array(v.string()),
   avatarUrl: v.union(v.string(), v.null()),
   isDeveloper: v.optional(v.boolean()),
+  approvedBugCount: v.optional(v.number()),
+  bugTagColor: v.optional(v.string()),
 });
 
 export const clubViewerStateValidator = v.object({
@@ -60,6 +62,8 @@ export function toClubUserRef(user: Doc<"users">) {
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
     isDeveloper: user.isDeveloper,
+    approvedBugCount: user.approvedBugCount,
+    bugTagColor: user.bugTagColor,
   } satisfies Infer<typeof clubUserRefValidator>;
 }
 

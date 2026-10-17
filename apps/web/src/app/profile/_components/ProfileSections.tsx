@@ -15,6 +15,7 @@ import {
 import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevlogList } from '@/components/devlog/devlog-list';
@@ -189,6 +190,7 @@ export function ProfileSidebar({
                 {displayName}
               </CardTitle>
               <DeveloperBadge user={user} size={16} />
+              <BugHunterTag user={user} />
             </div>
             {user?.roles?.length ? (
               <CardDescription className="mt-2 text-sm leading-5 text-foreground/80">

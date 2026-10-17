@@ -42,7 +42,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { defaultCalendarRange } from '@/lib/calendar-range';
 import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
 import { useToast } from '@/hooks/use-toast';
-import { useFoundersQuest, useRecordQuestKey } from '@/hooks/use-founders-quest';
+import { useFoundersQuest, useRecordQuestKey, useRecordBonusEgg } from '@/hooks/use-founders-quest';
 import { useCurrentUser } from '@/lib/auth';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -132,6 +132,7 @@ export default function CalendarPage() {
   const user = useCurrentUser();
   const { progress: questProgress } = useFoundersQuest();
   const recordQuestKey = useRecordQuestKey();
+  const recordBonusEgg = useRecordBonusEgg();
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const todayTapMatcher = useRef(createEasterEggTapMatcher());
@@ -295,10 +296,7 @@ export default function CalendarPage() {
                 <EventCalendarNavToday
                   onClickCapture={() => {
                     if (todayTapMatcher.current(Date.now())) {
-                      toast({
-                        title: 'A little time-travel secret!',
-                        description: 'No matter where you wander, the Phoenix knows the way back to today.',
-                      });
+                      void recordBonusEgg('today');
                     }
                   }}
                 />

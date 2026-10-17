@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingFact } from '@/components/ui/loading-fact';
 import { useToast } from '@/hooks/use-toast';
 import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
+import { useRecordBonusEgg } from '@/hooks/use-founders-quest';
 
 const ROTATE_MS = 12_000;
 
@@ -15,6 +16,7 @@ export function FunFactWidget() {
   const [fact, setFact] = useState(pickNavigationLoadingFact);
   const tapMatcher = useRef(createEasterEggTapMatcher());
   const { toast } = useToast();
+  const recordBonusEgg = useRecordBonusEgg();
 
   const nextMessage = useCallback(() => {
     setFact(pickNavigationLoadingFact());
@@ -45,6 +47,7 @@ export function FunFactWidget() {
                 visual: 'phoenix',
               });
               toast({ title: 'Secret fact found!', description: 'The Phoenix was hiding in plain sight.' });
+              void recordBonusEgg('funFact');
             } else {
               nextMessage();
             }

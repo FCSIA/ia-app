@@ -11,6 +11,9 @@ const questKeyValidator = v.union(
 );
 type QuestKey = "copper" | "jade" | "crystal";
 const KEY_ORDER: readonly QuestKey[] = ["copper", "jade", "crystal"];
+const bonusEggValidator = v.union(v.literal("phoenix"), v.literal("today"), v.literal("funFact"));
+type BonusEgg = "phoenix" | "today" | "funFact";
+const BONUS_EGGS: readonly BonusEgg[] = ["phoenix", "today", "funFact"];
 
 export async function progressForUser(ctx: QueryCtx, user: Doc<"users">) {
   const finder = await ctx.db
@@ -19,9 +22,29 @@ export async function progressForUser(ctx: QueryCtx, user: Doc<"users">) {
     .unique();
   return {
     keys: finder?.eggIds ?? [],
+    bonusEggs: finder?.bonusEggIds ?? [],
+    bonusComplete: BONUS_EGGS.every((egg) => finder?.bonusEggIds?.includes(egg)),
     complete: finder?.completedAt !== undefined,
     completedAt: finder?.completedAt ?? null,
   };
+}
+
+export async function recordBonusForUser(ctx: MutationCtx, user: Doc<"users">, egg: BonusEgg) {
+  if (!user.isStudent) throw new ConvexError("The Founders' Quest is for students.");
+  const existing = await ctx.db.query("easterEggFinders")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
+  if (existing?.bonusEggIds?.includes(egg)) return false;
+  const now = Date.now();
+  const bonusEggIds = [...(existing?.bonusEggIds ?? []), egg];
+  if (existing) {
+    await ctx.db.patch(existing._id, { bonusEggIds, updatedAt: now });
+  } else {
+    await ctx.db.insert("easterEggFinders", {
+      userId: user._id, eggIds: [], bonusEggIds, firstFoundAt: now,
+      updatedAt: now,
+    });
+  }
+  return true;
 }
 
 export async function recordForUser(ctx: MutationCtx, user: Doc<"users">, key: QuestKey) {
@@ -39,7 +62,7 @@ export async function recordForUser(ctx: MutationCtx, user: Doc<"users">, key: Q
   if (existing) {
     await ctx.db.patch(existing._id, {
       eggIds: [...existing.eggIds, key],
-      ...(key === "crystal" ? { completedAt: now } : {}),
+      ...(key === "crystal" && !existing.completedAt ? { completedAt: now } : {}),
       updatedAt: now,
     });
   } else {
@@ -59,7 +82,7 @@ export async function listCompletedForUser(
   paginationOpts: { cursor: string | null; numItems: number },
 ) {
   const progress = await progressForUser(ctx, user);
-  if (!progress.complete) throw new ConvexError("Complete the Founders' Quest first.");
+  if (!progress.complete) throw new ConvexError("Find all three quest keys first.");
 
   const result = await ctx.db
     .query("easterEggFinders")
@@ -74,6 +97,7 @@ export async function listCompletedForUser(
         id: finder._id,
         name: [member.firstName, member.lastName].filter(Boolean).join(" "),
         isYou: member._id === user._id,
+        bonusComplete: BONUS_EGGS.every((egg) => finder.bonusEggIds?.includes(egg)),
       };
     }),
   );
@@ -82,7 +106,7 @@ export async function listCompletedForUser(
 
 export const myProgress = query({
   args: {},
-  returns: v.object({ keys: v.array(questKeyValidator), complete: v.boolean(), completedAt: v.union(v.number(), v.null()) }),
+  returns: v.object({ keys: v.array(questKeyValidator), bonusEggs: v.array(bonusEggValidator), bonusComplete: v.boolean(), complete: v.boolean(), completedAt: v.union(v.number(), v.null()) }),
   handler: async (ctx) => progressForUser(ctx, await getCurrentAppUser(ctx)),
 });
 
@@ -92,12 +116,19 @@ export const recordDiscovery = mutation({
   handler: async (ctx, { key }) => recordForUser(ctx, await getCurrentAppUser(ctx), key),
 });
 
+export const recordBonusDiscovery = mutation({
+  args: { egg: bonusEggValidator },
+  returns: v.boolean(),
+  handler: async (ctx, { egg }) => recordBonusForUser(ctx, await getCurrentAppUser(ctx), egg),
+});
+
 export const list = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({
     id: v.id("easterEggFinders"),
     name: v.string(),
     isYou: v.boolean(),
+    bonusComplete: v.boolean(),
   })),
   handler: async (ctx, { paginationOpts }) =>
     listCompletedForUser(ctx, await getCurrentAppUser(ctx), paginationOpts),

@@ -15,7 +15,7 @@ export function HallAccess({ children }: { children: ReactNode }) {
     ? 'The quest is not available in this local preview yet.'
     : progress === undefined
       ? 'Checking your keys…'
-      : `${progress.keys.length} of 3 keys found. Finish the Founders’ Quest to open this hall.`;
+      : `${progress.keys.length} of 3 keys found. Complete the Founders’ Quest to open this hall.`;
 
   return (
     <Panel title="The hall is locked" description={message} className="max-w-xl" contentClassName="px-6 pb-6 pt-5">

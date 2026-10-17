@@ -1,0 +1,18 @@
+.multicolor {
+  background-image: linear-gradient(110deg, #a4edee, #e6c2f4 48%, #ffdb9e);
+  color: #2c2337 !important;
+}
+
+.animated {
+  background-size: 220% 100%;
+  animation: bug-tag-shift 5s ease-in-out infinite alternate;
+}
+
+@keyframes bug-tag-shift {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated { animation: none; }
+}

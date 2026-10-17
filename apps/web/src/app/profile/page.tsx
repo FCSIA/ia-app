@@ -20,6 +20,7 @@ import {
 } from './_components/ProfileSections';
 import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
 import { QuestTracker } from './_components/QuestTracker';
+import { BugRewards } from './_components/BugRewards';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
@@ -197,6 +198,7 @@ export default function ProfilePage() {
                 signingOut={signingOut}
               />
               <QuestTracker />
+              <BugRewards user={user} />
             </>
           ) : null}
           {visibleSection === 'notifications' ? (

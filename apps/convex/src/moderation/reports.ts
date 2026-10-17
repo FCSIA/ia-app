@@ -77,6 +77,8 @@ const reportValidator = schema.doc("moderationReports").extend({
 const myFeedbackValidator = v.object({
   _id: v.id("moderationReports"),
   reason: v.string(),
+  feedbackKind: v.optional(v.union(v.literal("BUG"), v.literal("OTHER"))),
+  bugApprovedAt: v.optional(v.number()),
   status: moderationReportStatusValidator,
   reviewNote: v.optional(v.string()),
   createdAt: v.number(),
@@ -174,6 +176,7 @@ async function createReport(
     contentId: string;
     reason: string;
     appVersion?: string;
+    feedbackKind?: "BUG" | "OTHER";
     reportedUserId?: Id<"users">;
     clubId?: Id<"clubs">;
     imageUploadIds?: Id<"feedbackImageUploads">[];
@@ -188,6 +191,7 @@ async function createReport(
     contentType: input.contentType,
     contentId: input.contentId,
     reason: input.reason,
+    ...(input.feedbackKind ? { feedbackKind: input.feedbackKind } : {}),
     ...(input.appVersion ? { appVersion: input.appVersion } : {}),
     reportedUserId: input.reportedUserId,
     clubId: input.clubId,
@@ -342,6 +346,8 @@ export const listMyFeedback = query({
       reports.map(async (report) => ({
         _id: report._id,
         reason: report.reason,
+        feedbackKind: report.feedbackKind,
+        bugApprovedAt: report.bugApprovedAt,
         status: report.status,
         reviewNote: report.reviewNote,
         createdAt: report.createdAt,
@@ -366,6 +372,7 @@ export const submit = mutation({
     clubId: v.optional(v.id("clubs")),
     imageUploadIds: v.optional(v.array(v.id("feedbackImageUploads"))),
     appVersion: v.optional(v.string()),
+    feedbackKind: v.optional(v.union(v.literal("BUG"), v.literal("OTHER"))),
   },
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
@@ -380,6 +387,9 @@ export const submit = mutation({
     }
     if (args.appVersion && args.contentType !== "GENERAL") {
       throw new ConvexError("App versions can only be attached to feedback");
+    }
+    if (args.feedbackKind && args.contentType !== "GENERAL") {
+      throw new ConvexError("Feedback type can only be set for general feedback");
     }
     const appVersion = args.appVersion?.trim();
     if (appVersion && Array.from(appVersion).length > 64) {

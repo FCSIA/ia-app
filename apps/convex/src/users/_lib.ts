@@ -23,6 +23,8 @@ const userProfileValidator = schema
     "isActive",
     "avatarUrl",
     "isDeveloper",
+    "approvedBugCount",
+    "bugTagColor",
   );
 
 export const userSelfProfileValidator = userProfileValidator.extend(
@@ -68,6 +70,8 @@ export function toUserSelfProfile(user: Doc<"users">) {
     customBackgroundPalette: user.customBackgroundPalette,
     customBackgroundTint: user.customBackgroundTint,
     isDeveloper: user.isDeveloper,
+    approvedBugCount: user.approvedBugCount,
+    bugTagColor: user.bugTagColor,
   } satisfies Infer<typeof userSelfProfileValidator>;
 }
 
@@ -85,6 +89,8 @@ export function toAdminUserProfile(user: Doc<"users">) {
     isActive: user.isActive,
     avatarUrl: user.avatarUrl,
     isDeveloper: user.isDeveloper,
+    approvedBugCount: user.approvedBugCount,
+    bugTagColor: user.bugTagColor,
   } satisfies Infer<typeof adminUserProfileValidator>;
 }
 
