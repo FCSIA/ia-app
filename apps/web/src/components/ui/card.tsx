@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
-import { useShape } from "@/lib/shape-context";
+import { shapeMap, useShape } from "@/lib/shape-context";
 import { useIcon, type IconComponent } from "@/lib/icon-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
@@ -57,6 +57,8 @@ interface CardGroupContextValue {
   /** Inner hairline dividers are drawn between adjacent cards. */
   divided: boolean;
   outlined: boolean;
+  /** Shared by the frame, card surfaces, stretched focus, and moving hover. */
+  containerShape: string;
 }
 
 const CardGroupContext = createContext<CardGroupContextValue | null>(null);
@@ -101,6 +103,9 @@ interface CardGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, "onDrag"> 
   /** Split the group into individually-shaped cards with a gap between them
    *  (a grid of tiles) instead of one continuous divided block. @default false */
   separated?: boolean;
+  /** Tighter 12px surface corners for dense or inset groups. Controls retain
+   *  their surrounding shape. @default "default" */
+  corners?: "default" | "compact";
   /** Enable the magnetic proximity-hover highlight. @default true */
   proximityHover?: boolean;
 }
@@ -112,6 +117,7 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
       columns = 1,
       border = "none",
       separated = false,
+      corners = "default",
       proximityHover = true,
       className,
       children,
@@ -121,6 +127,7 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
+    const containerShape = corners === "compact" ? shapeMap.rounded.container : shape.container;
 
     // >1 column wraps into a grid, where nearest-item must be resolved in two
     // dimensions; a single column is a plain vertical list.
@@ -165,6 +172,7 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
         separated,
         divided,
         outlined,
+        containerShape,
       }),
       [
         registerItem,
@@ -176,6 +184,7 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
         separated,
         divided,
         outlined,
+        containerShape,
       ]
     );
 
@@ -199,7 +208,7 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
             "relative grid",
             // A shared frame clips the highlight + dividers to its rounded
             // corners; separated tiles clip themselves.
-            outlined && !separated && `border border-border/60 overflow-hidden ${shape.container}`,
+            outlined && !separated && `border border-border/60 overflow-hidden ${containerShape}`,
             separated ? "gap-2" : "gap-0",
             className
           )}
@@ -217,7 +226,7 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
               <motion.div
                 key={sessionRef.current}
                 aria-hidden
-                className={cn("absolute bg-hover pointer-events-none z-0", shape.container)}
+                className={cn("absolute bg-hover pointer-events-none z-0", containerShape)}
                 initial={{
                   opacity: 0,
                   top: activeRect.top,
@@ -294,6 +303,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     const internalRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
     const group = useContext(CardGroupContext);
+    const containerShape = group?.containerShape ?? shape.container;
     const XIcon = useIcon("x");
 
     const orientation = group?.orientation ?? "card";
@@ -356,9 +366,9 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     // hug, so it stays unclipped and its media reads as a plain square, and a
     // card in a continuous block leans on the shared group frame for both.
     const tileShape = !group
-      ? cn(shape.container, "overflow-hidden")
+      ? cn(containerShape, "overflow-hidden")
       : separated && outlined
-        ? cn(shape.container, "overflow-hidden border border-border/60")
+        ? cn(containerShape, "overflow-hidden border border-border/60")
         : "";
 
     // Stretched overlay makes the whole card the click target while keeping
@@ -374,7 +384,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
           aria-label={label}
-          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", shape.container)}
+          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", containerShape)}
         />
       ) : (
         <button
@@ -382,7 +392,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           onClick={onClick}
           aria-label={label}
           aria-pressed={selected || undefined}
-          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", shape.container)}
+          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", containerShape)}
         />
       )
     ) : null;
@@ -457,7 +467,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
                 // remain visible without tinting content or changing geometry.
                 "absolute inset-0 -z-10 pointer-events-none",
                 selected ? "bg-active" : "bg-hover",
-                shape.container
+                containerShape
               )}
             />
           )}
