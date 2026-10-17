@@ -64,6 +64,18 @@ cannot create a release commit, move `main`, or bypass branch protection. A
 failed deploy leaves the already-approved release commit and tag in place so it
 can be safely retried.
 
+If publishing fails before the tag exists, retry **Publish Release Tag** from
+`main` with the already-merged release PR number:
+
+```bash
+gh workflow run release-on-merge.yml --ref main -f pull_request_number=160
+```
+
+The retry verifies the merged PR, repository, recorded release base, and main
+ancestry before the Actions bot creates the tag. It refuses to move an existing
+tag. If the tag already exists and deployment failed, retry **Production Deploy**
+with that tag instead.
+
 The `main` branch ruleset must require pull requests, the `CI Gate` status, and
 that branches be up to date before merging. The release workflow also compares
 the release branch's recorded base commit with the squash merge's first parent;
