@@ -186,6 +186,15 @@ function AppShellHeader({
         <Search />
       </Button>
 
+      {user && questKeysFound > 0 ? (
+        <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary" aria-label={`${questKeysFound} of 3 Founders’ Quest keys found`}>
+          {[0, 1, 2].map((slot) => (
+            <KeyRound key={slot} className={`size-3.5 ${slot < questKeysFound ? 'text-primary' : 'text-muted-foreground/40'}`} aria-hidden />
+          ))}
+          <span className="ml-0.5 hidden sm:inline">{questKeysFound}/3</span>
+        </span>
+      ) : null}
+
       {user ? (
         <DropdownMenu>
           <DropdownTrigger
@@ -207,11 +216,6 @@ function AppShellHeader({
                 <span className="hidden truncate pl-1 sm:inline">
                   {user.firstName} {user.lastName}
                 </span>
-                {questKeysFound > 0 ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-primary" aria-label={`${questKeysFound} of 3 Founders’ Quest keys found`}>
-                    <KeyRound className="size-3.5" aria-hidden /> {questKeysFound}/3
-                  </span>
-                ) : null}
                 <ChevronDown
                   aria-hidden
                   className="hidden size-4 text-muted-foreground sm:block"

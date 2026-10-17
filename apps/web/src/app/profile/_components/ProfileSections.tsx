@@ -1,10 +1,11 @@
 'use client';
 
-import { type Dispatch, type ReactNode, type SetStateAction, useRef } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
 import {
   Bell,
   Lock,
   LockKeyhole,
+  KeyRound,
   LogOut,
   Palette,
   ShieldAlert,
@@ -26,7 +27,7 @@ import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { useRecordQuestKey } from '@/hooks/use-founders-quest';
+import { useFoundersQuest, useRecordQuestKey } from '@/hooks/use-founders-quest';
 import { useGifAutoplay } from '@/hooks/use-gif-autoplay';
 import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -562,11 +563,32 @@ export function AppearanceCard({
 
 export function WhatsNewCard() {
   const user = useCurrentUser();
+  const { progress } = useFoundersQuest();
   const { toast } = useToast();
   const recordQuestKey = useRecordQuestKey();
   const versionTapMatcher = useRef(createEasterEggTapMatcher());
   const tapCount = useRef(0);
   const lastTapAt = useRef(0);
+  const [seal, setSeal] = useState<'hidden' | 'revealed' | 'claimed'>('hidden');
+  const [savingSeal, setSavingSeal] = useState(false);
+  const copperFound = progress?.keys.includes('copper') ?? false;
+
+  useEffect(() => {
+    if (seal === 'hidden') return;
+    const timer = window.setTimeout(() => setSeal('hidden'), seal === 'claimed' ? 5_000 : 15_000);
+    return () => window.clearTimeout(timer);
+  }, [seal]);
+
+  async function claimCopper() {
+    if (savingSeal || copperFound) return;
+    setSavingSeal(true);
+    const saved = await recordQuestKey('copper');
+    setSavingSeal(false);
+    if (saved) {
+      setSeal('claimed');
+      toast({ title: 'Copper Key found: 1 of 3', description: 'Your next clue is on your profile.', duration: 5_000 });
+    }
+  }
 
   return (
     <SettingsCard
@@ -583,29 +605,31 @@ export function WhatsNewCard() {
           className="font-mono tracking-wide"
           aria-label={`App version ${appVersionLabel()}`}
           onClick={() => {
-            if (!user?.roles.includes('STUDENT')) return;
+            if (!user?.roles.includes('STUDENT') || copperFound || seal !== 'hidden') return;
             const now = Date.now();
             tapCount.current = now - lastTapAt.current > 1500 ? 1 : tapCount.current + 1;
             lastTapAt.current = now;
-            if (tapCount.current === 2) toast({ title: '3 more…' });
+            if (tapCount.current === 2) toast({ title: '3 more…', duration: 1_600 });
             if (versionTapMatcher.current(now)) {
               tapCount.current = 0;
-              void recordQuestKey('copper').then((saved) => {
-                if (saved) toast({
-                  title: 'Copper Key found: 1 of 3',
-                  description: 'You’ve started the Founders’ Quest. Your next clue is on your profile.',
-                });
-              });
+              setSeal('revealed');
+              toast({ title: 'A copper seal appeared', description: 'It will fade soon. Open it while it is here.', duration: 3_000 });
             }
           }}
         >
           {appVersionLabel()}
         </Button>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          {user?.roles.includes('STUDENT')
-            ? 'Every story has a version. Tap it five times to begin the Founders’ Quest.'
+          {user?.roles.includes('STUDENT') && !copperFound
+            ? 'Every story leaves a mark in its version history.'
             : 'Include this version when you report a problem so we know which build you were on.'}
         </p>
+        {seal === 'revealed' && !copperFound ? (
+          <Button type="button" size="sm" variant="secondary" leadingIcon={KeyRound} className="mt-3" loading={savingSeal} onClick={() => void claimCopper()}>
+            Open the copper seal
+          </Button>
+        ) : null}
+        {seal === 'claimed' ? <p className="mt-3 text-sm text-primary" role="status">Copper Key saved. The seal is fading, but your key is yours.</p> : null}
       </div>
     </SettingsCard>
   );

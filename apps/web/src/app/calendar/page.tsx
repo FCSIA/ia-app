@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { format } from 'date-fns';
-import { MapPin, Plus, Sparkles } from 'lucide-react';
+import { Egg, MapPin, Plus } from 'lucide-react';
 
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
 import { EditCalendarEntryDialog } from '@/components/calendar/EditCalendarEntryDialog';
@@ -135,6 +135,10 @@ export default function CalendarPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const todayTapMatcher = useRef(createEasterEggTapMatcher());
+  const jadeTaps = useRef(0);
+  const lastJadeTapAt = useRef(0);
+  const jadeSaving = useRef(false);
+  const [jadeReveal, setJadeReveal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<CalendarView>('month');
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -192,9 +196,27 @@ export default function CalendarPage() {
     : ['month', 'week', 'day', 'agenda'];
   const jadeAvailable = Boolean(user?.roles.includes('STUDENT') && questProgress?.keys.includes('copper') && !questProgress.keys.includes('jade'));
   const isMarchSecond = (day: Date) => day.getMonth() === 2 && day.getDate() === 2 && day.getFullYear() === new Date().getFullYear();
+  useEffect(() => {
+    if (!jadeReveal) return;
+    const timer = window.setTimeout(() => setJadeReveal(false), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [jadeReveal]);
   const claimJade = () => {
+    if (jadeSaving.current || !jadeAvailable) return;
+    const now = Date.now();
+    jadeTaps.current = now - lastJadeTapAt.current > 1_500 ? 1 : jadeTaps.current + 1;
+    lastJadeTapAt.current = now;
+    if (jadeTaps.current < 3) {
+      toast({ title: jadeTaps.current === 1 ? 'Something moved inside the egg…' : 'The shell is almost open…', duration: 1_500 });
+      return;
+    }
+    jadeTaps.current = 0;
+    jadeSaving.current = true;
     void recordQuestKey('jade').then((saved) => {
-      if (saved) toast({ title: 'Jade Key found: 2 of 3', description: 'Your next clue is on your profile.' });
+      jadeSaving.current = false;
+      if (!saved) return;
+      setJadeReveal(true);
+      toast({ title: 'Jade Key found: 2 of 3', description: 'Your next clue is on your profile.', duration: 5_000 });
     });
   };
   const editableEntry = activeEntry?.source === 'EXTERNAL' ? null : activeEntry;
@@ -258,11 +280,11 @@ export default function CalendarPage() {
                 size="icon-sm"
                 variant="ghost"
                 className="absolute left-1 top-1 z-10"
-                aria-label="Discover the Jade Key on March 2"
+                aria-label="Tap the Phoenix egg on March 2"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => { event.stopPropagation(); claimJade(); }}
               >
-                <Sparkles aria-hidden />
+                <Egg aria-hidden />
               </Button>
             </>
           ) : defaultContent}
@@ -287,10 +309,11 @@ export default function CalendarPage() {
                 </div>
               </div>
               {isMobile && jadeAvailable && isMarchSecond(calendarDate) ? (
-                <Button type="button" size="sm" variant="secondary" leadingIcon={Sparkles} onClick={claimJade}>
-                  Discover the Jade Key
+                <Button type="button" size="sm" variant="ghost" leadingIcon={Egg} onClick={claimJade}>
+                  A Phoenix egg
                 </Button>
               ) : null}
+              {jadeReveal ? <p className="text-sm font-medium text-primary" role="status">Jade Key saved. The egg has faded from the calendar.</p> : null}
               <div className="flex min-w-0 items-center gap-2">
                 <EventCalendarTitle className="text-base" />
                 <div className="min-w-0 flex-1" />
