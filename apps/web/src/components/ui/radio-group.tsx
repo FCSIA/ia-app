@@ -66,6 +66,9 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
     const childValues = Children.toArray(children)
       .filter(isValidElement)
       .map((child) => (child.props as { value?: string }).value);
+    // Layout may wrap into multiple rows or use a grid. Orientation controls
+    // layout/ARIA; hover must consider both coordinates so overlapping x/y
+    // ranges cannot highlight a different option from the pointer target.
     const {
       activeIndex,
       setActiveIndex,
@@ -74,9 +77,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       handlers,
       registerItem,
       measureItems,
-    } = useProximityHover(containerRef, {
-      axis: orientation === "horizontal" ? "x" : "y",
-    });
+    } = useProximityHover(containerRef, { axis: "xy" });
 
     useEffect(() => {
       measureItems();
