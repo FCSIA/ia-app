@@ -38,11 +38,11 @@ export function AnnouncementsWidget() {
           <Link href="/announcements" aria-label="Open announcement feed"><ArrowRight /></Link>
         </Button>
       }
-      contentClassName="px-3 pb-3 pt-0 sm:px-4 sm:pb-4"
+      contentClassName="px-3 pb-3 pt-3"
     >
       {unreadAnnouncements.length > 0 ? (
         <div>
-          <CardGroup separated aria-label="Unread announcements">
+          <CardGroup separated corners="compact" aria-label="Unread announcements">
             {unreadAnnouncements.map((announcement) => (
               <AnnouncementWidgetCard
                 key={announcement._id}

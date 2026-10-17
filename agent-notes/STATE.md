@@ -138,6 +138,9 @@
   awaiting design-owner visual review. The owner approved an independent shared
   Card attention state. Card owns its neutral translucent unread surface and
   matching focus/hover corners; selection retains its own semantics.
+  On October 17 the owner also approved `CardGroup corners="compact"` (12px).
+  Feed/past/widget cards use it without changing global button shapes. Neutral
+  Badge now composes the shared active fill and border on attention surfaces.
 - Concrete grade/pathway/club audiences share one model across feed, dashboard,
   club preview, and detail. Legacy scalar/array targets are merged; intersection
   conditions preserve their AND/OR meaning in accessible text. Numeric grade
@@ -151,10 +154,14 @@
   both states, while unread attention and title weight provide emphasis without
   removing a read post's boundary. Saved uses the existing outlined active Button
   plus a filled primary icon, distinct from transient hover.
-- Desktop feed choices, search, Filters, and New occupy one toolbar row. Narrow
+- Desktop feed choices, search, Filters, and the plus action occupy one toolbar row. Narrow
   screens deliberately use two rows. Headings have a separate gap before cards.
-  Read/Saved use compact Select controls; audience facets use FieldSet/Legend
-  and registered RadioGroup/CheckboxGroup rows within a bounded ScrollArea.
+  The 24rem filter panel keeps Read/Saved/Audience compact Select controls visible;
+  independent accordions summarize and disclose grade/pathway/club checkbox facets
+  within a bounded ScrollArea. Read actions are icon-only with working tooltips.
+  Full-feed author avatars reuse the existing person dialog; its projection adds
+  photo and roles without adding sign-in identifiers or contact fields. Club
+  people use the same extracted avatar component.
   Zero-comment actions use an icon so all four 44px controls fit together at
   320px. The dashboard title is Unread Announcements; its empty state composes
   the shared unframed Empty inside the existing widget boundary.
@@ -163,6 +170,13 @@
   Select and Dropdown share fixed 12px/8px/10px shell/item/focus geometry. The
   trigger retains global shape. Fixed values avoid the app's `rounded-lg` token
   resolving to 16px instead of the registry's expected 8px.
+  A stable-gutter root now suppresses react-remove-scroll-bar's duplicate body
+  margin while preserving modal scroll lock. Read/Saved, composer, and profile
+  photo dialogs retain their document geometry. Clickable Card footer metadata
+  passes through to the stretched target with a pointer cursor; semantic controls
+  stay independent. Panel titles flex within the action row rather than forcing
+  the arrow below a long heading. Widget heading/card text align at a 24px inset,
+  with a separate gap above the first card.
 - Default Light/Dark borders/dividers now follow the scoped surface foreground.
   Explicit Custom Accent, Bubblegum, and opaque high-contrast border palettes
   are preserved. Their contrast was not retuned; `border-input` is unchanged.
@@ -172,16 +186,21 @@
   composer targeting, wrapped radio hit testing, 320px/390px action geometry,
   section rhythm, saved vs hover, and Light/Dark/Contrast/Custom token behavior.
   Read toggling retains the tested card's 176px height and document position.
-  Owner changes made all demo posts read during review; temporary QA toggles
-  were restored to that state. The populated and empty widget were checked at
+  The owner currently has Robotics and Freshman Grade 9 unread, with Robotics
+  saved; other demo posts are read. Temporary QA toggles were restored to that
+  state. The populated and empty widget were checked at
   390px. Earlier pin/order, audience, custom-theme, and reduced-motion checks
   remain applicable; attention is static and existing proximity motion is unchanged.
 - The compiled preview runs at `http://localhost:3003/announcements` and
   `/dashboard`, sharing the existing isolated demo backend on 3210/3211.
-  No reseeding, schema push, or deployment was performed. This does not certify
-  the prior expiry fix against that runtime. Creation, archive, approval, and
+  October 17's functions were pushed explicitly to that existing isolated local
+  backend, without reseeding or selecting a shared/cloud deployment. The author
+  projection is verified in the browser. Backend tests (381), backend/web/mobile
+  typechecks, web lint, the 15 focused tests, and production build pass. This does
+  not certify the expiry guard's time boundary through browser QA. Creation, archive, approval, and
   deletion were not exercised. Current captures are in
-  `/tmp/ia-announcement-interaction-review/`; earlier captures remain in
+  `/tmp/ia-announcement-oct17-review/`; earlier captures remain in
+  `/tmp/ia-announcement-interaction-review/` and
   `/tmp/ia-announcement-redesign-review/`.
 - The dashboard's existing calendar independently overflows at 320px because its
   seven 44px day targets exceed the available width. It remains a separate

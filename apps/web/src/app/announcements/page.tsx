@@ -7,9 +7,10 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -25,16 +26,15 @@ import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ToggleGroup } from '@/components/ui/toggle-group';
 import { FilterToggleIcon, FilterToggleItem } from '@/components/ui/filter-toggle-group';
-import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
+import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { matchesAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { Label } from '@/components/ui/label';
-import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { AnnouncementFilterPanel } from '@/components/announcements/announcement-filter-panel';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
@@ -49,11 +49,6 @@ const PATHWAY_OPTIONS = [
 
 const GRADE_OPTIONS = [9, 10, 11, 12];
 const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
-
-const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
-  ...ANNOUNCEMENT_TAG_LABELS,
-  INTERSECTION: 'Combined audience',
-};
 
 type ClubFilterOption = {
   id: string;
@@ -76,10 +71,6 @@ function feedFiltersReducer(state: FeedFilters, update: FeedFiltersUpdate): Feed
   if (update === 'reset') return defaultFeedFilters;
   const patch = typeof update === 'function' ? update(state) : update;
   return { ...state, ...patch };
-}
-
-function toggleFilterValue<T>(values: T[], value: T): T[] {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
 const defaultAnnouncementForm = {
@@ -240,7 +231,7 @@ export default function AnnouncementsPage() {
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
     [...dataWithPins, ...pastAllAnnouncements].forEach((announcement: any) => tags.add(announcement.targetType));
-    return Object.keys(ANNOUNCEMENT_SCOPE_LABELS).filter((tag) => tags.has(tag));
+    return ['SCHOOL_WIDE', 'GRADE', 'PATHWAY', 'CLUB', 'INTERSECTION'].filter((tag) => tags.has(tag));
   }, [dataWithPins, pastAllAnnouncements]);
 
   const availableClubs = useMemo<ClubFilterOption[]>(() => {
@@ -447,10 +438,10 @@ export default function AnnouncementsPage() {
                 </PopoverTrigger>
                 <PopoverContent
                   align="end"
-                  className="w-[min(42rem,calc(100vw-2rem))]"
+                  className="w-[min(24rem,calc(100vw-2rem))]"
                   aria-labelledby="announcement-filters-title"
                 >
-                  <div className="mb-3 flex items-center justify-between gap-3 px-4">
+                  <div className="mb-4 flex items-center justify-between gap-3 px-3">
                     <h3 id="announcement-filters-title" className="text-sm font-medium text-foreground">
                       Filters
                     </h3>
@@ -464,198 +455,31 @@ export default function AnnouncementsPage() {
                     className="max-h-[min(36rem,calc(var(--radix-popover-content-available-height)-5rem))]"
                     viewportClassName="max-h-[min(36rem,calc(var(--radix-popover-content-available-height)-5rem))]"
                   >
-                    <div className="flex flex-col gap-5 p-1">
-                      <FieldGroup className="grid gap-3 px-3 sm:grid-cols-2">
-                        <Field orientation="horizontal">
-                          <FieldLabel htmlFor="announcement-read-filter">Read</FieldLabel>
-                          <Select
-                            size="compact"
-                            value={readFilter}
-                            onValueChange={(value) =>
-                              dispatchFilters({ readFilter: value as FeedFilters['readFilter'] })
-                            }
-                          >
-                            <SelectTrigger id="announcement-read-filter" />
-                            <SelectContent>
-                              <SelectItem index={0} value="all">
-                                Any
-                              </SelectItem>
-                              <SelectItem index={1} value="unread">
-                                Unread
-                              </SelectItem>
-                              <SelectItem index={2} value="read">
-                                Read
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                        <Field orientation="horizontal">
-                          <FieldLabel htmlFor="announcement-saved-filter">Saved</FieldLabel>
-                          <Select
-                            size="compact"
-                            value={savedFilter}
-                            onValueChange={(value) =>
-                              dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })
-                            }
-                          >
-                            <SelectTrigger id="announcement-saved-filter" />
-                            <SelectContent>
-                              <SelectItem index={0} value="all">
-                                Any
-                              </SelectItem>
-                              <SelectItem index={1} value="saved">
-                                Saved
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                      </FieldGroup>
-                      <Separator />
-                      <FieldGroup className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                        {availableTags.length > 0 ? (
-                          <FieldSet className="min-w-0 gap-0">
-                            <FieldLegend variant="label" className="px-3">
-                              Audience
-                            </FieldLegend>
-                            <RadioGroup
-                              value={activeTag ?? 'all'}
-                              onValueChange={(value) =>
-                                dispatchFilters({ activeTag: value === 'all' ? null : value })
-                              }
-                              className="w-full"
-                            >
-                              {['all', ...availableTags].map((tag, index) => (
-                                <RadioItem
-                                  key={tag}
-                                  index={index}
-                                  value={tag}
-                                  label={
-                                    tag === 'all' ? 'Any' : ANNOUNCEMENT_SCOPE_LABELS[tag] || tag.replace(/_/g, ' ')
-                                  }
-                                />
-                              ))}
-                            </RadioGroup>
-                          </FieldSet>
-                        ) : null}
-
-                        <FieldSet className="min-w-0 gap-0">
-                          <FieldLegend variant="label" className="px-3">
-                            Grade
-                          </FieldLegend>
-                          <CheckboxGroup
-                            checkedIndices={
-                              new Set(
-                                GRADE_OPTIONS.flatMap((grade, index) =>
-                                  selectedGrades.includes(grade) ? [index] : [],
-                                ),
-                              )
-                            }
-                            className="w-full"
-                          >
-                            {GRADE_OPTIONS.map((grade, index) => (
-                              <CheckboxItem
-                                key={grade}
-                                index={index}
-                                label={`Grade ${grade}`}
-                                checked={selectedGrades.includes(grade)}
-                                onToggle={() =>
-                                  dispatchFilters((current) => ({
-                                    selectedGrades: toggleFilterValue(current.selectedGrades, grade),
-                                  }))
-                                }
-                              />
-                            ))}
-                          </CheckboxGroup>
-                        </FieldSet>
-
-                        {[
-                          {
-                            label: 'Major pathway',
-                            selected: selectedMajorPathways,
-                            key: 'selectedMajorPathways' as const,
-                          },
-                          {
-                            label: 'Minor pathway',
-                            selected: selectedMinorPathways,
-                            key: 'selectedMinorPathways' as const,
-                          },
-                        ].map(({ label, selected, key }) => (
-                          <FieldSet key={label} className="min-w-0 gap-0">
-                            <FieldLegend variant="label" className="px-3">
-                              {label}
-                            </FieldLegend>
-                            <CheckboxGroup
-                              checkedIndices={
-                                new Set(
-                                  PATHWAY_OPTIONS.flatMap((pathway, index) =>
-                                    selected.includes(pathway.value) ? [index] : [],
-                                  ),
-                                )
-                              }
-                              className="w-full"
-                            >
-                              {PATHWAY_OPTIONS.map((pathway, index) => (
-                                <CheckboxItem
-                                  key={pathway.value}
-                                  index={index}
-                                  label={pathway.label}
-                                  checked={selected.includes(pathway.value)}
-                                  onToggle={() =>
-                                    dispatchFilters((current) => ({
-                                      [key]: toggleFilterValue(current[key], pathway.value),
-                                    }))
-                                  }
-                                />
-                              ))}
-                            </CheckboxGroup>
-                          </FieldSet>
-                        ))}
-
-                        {availableClubs.length > 0 ? (
-                          <FieldSet className="min-w-0 gap-0 sm:col-span-2">
-                            <FieldLegend variant="label" className="px-3">
-                              Club
-                            </FieldLegend>
-                            <CheckboxGroup
-                              checkedIndices={
-                                new Set(
-                                  availableClubs.flatMap((club, index) =>
-                                    selectedClubIds.includes(club.id) ? [index] : [],
-                                  ),
-                                )
-                              }
-                              className="w-full"
-                            >
-                              {availableClubs.map((club, index) => (
-                                <CheckboxItem
-                                  key={club.id}
-                                  index={index}
-                                  label={club.name}
-                                  checked={selectedClubIds.includes(club.id)}
-                                  onToggle={() =>
-                                    dispatchFilters((current) => ({
-                                      selectedClubIds: toggleFilterValue(current.selectedClubIds, club.id),
-                                    }))
-                                  }
-                                />
-                              ))}
-                            </CheckboxGroup>
-                          </FieldSet>
-                        ) : null}
-                      </FieldGroup>
+                    <div className="p-1">
+                      <AnnouncementFilterPanel
+                        filters={filters}
+                        onFiltersChange={dispatchFilters}
+                        availableTags={availableTags}
+                        availableClubs={availableClubs}
+                        gradeOptions={GRADE_OPTIONS}
+                        pathwayOptions={PATHWAY_OPTIONS}
+                      />
                     </div>
                   </ScrollArea>
                 </PopoverContent>
               </Popover>
             </div>
             {canPost ? (
-              <Button
-                className="col-start-2 row-start-2 lg:col-start-4 lg:row-start-1"
-                onClick={() => setShowNew(true)}
-                aria-label="New announcement"
-              >
-                New
-              </Button>
+              <Tooltip content="New announcement">
+                <Button
+                  className="col-start-2 row-start-2 justify-self-end lg:col-start-4 lg:row-start-1"
+                  size="icon-sm"
+                  onClick={() => setShowNew(true)}
+                  aria-label="New announcement"
+                >
+                  <Plus />
+                </Button>
+              </Tooltip>
             ) : null}
           </div>
         </div>
@@ -869,7 +693,7 @@ export default function AnnouncementsPage() {
                   {section.id === 'personal-pins' ? <Pin aria-hidden="true" className="size-3.5" fill="currentColor" strokeWidth={1.5} /> : null}
                   {section.label}
                 </h2>
-                <CardGroup separated border="outlined" aria-label={`${section.label} announcements`}>
+                <CardGroup separated corners="compact" border="outlined" aria-label={`${section.label} announcements`}>
                   {(section.items as any[]).map((announcement) => {
                     const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                     const announcementId = announcement._id as Id<'announcements'>;
@@ -1000,7 +824,7 @@ export default function AnnouncementsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <CardGroup separated border="outlined" aria-label="Past announcements">
+                <CardGroup separated corners="compact" border="outlined" aria-label="Past announcements">
                   {filteredPastAnnouncements.map((announcement: any) => (
                     <AnnouncementCard
                       key={announcement._id}

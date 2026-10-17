@@ -34,13 +34,19 @@ and the advanced audience/read/saved filters compose with these choices; clearin
 also clears the search. Both the current feed and the expanded past section use
 the same matcher, including human-readable grade and pathway metadata. Results
 reflect the loaded pages; loading more continues the current filter.
+The compact filter panel keeps Read, Saved, and Audience visible and discloses
+grade, major pathway, minor pathway, and club choices in independent accordions.
+Collapsed facets summarize their selections; changing a scope preserves the
+other criteria. The creation action is a plus button with an accessible label
+and tooltip.
 
 Unread posts use the owner-approved shared Card attention state: a neutral,
 rounded surface and a stronger title. The full feed gives every post the same
 quiet outline, so reading changes emphasis without removing its boundary.
 Per-post read badges are omitted; both states retain foreground title contrast. Reading preserves ordering in All.
 Attention is independent of selection and composes with the shared translucent
-hover layer. Focus uses the same Card-owned corners. Read state is also included
+hover layer. Both views use the owner-approved compact CardGroup corners (12px),
+including hover and focus. Read state is also included
 in the card's accessible name. Audience metadata shows actual
 grades and pathways: a graduation-cap badge identifies grade numbers, while
 pathway and club names remain readable text. The list, dashboard, club previews,
@@ -54,16 +60,17 @@ excerpt. Its empty state uses the shared unframed Empty composition within the
 existing widget boundary. Both surfaces use the approved separated CardGroup layout so adjacent
 rounded surfaces have breathing room, with shared proximity hover. Neither uses
 a left accent border that conflicts with the rounded
-hover treatment. Panel headings and actions share a row when they fit, wrapping
-according to the available space rather than a viewport cutoff.
+hover treatment. Widget text aligns with the panel heading, with an explicit
+gap before the first card. Panel titles wrap within their available width while
+keeping the adjacent action on the same row.
 
 Personal pins are labeled “Pinned for you” and keep posts at the top of that
 user's feed. The full feed groups personal pins, Important, and Latest without
 reordering posts when their read state changes. Pin/unpin keeps keyboard focus
 with the moved post's action trigger. Admin-promoted posts are labeled “Important,” including the composer
 option “Mark important for one month.” Saved is the personal bookmark collection; it is
-not presented as another form of pinning. The shared Card owns navigation, while
-its action footer keeps read/save/comments independent of that destination;
+not presented as another form of pinning. The shared Card owns navigation,
+including passive footer text and gaps. Read/save/comments remain independent;
 personal pin and archive commands are in the existing Dropdown action menu.
 Saved bookmarks use a filled primary-color icon and the existing outlined,
 active Button treatment. The persistent circle differs from an unsaved button's
@@ -71,10 +78,13 @@ transient hover surface. Comment counts use the
 serialized count rather than the obsolete relation-count field. With no comments,
 the action uses its recognizable icon instead of a redundant Reply label, keeping
 the four touch actions together at 320px. Actions remain
-visible in the dashboard. Failed read/save
+visible in the dashboard. Read actions use icons with tooltips and accessible
+labels. The full feed keeps the sender's name beside a reusable clickable avatar
+that opens the existing profile dialog. Its author projection includes photo and
+roles without adding sign-in identifiers or contact fields. Failed read/save
 writes surface a toast so users can retry.
 
-The desktop toolbar places feed choices, search, filters, and New together.
+The desktop toolbar places feed choices, search, filters, and the plus button together.
 Narrow layouts deliberately split search/filter controls from feed/create
 controls. Section headings have a separate gap before the cards. Filter headings
 align with the leading controls, while the shared primitives retain ownership of

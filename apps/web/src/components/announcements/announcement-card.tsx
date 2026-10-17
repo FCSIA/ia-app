@@ -8,6 +8,7 @@ import type { AnnouncementAudienceInput } from '@/components/announcements/annou
 import { Badge } from '@/components/ui/badge';
 import type { BadgeColor } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { UserProfileAvatar, type UserProfilePerson } from '@/components/users/user-profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -50,6 +51,8 @@ export type AnnouncementCardRecord = AnnouncementAudienceInput & {
     firstName?: string | null;
     lastName?: string | null;
     isDeveloper?: boolean | null;
+    avatarUrl?: string | null;
+    roles?: UserProfilePerson['roles'];
   } | null;
   club?: {
     _id: string;
@@ -99,6 +102,12 @@ function AnnouncementPreview({
 }: AnnouncementPreviewProps) {
   const widget = presentation === 'widget';
   const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
+  const author = announcement.author?._id ? {
+    ...announcement.author,
+    _id: announcement.author._id as UserProfilePerson['_id'],
+    firstName: announcement.author.firstName ?? '',
+    lastName: announcement.author.lastName ?? '',
+  } : null;
 
   const status = {
     PENDING_APPROVAL: { label: 'Pending review', color: 'amber' },
@@ -125,7 +134,7 @@ function AnnouncementPreview({
       className={cn('announcement-card relative', className)}
       data-read-state={announcement.isRead ? 'read' : 'unread'}
     >
-      <CardContent className="px-4 pt-4 sm:px-5">
+      <CardContent className={widget ? 'px-3 pt-4' : 'px-4 pt-4 sm:px-5'}>
         {!widget ? <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {audienceMetadata}
         </div> : null}
@@ -138,10 +147,11 @@ function AnnouncementPreview({
         )}>{announcement.title}</h3>
         {!widget ? <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p> : null}
       </CardContent>
-      <CardFooter className={cn('flex items-center justify-between gap-y-2 px-4 sm:px-5', widget ? 'gap-x-2 pt-1' : 'flex-wrap gap-x-4 pt-3')}>
+      <CardFooter className={cn('flex items-center justify-between gap-y-2', widget ? 'gap-x-2 px-3 pt-1' : 'flex-wrap gap-x-4 px-4 pt-3 sm:px-5')}>
         <div className={cn('flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground', widget ? 'flex-1 text-xs' : 'text-sm')}>
           {widget ? audienceMetadata : null}
           {!widget ? <>
+            {author ? <UserProfileAvatar person={author} /> : null}
             <span>{authorName || 'Unknown author'}<DeveloperBadge user={announcement.author} size={12} className="ml-1" /></span>
             <span aria-hidden>·</span>
           </> : null}
@@ -155,9 +165,9 @@ function AnnouncementPreview({
             </span>
           ) : null}
         </div>
-        <div className={cn('flex flex-wrap items-center gap-1', widget ? 'shrink-0' : 'max-w-full')}>
+        <div className={cn('ml-auto flex flex-wrap items-center gap-1', widget ? 'shrink-0' : 'max-w-full')}>
           <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
-            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly={widget || presentation === 'compact'} variant="ghost" />
+            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
           </Tooltip>
           {onBookmarkToggle ? (
             <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>

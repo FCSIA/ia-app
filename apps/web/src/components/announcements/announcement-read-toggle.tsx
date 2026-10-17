@@ -1,7 +1,7 @@
 'use client';
 
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { useMutation } from '@/lib/convex-react';
 import { Mail, MailOpen } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -9,7 +9,7 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import type { ButtonProps } from '@/components/ui/button';
 
-type AnnouncementReadToggleProps = {
+type AnnouncementReadToggleProps = Omit<ButtonProps, 'size' | 'variant'> & {
   announcementId: string;
   isRead: boolean;
   iconOnly?: boolean;
@@ -19,7 +19,7 @@ type AnnouncementReadToggleProps = {
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 };
 
-export function AnnouncementReadToggle({
+export const AnnouncementReadToggle = forwardRef<HTMLButtonElement, AnnouncementReadToggleProps>(function AnnouncementReadToggle({
   announcementId,
   isRead,
   iconOnly = false,
@@ -27,7 +27,8 @@ export function AnnouncementReadToggle({
   variant = 'tertiary',
   className,
   onClick,
-}: AnnouncementReadToggleProps) {
+  ...buttonProps
+}, ref) {
   const markRead = useMutation(api.announcements.engagement.markRead);
   const markUnread = useMutation(api.announcements.engagement.markUnread);
   const { toast } = useToast();
@@ -37,6 +38,8 @@ export function AnnouncementReadToggle({
 
   return (
     <Button
+      {...buttonProps}
+      ref={ref}
       type="button"
       size={size ?? (iconOnly ? 'icon-sm' : 'sm')}
       variant={variant}
@@ -56,4 +59,4 @@ export function AnnouncementReadToggle({
       {iconOnly ? <ReadStateIcon /> : label}
     </Button>
   );
-}
+});
