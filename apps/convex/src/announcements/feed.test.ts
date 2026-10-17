@@ -71,6 +71,33 @@ async function page(
 }
 
 describe('announcement feed pagination', () => {
+  it('exposes author avatars and roles without leaking student IDs or contact details', async () => {
+    const { t, user } = await fixture();
+    await t.run((ctx) => ctx.db.patch(user._id, {
+      avatarUrl: 'https://example.com/avatar.png',
+      email: 'private@example.com',
+    }));
+
+    const result = await t.withIdentity({ subject: user._id }).query(api.announcements.feed.listPage, {
+      paginationOpts: { cursor: null, numItems: 2 },
+    });
+    expect(result.page[0]?.author).toEqual({
+      _id: user._id,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      avatarUrl: 'https://example.com/avatar.png',
+      roles: ['TEACHER'],
+    });
+  });
+
+  it('returns a nullable avatar for authors who have not uploaded one', async () => {
+    const { t, user } = await fixture();
+    const result = await t.withIdentity({ subject: user._id }).query(api.announcements.feed.listPage, {
+      paginationOpts: { cursor: null, numItems: 2 },
+    });
+    expect(result.page[0]?.author?.avatarUrl).toBeNull();
+  });
+
   it('continues a descending feed at exact page boundaries', async () => {
     const { t, user } = await fixture();
     const first = await page(t, user, null);

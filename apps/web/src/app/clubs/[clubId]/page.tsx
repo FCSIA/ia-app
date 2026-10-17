@@ -30,7 +30,7 @@ import type { ClubDetail } from "@/components/clubs/types";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { AnnouncementDialog } from "@/components/clubs/dialogs/announcement-dialog";
-import { ClubProfileAvatar } from "@/components/clubs/club-profile-avatar";
+import { UserProfileAvatar } from "@/components/users/user-profile-avatar";
 import { ClubHero } from "@/components/clubs/club-hero";
 import { fullName } from "@/components/clubs/types";
 import { AnnouncementCard } from "@/components/announcements/announcement-card";
@@ -248,9 +248,8 @@ function RoleRoster({ club }: { club: ClubDetail }) {
       <div className="space-y-1.5">
         {members.map((member) => (
           <div key={member._id} className="flex items-center gap-2.5">
-            <ClubProfileAvatar
+            <UserProfileAvatar
               person={member}
-              className="size-8"
               fallbackClassName="text-[10px]"
             />
             <p className="min-w-0 truncate text-sm font-medium">
@@ -468,9 +467,9 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     key={sponsor.userId}
                     className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
                   >
-                    <ClubProfileAvatar
+                    <UserProfileAvatar
                       person={sponsor.user}
-                      className="size-10 shrink-0"
+                      size="md"
                       fallbackClassName="text-sm"
                     />
                     <div className="min-w-0">
@@ -513,9 +512,9 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                           key={member.userId}
                           className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
                         >
-                          <ClubProfileAvatar
+                          <UserProfileAvatar
                             person={member.user}
-                            className="size-10 shrink-0"
+                            size="md"
                             fallbackClassName="text-sm"
                           />
                           <p className="min-w-0 truncate text-sm font-semibold text-foreground">
@@ -677,9 +676,8 @@ export default function ClubOverviewPage() {
           <div className="space-y-1.5">
             {club.sponsors.map((sponsor) => (
               <div key={sponsor.userId} className="flex items-center gap-2.5">
-                <ClubProfileAvatar
+                <UserProfileAvatar
                   person={sponsor.user}
-                  className="size-8"
                   fallbackClassName="text-[10px]"
                 />
                 <div className="min-w-0">
