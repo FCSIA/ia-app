@@ -32,6 +32,7 @@ import {
   Plus,
   RotateCcw,
   Save,
+  Undo2,
   X,
 } from 'lucide-react';
 import { LayoutGroup, LazyMotion, useReducedMotion } from 'framer-motion';
@@ -524,13 +525,21 @@ export function DashboardLayout({
       duration: 10000,
       action: (
         <ToastAction
+          asChild
           altText="Undo layout balancing"
           onClick={() => {
             setArrangement(previous);
             dismissUndo();
           }}
         >
-          Undo
+          <Button
+            variant="tertiary"
+            size="icon-sm"
+            aria-label="Undo layout balancing"
+            title="Undo"
+          >
+            <Undo2 aria-hidden />
+          </Button>
         </ToastAction>
       ),
     }).dismiss;

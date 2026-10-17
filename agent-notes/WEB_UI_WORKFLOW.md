@@ -39,6 +39,7 @@ Appearance and motion do not decide the primitive. Behavior does.
 | One persisted value from known choices | `Select` or `RadioGroup` | Action menu |
 | Commands, navigation, or contextual actions | `Dropdown` | Form-value Select |
 | Large searchable choice set | `Command`/combobox composition | Oversized dropdown |
+| Revealing inline content beside an independent control | `Collapsible` with a separate trigger | Popup menu or a trigger wrapping the other control |
 | Switching panels or views | `Tabs` | Data-entry toggle |
 | Visible value users should copy | `InputCopy` | Bespoke copy button |
 | Comparable records with meaningful columns | Fluid `Table` | Card rows posed as a table |

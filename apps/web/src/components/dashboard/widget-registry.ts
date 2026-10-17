@@ -52,7 +52,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
   },
   announcements: {
     id: 'announcements',
-    label: 'Announcements',
+    label: 'Unread Announcements',
     description: 'Unread announcements across your feed.',
     size: 'half',
     Component: AnnouncementsWidget,

@@ -75,7 +75,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 
     const colorStyle = isSolid
       ? color === "gray"
-        ? { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--foreground))" }
+        ? { color: "hsl(var(--foreground))" }
         : {
             color: "hsl(var(--foreground))",
             backgroundColor: `color-mix(in srgb, ${colorValue} 15%, hsl(var(--background)))`,
@@ -87,7 +87,14 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     return (
       <span
         ref={ref}
-        className={cn(badgeVariants({ variant, size }), shape.item, className)}
+        className={cn(
+          badgeVariants({ variant, size }),
+          // A translucent neutral layer composes with the current surface;
+          // its border preserves the badge edge on attention/raised cards.
+          isSolid && color === "gray" && "border border-border bg-active",
+          shape.item,
+          className,
+        )}
         style={{ ...colorStyle, ...style }}
         {...props}
       >

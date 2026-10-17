@@ -1,14 +1,19 @@
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin, PinOff } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Archive, Bookmark, Clock, Ellipsis, MessageCircle, Pin, PinOff } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
+import { AnnouncementAudience } from '@/components/announcements/announcement-audience-label';
+import type { AnnouncementAudienceInput } from '@/components/announcements/announcement-audience';
 import { Badge } from '@/components/ui/badge';
 import type { BadgeColor } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { UserProfileAvatar, type UserProfilePerson } from '@/components/users/user-profile-avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
+import { DropdownContent, DropdownMenu, DropdownTrigger } from '@/components/ui/dropdown';
+import { MenuItem } from '@/components/ui/menu-item';
 import { cn } from '@/lib/utils';
 
 export const ANNOUNCEMENT_BADGE_TEXT_CLASS = 'text-[11px] leading-none';
@@ -21,13 +26,13 @@ export const ANNOUNCEMENT_TAG_BADGE_COLORS: Record<string, BadgeColor> = {
 };
 
 export const ANNOUNCEMENT_TAG_LABELS: Record<string, string> = {
-  SCHOOL_WIDE: 'School Wide',
+  SCHOOL_WIDE: 'School-wide',
   GRADE: 'Grade',
   PATHWAY: 'Pathway',
   CLUB: 'Club',
 };
 
-export type AnnouncementCardRecord = {
+export type AnnouncementCardRecord = AnnouncementAudienceInput & {
   _id: string;
   title: string;
   body: string;
@@ -46,15 +51,15 @@ export type AnnouncementCardRecord = {
     firstName?: string | null;
     lastName?: string | null;
     isDeveloper?: boolean | null;
+    avatarUrl?: string | null;
+    roles?: UserProfilePerson['roles'];
   } | null;
   club?: {
     _id: string;
     name: string;
   } | null;
   clubId?: string;
-  _count?: {
-    comments?: number;
-  } | null;
+  commentCount?: number;
 };
 
 type AnnouncementCardProps = {
@@ -64,161 +69,169 @@ type AnnouncementCardProps = {
   className?: string;
   footer?: ReactNode;
   index?: number;
+  /** Omit only the ordering label already named by the surrounding section. */
+  orderingContext?: 'personal-pins' | 'important' | 'latest';
   onArchive?: (announcementId: string) => void;
   onBookmarkToggle?: (announcement: AnnouncementCardRecord) => void;
   onPinToggle?: (announcement: AnnouncementCardRecord) => void;
 };
 
-export function AnnouncementCard({
+export function AnnouncementCard({ compact = false, ...props }: AnnouncementCardProps) {
+  return <AnnouncementPreview {...props} presentation={compact ? 'compact' : 'feed'} />;
+}
+
+export function AnnouncementWidgetCard(props: Omit<AnnouncementCardProps, 'compact'>) {
+  return <AnnouncementPreview {...props} presentation="widget" />;
+}
+
+type AnnouncementPreviewProps = Omit<AnnouncementCardProps, 'compact'> & {
+  presentation: 'feed' | 'compact' | 'widget';
+};
+
+function AnnouncementPreview({
   announcement,
-  compact = false,
+  presentation,
   canArchive = false,
   className,
   footer,
   index,
+  orderingContext,
   onArchive,
   onBookmarkToggle,
   onPinToggle,
-}: AnnouncementCardProps) {
+}: AnnouncementPreviewProps) {
+  const widget = presentation === 'widget';
   const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
+  const author = announcement.author?._id ? {
+    ...announcement.author,
+    _id: announcement.author._id as UserProfilePerson['_id'],
+    firstName: announcement.author.firstName ?? '',
+    lastName: announcement.author.lastName ?? '',
+  } : null;
 
-  const statusStyle = announcement.status === 'ACTIVE'
-    ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'
-    : announcement.status === 'PENDING_APPROVAL'
-    ? 'bg-amber-500/15 text-amber-500 border-amber-500/30 hover:bg-amber-500/25'
-    : announcement.status === 'REJECTED'
-    ? 'bg-red-500/15 text-red-500 border-red-500/30 hover:bg-red-500/25'
-    : announcement.status === 'EXPIRED'
-    ? 'bg-amber-500/15 text-amber-500 border-amber-500/30 hover:bg-amber-500/25'
-    : announcement.status === 'ARCHIVED'
-    ? 'bg-gray-500/15 text-gray-500 border-gray-500/30 hover:bg-gray-500/25'
-    : 'bg-muted text-muted-foreground';
-
-  const targetColor = ANNOUNCEMENT_TAG_BADGE_COLORS[announcement.targetType] ?? 'gray';
+  const status = {
+    PENDING_APPROVAL: { label: 'Pending review', color: 'amber' },
+    REJECTED: { label: 'Needs changes', color: 'red' },
+    EXPIRED: { label: 'Expired', color: 'gray' },
+    ARCHIVED: { label: 'Archived', color: 'gray' },
+  }[announcement.status] as { label: string; color: BadgeColor } | undefined;
+  const createdAt = new Date(announcement.createdAt);
+  const createdAtTimestamp = createdAt.getTime();
+  const [createdAtTitle, setCreatedAtTitle] = useState<{ timestamp: number; label: string } | null>(null);
+  useEffect(() => {
+    setCreatedAtTitle({ timestamp: createdAtTimestamp, label: new Date(createdAtTimestamp).toLocaleString() });
+  }, [createdAtTimestamp]);
+  const hasClientTime = createdAtTitle?.timestamp === createdAtTimestamp;
+  const expiresAt = announcement.expiresAt ? new Date(announcement.expiresAt).getTime() : null;
+  const [expiredAt, setExpiredAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (expiresAt === null || !Number.isFinite(expiresAt)) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const checkExpiry = () => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        setExpiredAt(expiresAt);
+        return;
+      }
+      // Browsers clamp longer delays to 1ms. Recheck long-lived posts safely.
+      timer = setTimeout(checkExpiry, Math.min(remaining, 2_147_483_647));
+    };
+    // Determine expiry after hydration so the initial prefix is deterministic.
+    checkExpiry();
+    return () => clearTimeout(timer);
+  }, [expiresAt]);
+  const audienceMetadata = <>
+    <AnnouncementAudience announcement={announcement} />
+    {orderingContext !== 'personal-pins' && announcement.isPinned ? <span>Pinned for you</span> : null}
+    {orderingContext !== 'important' && announcement.isPromoted ? <span>Important</span> : null}
+    {status ? <Badge variant="solid" size="sm" color={status.color}>{status.label}</Badge> : null}
+  </>;
+  const canPin = !!onPinToggle && announcement.status === 'ACTIVE';
+  const canArchiveAnnouncement = canArchive && !!onArchive && announcement.status === 'ACTIVE';
 
   return (
     <Card
       index={index}
       href={`/announcements/${announcement._id}`}
-      label={`Open announcement: ${announcement.title}`}
-      className={cn('announcement-card relative', !announcement.isRead && 'border-l-2 border-l-primary', className)}
+      attention={!announcement.isRead}
+      label={`Open announcement: ${announcement.title} (${announcement.isRead ? 'Read' : 'Unread'})`}
+      className={cn('announcement-card relative', className)}
+      data-read-state={announcement.isRead ? 'read' : 'unread'}
     >
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3 sm:gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                {announcement.isAdminGeneral ? (
-                  <Badge variant="solid" color="red" size="sm">
-                    Push notification
-                  </Badge>
-                ) : null}
-                {announcement.isPinned ? (
-                  <Badge variant="solid" color="amber" size="sm" className="gap-1">
-                    <Pin size={10} />
-                    Pinned
-                  </Badge>
-                ) : null}
-                {announcement.isPromoted ? (
-                  <Badge variant="solid" color="amber" size="sm">
-                    Promoted
-                  </Badge>
-                ) : null}
-                {announcement.isBookmarked ? (
-                  <Badge variant="solid" color="blue" size="sm" className="gap-1">
-                    <BookmarkCheck size={10} />
-                    Saved
-                  </Badge>
-                ) : null}
-                {announcement.status !== 'ACTIVE' ? (
-                  <Badge variant="solid" size="sm" className={cn(statusStyle)}>
-                    {announcement.status === 'PENDING_APPROVAL' && 'Pending review'}
-                    {announcement.status === 'REJECTED' && 'Needs changes'}
-                    {announcement.status === 'EXPIRED' && 'Expired'}
-                    {announcement.status === 'ARCHIVED' && 'Archived'}
-                  </Badge>
-                ) : null}
-                <Badge variant="solid" size="sm" color={targetColor}>
-                  {ANNOUNCEMENT_TAG_LABELS[announcement.targetType] || announcement.targetType.replace(/_/g, ' ')}
-                </Badge>
-                {announcement.club?.name ? (
-                  <Badge variant="solid" color="emerald" size="sm">
-                    {announcement.club.name}
-                  </Badge>
-                ) : null}
-              </div>
-
-              <h3 className={cn('font-semibold text-foreground leading-snug', compact ? 'line-clamp-1 text-sm' : 'line-clamp-2')}>
-                {announcement.title}
-              </h3>
-
-              <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p>
-
-              <p className={cn('mt-2.5 text-muted-foreground', compact ? 'text-xs' : 'text-sm')}>
-                {authorName || 'Unknown author'}
-                <DeveloperBadge user={announcement.author} size={12} className="mx-1" />
-                {' '}·{' '}
-                {formatDistanceToNow(new Date(announcement.createdAt), {
-                  addSuffix: true,
-                })}
-                {announcement.expiresAt ? (
-                  <span className="ml-2 text-amber-500">
-                    <Clock size={12} className="inline mr-1" />
-                    expires{' '}
-                    {formatDistanceToNow(new Date(announcement.expiresAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                ) : null}
-              </p>
-            </div>
-
-            <div className="relative z-30 flex-shrink-0 flex flex-col items-center gap-1">
-              {announcement.allowComments ? (
-                <Tooltip content="Open comments">
-                  <Button asChild variant="ghost" size="sm" leadingIcon={MessageCircle} aria-label={`Open ${announcement._count?.comments || 0} comments`} className="gap-1.5">
-                    <Link href={`/announcements/${announcement._id}#comments`}>{announcement._count?.comments || 0}</Link>
-                  </Button>
-                </Tooltip>
-              ) : null}
-              <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
-                <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
-              </Tooltip>
-              {onBookmarkToggle ? (
-                <Tooltip content={announcement.isBookmarked ? 'Remove bookmark' : 'Bookmark'}>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onBookmarkToggle(announcement)}
-                    aria-label={announcement.isBookmarked ? 'Remove bookmark' : 'Bookmark'}
-                  >
-                    {announcement.isBookmarked ? <BookmarkCheck /> : <Bookmark />}
-                  </Button>
-                </Tooltip>
-              ) : null}
-              {onPinToggle && announcement.status === 'ACTIVE' ? (
-                <Tooltip content={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onPinToggle(announcement)}
-                    aria-label={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}
-                  >
-                    {announcement.isPinned ? <PinOff /> : <Pin />}
-                  </Button>
-                </Tooltip>
-              ) : null}
-              {canArchive && announcement.status === 'ACTIVE' && onArchive ? (
-                <Tooltip content="Archive announcement">
-                  <Button variant="ghost" size="icon-sm" onClick={() => onArchive(announcement._id)} aria-label="Archive announcement">
-                    <Archive />
-                  </Button>
-                </Tooltip>
-              ) : null}
-            </div>
-          </div>
-
-          {footer ? <div className="mt-4">{footer}</div> : null}
-        </CardContent>
+      <CardContent className={widget ? 'px-3 pt-4' : 'px-4 pt-4 sm:px-5'}>
+        {!widget ? <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          {audienceMetadata}
+        </div> : null}
+        <h3 className={cn(
+          'leading-snug text-foreground',
+          !widget && 'mt-2',
+          presentation === 'compact' ? 'line-clamp-1' : 'line-clamp-2',
+          widget ? 'text-sm' : 'text-base',
+          announcement.isRead ? 'font-normal' : 'font-semibold',
+        )}>{announcement.title}</h3>
+        {!widget ? <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p> : null}
+      </CardContent>
+      <CardFooter className={cn('flex items-center justify-between gap-y-2', widget ? 'gap-x-2 px-3 pt-1' : 'flex-wrap gap-x-4 px-4 pt-3 sm:px-5')}>
+        <div className={cn('flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground', widget ? 'flex-1 text-xs' : 'text-sm')}>
+          {widget ? audienceMetadata : null}
+          {!widget ? <>
+            {author ? <UserProfileAvatar person={author} /> : null}
+            <span>{authorName || 'Unknown author'}<DeveloperBadge user={announcement.author} size={12} className="ml-1" /></span>
+            <span aria-hidden>·</span>
+          </> : null}
+          <time dateTime={createdAt.toISOString()} title={hasClientTime ? createdAtTitle.label : createdAt.toISOString()}>
+            {hasClientTime ? formatDistanceToNow(createdAt, { addSuffix: true }) : createdAt.toISOString().slice(0, 10)}
+          </time>
+          {announcement.expiresAt ? (
+            <span className="inline-flex items-center gap-1">
+              <Clock aria-hidden className="size-3.5" />
+              {expiresAt !== null && expiredAt === expiresAt ? 'Expired' : 'Expires'} {hasClientTime
+                ? formatDistanceToNow(new Date(announcement.expiresAt), { addSuffix: true })
+                : new Date(announcement.expiresAt).toISOString().slice(0, 10)}
+            </span>
+          ) : null}
+        </div>
+        <div className={cn('ml-auto flex flex-wrap items-center gap-1', widget ? 'shrink-0' : 'max-w-full')}>
+          <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
+            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
+          </Tooltip>
+          {onBookmarkToggle ? (
+            <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
+              <Button
+                variant={announcement.isBookmarked ? 'tertiary' : 'ghost'}
+                size="icon-sm"
+                active={announcement.isBookmarked}
+                aria-pressed={!!announcement.isBookmarked}
+                onClick={() => onBookmarkToggle(announcement)}
+                aria-label={`${announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}: ${announcement.title}`}
+              >
+                <Bookmark fill={announcement.isBookmarked ? 'currentColor' : 'none'} className={announcement.isBookmarked ? 'text-primary' : undefined} />
+              </Button>
+            </Tooltip>
+          ) : null}
+          {announcement.allowComments ? (
+            <Tooltip content="Open comments">
+              <Button asChild variant="ghost" size={widget || !announcement.commentCount ? 'icon-sm' : 'sm'} leadingIcon={widget || !announcement.commentCount ? undefined : MessageCircle}>
+                <Link href={`/announcements/${announcement._id}#comments`} aria-label={`Open comments: ${announcement.title}`}>
+                  {widget || !announcement.commentCount ? <MessageCircle /> : announcement.commentCount}
+                </Link>
+              </Button>
+            </Tooltip>
+          ) : null}
+          {canPin || canArchiveAnnouncement ? (
+            <DropdownMenu>
+              <DropdownTrigger render={
+                <Button id={`announcement-more-${announcement._id}`} variant="ghost" size="icon-sm" aria-label={`More actions: ${announcement.title}`}><Ellipsis /></Button>
+              } />
+              <DropdownContent align="end">
+                {canPin ? <MenuItem index={0} icon={announcement.isPinned ? PinOff : Pin} label={announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'} onSelect={() => onPinToggle?.(announcement)} /> : null}
+                {canArchiveAnnouncement ? <MenuItem index={canPin ? 1 : 0} icon={Archive} label="Archive announcement" onSelect={() => onArchive?.(announcement._id)} /> : null}
+              </DropdownContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
+        {footer ? <div className="w-full">{footer}</div> : null}
+      </CardFooter>
     </Card>
   );
 }

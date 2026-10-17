@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
-import { Elevated } from '@/lib/elevated';
+import { Button } from '@/components/ui/button';
+import { useShape } from '@/lib/shape-context';
+import { buildNotificationChannelTree, type NotificationChannelNode } from './notification-channel-tree';
+import type { FunctionReturnType } from 'convex/server';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
 import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
@@ -14,7 +17,9 @@ import {
   CalendarDays,
   ChevronDown,
   Hash,
+  FolderOpen,
   Megaphone,
+  MessageSquareText,
   ShieldAlert,
   Presentation,
   RefreshCcw,
@@ -37,11 +42,13 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   EVENT: CalendarDays,
   FLEX_FRIDAY: Presentation,
   CONTENT_MODERATED: ShieldAlert,
+  FEEDBACK: MessageSquareText,
   FRIEND_REQUEST: Users,
   FRIEND_SCHEDULE_CHANGE: RefreshCcw,
 };
 
 export function NotificationSettingsPanel() {
+  const shape = useShape();
   const user = useCurrentUser();
   const preferences = useQuery(api.notifications.preferences.list);
   const [optimisticGlobalEnabled, setOptimisticGlobalEnabled] = useState<
@@ -75,7 +82,7 @@ export function NotificationSettingsPanel() {
   const clubsLoading = myClubs === undefined;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex w-full min-w-0 max-w-4xl flex-col gap-6">
       <PushNotificationSettings />
       <section className="flex flex-col gap-3">
         <div>
@@ -83,9 +90,8 @@ export function NotificationSettingsPanel() {
             <BellRing className="size-4 text-primary" aria-hidden />
             <h2 className="text-sm font-semibold text-foreground">General notifications</h2>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Choose which school-wide updates reach your inbox.</p>
         </div>
-        <Elevated offset={1} className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className={cn('divide-y divide-border/30 overflow-hidden border border-border/50 bg-card', shape.mergedBg)}>
           {globalSettings.map((setting) => {
             const Icon = CATEGORY_ICONS[setting.key];
             const preference = preferences?.find(
@@ -98,7 +104,7 @@ export function NotificationSettingsPanel() {
             return (
               <div
                 key={setting.key}
-                className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0 transition-colors hover:bg-hover"
+                className="flex min-w-0 items-center justify-between gap-3 px-3 py-2.5"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <Icon
@@ -130,7 +136,7 @@ export function NotificationSettingsPanel() {
               </div>
             );
           })}
-        </Elevated>
+        </div>
       </section>
       {!hasAdministrativeClubAccess ? (
         <section className="flex flex-col gap-3">
@@ -139,7 +145,6 @@ export function NotificationSettingsPanel() {
               <AtSign className="size-4 text-primary" aria-hidden />
               <h2 className="text-sm font-semibold text-foreground">Club notifications</h2>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Open a club to choose notifications for each channel.</p>
           </div>
           {clubsLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
@@ -158,69 +163,54 @@ export function NotificationSettingsPanel() {
   );
 }
 
-function ClubNotificationChannels({
-  clubId,
-  clubName,
-}: {
-  clubId: Id<'clubs'>;
-  clubName: string;
-}) {
-  const channels = useQuery(api.clubs.channels.list, { clubId }) ?? [];
+type ClubNavigation = NonNullable<FunctionReturnType<typeof api.clubs.detail.getWorkspaceNavigation>>;
+type Channel = ClubNavigation['channels'][number];
+type Unit = ClubNavigation['units'][number];
+
+function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; clubName: string }) {
+  const shape = useShape();
+  const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
   const preferences = useQuery(api.notifications.preferences.list);
   const [optimisticClubEnabled, setOptimisticClubEnabled] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
-  const [optimisticChannelEnabled, setOptimisticChannelEnabled] = useState<
-    Record<string, boolean>
-  >({});
-  const clubScopeKey = `club:${clubId}`;
+  const tree = useMemo(
+    () => buildNotificationChannelTree(navigation?.units ?? [], navigation?.channels ?? []),
+    [navigation],
+  );
   const clubPreference = preferences?.find(
-    (preference) =>
-      preference.category === 'CLUB_ANNOUNCEMENT' &&
-      preference.scopeKey === clubScopeKey,
+    (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === `club:${clubId}`,
+  ) ?? preferences?.find(
+    (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === 'global',
   );
-  const globalClubPreference = preferences?.find(
-    (preference) =>
-      preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === 'global',
-  );
-  const storedClubEnabled =
-    (clubPreference ?? globalClubPreference)?.enabled !== false;
+  const storedClubEnabled = clubPreference?.enabled !== false;
   const clubEnabled = optimisticClubEnabled ?? storedClubEnabled;
 
   useEffect(() => {
-    if (
-      optimisticClubEnabled !== null &&
-      preferences !== undefined &&
-      storedClubEnabled === optimisticClubEnabled
-    ) {
+    if (optimisticClubEnabled !== null && preferences !== undefined && storedClubEnabled === optimisticClubEnabled) {
       setOptimisticClubEnabled(null);
     }
   }, [optimisticClubEnabled, preferences, storedClubEnabled]);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Elevated offset={1} className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2.5">
+      <div className={cn('overflow-hidden border border-border/50 bg-card', shape.mergedBg)}>
+        <div className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2">
+          <Megaphone className={cn('size-4 shrink-0', clubEnabled ? 'text-primary' : 'text-muted-foreground')} aria-hidden />
+          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold" title={clubName}>{clubName}</h3>
           <CollapsibleTrigger asChild>
-            <button
+            <Button
               type="button"
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              variant="ghost"
+              size="sm"
               aria-label={`${open ? 'Collapse' : 'Expand'} ${clubName} notification settings`}
             >
-              <Megaphone
-                className={clubEnabled ? 'size-4 shrink-0 text-primary' : 'size-4 shrink-0 text-muted-foreground'}
-                aria-hidden
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-foreground">{clubName}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {channels.length} channel{channels.length === 1 ? '' : 's'}
+              {navigation ? (
+                <span className="tabular-nums">
+                  {navigation.channels.length} channel{navigation.channels.length === 1 ? '' : 's'}
                 </span>
-              </span>
-              <ChevronDown
-                className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
-                aria-hidden
-              />
-            </button>
+              ) : null}
+              <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+            </Button>
           </CollapsibleTrigger>
           <NotificationScopeSwitch
             category="CLUB_ANNOUNCEMENT"
@@ -231,67 +221,69 @@ function ClubNotificationChannels({
             onOptimisticChange={setOptimisticClubEnabled}
           />
         </div>
-        <CollapsibleContent>
-          {channels.length > 0 ? (
-            <div className="divide-y divide-border/60 border-t border-border/60">
-          {channels.map((channel) => {
-            const channelScopeKey = `channel:${channel._id}`;
-            const channelPreference = preferences?.find(
-              (preference) =>
-                preference.category === 'CLUB_CHANNEL_MENTION' &&
-                preference.scopeKey === channelScopeKey,
-            );
-            const globalChannelPreference = preferences?.find(
-              (preference) =>
-                preference.category === 'CLUB_CHANNEL_MENTION' &&
-                preference.scopeKey === 'global',
-            );
-            const storedChannelEnabled =
-              (channelPreference ?? globalChannelPreference)?.enabled !== false;
-            const channelEnabled =
-              clubEnabled &&
-              (optimisticChannelEnabled[channel._id] ?? storedChannelEnabled);
-
-            return (
-              <div
-                key={channel._id}
-                className="flex min-w-0 items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-hover"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <Hash
-                    className={channelEnabled ? 'size-3.5 shrink-0 text-primary' : 'size-3.5 shrink-0 text-muted-foreground'}
-                    aria-hidden
-                  />
-                  <p className="truncate text-sm font-medium">{channel.name}</p>
-                </div>
-                <NotificationScopeSwitch
-                  category="CLUB_CHANNEL_MENTION"
-                  label={`${channel.name} mentions`}
-                  clubId={clubId}
-                  channelId={channel._id}
-                  compact
-                  className="shrink-0"
-                  parentEnabled={clubEnabled}
-                  onOptimisticChange={(enabled) => {
-                    setOptimisticChannelEnabled((current) => {
-                      if (enabled === null) {
-                        const next = { ...current };
-                        delete next[channel._id];
-                        return next;
-                      }
-                      return { ...current, [channel._id]: enabled };
-                    });
-                  }}
-                />
-              </div>
-            );
-          })}
-            </div>
+        <CollapsibleContent className="border-t border-border/30 px-3 pb-2">
+          {navigation === undefined ? (
+            <p className="py-3 text-xs text-muted-foreground" role="status">Loading channels…</p>
+          ) : tree.length ? (
+            <NotificationChannelBranches nodes={tree} clubId={clubId} clubEnabled={clubEnabled} />
           ) : (
-            <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">No channels available.</p>
+            <p className="py-3 text-xs text-muted-foreground">No channels available.</p>
           )}
         </CollapsibleContent>
-      </Elevated>
+      </div>
     </Collapsible>
+  );
+}
+
+function NotificationChannelBranches({ nodes, clubId, clubEnabled }: {
+  nodes: NotificationChannelNode<Unit, Channel>[];
+  clubId: Id<'clubs'>;
+  clubEnabled: boolean;
+}) {
+  return (
+    <ul className="ml-2">
+      {nodes.map((node) => (
+        <li
+          key={node.kind === 'unit' ? node.unit._id : node.channel._id}
+          className="relative pl-4 before:absolute before:bottom-0 before:left-0 before:top-0 before:border-l before:border-border last:before:bottom-auto last:before:h-5 after:absolute after:left-0 after:top-5 after:w-3 after:border-t after:border-border"
+        >
+          {node.kind === 'unit' ? (
+            <>
+              <div className="flex min-h-10 min-w-0 items-center gap-2 text-muted-foreground">
+                <FolderOpen className="size-4 shrink-0" aria-hidden />
+                <span className="min-w-0 truncate text-sm font-medium" title={node.unit.name}>{node.unit.name}</span>
+              </div>
+              <NotificationChannelBranches nodes={node.children} clubId={clubId} clubEnabled={clubEnabled} />
+            </>
+          ) : (
+            <ChannelNotificationRow channel={node.channel} clubId={clubId} clubEnabled={clubEnabled} />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ChannelNotificationRow({ channel, clubId, clubEnabled }: {
+  channel: Channel;
+  clubId: Id<'clubs'>;
+  clubEnabled: boolean;
+}) {
+  return (
+    <div className="flex min-h-10 min-w-0 items-center justify-between gap-3 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <Hash className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="truncate text-sm" title={channel.name}>{channel.name}</span>
+      </div>
+      <NotificationScopeSwitch
+        category="CLUB_CHANNEL_MENTION"
+        label={`${channel.name} mentions`}
+        clubId={clubId}
+        channelId={channel._id}
+        compact
+        className="shrink-0"
+        parentEnabled={clubEnabled}
+      />
+    </div>
   );
 }

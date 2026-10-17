@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { MessageSquareText, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame } from '@/components/layout/page-frame';
-import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
@@ -18,6 +17,8 @@ import { uploadFileToConvex } from '@/lib/convex-upload';
 import { api } from '~/apps/convex/src/_generated/api';
 import { APP_VERSION, RELEASE_CHANNEL, formatVersion } from '@ia/devlog';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { useShape } from '@/lib/shape-context';
+import { cn } from '@/lib/utils';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
 const MAX_FEEDBACK_IMAGES = 3;
@@ -38,8 +39,9 @@ export default function ReportPage() {
   const submitReport = useMutation(api.moderation.reports.submit);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeFeedbackImage = useAction(api.uploads.files.finalizeFeedbackImage);
-  const myFeedback = useQuery(api.moderation.reports.listMyFeedback) ?? [];
+  const myFeedback = useQuery(api.moderation.reports.listMyFeedback);
   const bugReward = useQuery(api.moderation.bugRewards.myReward);
+  const shape = useShape();
   const { toast } = useToast();
   const trimmedMessage = message.trim();
 
@@ -124,141 +126,123 @@ export default function ReportPage() {
   }
 
   return (
-    <AppShell>
-      <PageFrame className="max-w-2xl">
-        <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
-          <Card className="bg-transparent">
-            <CardContent className="px-4 py-4 md:p-6">
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <MessageSquareText className="size-5" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
-                  <p className="mt-1 text-sm leading-6 text-foreground/85">
-                    Report a bug, suggest a feature, or share an idea. For a bug, include the page, what you did, what you expected, and what happened. A screenshot can help school staff review it.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </CardGroup>
-
-        <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
-          <Card className="bg-transparent">
-            <CardHeader className="pb-3 border-b border-border/40 mb-4">
-              <CardTitle className="text-lg font-semibold text-foreground">What would you like to share?</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="feedback-kind" className="text-sm font-medium text-foreground">Feedback type</label>
-              <Select value={feedbackKind} onValueChange={(value) => setFeedbackKind(value as 'BUG' | 'OTHER')}>
-                <SelectTrigger id="feedback-kind" placeholder="Choose feedback type" />
-                <SelectContent>
-                  <SelectItem value="OTHER" index={0}>Idea or other feedback</SelectItem>
-                  <SelectItem value="BUG" index={1}>Bug report</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Only bugs confirmed by a developer count toward Bug Hunter tags.</p>
-            </div>
+    <AppShell headerSlot={<h1 className="text-lg font-semibold tracking-tight text-foreground">Feedback</h1>}>
+      <PageFrame className="max-w-2xl gap-8">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-3">
+            <label htmlFor="feedback-message" className="text-sm font-semibold text-foreground">
+              What would you like to change?
+            </label>
+            <label htmlFor="feedback-kind" className="text-sm font-medium text-foreground">Feedback type</label>
+            <Select value={feedbackKind} onValueChange={(value) => setFeedbackKind(value as 'BUG' | 'OTHER')}>
+              <SelectTrigger id="feedback-kind" placeholder="Choose feedback type" />
+              <SelectContent>
+                <SelectItem value="OTHER" index={0}>Idea or other feedback</SelectItem>
+                <SelectItem value="BUG" index={1}>Bug report</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Only bugs confirmed by a developer count toward Bug Hunter tags.</p>
             <Textarea
-              aria-label="Share your feedback"
-              placeholder="Share an idea, request, concern, or other feedback..."
+              id="feedback-message"
+              placeholder="Describe an issue or suggest an improvement…"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               maxLength={MAX_FEEDBACK_CHARACTERS}
               rows={7}
-              className="border-border/80 bg-background/75 text-foreground placeholder:text-foreground/65 focus-visible:bg-background/90"
+              required
+              disabled={isSubmitting}
+              aria-describedby="feedback-character-count"
             />
-            <div className="space-y-2">
-              {images.length > 0 ? (
-                <div className="flex flex-wrap gap-2" aria-label="Attached images">
-                  {images.map((image, index) => (
-                    <div key={image.previewUrl} className="relative size-20 overflow-hidden rounded-md border bg-muted">
-                      <img src={image.previewUrl} alt={`Selected image ${index + 1}`} className="size-full object-cover" />
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="secondary"
-                        aria-label={`Remove selected image ${index + 1}`}
-                        className="absolute right-1 top-1"
-                        disabled={isSubmitting}
-                        onClick={() => removeImage(index)}
-                      >
-                        <X />
-                      </Button>
-                    </div>
-                  ))}
+          </div>
+          {images.length > 0 ? (
+            <div className="flex flex-wrap gap-3" aria-label="Attached images">
+              {images.map((image, index) => (
+                <div key={image.previewUrl} className="relative size-20 overflow-hidden rounded-md bg-muted">
+                  <img src={image.previewUrl} alt={image.file.name} className="size-full object-cover" />
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="secondary"
+                    aria-label={`Remove ${image.file.name}`}
+                    className="absolute right-1 top-1"
+                    disabled={isSubmitting}
+                    onClick={() => removeImage(index)}
+                  >
+                    <X />
+                  </Button>
                 </div>
-              ) : null}
-              <FileInput
-                accept="image/png,image/jpeg,image/gif,image/webp"
-                label="Attach image"
-                disabled={images.length >= MAX_FEEDBACK_IMAGES || isSubmitting}
-                onFileSelect={addImage}
-              />
-              <p className="text-xs text-foreground/80">Up to 3 images, 5 MB each. PNG, JPEG, GIF, or WebP.</p>
+              ))}
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-medium text-foreground/80">
-                {message.length}/{MAX_FEEDBACK_CHARACTERS}
-              </p>
-              <Button type="submit" disabled={!trimmedMessage || isSubmitting} loading={isSubmitting}>
-                Send feedback
-              </Button>
-            </div>
-            <p className="text-xs leading-5 text-foreground/80">
-              We&apos;ll include your app version,{' '}
-              <Link href="/profile?section=whats-new" className="font-medium text-foreground underline underline-offset-4">
-                {formatVersion(APP_VERSION, RELEASE_CHANNEL)}
-              </Link>
-              , with this feedback.
+          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <FileInput
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              label={images.length ? `Attach image (${images.length}/${MAX_FEEDBACK_IMAGES})` : 'Attach image'}
+              disabled={images.length >= MAX_FEEDBACK_IMAGES || isSubmitting}
+              onFileSelect={addImage}
+              aria-describedby="feedback-image-limits"
+            />
+            <p id="feedback-character-count" className="text-xs tabular-nums text-muted-foreground">
+              {message.length}/{MAX_FEEDBACK_CHARACTERS}
             </p>
-          </form>
-            </CardContent>
-          </Card>
-        </CardGroup>
+          </div>
+          <p id="feedback-image-limits" className="text-xs text-muted-foreground">
+            Up to 3 images, 5 MB each · PNG, JPEG, GIF, WebP
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Version{' '}
+              <Link href="/profile?section=whats-new" className="underline underline-offset-4">
+                {formatVersion(APP_VERSION, RELEASE_CHANNEL)}
+              </Link>{' '}
+              included
+            </p>
+            <Button type="submit" disabled={!trimmedMessage || isSubmitting} loading={isSubmitting}>
+              Send feedback
+            </Button>
+          </div>
+        </form>
 
-        <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
-          <Card className="bg-transparent">
-            <CardHeader className="pb-3 border-b border-border/40 mb-4">
-              <CardTitle className="text-lg font-semibold text-foreground">Your feedback</CardTitle>
-              {bugReward ? <BugHunterTag user={{ approvedBugCount: bugReward.approvedCount, bugTagColor: bugReward.color }} /> : null}
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-          {myFeedback.length === 0 ? (
-            <p className="text-sm text-foreground/85">Your submitted feedback and staff responses will appear here.</p>
+        <section className="flex flex-col gap-3" aria-labelledby="feedback-history-title">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="feedback-history-title" className="text-sm font-semibold text-foreground">Your feedback</h2>
+            {bugReward ? <BugHunterTag user={{ approvedBugCount: bugReward.approvedCount, bugTagColor: bugReward.color }} /> : null}
+          </div>
+          {myFeedback === undefined ? (
+            <p className="text-sm text-muted-foreground" role="status">Loading feedback…</p>
+          ) : myFeedback.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No feedback submitted yet.</p>
           ) : (
-            <div className="divide-y rounded-lg border">
+            <div className={cn('divide-y divide-border/30 border border-border/50 bg-card', CARD_SURFACE_FOREGROUND, shape.mergedBg)}>
               {myFeedback.map((feedback) => (
-                <article key={feedback._id} className="p-3">
-                  <p className="whitespace-pre-wrap text-sm text-foreground">{feedback.reason}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {feedback.status.toLowerCase()} · {formatDistanceToNow(new Date(feedback.createdAt), { addSuffix: true })}
-                  </p>
+                <article key={feedback._id} className="flex min-w-0 flex-col gap-3 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <p>{feedback.status === 'PENDING' ? 'Awaiting review' : feedback.status === 'RESOLVED' ? 'Resolved' : 'Closed'}</p>
+                    <time dateTime={new Date(feedback.createdAt).toISOString()}>
+                      {formatDistanceToNow(new Date(feedback.createdAt), { addSuffix: true })}
+                    </time>
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm text-foreground">{feedback.reason}</p>
                   {feedback.feedbackKind === 'BUG' ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{feedback.bugApprovedAt ? 'Developer-approved bug' : 'Bug awaiting developer approval'}</p>
+                    <p className="text-xs text-muted-foreground">{feedback.bugApprovedAt ? 'Developer-approved bug' : 'Bug awaiting developer approval'}</p>
                   ) : null}
                   {feedback.reviewNote ? (
-                    <div className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm text-foreground">
-                      {feedback.reviewNote}
+                    <div className="border-l-2 border-border/50 pl-3 text-sm">
+                      <p className="font-medium text-foreground">Review update</p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">{feedback.reviewNote}</p>
                     </div>
                   ) : null}
                   {feedback.responses.map((response) => (
-                    <div key={response._id} className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm">
-                      <p className="text-xs font-medium text-muted-foreground">School staff</p>
-                      <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
+                    <div key={response._id} className="border-l-2 border-border/50 pl-3 text-sm">
+                      <p className="font-medium text-foreground">School staff</p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">{response.body}</p>
                     </div>
                   ))}
                 </article>
               ))}
             </div>
           )}
-          <p className="mt-3 text-xs text-foreground/80">Staff responses are one-way; submit a new feedback item for anything else.</p>
-            </CardContent>
-          </Card>
-        </CardGroup>
+        </section>
       </PageFrame>
     </AppShell>
   );

@@ -1,13 +1,13 @@
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useId, useRef, useState, type ReactElement } from 'react';
 import { ArrowLeft, BookOpen, Building2, ChevronDown, UserPlus, UsersRound } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
@@ -23,8 +23,12 @@ export type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'F
 
 export type UserProfilePerson = Pick<
   ClubUserRef,
-  '_id' | 'firstName' | 'lastName' | 'avatarUrl' | 'uniqueId' | 'roles'
-> & { isDeveloper?: boolean | null; approvedBugCount?: number | null; bugTagColor?: string | null };
+  '_id' | 'firstName' | 'lastName'
+> & Partial<Pick<ClubUserRef, 'avatarUrl' | 'uniqueId' | 'roles'>> & {
+  isDeveloper?: boolean | null;
+  approvedBugCount?: number | null;
+  bugTagColor?: string | null;
+};
 
 type UserProfileContentProps = {
   active: boolean;
@@ -112,7 +116,7 @@ export function UserProfileContent({
       ? { personId: person._id }
       : 'skip',
   );
-  const isStudent = person.roles?.some((role) => ['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN'].includes(role));
+  const isStudent = !!person.roles?.some((role) => ['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN'].includes(role));
   const resolvedFriendshipStatus = profileContext?.friendshipStatus ?? friendshipStatus;
   const canOfferFriendRequest =
     canSendFriendRequest && !isCurrentUser && isStudent && resolvedFriendshipStatus === 'NONE' && !!onSendFriendRequest;
@@ -139,9 +143,9 @@ export function UserProfileContent({
     >
       <div className={cn('flex min-w-0 items-start gap-3', isPreview ? 'p-3' : 'pb-5 pr-8')}>
         <ClubAvatar
-          person={person}
-          className={isPreview ? 'size-12 rounded-xl' : 'size-14 rounded-xl'}
-          fallbackClassName="rounded-xl text-sm"
+          person={{ ...person, avatarUrl: person.avatarUrl ?? null }}
+          className={isPreview ? 'size-12' : 'size-14'}
+          fallbackClassName="text-sm"
         />
         <div className="min-w-0 flex-1">
           <div id={headingId} className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-foreground">
@@ -149,7 +153,7 @@ export function UserProfileContent({
             <DeveloperBadge user={person} size={15} />
             <BugHunterTag user={person} />
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">ID {person.uniqueId}</p>
+          {person.uniqueId ? <p className="mt-0.5 truncate text-xs text-muted-foreground">ID {person.uniqueId}</p> : null}
           {roleLabels.length > 0 || friendshipLabel ? (
             <div className="mt-2 flex flex-wrap gap-1">
               {friendshipLabel ? (
@@ -370,9 +374,10 @@ export function UserProfileContent({
 type UserProfileDialogProps = Omit<UserProfileContentProps, 'active' | 'variant' | 'onNavigate'> & {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  trigger?: ReactElement;
 };
 
-export function UserProfileDialog({ open, onOpenChange, ...contentProps }: UserProfileDialogProps) {
+export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps }: UserProfileDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   // Profiles opened from inside this one (mutual friends), newest last. The
   // trail belongs to the person the dialog was opened for and clears on close.
@@ -394,6 +399,7 @@ export function UserProfileDialog({ open, onOpenChange, ...contentProps }: UserP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent
         ref={contentRef}
         size="lg"

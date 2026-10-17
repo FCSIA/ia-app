@@ -74,6 +74,12 @@ export const NOTIFICATION_CATEGORY_DETAILS = {
     label: 'Content Moderation Alerts',
     staffOnly: true,
   },
+  FEEDBACK: {
+    badgeLabel: 'Feedback',
+    defaultEnabled: true,
+    description: 'Feedback submissions, staff responses, and resolution updates.',
+    label: 'Feedback',
+  },
   FRIEND_REQUEST: {
     badgeLabel: 'Friends',
     defaultEnabled: true,

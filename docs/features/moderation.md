@@ -63,8 +63,8 @@ composer. Keyword management is admin-only.
 ## Side Effects
 
 Keyword and report changes write audit events. A resolved general-feedback item
-notifies its submitter; dismissed feedback remains available only in the
-super-admin archive. Each staff response notifies the original submitter and
+notifies its submitter. Dismissed feedback moves out of the active staff queue
+into the super-admin archive and remains in the submitter's history. Each staff response notifies the original submitter and
 links them to the read-only feedback history.
 
 When configured, each general-feedback submission creates a GitHub issue in
@@ -72,6 +72,19 @@ When configured, each general-feedback submission creates a GitHub issue in
 signed `issues` webhook updates the app when that issue is closed (`completed`
 becomes resolved; `not_planned` becomes dismissed) or reopened (becomes
 pending). The issue link is visible to feedback reviewers.
+
+## Feedback page
+
+`/report` uses a single labeled textarea and explicit **Send feedback** action.
+Enter adds a new line rather than submitting. Attachment limits and the included
+app version stay beside the form; the draft and attachment controls are disabled
+while submitting. Failed sends retain the draft and selected images.
+
+The read-only history uses one rounded inner group with quiet separators.
+Submission text remains primary, status and time share a metadata row, and staff
+responses sit under the item they answer. Loading and empty history are distinct
+states. Feedback notifications use their own category rather than Moderation;
+see [Notifications](notifications.md).
 
 ## Known Limits
 

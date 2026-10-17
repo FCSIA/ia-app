@@ -14,7 +14,7 @@ import type { IconComponent } from "@/lib/icon-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
-import { dropdownShape as shape } from "@/components/ui/dropdown-shape";
+import { popupShape as shape } from "@/components/ui/popup-shape";
 
 // ---------------------------------------------------------------------------
 // Dropdown context — the single shared context for every Dropdown build.

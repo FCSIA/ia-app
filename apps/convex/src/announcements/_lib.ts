@@ -14,6 +14,8 @@ export const announcementListItemValidator = schema.doc("announcements").extend(
       _id: v.id("users"),
       firstName: v.string(),
       lastName: v.string(),
+      avatarUrl: v.union(v.string(), v.null()),
+      roles: v.array(v.string()),
       isDeveloper: v.optional(v.boolean()),
     }),
     v.null(),
