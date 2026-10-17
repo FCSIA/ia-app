@@ -2,22 +2,35 @@
 
 ## Active Focus
 
-- **Integration**: The user authorized working through the merge backlog.
-  Feedback issue sync (#110) and its security prerequisite (#153) are merged.
-  Dashboard PR #147 is squash-merged. Toast/profile geometry corrections are
-  in PR #154. Shared notification settings are in PR #155 on
-  `feat/shared-notification-settings`, stacked on #154 in the isolated
-  `merge-pr147` worktree.
-  The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
-  #149, and #150.
+- **Integration**: On October 17 the owner explicitly authorized squash-merging
+  the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
+  #154 landed as `c3a15071`. The remaining branches are retargeted to main;
+  #158 includes the settings, clubs, and feedback prerequisites so its final CI
+  validates their combined source. Each PR retains a separate squash merge.
+  This authorization supersedes older awaiting-owner-review notes below.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
-  Material UI changes still require design-owner review. Native iPhone swipe
+  New material UI changes still require design-owner review. Native iPhone swipe
   verification remains outstanding. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### UI integration and React Doctor (2026-10-17)
+
+- The settings hierarchy now indexes channels and units by parent once rather
+  than repeatedly scanning both collections for each branch. All three existing
+  hierarchy regressions and web typecheck pass; pinned React Doctor 0.9.8 reports
+  no new issues on #155. Clubs and feedback also have no new findings.
+- Announcement filters compile selection sets once per filter/search change and
+  share the predicate across current and past posts. Timestamps hydrate from
+  deterministic dates before showing local relative labels; expiry transitions
+  are scheduled after mount with capped browser timer delays. Seventeen focused
+  tests, web typecheck, and lint pass (21 existing warnings). The pinned scan has
+  no new announcement findings; suppressions were not added.
+- Full CI and security checks remain the merge gate. Production release and
+  deployment are separate operations; this integration does not authorize them.
 
 ### Merge backlog reconciliation (2026-10-15)
 
