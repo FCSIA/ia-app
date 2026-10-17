@@ -500,6 +500,15 @@
     overscroll-behavior-y: none;
   }
 
+  @supports (scrollbar-gutter: stable) {
+    body[data-scroll-locked] {
+      /* The root keeps the scrollbar gutter while Radix locks body scrolling.
+         react-remove-scroll-bar also adds that gap as a body margin, counting
+         it twice and shifting centered content. Keep its scroll lock intact. */
+      margin-right: 0 !important;
+    }
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
