@@ -4,9 +4,10 @@
 
 - **Integration**: On October 17 the owner explicitly authorized squash-merging
   the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
-  #154 landed as `c3a15071`. The remaining branches are retargeted to main;
-  #158 includes the settings, clubs, and feedback prerequisites so its final CI
-  validates their combined source. Each PR retains a separate squash merge.
+  #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
+  #158 includes those settings, clubs, and feedback prerequisites and is
+  reconciled with their squash commits so final CI validates the combined source.
+  Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
   New material UI changes still require design-owner review. Native iPhone swipe
@@ -31,6 +32,9 @@
   no new announcement findings; suppressions were not added.
 - Full CI and security checks remain the merge gate. Production release and
   deployment are separate operations; this integration does not authorize them.
+- The combined local suite passes all 385 backend tests, shared-package tests,
+  mobile typecheck, web typecheck, and 17 focused announcement tests. The final
+  combined PR scan reports no new React Doctor issues.
 
 ### Merge backlog reconciliation (2026-10-15)
 
