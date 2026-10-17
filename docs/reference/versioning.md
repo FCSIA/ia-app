@@ -76,11 +76,17 @@ To see what the next release would contain, without writing anything:
 bun run devlog:preview
 ```
 
+For scripts, `bun run devlog:preview --json` emits only the release object;
+the default output also includes the baseline, commit range, and rendered log.
+
 To prepare one for review from an up-to-date `main` checkout:
 
 ```bash
 bun run release --minor
 ```
+
+`bun run release:ship` uses the same PR preparation flow. Neither command pushes
+directly to `main` or creates a local release tag.
 
 The command prints the pull request URL. Wait for the usual approval and
 validation; merging the release PR begins deployment automatically. Use

@@ -4,6 +4,7 @@
  *
  *   node scripts/devlog.mjs check              verify generated files are in sync
  *   node scripts/devlog.mjs preview [--since]  show the release that would be cut
+ *   node scripts/devlog.mjs preview --json     emit only the release JSON
  *   node scripts/devlog.mjs cut [options]      cut a release and regenerate
  *
  * `packages/devlog/data/releases.json` is the single source of truth. The
@@ -494,6 +495,10 @@ function commandCut(flags, { previewOnly }) {
   const { since, release } = buildRelease(log, flags);
 
   if (previewOnly || flags["dry-run"]) {
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(release, null, 2)}\n`);
+      return;
+    }
     process.stdout.write(`Release baseline: ${since}\nCommit range: ${since}..HEAD\n\n`);
     process.stdout.write(`${JSON.stringify(release, null, 2)}\n\n`);
     process.stdout.write(`${renderReleaseSection(release, log.channel).join("\n")}\n`);
@@ -513,12 +518,8 @@ function commandCut(flags, { previewOnly }) {
     [
       `devlog: cut v${release.version} (${release.changes.length} changes)`,
       "",
-      "Next:",
-      "  git add CHANGELOG.md packages/devlog",
-      `  git commit -m "release: v${release.version}"`,
-      `  git tag -a -m "release: v${release.version}" v${release.version}`,
-      `  git push origin main v${release.version}`,
-      "  (or prepare a release PR with `bun run release`)",
+      "Review generated release files through a release PR; merging it publishes the tag.",
+      "For automatic PR preparation, use `bun run release` from a clean main checkout.",
       "",
     ].join("\n"),
   );
