@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, useMemo } from 'react';
 import type { FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { ANNOUNCEMENT_TAG_LABELS } from '@/components/announcements/announcement-card';
 import {
@@ -76,6 +76,7 @@ function FilterFacet<T extends string | number>({
   selected: readonly T[];
   onSelectionChange: (selection: T[]) => void;
 }) {
+  const selectedValues = useMemo(() => new Set(selected), [selected]);
   const summary = selected.length === 0
     ? 'Any'
     : selected.length === 1
@@ -96,7 +97,7 @@ function FilterFacet<T extends string | number>({
           <CheckboxGroup
             className="w-full"
             checkedIndices={new Set(options.flatMap((option, optionIndex) =>
-              selected.includes(option.value) ? [optionIndex] : [],
+              selectedValues.has(option.value) ? [optionIndex] : [],
             ))}
           >
             {options.map((option, optionIndex) => (
@@ -104,8 +105,8 @@ function FilterFacet<T extends string | number>({
                 key={option.value}
                 index={optionIndex}
                 label={option.label}
-                checked={selected.includes(option.value)}
-                onToggle={() => onSelectionChange(selected.includes(option.value)
+                checked={selectedValues.has(option.value)}
+                onToggle={() => onSelectionChange(selectedValues.has(option.value)
                   ? selected.filter((item) => item !== option.value)
                   : [...selected, option.value])}
               />

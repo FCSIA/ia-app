@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { Archive, Bookmark, Clock, Ellipsis, MessageCircle, Pin, PinOff } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { AnnouncementAudience } from '@/components/announcements/announcement-audience-label';
 import type { AnnouncementAudienceInput } from '@/components/announcements/announcement-audience';
@@ -116,6 +116,30 @@ function AnnouncementPreview({
     ARCHIVED: { label: 'Archived', color: 'gray' },
   }[announcement.status] as { label: string; color: BadgeColor } | undefined;
   const createdAt = new Date(announcement.createdAt);
+  const createdAtTimestamp = createdAt.getTime();
+  const [createdAtTitle, setCreatedAtTitle] = useState<{ timestamp: number; label: string } | null>(null);
+  useEffect(() => {
+    setCreatedAtTitle({ timestamp: createdAtTimestamp, label: new Date(createdAtTimestamp).toLocaleString() });
+  }, [createdAtTimestamp]);
+  const hasClientTime = createdAtTitle?.timestamp === createdAtTimestamp;
+  const expiresAt = announcement.expiresAt ? new Date(announcement.expiresAt).getTime() : null;
+  const [expiredAt, setExpiredAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (expiresAt === null || !Number.isFinite(expiresAt)) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const checkExpiry = () => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        setExpiredAt(expiresAt);
+        return;
+      }
+      // Browsers clamp longer delays to 1ms. Recheck long-lived posts safely.
+      timer = setTimeout(checkExpiry, Math.min(remaining, 2_147_483_647));
+    };
+    // Determine expiry after hydration so the initial prefix is deterministic.
+    checkExpiry();
+    return () => clearTimeout(timer);
+  }, [expiresAt]);
   const audienceMetadata = <>
     <AnnouncementAudience announcement={announcement} />
     {orderingContext !== 'personal-pins' && announcement.isPinned ? <span>Pinned for you</span> : null}
@@ -155,13 +179,15 @@ function AnnouncementPreview({
             <span>{authorName || 'Unknown author'}<DeveloperBadge user={announcement.author} size={12} className="ml-1" /></span>
             <span aria-hidden>·</span>
           </> : null}
-          <time dateTime={createdAt.toISOString()} title={createdAt.toLocaleString()}>
-            {formatDistanceToNow(createdAt, { addSuffix: true })}
+          <time dateTime={createdAt.toISOString()} title={hasClientTime ? createdAtTitle.label : createdAt.toISOString()}>
+            {hasClientTime ? formatDistanceToNow(createdAt, { addSuffix: true }) : createdAt.toISOString().slice(0, 10)}
           </time>
           {announcement.expiresAt ? (
             <span className="inline-flex items-center gap-1">
               <Clock aria-hidden className="size-3.5" />
-              {new Date(announcement.expiresAt).getTime() <= Date.now() ? 'Expired' : 'Expires'} {formatDistanceToNow(new Date(announcement.expiresAt), { addSuffix: true })}
+              {expiresAt !== null && expiredAt === expiresAt ? 'Expired' : 'Expires'} {hasClientTime
+                ? formatDistanceToNow(new Date(announcement.expiresAt), { addSuffix: true })
+                : new Date(announcement.expiresAt).toISOString().slice(0, 10)}
             </span>
           ) : null}
         </div>

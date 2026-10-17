@@ -27,7 +27,7 @@ import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ToggleGroup } from '@/components/ui/toggle-group';
 import { FilterToggleIcon, FilterToggleItem } from '@/components/ui/filter-toggle-group';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
-import { matchesAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
+import { compileAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -249,17 +249,16 @@ export default function AnnouncementsPage() {
     return Array.from(clubsById.values()).sort((left, right) => left.name.localeCompare(right.name));
   }, [dataWithPins, pastAllAnnouncements]);
 
+  const matchesFilters = useMemo(() => compileAnnouncementFilters(filters, deferredSearch), [filters, deferredSearch]);
   const filtered = useMemo(() => {
     if (!dataWithPins) return [];
 
-    return dataWithPins.filter((announcement) =>
-      matchesAnnouncementFilters(announcement, filters, deferredSearch),
-    ).sort((left: any, right: any) => {
+    return dataWithPins.filter(matchesFilters).sort((left: any, right: any) => {
       if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
       if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
-  }, [dataWithPins, deferredSearch, filters]);
+  }, [dataWithPins, matchesFilters]);
 
   // These groups explain the ordering the feed already uses. Read state never
   // changes a post's position in All; only the explicit Unread filter removes it.
@@ -279,8 +278,8 @@ export default function AnnouncementsPage() {
   }, [filtered]);
 
   const filteredPastAnnouncements = useMemo(() =>
-    pastAllAnnouncements.filter((announcement) => matchesAnnouncementFilters(announcement, filters, deferredSearch)),
-  [deferredSearch, filters, pastAllAnnouncements]);
+    pastAllAnnouncements.filter(matchesFilters),
+  [matchesFilters, pastAllAnnouncements]);
 
   const [reviewPending, setReviewPending] = useState<{
     id: string;

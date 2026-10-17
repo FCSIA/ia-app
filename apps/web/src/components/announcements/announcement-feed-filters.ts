@@ -27,34 +27,41 @@ type FilterableAnnouncement = {
   club?: { name: string } | null;
 };
 
-export function matchesAnnouncementFilters(
-  announcement: FilterableAnnouncement,
+export function compileAnnouncementFilters(
   filters: FeedFilters,
   search: string,
-): boolean {
-  if (filters.activeTag && announcement.targetType !== filters.activeTag) return false;
-  if (filters.readFilter === 'unread' && announcement.isRead) return false;
-  if (filters.readFilter === 'read' && !announcement.isRead) return false;
-  if (filters.savedFilter === 'saved' && !announcement.isBookmarked) return false;
-  if (filters.selectedClubIds.length > 0 && !filters.selectedClubIds.includes(announcement.clubId ?? '')) return false;
-  if (filters.selectedGrades.length > 0 && !filters.selectedGrades.some((grade) =>
-    announcement.targetGrade === grade || announcement.targetGrades?.includes(grade))) return false;
-  if (filters.selectedMajorPathways.length > 0 && !filters.selectedMajorPathways.some((pathway) =>
-    announcement.targetPathway === pathway || announcement.targetMajorPathways?.includes(pathway))) return false;
-  if (filters.selectedMinorPathways.length > 0 && !filters.selectedMinorPathways.some((pathway) =>
-    announcement.targetMinorPathways?.includes(pathway))) return false;
+): (announcement: FilterableAnnouncement) => boolean {
+  const { activeTag, readFilter, savedFilter } = filters;
+  const clubIds = new Set(filters.selectedClubIds);
+  const grades = new Set(filters.selectedGrades);
+  const majorPathways = new Set(filters.selectedMajorPathways);
+  const minorPathways = new Set(filters.selectedMinorPathways);
+  const query = search.trim().toLowerCase();
 
-  return matchesSearchQuery(search.trim().toLowerCase(), [
-    announcement.title,
-    announcement.body,
-    announcement.author?.firstName,
-    announcement.author?.lastName,
-    announcement.club?.name,
-    announcement.targetType.replaceAll('_', ' '),
-    announcement.targetGrade ? `Grade ${announcement.targetGrade}` : undefined,
-    ...announcement.targetGrades?.map((grade) => `Grade ${grade}`) ?? [],
-    announcement.targetPathway?.replaceAll('_', ' '),
-    ...announcement.targetMajorPathways?.map((pathway) => pathway.replaceAll('_', ' ')) ?? [],
-    ...announcement.targetMinorPathways?.map((pathway) => pathway.replaceAll('_', ' ')) ?? [],
-  ]);
+  return (announcement) => {
+    if (activeTag && announcement.targetType !== activeTag) return false;
+    if (readFilter === 'unread' && announcement.isRead) return false;
+    if (readFilter === 'read' && !announcement.isRead) return false;
+    if (savedFilter === 'saved' && !announcement.isBookmarked) return false;
+    if (clubIds.size > 0 && !clubIds.has(announcement.clubId ?? '')) return false;
+    if (grades.size > 0 && !(announcement.targetGrade !== undefined && grades.has(announcement.targetGrade)) &&
+      !announcement.targetGrades?.some((grade) => grades.has(grade))) return false;
+    if (majorPathways.size > 0 && !(announcement.targetPathway !== undefined && majorPathways.has(announcement.targetPathway)) &&
+      !announcement.targetMajorPathways?.some((pathway) => majorPathways.has(pathway))) return false;
+    if (minorPathways.size > 0 && !announcement.targetMinorPathways?.some((pathway) => minorPathways.has(pathway))) return false;
+
+    return matchesSearchQuery(query, [
+      announcement.title,
+      announcement.body,
+      announcement.author?.firstName,
+      announcement.author?.lastName,
+      announcement.club?.name,
+      announcement.targetType.replaceAll('_', ' '),
+      announcement.targetGrade ? `Grade ${announcement.targetGrade}` : undefined,
+      ...announcement.targetGrades?.map((grade) => `Grade ${grade}`) ?? [],
+      announcement.targetPathway?.replaceAll('_', ' '),
+      ...announcement.targetMajorPathways?.map((pathway) => pathway.replaceAll('_', ' ')) ?? [],
+      ...announcement.targetMinorPathways?.map((pathway) => pathway.replaceAll('_', ' ')) ?? [],
+    ]);
+  };
 }
