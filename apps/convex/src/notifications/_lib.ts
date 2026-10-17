@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
@@ -91,6 +92,25 @@ export function scopeKey(opts?: {
   if (opts?.eventId) return `event:${opts.eventId}`;
   if (opts?.clubId) return `club:${opts.clubId}`;
   return "global";
+}
+
+// Older feedback deliveries used the moderation category. Read their linked
+// report rather than guessing from mutable titles or URLs. Deduplicate report
+// reads within the already bounded inbox page; no historical data is rewritten.
+export async function toNotifications(ctx: QueryCtx, rows: Doc<"notificationDeliveries">[]) {
+  const reportIds = new Set<Id<"moderationReports">>();
+  for (const row of rows) {
+    if (row.category === "CONTENT_MODERATED" && row.subject.kind === "moderationReport") {
+      reportIds.add(row.subject.reportId);
+    }
+  }
+  const reports = await Promise.all([...reportIds].map((id) => ctx.db.get(id)));
+  const feedbackIds = new Set(reports.flatMap((report) => report?.contentType === "GENERAL" ? [report._id] : []));
+  return rows.map((row) => toNotification(
+    row.category === "CONTENT_MODERATED" && row.subject.kind === "moderationReport" && feedbackIds.has(row.subject.reportId)
+      ? { ...row, category: "FEEDBACK" }
+      : row,
+  ));
 }
 
 export function toNotification(row: Doc<"notificationDeliveries">) {

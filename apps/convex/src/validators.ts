@@ -117,6 +117,7 @@ export const notificationCategoryValidator = v.union(
   v.literal("EVENT"),
   v.literal("FLEX_FRIDAY"),
   v.literal("CONTENT_MODERATED"),
+  v.literal("FEEDBACK"),
   v.literal("FRIEND_REQUEST"),
   v.literal("FRIEND_SCHEDULE_CHANGE"),
 );
