@@ -6,7 +6,16 @@ export const FOUNDERS = [
   { name: 'Daivik Lakkisetty', classYear: 2029, firstCommit: '908ba13b82bce084e8d7332aab8c280800c11705', firstCommitSubject: 'SQLite migration, role fixes, admin report features, permission enforcement' },
 ] as const;
 
-export const FIRST_PROJECT_COMMIT = FOUNDERS[3].firstCommit;
+export const QUEST_KEY_DISPLAY_MS = 2 * 60 * 1_000;
+
+export function visibleQuestKeyCount(
+  progress: { keys: readonly string[]; completedAt: number | null } | undefined,
+  now: number,
+) {
+  if (!progress) return 0;
+  if (progress.completedAt !== null && now >= progress.completedAt + QUEST_KEY_DISPLAY_MS) return 0;
+  return progress.keys.length;
+}
 
 export const QUEST_CLUES = [
   'The app remembers its beginnings. Look closely at the version in Profile & Settings → What’s new, then open what appears.',

@@ -4,11 +4,11 @@ import { useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Flame, Sparkles } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { PageFrame, HeroBand, Panel } from '@/components/layout/page-frame';
+import { PageFrame, HeroBand } from '@/components/layout/page-frame';
 import { HallAccess } from '@/components/quest/hall-access';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { FOUNDERS, FIRST_PROJECT_COMMIT } from '@/lib/founders-quest';
+import { FOUNDERS } from '@/lib/founders-quest';
 import styles from './founder-deck.module.css';
 
 function FounderDeck() {
@@ -75,15 +75,6 @@ export default function HallOfFoundersPage() {
         />
         <HallAccess>
           <FounderDeck />
-          <Panel title="The first commit" description="March 2, 2026 — Viraj Das" contentClassName="px-6 pb-6 pt-4">
-            <p className="text-sm font-medium">Initial commit <span className="font-mono text-muted-foreground">· {FIRST_PROJECT_COMMIT.slice(0, 7)}</span></p>
-          </Panel>
-          <Panel title="How the project began" description="The earliest recorded contribution from each founder." contentClassName="px-6 pb-6 pt-4">
-            <ol className="space-y-3 text-sm text-muted-foreground">
-              <li><span className="font-medium text-foreground">March 2, 2026</span> · Viraj’s initial commit.</li>
-              <li><span className="font-medium text-foreground">March 6, 2026</span> · Kirill, Sreyas, Rebanto, and Daivik made their first recorded contributions.</li>
-            </ol>
-          </Panel>
         </HallAccess>
       </PageFrame>
     </AppShell>

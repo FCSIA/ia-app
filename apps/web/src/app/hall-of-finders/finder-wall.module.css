@@ -1,0 +1,68 @@
+.wall {
+  position: relative;
+  overflow: hidden;
+  min-height: 22rem;
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+  border: 7px solid #2e211b;
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(90deg, #120c0b3d, transparent 14%, #fff7d709 51%, transparent 85%, #120c0b3d),
+    repeating-linear-gradient(92deg, #4c3025 0 8px, #503226 10px 17px, #492e24 20px 29px),
+    #4b3025;
+  box-shadow: inset 0 0 0 2px #986e42, inset 0 10px 25px #170e0b8c, 0 18px 35px #0003;
+  color: #f8ebd2;
+}
+
+.wallHeader { margin: 0 auto 2rem; text-align: center; }
+.wallHeader h2 {
+  display: inline-block;
+  min-width: min(100%, 19rem);
+  margin: 0;
+  padding: .55rem 2rem;
+  border: 1px solid #d4aa69;
+  background: #1e1c1b;
+  box-shadow: 0 3px 0 #7c542f, 0 8px 15px #180f0d88;
+  color: #e9ce9a;
+  font-family: Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.wallHeader p { margin: 1.25rem 0 0; color: #f8ebd2; font-size: .875rem; text-shadow: 0 1px 3px #100b09; }
+.plaques { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(.8rem, 2vw, 1.25rem); margin: 0; padding: 0; list-style: none; }
+.plaque {
+  position: relative;
+  display: grid;
+  min-height: 5rem;
+  place-items: center;
+  padding: .7rem 1.4rem;
+  border: 1px solid #9d835b;
+  border-radius: .4rem;
+  background: linear-gradient(160deg, #292929, #101111 56%, #242321);
+  box-shadow: inset 0 1px #d8c19550, inset 0 -2px #000, 0 3px 0 #1e120f, 0 8px 12px #1c100c70;
+  color: #f3e7cd;
+  font-family: Georgia, serif;
+  font-size: clamp(.9rem, 1.5vw, 1.1rem);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.plaque::before, .plaque::after {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c8a46d;
+  box-shadow: inset 0 1px 1px #fff6d0, 0 1px 2px #000;
+  content: '';
+  transform: translateY(-50%);
+}
+.plaque::before { left: .55rem; }
+.plaque::after { right: .55rem; }
+.plaque[data-yours='true'] { border-color: #edd6a8; box-shadow: inset 0 1px #f5e8cc88, inset 0 -2px #000, 0 3px 0 #1e120f, 0 0 0 2px #d6ad6b80, 0 8px 12px #1c100c70; }
+.wallMessage { margin: 4rem 0; text-align: center; color: #f8ebd2; }
+
+@media (max-width: 750px) { .plaques { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .plaques { grid-template-columns: minmax(0, 1fr); } }

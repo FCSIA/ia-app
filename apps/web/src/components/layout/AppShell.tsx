@@ -36,6 +36,7 @@ import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewpor
 import { createPhoenixEasterEggMatcher, isPhoenixEasterEggKey } from "@/lib/phoenix-easter-egg";
 import { useToast } from "@/hooks/use-toast";
 import { useFoundersQuest } from "@/hooks/use-founders-quest";
+import { QUEST_KEY_DISPLAY_MS, visibleQuestKeyCount } from "@/lib/founders-quest";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 
@@ -62,6 +63,7 @@ export function AppShell({
   const router = useRouter();
   const user = useCurrentUser();
   const { progress: questProgress } = useFoundersQuest();
+  const [questClock, setQuestClock] = useState(() => Date.now());
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
@@ -81,6 +83,14 @@ export function AppShell({
   useEffect(() => {
     setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
   }, []);
+
+  useEffect(() => {
+    if (questProgress?.completedAt == null) return;
+    const remaining = questProgress.completedAt + QUEST_KEY_DISPLAY_MS - Date.now();
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setQuestClock(Date.now()), remaining);
+    return () => window.clearTimeout(timer);
+  }, [questProgress?.completedAt, questClock]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -275,7 +285,7 @@ export function AppShell({
             searchScope={searchScope}
             commandHint={commandHint}
             user={user}
-            questKeysFound={questProgress?.keys.length ?? 0}
+            questKeysFound={visibleQuestKeyCount(questProgress, questClock)}
             onOpenGlobalSearch={() => setCommandOpen(true)}
             onToggleSearchScope={toggleSearchScope}
             onOpenProfile={() => {

@@ -39,7 +39,7 @@ describe("Founders' Quest halls", () => {
     expect(await t.run((ctx) => recordForUser(ctx, user, "copper"))).toBe(true);
     expect(await t.run((ctx) => recordForUser(ctx, user, "copper"))).toBe(false);
     expect(await t.run((ctx) => progressForUser(ctx, user))).toEqual({
-      keys: ["copper"], complete: false,
+      keys: ["copper"], complete: false, completedAt: null,
     });
     await expect(t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 })))
       .rejects.toThrow();
@@ -50,7 +50,7 @@ describe("Founders' Quest halls", () => {
     const rows = await t.run((ctx) => listCompletedForUser(ctx, user, { cursor: null, numItems: 10 }));
     expect(rows.page).toEqual([{ id: expect.any(String), name: "Alex Johnson", isYou: true }]);
     expect(await t.run((ctx) => progressForUser(ctx, user))).toEqual({
-      keys: ["copper", "jade", "crystal"], complete: true,
+      keys: ["copper", "jade", "crystal"], complete: true, completedAt: expect.any(Number),
     });
   });
 

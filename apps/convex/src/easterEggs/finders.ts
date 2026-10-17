@@ -17,7 +17,11 @@ export async function progressForUser(ctx: QueryCtx, user: Doc<"users">) {
     .query("easterEggFinders")
     .withIndex("by_userId", (q) => q.eq("userId", user._id))
     .unique();
-  return { keys: finder?.eggIds ?? [], complete: finder?.completedAt !== undefined };
+  return {
+    keys: finder?.eggIds ?? [],
+    complete: finder?.completedAt !== undefined,
+    completedAt: finder?.completedAt ?? null,
+  };
 }
 
 export async function recordForUser(ctx: MutationCtx, user: Doc<"users">, key: QuestKey) {
@@ -78,7 +82,7 @@ export async function listCompletedForUser(
 
 export const myProgress = query({
   args: {},
-  returns: v.object({ keys: v.array(questKeyValidator), complete: v.boolean() }),
+  returns: v.object({ keys: v.array(questKeyValidator), complete: v.boolean(), completedAt: v.union(v.number(), v.null()) }),
   handler: async (ctx) => progressForUser(ctx, await getCurrentAppUser(ctx)),
 });
 
