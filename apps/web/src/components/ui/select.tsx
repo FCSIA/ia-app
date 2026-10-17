@@ -21,6 +21,7 @@ import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
+import { popupShape } from "@/components/ui/popup-shape";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 
@@ -335,7 +336,9 @@ interface SelectContentProps {
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
   ({ className, children }, ref) => {
     const { open, value, unmount } = useSelectContext();
-    const shape = useShape();
+    // Triggers follow the global shape; popup rows keep their concentric
+    // 8px curves inside a 12px shell with a 4px inset.
+    const shape = popupShape;
     const containerRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -651,7 +654,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const selectCtx = useSelectContext();
     const contentCtx = useContext(SelectContentContext);
     const internalRef = useRef<HTMLDivElement>(null);
-    const shape = useShape();
+    const shape = popupShape;
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
     const hasMounted = useRef(false);

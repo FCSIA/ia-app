@@ -98,26 +98,6 @@ alerts remain in channel settings. Scoped switches inherit their category's
 global setting until explicitly overridden, and an off club disables its
 channel controls without erasing their saved choices.
 
-## Settings surfaces
-
-`NotificationSettingsPanel` is shared by the Settings tab on `/notifications`
-and the Notifications section on `/profile`. Both expose browser push, global
-categories, and club/channel preferences through the same implementation. Compact
-option rows sit in a rounded group with quiet separators, and club headers use
-a distinct surface. These inner groups define the bounded column without an
-additional outer frame.
-
-Club settings use an inline Radix `Collapsible` with a separate Fluid button
-containing the channel count and chevron beside the club switch. Expanding a
-club does not change its preference;
-changing its switch does not expand it. Channel rows follow the workspace's
-`ownerUnitId` / `parentUnitId` hierarchy, preserving ancestor branches and
-omitting units without readable channels. These are nested lists, not an ARIA
-Tree or a popup action menu. The channel switches control mentions; all-message
-alerts remain in channel settings. Scoped switches inherit their category's
-global setting until explicitly overridden, and an off club disables its
-channel controls without erasing their saved choices.
-
 ## Browser Push
 
 Closed-tab delivery uses the browser Push API and the app service worker.

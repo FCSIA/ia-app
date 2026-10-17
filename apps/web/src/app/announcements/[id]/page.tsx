@@ -10,10 +10,9 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
 import {
   ANNOUNCEMENT_BADGE_TEXT_CLASS,
-  ANNOUNCEMENT_TAG_BADGE_COLORS,
-  ANNOUNCEMENT_TAG_LABELS,
   type AnnouncementCardRecord,
 } from '@/components/announcements/announcement-card';
+import { AnnouncementAudience } from '@/components/announcements/announcement-audience-label';
 import { Badge } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
@@ -55,31 +54,7 @@ type AnnouncementDetail = AnnouncementCardRecord & {
   }>;
 };
 
-function formatPathway(pathway?: string | null) {
-  if (!pathway) return null;
-  if (pathway === 'HEALTH_SCIENCE') return 'Health Science';
-  if (pathway === 'INFORMATION_TECHNOLOGY') return 'Information Technology';
-  if (pathway === 'ENGINEERING') return 'Engineering';
-  return pathway.replace(/_/g, ' ');
-}
-
 const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
-
-function formatAudience(announcement: AnnouncementDetail) {
-  if (announcement.targetType === 'GRADE' && announcement.targetGrade) {
-    return `Grade ${announcement.targetGrade}`;
-  }
-
-  if (announcement.targetType === 'PATHWAY') {
-    return formatPathway(announcement.targetPathway) ?? 'Pathway audience';
-  }
-
-  if (announcement.targetType === 'CLUB') {
-    return announcement.club?.name ?? 'Club members';
-  }
-
-  return 'School-wide';
-}
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') return 'Active';
@@ -207,7 +182,6 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   }
 
   const authorName = formatName(announcement.author);
-  const audienceLabel = formatAudience(announcement);
   const commentCount = announcement.comments?.length ?? 0;
   const canDeleteComment = (commentAuthorId: string) =>
     commentAuthorId === user?._id || !!user?.roles?.some((role: string) => ['ADMIN', 'SUPER_ADMIN'].includes(role));
@@ -243,12 +217,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                   Admin
                 </Badge>
               ) : null}
-              <Badge size="sm" color={ANNOUNCEMENT_TAG_BADGE_COLORS[announcement.targetType] ?? 'gray'}>
-                {ANNOUNCEMENT_TAG_LABELS[announcement.targetType] || announcement.targetType}
-              </Badge>
-              <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
-                {audienceLabel}
-              </Badge>
+              <AnnouncementAudience announcement={announcement} />
               {announcement.status !== 'ACTIVE' ? (
                 <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   {formatStatus(announcement.status)}

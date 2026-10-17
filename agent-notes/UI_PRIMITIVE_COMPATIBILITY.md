@@ -154,6 +154,40 @@ References:
 
 ## Direct-child and motion contracts
 
+Select and Dropdown share `popup-shape.ts`: 12px container, 8px item/highlight,
+and 10px focus ring at a 4px inset. The trigger can follow the global shape;
+the menu must not inherit it. Use fixed values here: the application's
+`rounded-lg` resolves to 16px, unlike the registry's expected 8px. Nested popup
+portals use the same overlay layer so later inner portals paint above their
+parent; changing only the parent's z-index can hide its controls.
+
+Default Light/Dark `border-border` and `bg-border` resolve against the scoped
+surface foreground, like hover and active layers. Explicit palette themes use
+`--theme-border-color` to preserve Custom Accent, Bubblegum colors, and opaque
+high-contrast borders. Keep the web token bridge and app mapping aligned;
+`border-input` remains a separate contract.
+
+The design owner approved Card's independent `attention` state for unread
+announcements (2026-10-16). Card owns its neutral translucent surface and shape;
+the existing Group hover remains visible beneath it. Selection takes precedence
+and retains its own semantics. Callers supply an explanation through visible
+context and an accessible name; attention never implies `aria-pressed`. Do not
+recreate the surface or its corners on feature pages. The stretched focus target
+uses the same shape token as the surface and Group hover.
+
+The owner approved `CardGroup corners="compact"` for announcement previews
+(2026-10-17). It gives the frame, attention surface, moving hover, and stretched
+focus target the same 12px corners without changing buttons or the global shape.
+The default continues to follow ShapeContext. Do not substitute feature-level
+radius overrides. In a clickable Card, passive footer text and gaps pass through
+to the stretched target; semantic controls retain independent pointer targets.
+
+Solid neutral Badge uses the shared foreground-based active fill and border,
+so it remains bounded on an attention surface. Colored and dot badges retain
+their existing mappings. Native modal scroll locking must not add a second body
+margin when the root already reserves a stable scrollbar gutter; the global
+`body[data-scroll-locked]` rule handles that supported-browser case.
+
 Fluid proximity components register item geometry. A component can render with
 no errors while silently losing the shared moving highlight if an index or ref
 is swallowed by an intermediate component.

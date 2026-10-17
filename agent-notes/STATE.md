@@ -2,22 +2,39 @@
 
 ## Active Focus
 
-- **Integration**: The user authorized working through the merge backlog.
-  Feedback issue sync (#110) and its security prerequisite (#153) are merged.
-  Dashboard PR #147 is squash-merged. Toast/profile geometry corrections are
-  in PR #154. Shared notification settings are in PR #155 on
-  `feat/shared-notification-settings`, stacked on #154 in the isolated
-  `merge-pr147` worktree.
-  The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
-  #149, and #150.
+- **Integration**: On October 17 the owner explicitly authorized squash-merging
+  the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
+  #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
+  #158 includes those settings, clubs, and feedback prerequisites and is
+  reconciled with their squash commits so final CI validates the combined source.
+  Each PR retains a separate squash merge.
+  This authorization supersedes older awaiting-owner-review notes below.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
-  Material UI changes still require design-owner review. Native iPhone swipe
+  New material UI changes still require design-owner review. Native iPhone swipe
   verification remains outstanding. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### UI integration and React Doctor (2026-10-17)
+
+- The settings hierarchy now indexes channels and units by parent once rather
+  than repeatedly scanning both collections for each branch. All three existing
+  hierarchy regressions and web typecheck pass; pinned React Doctor 0.9.8 reports
+  no new issues on #155. Clubs and feedback also have no new findings.
+- Announcement filters compile selection sets once per filter/search change and
+  share the predicate across current and past posts. Timestamps hydrate from
+  deterministic dates before showing local relative labels; expiry transitions
+  are scheduled after mount with capped browser timer delays. Seventeen focused
+  tests, web typecheck, and lint pass (21 existing warnings). The pinned scan has
+  no new announcement findings; suppressions were not added.
+- Full CI and security checks remain the merge gate. Production release and
+  deployment are separate operations; this integration does not authorize them.
+- The combined local suite passes all 385 backend tests, shared-package tests,
+  mobile typecheck, web typecheck, and 17 focused announcement tests. The final
+  combined PR scan reports no new React Doctor issues.
 
 ### Merge backlog reconciliation (2026-10-15)
 
@@ -131,6 +148,80 @@
   `/tmp/ia-dashboard-review/` for local review.
 - Draft PR #152 still explicitly awaits human visual review. PR #117 has
   unresolved conflicts. Compliance PR #76 remains outside this merge pass.
+
+### Announcement feed and dashboard preview (2026-10-17)
+
+- PR #158 (`feat/announcements-feed-clarity`) is stacked on #155 and remains
+  awaiting design-owner visual review. The owner approved an independent shared
+  Card attention state. Card owns its neutral translucent unread surface and
+  matching focus/hover corners; selection retains its own semantics.
+  On October 17 the owner also approved `CardGroup corners="compact"` (12px).
+  Feed/past/widget cards use it without changing global button shapes. Neutral
+  Badge now composes the shared active fill and border on attention surfaces.
+- Concrete grade/pathway/club audiences share one model across feed, dashboard,
+  club preview, and detail. Legacy scalar/array targets are merged; intersection
+  conditions preserve their AND/OR meaning in accessible text. Numeric grade
+  badges have a graduation-cap context. Missing targeting no longer becomes an
+  invented School-wide label. Serialized `commentCount` replaces the obsolete
+  relation-count field that always displayed zero.
+- The full feed groups Pinned for you, Important, and Latest. Important describes
+  publisher priority, distinct from personal pins and Saved. Reading preserves
+  ordering in All; pin/unpin restores focus to the moved post's More trigger.
+  Per-card Unread pills are removed. Feed/past cards retain quiet outlines in
+  both states, while unread attention and title weight provide emphasis without
+  removing a read post's boundary. Saved uses the existing outlined active Button
+  plus a filled primary icon, distinct from transient hover.
+- Desktop feed choices, search, Filters, and the plus action occupy one toolbar row. Narrow
+  screens deliberately use two rows. Headings have a separate gap before cards.
+  The 24rem filter panel keeps Read/Saved/Audience compact Select controls visible;
+  independent accordions summarize and disclose grade/pathway/club checkbox facets
+  within a bounded ScrollArea. Read actions are icon-only with working tooltips.
+  Full-feed author avatars reuse the existing person dialog; its projection adds
+  photo and roles without adding sign-in identifiers or contact fields. Club
+  people use the same extracted avatar component.
+  Zero-comment actions use an icon so all four 44px controls fit together at
+  320px. The dashboard title is Unread Announcements; its empty state composes
+  the shared unframed Empty inside the existing widget boundary.
+- Shared defects are repaired at their owners: RadioGroup resolves both pointer
+  coordinates for wrapped rows; nested popup portals share the overlay layer;
+  Select and Dropdown share fixed 12px/8px/10px shell/item/focus geometry. The
+  trigger retains global shape. Fixed values avoid the app's `rounded-lg` token
+  resolving to 16px instead of the registry's expected 8px.
+  A stable-gutter root now suppresses react-remove-scroll-bar's duplicate body
+  margin while preserving modal scroll lock. Read/Saved, composer, and profile
+  photo dialogs retain their document geometry. Clickable Card footer metadata
+  passes through to the stretched target with a pointer cursor; semantic controls
+  stay independent. Panel titles flex within the action row rather than forcing
+  the arrow below a long heading. Widget heading/card text align at a 24px inset,
+  with a separate gap above the first card.
+- Default Light/Dark borders/dividers now follow the scoped surface foreground.
+  Explicit Custom Accent, Bubblegum, and opaque high-contrast border palettes
+  are preserved. Their contrast was not retuned; `border-input` is unchanged.
+- Fifteen focused audience/filter/hover-geometry tests, web typecheck, lint
+  (21 existing warnings), and production build pass. Browser checks cover
+  combined Read/Saved filters, nested menu visibility/Escape/focus return,
+  composer targeting, wrapped radio hit testing, 320px/390px action geometry,
+  section rhythm, saved vs hover, and Light/Dark/Contrast/Custom token behavior.
+  Read toggling retains the tested card's 176px height and document position.
+  The owner currently has Robotics and Freshman Grade 9 unread, with Robotics
+  saved; other demo posts are read. Temporary QA toggles were restored to that
+  state. The populated and empty widget were checked at
+  390px. Earlier pin/order, audience, custom-theme, and reduced-motion checks
+  remain applicable; attention is static and existing proximity motion is unchanged.
+- The compiled preview runs at `http://localhost:3003/announcements` and
+  `/dashboard`, sharing the existing isolated demo backend on 3210/3211.
+  October 17's functions were pushed explicitly to that existing isolated local
+  backend, without reseeding or selecting a shared/cloud deployment. The author
+  projection is verified in the browser. Backend tests (381), backend/web/mobile
+  typechecks, web lint, the 15 focused tests, and production build pass. This does
+  not certify the expiry guard's time boundary through browser QA. Creation, archive, approval, and
+  deletion were not exercised. Current captures are in
+  `/tmp/ia-announcement-oct17-review/`; earlier captures remain in
+  `/tmp/ia-announcement-interaction-review/` and
+  `/tmp/ia-announcement-redesign-review/`.
+- The dashboard's existing calendar independently overflows at 320px because its
+  seven 44px day targets exceed the available width. It remains a separate
+  primitive issue, outside this announcement change.
 
 ### Local Bun/Nix setup (2026-10-02)
 
