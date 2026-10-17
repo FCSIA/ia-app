@@ -13,25 +13,33 @@ export function buildNotificationChannelTree<Unit extends UnitShape, Channel ext
   const unitIds = new Set(units.map((unit) => unit._id));
   const visited = new Set<string>();
   const orderedUnits = [...units].sort((a, b) => a.position - b.position);
-  const channelNodes = (ownerId: string | null): NotificationChannelNode<Unit, Channel>[] =>
-    channels
-      .filter((channel) => ownerId === null
-        ? !channel.ownerUnitId || !unitIds.has(channel.ownerUnitId)
-        : channel.ownerUnitId === ownerId)
-      .map((channel) => ({ kind: 'channel', channel }));
+  const channelsByOwner = new Map<string | null, NotificationChannelNode<Unit, Channel>[]>();
+  for (const channel of channels) {
+    const ownerId = channel.ownerUnitId && unitIds.has(channel.ownerUnitId)
+      ? channel.ownerUnitId : null;
+    const siblings = channelsByOwner.get(ownerId) ?? [];
+    siblings.push({ kind: 'channel', channel });
+    channelsByOwner.set(ownerId, siblings);
+  }
+  const unitsByParent = new Map<string | null, Unit[]>();
+  for (const unit of orderedUnits) {
+    const parentId = unit.parentUnitId && unitIds.has(unit.parentUnitId)
+      ? unit.parentUnitId : null;
+    const siblings = unitsByParent.get(parentId) ?? [];
+    siblings.push(unit);
+    unitsByParent.set(parentId, siblings);
+  }
 
   const branch = (unit: Unit): NotificationChannelNode<Unit, Channel>[] => {
     if (visited.has(unit._id)) return [];
     visited.add(unit._id);
-    const children = [
-      ...channelNodes(unit._id),
-      ...orderedUnits.filter((child) => child.parentUnitId === unit._id).flatMap(branch),
-    ];
+    const children = [...(channelsByOwner.get(unit._id) ?? [])];
+    for (const child of unitsByParent.get(unit._id) ?? []) children.push(...branch(child));
     return children.length ? [{ kind: 'unit', unit, children }] : [];
   };
 
-  const roots = orderedUnits.filter((unit) => !unit.parentUnitId || !unitIds.has(unit.parentUnitId));
-  const tree = [...channelNodes(null), ...roots.flatMap(branch)];
+  const tree = [...(channelsByOwner.get(null) ?? [])];
+  for (const root of unitsByParent.get(null) ?? []) tree.push(...branch(root));
   // Do not lose readable channels if a stale parent link forms a cycle.
   for (const unit of orderedUnits) tree.push(...branch(unit));
   return tree;
