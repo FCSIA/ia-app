@@ -1,11 +1,11 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { format } from 'date-fns';
-import { MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus, Sparkles } from 'lucide-react';
 
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
 import { EditCalendarEntryDialog } from '@/components/calendar/EditCalendarEntryDialog';
@@ -40,7 +40,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { defaultCalendarRange } from '@/lib/calendar-range';
+import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
 import { useToast } from '@/hooks/use-toast';
+import { useFoundersQuest, useRecordQuestKey } from '@/hooks/use-founders-quest';
+import { useCurrentUser } from '@/lib/auth';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -126,9 +129,15 @@ function ExternalCalendarSettingsLauncher() {
 }
 
 export default function CalendarPage() {
+  const user = useCurrentUser();
+  const { progress: questProgress } = useFoundersQuest();
+  const recordQuestKey = useRecordQuestKey();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const todayTapMatcher = useRef(createEasterEggTapMatcher());
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<CalendarView>('month');
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [range, setRange] = useState(defaultCalendarRange);
   const [activeEntry, setActiveEntry] = useState<CalendarEntry | null>(null);
   const [createSlot, setCreateSlot] = useState<EventCalendarSlotDraft | null>(null);
@@ -181,6 +190,13 @@ export default function CalendarPage() {
   const availableViews: CalendarView[] = isMobile
     ? ['agenda', 'day']
     : ['month', 'week', 'day', 'agenda'];
+  const jadeAvailable = Boolean(user?.roles.includes('STUDENT') && questProgress?.keys.includes('copper') && !questProgress.keys.includes('jade'));
+  const isMarchSecond = (day: Date) => day.getMonth() === 2 && day.getDate() === 2 && day.getFullYear() === new Date().getFullYear();
+  const claimJade = () => {
+    void recordQuestKey('jade').then((saved) => {
+      if (saved) toast({ title: 'Jade Key found: 2 of 3', description: 'Your next clue is on your profile.' });
+    });
+  };
   const editableEntry = activeEntry?.source === 'EXTERNAL' ? null : activeEntry;
   const externalEntry = activeEntry?.source === 'EXTERNAL' ? activeEntry : null;
 
@@ -218,6 +234,8 @@ export default function CalendarPage() {
         <EventCalendar<CalendarEntry>
           events={events}
           view={view}
+          date={calendarDate}
+          onDateChange={setCalendarDate}
           onViewChange={setView}
           views={availableViews}
           loading={entries === undefined}
@@ -232,17 +250,47 @@ export default function CalendarPage() {
           enableShortcuts={!isMobile}
           scrollbars="native"
           className="min-h-0 flex-1"
+          renderMonthCell={({ day, defaultContent }) => jadeAvailable && isMarchSecond(day) ? (
+            <>
+              {defaultContent}
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                className="absolute left-1 top-1 z-10"
+                aria-label="Discover the Jade Key on March 2"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => { event.stopPropagation(); claimJade(); }}
+              >
+                <Sparkles aria-hidden />
+              </Button>
+            </>
+          ) : defaultContent}
         >
           <div className="shrink-0">
             <EventCalendarNav className="flex-col items-stretch gap-2 px-3 py-3 md:px-4">
               <div className="flex items-center gap-1">
-                <EventCalendarNavToday />
+                <EventCalendarNavToday
+                  onClickCapture={() => {
+                    if (todayTapMatcher.current(Date.now())) {
+                      toast({
+                        title: 'A little time-travel secret!',
+                        description: 'No matter where you wander, the Phoenix knows the way back to today.',
+                      });
+                    }
+                  }}
+                />
                 <EventCalendarViewSwitcher />
                 <div className="flex items-center">
                   <EventCalendarNavPrev />
                   <EventCalendarNavNext />
                 </div>
               </div>
+              {isMobile && jadeAvailable && isMarchSecond(calendarDate) ? (
+                <Button type="button" size="sm" variant="secondary" leadingIcon={Sparkles} onClick={claimJade}>
+                  Discover the Jade Key
+                </Button>
+              ) : null}
               <div className="flex min-w-0 items-center gap-2">
                 <EventCalendarTitle className="text-base" />
                 <div className="min-w-0 flex-1" />

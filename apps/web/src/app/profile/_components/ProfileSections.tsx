@@ -1,6 +1,6 @@
 'use client';
 
-import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useRef } from 'react';
 import {
   Bell,
   Lock,
@@ -17,7 +17,7 @@ import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevlogList } from '@/components/devlog/devlog-list';
-import { AppVersionStamp } from '@/components/devlog/devlog-version';
+import { appVersionLabel } from '@/components/devlog/devlog-version-label';
 import type { NotificationCategoryOption } from '@/components/notifications/notification-category-options';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -26,9 +26,11 @@ import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import type { AppUser } from '@/lib/auth';
+import { useRecordQuestKey } from '@/hooks/use-founders-quest';
+import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
@@ -67,7 +69,7 @@ type SettingsCardProps = {
   title: string;
 };
 
-function SettingsCard({
+export function SettingsCard({
   children,
   contentClassName,
   description,
@@ -546,6 +548,13 @@ export function AppearanceCard({
 }
 
 export function WhatsNewCard() {
+  const user = useCurrentUser();
+  const { toast } = useToast();
+  const recordQuestKey = useRecordQuestKey();
+  const versionTapMatcher = useRef(createEasterEggTapMatcher());
+  const tapCount = useRef(0);
+  const lastTapAt = useRef(0);
+
   return (
     <SettingsCard
       title="What's new"
@@ -554,9 +563,35 @@ export function WhatsNewCard() {
     >
       <DevlogList />
       <div className="border-t border-border/60 pt-3">
-        <AppVersionStamp />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="font-mono tracking-wide"
+          aria-label={`App version ${appVersionLabel()}`}
+          onClick={() => {
+            if (!user?.roles.includes('STUDENT')) return;
+            const now = Date.now();
+            tapCount.current = now - lastTapAt.current > 1500 ? 1 : tapCount.current + 1;
+            lastTapAt.current = now;
+            if (tapCount.current === 2) toast({ title: '3 more…' });
+            if (versionTapMatcher.current(now)) {
+              tapCount.current = 0;
+              void recordQuestKey('copper').then((saved) => {
+                if (saved) toast({
+                  title: 'Copper Key found: 1 of 3',
+                  description: 'You’ve started the Founders’ Quest. Your next clue is on your profile.',
+                });
+              });
+            }
+          }}
+        >
+          {appVersionLabel()}
+        </Button>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Include this version when you report a problem so we know which build you were on.
+          {user?.roles.includes('STUDENT')
+            ? 'Every story has a version. Tap it five times to begin the Founders’ Quest.'
+            : 'Include this version when you report a problem so we know which build you were on.'}
         </p>
       </div>
     </SettingsCard>

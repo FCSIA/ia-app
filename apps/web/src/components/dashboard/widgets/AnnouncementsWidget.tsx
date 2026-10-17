@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery } from '@/lib/convex-react';
+import { useEffect, useState } from 'react';
+import type { FunctionReturnType } from 'convex/server';
+import { useConvex, useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowRight, Bookmark, BookmarkCheck, MessageCircle, Pin } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -19,10 +21,44 @@ import { AnnouncementReadToggle } from '@/components/announcements/announcement-
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
 export function AnnouncementsWidget() {
+  const convex = useConvex();
   const now = useAnnouncementFeedClock();
+  const [supportsDeepPins, setSupportsDeepPins] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    // Older development deployments predate listPinned. Probe without mounting
+    // a failing useQuery, then retain the full feed on current deployments.
+    void convex.query(api.announcements.feed.listPinned, { limit: 1, now })
+      .then(() => { if (active) setSupportsDeepPins(true); })
+      .catch(() => { if (active) setSupportsDeepPins(false); });
+    return () => { active = false; };
+  }, [convex, now]);
+
+  return supportsDeepPins
+    ? <CurrentAnnouncementsWidget now={now} />
+    : <LegacyAnnouncementsWidget />;
+}
+
+function LegacyAnnouncementsWidget() {
   const announcementsData =
-    useQuery(api.announcements.feed.list, { unreadOnly: true, now }) ?? [];
+    useQuery(api.announcements.feed.list, { unreadOnly: true }) ?? [];
+  return <AnnouncementsWidgetContent announcementsData={announcementsData} pinnedAnnouncements={[]} />;
+}
+
+function CurrentAnnouncementsWidget({ now }: { now: number }) {
+  const announcementsData = useQuery(api.announcements.feed.list, { unreadOnly: true, now }) ?? [];
   const pinnedAnnouncements = useQuery(api.announcements.feed.listPinned, { limit: 20, now }) ?? [];
+  return <AnnouncementsWidgetContent announcementsData={announcementsData} pinnedAnnouncements={pinnedAnnouncements} />;
+}
+
+function AnnouncementsWidgetContent({
+  announcementsData,
+  pinnedAnnouncements,
+}: {
+  announcementsData: FunctionReturnType<typeof api.announcements.feed.list>;
+  pinnedAnnouncements: FunctionReturnType<typeof api.announcements.feed.listPinned>;
+}) {
   const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
   const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
   const newestAnnouncementId = announcementsData[0]?._id ?? null;

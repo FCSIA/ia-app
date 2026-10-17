@@ -130,6 +130,16 @@ export const schema = defineSchema({
       ],
     }),
 
+  easterEggFinders: defineTable({
+    userId: v.id("users"),
+    eggIds: v.array(v.union(v.literal("copper"), v.literal("jade"), v.literal("crystal"))),
+    firstFoundAt: v.number(),
+    completedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_completedAt", ["completedAt"]),
+
   auditEvents: defineTable({
     actorId: v.optional(v.id("users")),
     action: v.string(),

@@ -54,6 +54,7 @@ import type * as courses_catalog from "../courses/catalog.js";
 import type * as courses_metadata from "../courses/metadata.js";
 import type * as courses_seed from "../courses/seed.js";
 import type * as crons from "../crons.js";
+import type * as easterEggs_finders from "../easterEggs/finders.js";
 import type * as events__lib from "../events/_lib.js";
 import type * as events_approvals from "../events/approvals.js";
 import type * as events_calendar from "../events/calendar.js";
@@ -180,6 +181,7 @@ declare const fullApi: ApiFromModules<{
   "courses/metadata": typeof courses_metadata;
   "courses/seed": typeof courses_seed;
   crons: typeof crons;
+  "easterEggs/finders": typeof easterEggs_finders;
   "events/_lib": typeof events__lib;
   "events/approvals": typeof events_approvals;
   "events/calendar": typeof events_calendar;

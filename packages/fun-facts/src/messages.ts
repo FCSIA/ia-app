@@ -555,7 +555,7 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The inventor of the “zipper,” Gideon Sundback, was a Swedish-American engineer.',
   'The “knapsack” originally referred to a donkey’s load carrier.',
   'The first “computer virus” was called “Creeper,” created in 1971 as an experiment.',
-  'The inventor of the “Velcro,” George',
+  'The inventor of Velcro, George de Mestral, was inspired by burrs stuck to his dog’s fur after a walk in the Alps.',
   'Earth and the Moon are both satellites — Earth orbits the Sun, while the Moon orbits Earth.',
   'Mercury is the only planet in our solar system without an atmosphere.',
   'GPS works partly because scientists correct for Einstein’s time-travel effects on satellite clocks.',
@@ -568,4 +568,27 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The deepest confirmed fish sighting was a snailfish filmed 8,336 meters below the ocean surface.',
   'Hellbenders breathe mostly through their wrinkly skin instead of using gills.',
   'Male hellbenders guard their eggs for months by fanning them with oxygenated water.',
+
+  // IA campus, pathways & community lore
+  'The eXchange has two levels: first floor for group collaboration, top floor for silent study.',
+  'Need a quiet spot or a mic? The eXchange has mini breakout Baypods, a STEM makerspace, and a bookable podcast room.',
+  'IA lanyard lore: red for 9th grade, green for Health Science, blue for IT, and yellow for Engineering.',
+  'Every IA freshman starts in GT Block — a two-period tour across Health Science, Engineering, and Information Technology.',
+  'IA’s Engineering wing has its own aerospace wind tunnel, CNC mills, laser cutters, and virtual welding simulators.',
+  'IA’s Health Science labs include mock surgical suites, patient simulators, and a full-scale faux ambulance.',
+  'IA’s IT wing houses gaming-grade rigs for Game Design and a dedicated server rack for cybersecurity exercises.',
+  'In 2024, IA’s eSports team won state and national championships in Splatoon 3 and reached the state Elite Eight in Rocket League.',
+  'IA’s fencing club won the 2024 Women’s Georgia State Championship, and Quiz Bowl placed 5th in the nation.',
+  'During Club Weeks, a special flex club period drops right between 4th and 5th period so everyone can meet without staying late.',
+  'Every junior tackles the Pinnacle Project — a yearlong independent research or design investigation.',
+  'Twelve Flex Friday credits a year unlock the IA magnet seal — one hands-on workshop at a time.',
+
+  // IA App lore and ways to contribute
+  'Student developers help build and maintain the IA App — check “What’s New” in your profile to see recent updates.',
+  'Spot a wrench icon beside someone’s name? That marks a developer who helped build or maintain the IA App.',
+  'Found a glitch or weird layout? Share Feedback lets you send details and screenshots to the app team.',
+  'The IA App’s “What’s New” section keeps a record of changes students can explore.',
+  'Have an idea for a club feature? Share Feedback is a place to suggest it.',
+  'A little Phoenix secret is hiding in the IA App. Try calling its name while exploring, away from a text box.',
+  'What’s New holds a record of IA App versions. Curious explorers might find a little more if they revisit one often enough.',
 ] as const;

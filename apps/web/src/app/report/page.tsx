@@ -130,7 +130,7 @@ export default function ReportPage() {
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
                   <p className="mt-1 text-sm leading-6 text-foreground/85">
-                    Send a thought, feature request, improvement idea, or concern. ANYTHING! Don&apos;t like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
+                    Report a bug, suggest a feature, or share an idea. For a bug, include the page, what you did, what you expected, and what happened. A screenshot can help school staff review it.
                   </p>
                 </div>
               </div>

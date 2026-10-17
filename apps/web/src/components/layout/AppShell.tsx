@@ -33,6 +33,9 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 import { cn } from "@/lib/utils";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
+import { createPhoenixEasterEggMatcher, isPhoenixEasterEggKey } from "@/lib/phoenix-easter-egg";
+import { useToast } from "@/hooks/use-toast";
+import { useFoundersQuest } from "@/hooks/use-founders-quest";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 
@@ -58,6 +61,8 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const user = useCurrentUser();
+  const { progress: questProgress } = useFoundersQuest();
+  const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -91,6 +96,24 @@ export function AppShell({
       window.removeEventListener("ia:open-global-search", onOpenGlobalSearch);
     };
   }, []);
+
+  useEffect(() => {
+    const matchPhoenix = createPhoenixEasterEggMatcher();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isPhoenixEasterEggKey(event)) {
+        matchPhoenix('', Date.now());
+        return;
+      }
+      if (matchPhoenix(event.key, Date.now())) {
+        toast({
+          title: 'You found the Phoenix key!',
+          description: 'A little secret for curious IA App explorers.',
+        });
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [toast]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -252,6 +275,7 @@ export function AppShell({
             searchScope={searchScope}
             commandHint={commandHint}
             user={user}
+            questKeysFound={questProgress?.keys.length ?? 0}
             onOpenGlobalSearch={() => setCommandOpen(true)}
             onToggleSearchScope={toggleSearchScope}
             onOpenProfile={() => {

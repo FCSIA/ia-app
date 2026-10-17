@@ -1,16 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { pickNavigationLoadingFact } from '@ia/fun-facts';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { LoadingFact } from '@/components/ui/loading-fact';
+import { useToast } from '@/hooks/use-toast';
+import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
 
 const ROTATE_MS = 12_000;
 
 export function FunFactWidget() {
   const [fact, setFact] = useState(pickNavigationLoadingFact);
+  const tapMatcher = useRef(createEasterEggTapMatcher());
+  const { toast } = useToast();
 
   const nextMessage = useCallback(() => {
     setFact(pickNavigationLoadingFact());
@@ -32,7 +36,19 @@ export function FunFactWidget() {
           variant="ghost"
           size="icon-sm"
           className="rounded-full"
-          onClick={nextMessage}
+          onClick={() => {
+            if (tapMatcher.current(Date.now())) {
+              setFact({
+                id: 'dashboard-phoenix-secret',
+                text: 'You found the secret fact: the Phoenix is always ready for another beginning.',
+                category: 'phoenix',
+                visual: 'phoenix',
+              });
+              toast({ title: 'Secret fact found!', description: 'The Phoenix was hiding in plain sight.' });
+            } else {
+              nextMessage();
+            }
+          }}
           aria-label="Show another fact"
         >
           <RefreshCw />
