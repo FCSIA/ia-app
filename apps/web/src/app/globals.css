@@ -42,7 +42,9 @@
   --shadow-surface-8: var(--shadow-8);
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
+  /* Default boundaries follow the local surface, just like interaction layers.
+     Themes with an explicit border palette can retain that color below. */
+  --color-border: var(--theme-border-color, hsl(var(--foreground) / 0.16));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   --radius-sm: calc(var(--radius) - 4px);
@@ -711,6 +713,13 @@
     0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color),
     0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color),
     0 48px 48px -24px var(--shadow-color), 0 96px 96px -48px var(--shadow-color);
+}
+
+.high-contrast,
+.bubblegum,
+.bubblegum-dark,
+.custom {
+  --theme-border-color: hsl(var(--border));
 }
 
 .dark,

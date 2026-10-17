@@ -154,6 +154,19 @@ References:
 
 ## Direct-child and motion contracts
 
+Select and Dropdown share `popup-shape.ts`: 12px container, 8px item/highlight,
+and 10px focus ring at a 4px inset. The trigger can follow the global shape;
+the menu must not inherit it. Use fixed values here: the application's
+`rounded-lg` resolves to 16px, unlike the registry's expected 8px. Nested popup
+portals use the same overlay layer so later inner portals paint above their
+parent; changing only the parent's z-index can hide its controls.
+
+Default Light/Dark `border-border` and `bg-border` resolve against the scoped
+surface foreground, like hover and active layers. Explicit palette themes use
+`--theme-border-color` to preserve Custom Accent, Bubblegum colors, and opaque
+high-contrast borders. Keep the web token bridge and app mapping aligned;
+`border-input` remains a separate contract.
+
 The design owner approved Card's independent `attention` state for unread
 announcements (2026-10-16). Card owns its neutral translucent surface and shape;
 the existing Group hover remains visible beneath it. Selection takes precedence
