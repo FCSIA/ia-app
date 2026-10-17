@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@/lib/convex-react';
 import { Switch } from '@/components/ui/switch';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 type NotificationScopeSwitchProps = {
@@ -39,6 +40,7 @@ export function NotificationScopeSwitch({
   parentEnabled = true,
   onOptimisticChange,
 }: NotificationScopeSwitchProps) {
+  const { toast } = useToast();
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
   const [pending, setPending] = useState(false);
   const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
@@ -58,6 +60,8 @@ export function NotificationScopeSwitch({
 
   const preference = preferences?.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
+  ) ?? preferences?.find(
+    (pref) => pref.category === category && pref.scopeKey === 'global',
   );
   const locked = lockedProp || preference?.locked === true;
   const storedEnabled = locked
@@ -90,6 +94,7 @@ export function NotificationScopeSwitch({
     } catch {
       setOptimisticEnabled(null);
       onOptimisticChange?.(null);
+      toast({ title: 'Could not save notification preference', variant: 'destructive' });
     } finally {
       setPending(false);
     }
@@ -115,6 +120,7 @@ export function NotificationScopeSwitch({
               : undefined
       }
     >
+      {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Required notification" /> : null}
       <Switch
         label={compact ? undefined : label}
         aria-label={`${label}: ${enabled ? 'on' : 'off'}`}
@@ -123,9 +129,6 @@ export function NotificationScopeSwitch({
         disabled={disabled}
         wrapperClassName="min-w-0 flex-1"
       />
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {locked ? <Lock className="size-4 text-muted-foreground" /> : null}
-      </span>
     </div>
   );
 }

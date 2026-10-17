@@ -311,9 +311,7 @@ export default function NotificationsPage() {
               </div>
             </TabPanel>
             <TabPanel value="settings" className="mt-5 max-w-4xl">
-              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-6 ${CARD_SURFACE_FOREGROUND}`}>
-                <NotificationSettingsPanel />
-              </div>
+              <NotificationSettingsPanel />
             </TabPanel>
           </Tabs>
         </div>

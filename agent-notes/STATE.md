@@ -5,7 +5,9 @@
 - **Integration**: The user authorized working through the merge backlog.
   Feedback issue sync (#110) and its security prerequisite (#153) are merged.
   Dashboard PR #147 is squash-merged. Toast/profile geometry corrections are
-  being finished on `fix/ui-control-geometry` in the isolated `merge-pr147` worktree.
+  in PR #154. Shared notification settings are in PR #155 on
+  `feat/shared-notification-settings`, stacked on #154 in the isolated
+  `merge-pr147` worktree.
   The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
   #149, and #150.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
@@ -61,6 +63,67 @@
   browser checks confirm centered 32px toast controls, keyboard Undo and dismissal,
   equal 9px profile navigation insets on desktop/390px, and circular avatars in
   the sidebar/editor. Review captures are in `/tmp/ia-ui-geometry-review/`.
+- Notification settings now share `NotificationSettingsPanel` on `/notifications`
+  and `/profile`: redundant subtitles are removed, counts sit inline,
+  channel-count/chevron disclosure remains separate from switches, required locks do not reserve
+  an empty trailing slot, and channel rows follow the workspace unit hierarchy
+  with tree connectors. Owner feedback restored the rounded inner option group,
+  compact rows, quiet separators, and distinct club surfaces, without an outer
+  panel frame. Static groups use a single border without an elevation outline
+  stacked on it. Design guidance distinguishes useful grouping from redundant
+  chrome. Scoped switches reflect global inheritance and report failed saves.
+  The owner's interaction principles are captured in `.impeccable.md`.
+  Three hierarchy regressions, web typecheck/lint (21 existing warnings), and
+  production build pass. Compiled browser checks cover route parity, preference
+  persistence/inheritance, parent disabling, keyboard disclosure/switches,
+  aligned right edges, 390px/touch layouts, reduced motion, and light/custom
+  themes. Demo clubs are flat; nested placement is covered by focused tests.
+  Captures are in `/tmp/ia-notification-settings-review/`. Material visual changes
+  await design-owner review; #154 remains open with passing CI.
+- Profile tab panels no longer use the local `SettingsCard` wrapper, whose
+  full-strength frame/header border differed from notification settings. Repeated
+  panel titles/subtitles and the identity divider are removed; account details
+  use a definition list with wrapping values. Useful inner groups remain. The
+  document owns a persistent vertical scrollbar track and stable gutter to avoid
+  a measured 4px shift when taller panels introduce the 8px scrollbar. Compiled
+  checks confirm identical desktop anchors across short/long tabs, all five
+  panels within 390px, and password form open/cancel. Combined channel-count
+  disclosure works by text click and Enter with a 44px touch target. Group
+  borders compute to 1px with no shadow; all switches share one right edge.
+- Profile typography now uses readable secondary labels without all-caps
+  tracking or unnecessary monospace. Release titles appear once and wrap;
+  scope labels stack above changes on narrow screens. The custom theme editor
+  composes the shared Fluid Tabs adapter with named panels and arrow/Home/End
+  keyboard navigation, replacing manually implemented tabs. Web typecheck,
+  lint (21 existing warnings), production build, and 390px keyboard/touch checks
+  pass. These additions remain in #155 awaiting owner visual review.
+- The owner authorized parallel feedback, clubs landing, and announcements
+  passes in isolated worktrees, stacked on #155. Clubs PR #156 removes the
+  conflicting outer frame around the approved CardGroup and aligns Discover
+  to the same width; typecheck/lint/build and desktop/390px interaction checks
+  pass. Preview: `http://localhost:3002/clubs`.
+- Feedback PR #157 simplifies `/report`, distinguishes GENERAL feedback from
+  moderation notifications (including source-linked legacy inbox records), and
+  preserves existing moderation opt-outs until Feedback is configured. All 383
+  backend tests, backend/web/mobile typechecks, web lint, and production build
+  pass. Independent source review found no blocking compatibility/permission
+  issue. Browser checks cover desktop/390px, light/dark, attachment add/remove,
+  and keyboard behavior; populated history is not browser-verified. Preview:
+  `http://localhost:3001/report`. New backend code is not on the local watcher.
+- Announcements PR #158 simplifies metadata/action layout, exposes common
+  filters, and applies the same matcher to current/past records. Its narrow
+  backend guard excludes non-expiring ACTIVE posts from the recent-expiration
+  stream. All 379 backend tests, backend/web typechecks, web lint, production
+  build, and three web filter tests pass. The registered Past-query test covers
+  expiry boundaries but does not reproduce the old engine bug: convex-test's
+  comparator differs from documented Convex missing-value ordering. No backend
+  push occurred. Compiled desktop/390px checks, read/save restoration, Saved
+  filtering, empty search recovery, and independent comments navigation pass.
+  Preview: `http://localhost:3003/announcements`; captures are in
+  `/tmp/ia-announcements-review/`. The root agent finished QA/PR creation after
+  the announcements subagent exhausted its usage allowance.
+- All new material visuals remain awaiting design-owner review. Agent QA does
+  not authorize merging them or deploying to a shared/production backend.
 - The `merge-pr147` worktree serves the compiled dashboard at
   `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
   on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.
