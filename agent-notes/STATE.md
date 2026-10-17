@@ -4,7 +4,8 @@
 
 - **Integration**: The user authorized working through the merge backlog.
   Feedback issue sync (#110) and its security prerequisite (#153) are merged.
-  Dashboard PR #147 is being finished in the isolated `merge-pr147` worktree.
+  Dashboard PR #147 is squash-merged. Toast/profile geometry corrections are
+  being finished on `fix/ui-control-geometry` in the isolated `merge-pr147` worktree.
   The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
   #149, and #150.
 - **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
@@ -50,8 +51,16 @@
   and an isolated local Convex push pass. Browser checks cover manual cross-column
   placement, balancing/Undo, keyboard ordering/empty-column drops/cancellation,
   Save/reload, live desktop/390px reflow, light/custom dark themes, and reduced
-  motion. Native touch dragging still needs device review. Material visuals remain
-  awaiting owner review before merging #147.
+  motion. Native touch dragging still needs device review. The owner authorized
+  squash-merging #147 after visual review; it landed as `55b615e1` with passing CI.
+- The owner requested follow-up toast/profile geometry repairs: an icon-only Undo,
+  a visible centered close control without a reserved empty strip, shared profile
+  card corners, equal side/bottom navigation insets, and circular profile avatars.
+  These corrections are separate from merged #147 and await a fresh visual review.
+  Web typecheck, lint (21 existing warnings), and production build pass. Compiled
+  browser checks confirm centered 32px toast controls, keyboard Undo and dismissal,
+  equal 9px profile navigation insets on desktop/390px, and circular avatars in
+  the sidebar/editor. Review captures are in `/tmp/ia-ui-geometry-review/`.
 - The `merge-pr147` worktree serves the compiled dashboard at
   `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
   on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.

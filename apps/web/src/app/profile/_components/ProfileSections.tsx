@@ -35,7 +35,7 @@ import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 
 const cardClass = cn(
-  'overflow-hidden rounded-2xl border border-border bg-card',
+  'border border-border bg-card pb-0',
   CARD_SURFACE_FOREGROUND,
 );
 const headerClass = 'flex flex-row items-start justify-between gap-4 border-b border-border/70 px-5 py-4';
