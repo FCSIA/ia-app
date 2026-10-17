@@ -113,8 +113,9 @@ export const markRead = mutation({
     const user = await getCurrentAppUser(ctx);
     for (const id of args.ids) {
       const row = await ctx.db.get(id);
-      if (row && row.userId === user._id) {
-        await ctx.db.patch(id, { isRead: true });
+      // Only the first read is recorded, so admin read-time analytics stay honest.
+      if (row && row.userId === user._id && !row.isRead) {
+        await ctx.db.patch(id, { isRead: true, readAt: Date.now() });
       }
     }
     return { success: true };
@@ -159,7 +160,8 @@ async function acknowledgeInboxBatch(
       q.eq("userId", userId).eq("isRead", false).lte("createdAt", cutoff),
     )
     .take(inboxAcknowledgementBatchSize);
-  for (const row of rows) await ctx.db.patch(row._id, { isRead: true });
+  const readAt = Date.now();
+  for (const row of rows) await ctx.db.patch(row._id, { isRead: true, readAt });
   return rows.length;
 }
 

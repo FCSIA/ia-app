@@ -20,6 +20,10 @@ const imageSources = [
   "'self'",
   'data:',
   'blob:',
+  // Chat GIF previews load only from these CDNs; keep in sync with
+  // GIF_MEDIA_HOST in apps/shared/chat/gifs.ts.
+  'https://*.giphy.com',
+  'https://*.tenor.com',
   convexUrl,
   convexSiteUrl,
   ...localStorageOrigins,
@@ -67,10 +71,23 @@ const nextConfig: NextConfig = {
   },
 
   // Allow the requested LocalTunnel hostname to load Next.js dev resources.
+  // The phone-testing host written by `pnpm dev:phone`, so a device can load
+  // dev assets from whatever network address the machine has today.
   allowedDevOrigins: [
     'ia-app-dev.loca.lt',
-    '10.0.0.231',
+    ...[convexUrl ? new URL(convexUrl).hostname : null].filter(
+      (host): host is string => !!host && !['localhost', '127.0.0.1'].includes(host),
+    ),
   ],
+
+  // `/_meta` is the documented deployment marker, but the App Router treats
+  // folders starting with an underscore as private and never routes them, so
+  // the handler lives at /api/meta and this serves it at the public URL.
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: '/_meta', destination: '/api/meta' }],
+    };
+  },
 
   // PWA support via service worker (manual, no paid plugin needed)
   async headers() {

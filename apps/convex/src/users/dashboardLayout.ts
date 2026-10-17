@@ -32,3 +32,31 @@ export function normalizeDashboardLayout(layout: readonly string[]): string[] {
     return true;
   });
 }
+
+/** Two durable desktop columns. Legacy flat preferences retain their old split. */
+export function normalizeDashboardColumns(
+  columns: readonly (readonly string[])[] | undefined,
+  layout: readonly string[],
+): string[][] {
+  const ids = normalizeDashboardLayout(layout).filter((id) => id !== "welcome");
+  if (!columns)
+    return [
+      ids.filter((_, i) => i % 2 === 0),
+      ids.filter((_, i) => i % 2 === 1),
+    ];
+
+  const allowed = new Set(ids);
+  const seen = new Set<string>();
+  const result = [0, 1].map((index) =>
+    (columns[index] ?? []).filter((id) => {
+      if (!allowed.has(id) || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    }),
+  );
+  for (const id of ids) {
+    if (!seen.has(id))
+      result[result[0].length <= result[1].length ? 0 : 1].push(id);
+  }
+  return result;
+}

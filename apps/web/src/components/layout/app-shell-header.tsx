@@ -19,6 +19,8 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { MenuItem } from "@/components/ui/menu-item";
 import { Tooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { PresenceAvatar } from "@/components/presence/club-presence";
+import { useDoNotDisturbMenu } from "@/components/presence/do-not-disturb";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
 export type ChannelSearchControl = {
@@ -151,6 +153,8 @@ function AppShellHeader({
   onOpenProfile,
   onLogout,
 }: AppShellHeaderProps) {
+  const doNotDisturb = useDoNotDisturbMenu();
+
   return (
     <header className={`app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card px-4 pt-[env(safe-area-inset-top)] md:px-6 lg:px-8 ${CARD_SURFACE_FOREGROUND}`}>
       <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -191,13 +195,15 @@ function AppShellHeader({
                 size="icon-lg"
                 className="shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:w-auto sm:min-w-11 sm:px-0 sm:pr-3"
               >
-                <UserAvatar
-                  firstName={user.firstName}
-                  lastName={user.lastName}
-                  avatarUrl={user.avatarUrl}
-                  className="size-11 sm:size-9"
-                  fallbackClassName="text-xs"
-                />
+                <PresenceAvatar status={doNotDisturb.doNotDisturb ? "doNotDisturb" : undefined}>
+                  <UserAvatar
+                    firstName={user.firstName}
+                    lastName={user.lastName}
+                    avatarUrl={user.avatarUrl}
+                    className="size-11 sm:size-9"
+                    fallbackClassName="text-xs"
+                  />
+                </PresenceAvatar>
                 <span className="hidden truncate pl-1 sm:inline">
                   {user.firstName} {user.lastName}
                 </span>
@@ -213,17 +219,26 @@ function AppShellHeader({
               </Button>
             }
           />
-          <DropdownContent align="end" className="w-48">
+          <DropdownContent align="end" className="w-64">
             <MenuItem
               icon={Settings}
               label="Settings"
               index={0}
               onSelect={onOpenProfile}
             />
+            {doNotDisturb.actions.map((action, index) => (
+              <MenuItem
+                key={action.key}
+                icon={action.icon}
+                label={action.label}
+                index={index + 1}
+                onSelect={action.onSelect}
+              />
+            ))}
             <MenuItem
               icon={LogOut}
               label="Sign out"
-              index={1}
+              index={doNotDisturb.actions.length + 1}
               onSelect={onLogout}
               className="hover:[&_svg]:text-red-500"
             />

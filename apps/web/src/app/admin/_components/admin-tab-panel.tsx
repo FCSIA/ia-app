@@ -6,7 +6,7 @@ import { TabPanel } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
-const TAB_PANEL_BASE = 'min-h-0 flex-1 pt-3';
+const TAB_PANEL_BASE = 'min-h-0 min-w-0 flex-1 pt-3';
 
 type AdminTabPanelProps = {
   value: AdminTabId;
@@ -17,7 +17,7 @@ type AdminTabPanelProps = {
 export function AdminScrollTabPanel({ value, children }: AdminTabPanelProps) {
   return (
     <TabPanel value={value} className={cn(TAB_PANEL_BASE, 'flex overflow-hidden')}>
-      <ScrollArea className="min-h-0 flex-1" viewportClassName="pb-6">
+      <ScrollArea className="min-h-0 min-w-0 flex-1" viewportClassName="pb-6">
         {children}
       </ScrollArea>
     </TabPanel>

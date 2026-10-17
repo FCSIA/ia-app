@@ -7,8 +7,8 @@
     "dev": "convex dev",
     "codegen": "convex dev --once --typecheck disable --codegen enable",
     "typecheck": "tsc -p src/tsconfig.json",
-    "build": "pnpm run typecheck",
-    "lint": "pnpm run typecheck",
+    "build": "bun run typecheck",
+    "lint": "bun run typecheck",
     "test": "vitest run --config vitest.config.ts",
     "deploy": "convex deploy",
     "auth:generate": "cd src/betterAuth && auth generate -y"
@@ -17,6 +17,7 @@
     "@better-auth/expo": "^1.6.22",
     "@convex-dev/better-auth": "0.12.2",
     "@convex-dev/migrations": "0.3.6",
+    "@convex-dev/presence": "0.4.0",
     "@convex-dev/rate-limiter": "0.4.0",
     "better-auth": "1.6.22",
     "convex": "1.46.0",

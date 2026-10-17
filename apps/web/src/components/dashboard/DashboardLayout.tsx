@@ -1,27 +1,44 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   MouseSensor,
   TouchSensor,
   closestCenter,
+  pointerWithin,
+  useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   arrayMove,
-  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, LayoutGrid, Plus, RotateCcw, Save, X } from 'lucide-react';
+import {
+  Columns2,
+  GripVertical,
+  LayoutGrid,
+  Plus,
+  RotateCcw,
+  Save,
+  X,
+} from 'lucide-react';
+import { LayoutGroup, LazyMotion, useReducedMotion } from 'framer-motion';
+import * as m from 'framer-motion/m';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
+import { ToastAction } from '@/components/ui/toast';
 import {
   Dialog,
   DialogContent,
@@ -34,9 +51,13 @@ import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { CanvasCalendarAnnouncement } from './CanvasCalendarAnnouncement';
+import { PushReenableAnnouncement } from './PushReenableAnnouncement';
 import { useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { normalizeDashboardLayout } from '~/apps/convex/src/users/dashboardLayout';
+import {
+  normalizeDashboardColumns,
+  normalizeDashboardLayout,
+} from '~/apps/convex/src/users/dashboardLayout';
 import {
   WIDGETS,
   getAvailableWidgets,
@@ -45,34 +66,109 @@ import {
   type WidgetDefinition,
 } from './widget-registry';
 
+import {
+  balanceColumns,
+  canImproveBalance,
+  columnHeight,
+  moveToColumn,
+  withMobileOrder,
+  type DashboardArrangement,
+} from './column-layout';
+
+const loadMotionFeatures = () =>
+  import('./dashboard-motion').then((module) => module.default);
+
 const STORAGE_PREFIX = 'ia_dashboard_layout_';
 
-function storageKey(userId: string | null | undefined) {
-  return userId ? `${STORAGE_PREFIX}${userId}` : `${STORAGE_PREFIX}anon`;
+const HEIGHT_EPSILON = 8;
+const PACK_SETTLE_MS = 1200;
+
+function storageKey(userId: string) {
+  return `${STORAGE_PREFIX}${userId}`;
 }
 
-function loadLayout(userId: string | null | undefined): string[] | null {
-  if (typeof window === 'undefined') return null;
+function loadLayout(
+  userId: string,
+): { layout: string[]; columns?: string[][] } | null {
   try {
-    const raw = localStorage.getItem(storageKey(userId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) {
-      return parsed;
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem(storageKey(userId)) ?? 'null',
+    );
+    if (Array.isArray(parsed) && parsed.every((id) => typeof id === 'string')) {
+      return { layout: parsed };
     }
-    return null;
+    if (!parsed || typeof parsed !== 'object' || !('layout' in parsed))
+      return null;
+    const { layout } = parsed;
+    if (!Array.isArray(layout) || !layout.every((id) => typeof id === 'string'))
+      return null;
+    const columns = 'columns' in parsed ? parsed.columns : undefined;
+    return {
+      layout,
+      columns:
+        Array.isArray(columns) &&
+        columns.length === 2 &&
+        columns.every(
+          (column) =>
+            Array.isArray(column) &&
+            column.every((id) => typeof id === 'string'),
+        )
+          ? columns
+          : undefined,
+    };
   } catch {
     return null;
   }
 }
 
-function saveLayout(userId: string | null | undefined, layout: string[]) {
-  if (typeof window === 'undefined') return;
+function saveLayout(userId: string, state: DashboardArrangement) {
   try {
-    localStorage.setItem(storageKey(userId), JSON.stringify(layout));
+    localStorage.setItem(storageKey(userId), JSON.stringify(state));
   } catch {
-    // ignore
+    // The server remains authoritative if the browser cache is unavailable.
   }
+}
+
+// Prefer widget targets over their containing column; empty columns remain droppable.
+const columnCollision: CollisionDetection = (args) => {
+  if (!args.pointerCoordinates) return closestCenter(args);
+  const hits = pointerWithin(args);
+  const collisions = hits.length ? hits : closestCenter(args);
+  const widgets = collisions.filter(
+    (hit) => !String(hit.id).startsWith('dashboard-column-'),
+  );
+  return widgets.length ? widgets : collisions;
+};
+
+function WidgetColumn({
+  ids,
+  index,
+  editing,
+  children,
+}: {
+  ids: string[];
+  index: number;
+  editing: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef } = useDroppable({
+    id: `dashboard-column-${index}`,
+    // Populated columns use their sortable widgets as targets.
+    disabled: !editing || ids.length > 0,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'flex min-w-0 flex-1 flex-col gap-6',
+        editing && 'min-h-40',
+      )}
+    >
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {children}
+      </SortableContext>
+    </div>
+  );
 }
 
 // ─── Sortable widget wrapper ──────────────────────────────────────────────────
@@ -82,16 +178,49 @@ function SortableWidget({
   widget,
   editing,
   onRemove,
+  onMeasure,
 }: {
   id: string;
   widget: WidgetDefinition;
   editing: boolean;
   onRemove: (id: string) => void;
+  onMeasure?: (id: string, height: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const reducedMotion = useReducedMotion();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id,
     disabled: !editing,
+    transition: reducedMotion ? null : undefined,
   });
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      nodeRef.current = node;
+      setNodeRef(node);
+    },
+    [setNodeRef],
+  );
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node || !onMeasure) return;
+    // Measure right away rather than waiting on the first observer callback.
+    onMeasure(id, node.getBoundingClientRect().height);
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      onMeasure(id, node.getBoundingClientRect().height);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [id, onMeasure]);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -101,42 +230,48 @@ function SortableWidget({
   const Component = widget.Component;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        'relative',
-        editing ? 'rounded-3xl ring-1 ring-dashed ring-border/70' : '',
-        isDragging ? 'opacity-40' : '',
-      )}
+    <m.div
+      layout="position"
+      layoutId={`dashboard-widget-${id}`}
+      transition={{ layout: { duration: reducedMotion ? 0 : 0.22 } }}
     >
-      <div>
-        {editing && (
-          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
-            <button
-              type="button"
-              {...attributes}
-              {...listeners}
-              className="flex size-6 cursor-grab items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
-              aria-label={`Drag ${widget.label}`}
-            >
-              <GripVertical className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onRemove(id)}
-              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              aria-label={`Remove ${widget.label}`}
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
+      <div
+        ref={setRefs}
+        style={style}
+        className={cn(
+          'relative',
+          editing ? 'rounded-3xl ring-1 ring-dashed ring-border/70' : '',
+          isDragging ? 'opacity-40' : '',
         )}
-        <div className={editing ? 'opacity-95' : ''}>
-          <Component />
+      >
+        <div>
+          {editing && (
+            <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
+              <button
+                type="button"
+                {...attributes}
+                {...listeners}
+                className="flex size-6 touch-none cursor-grab items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                aria-label={`Drag ${widget.label}`}
+              >
+                <GripVertical className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(id)}
+                className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`Remove ${widget.label}`}
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+          <div className={editing ? 'opacity-95' : ''}>
+            <Component />
+          </div>
         </div>
       </div>
-    </div>
+    </m.div>
   );
 }
 
@@ -145,7 +280,7 @@ function SortableWidget({
 function DragGhost({ widget }: { widget: WidgetDefinition }) {
   const Component = widget.Component;
   return (
-    <div className="pointer-events-none rounded-3xl ring-2 ring-primary/30 scale-[1.02] rotate-[0.5deg]">
+    <div className="pointer-events-none rounded-3xl ring-2 ring-primary/30">
       <Component />
     </div>
   );
@@ -161,127 +296,313 @@ export function DashboardLayout({
   onEditingChange: (editing: boolean) => void;
 }) {
   const user = useCurrentUser();
+  const reducedMotion = useReducedMotion();
   const { toast } = useToast();
   const updateDashboardLayout = useMutation(api.users.me.updateDashboardLayout);
-  const [layout, setLayout] = useState<string[] | null>(null);
+  const [arrangement, setArrangement] = useState<DashboardArrangement | null>(
+    null,
+  );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [columnCount, setColumnCount] = useState(2);
-
-  // Sensor config — small drag distance to avoid accidental triggers
+  const [columnCount, setColumnCount] = useState(1);
+  const [heights, setHeights] = useState<Record<string, number>>({});
+  const [autoBalance, setAutoBalance] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const dragSnapshot = useRef<DashboardArrangement | null>(null);
+  const undoToast = useRef<(() => void) | null>(null);
+  const loadedPreference = useRef<string | null>(null);
+  const loadedUser = useRef<string | null>(null);
+  const layout = arrangement?.layout;
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      scrollBehavior: reducedMotion ? 'auto' : 'smooth',
+    }),
   );
 
-  // Track viewport breakpoint to choose 1 vs 2 columns (matches md:1280 ish for masonry).
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(min-width: 768px)');
-    const update = () => setColumnCount(mq.matches ? 2 : 1);
+    const update = () => {
+      setHeights({});
+      setColumnCount(mq.matches ? 2 : 1);
+    };
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  // Load persisted layout once user is known
+  const dismissUndo = useCallback(() => {
+    undoToast.current?.();
+    undoToast.current = null;
+  }, []);
+  useEffect(() => dismissUndo, [dismissUndo]);
   useEffect(() => {
-    const normalizeAllowedLayout = (candidate: readonly string[]) =>
-      normalizeDashboardLayout(candidate).filter((id) => {
-        const widget = WIDGETS[id];
-        return widget && isWidgetAllowed(widget, user?.roles);
-      });
+    if (!editing) dismissUndo();
+  }, [editing, dismissUndo]);
 
-    const savedLayout = user?.dashboardLayout?.length
-      ? normalizeAllowedLayout(user.dashboardLayout)
-      : [];
-    const localLayout = normalizeAllowedLayout(loadLayout(user?._id) ?? []);
-    const nextLayout =
-      !user
-        ? getDefaultLayout()
-        : savedLayout.length > 0
-          ? savedLayout
-          : localLayout.length > 0
-            ? localLayout
-            : getDefaultLayout();
+  const handleMeasure = useCallback((id: string, height: number) => {
+    if (height <= 0) return;
+    setHeights((prev) =>
+      prev[id] !== undefined && Math.abs(prev[id] - height) < HEIGHT_EPSILON
+        ? prev
+        : { ...prev, [id]: height },
+    );
+  }, []);
 
-    setLayout(nextLayout);
-  }, [user]);
+  const preferenceKey = JSON.stringify([
+    user?._id,
+    user?.roles,
+    user?.dashboardLayout,
+    user?.dashboardColumns,
+  ]);
+  useEffect(() => {
+    if (
+      !user ||
+      (editing && loadedUser.current === user._id) ||
+      loadedPreference.current === preferenceKey
+    )
+      return;
+    const local = loadLayout(user._id);
+    const saved = user.dashboardLayout.length
+      ? { layout: user.dashboardLayout, columns: user.dashboardColumns }
+      : local;
+    const nextLayout = normalizeDashboardLayout(
+      saved?.layout ?? getDefaultLayout(),
+    ).filter((id) => WIDGETS[id] && isWidgetAllowed(WIDGETS[id], user.roles));
+    setArrangement({
+      layout: nextLayout,
+      columns: normalizeDashboardColumns(saved?.columns, nextLayout),
+    });
+    setAutoBalance(!saved);
+    loadedPreference.current = preferenceKey;
+    loadedUser.current = user._id;
+    dismissUndo();
+  }, [preferenceKey, editing, user, dismissUndo]);
 
   const availableWidgets = useMemo(
     () => getAvailableWidgets(user?.roles),
     [user?.roles],
   );
-
-  const handleSave = useCallback(() => {
-    if (user && layout) {
-      void updateDashboardLayout({ layout });
-      saveLayout(user._id, layout);
-      toast({ title: 'Dashboard saved across all devices' });
+  const { fixedIds, fullIds, columnIds } = useMemo(() => {
+    const fixedIds: string[] = [];
+    const fullIds: string[] = [];
+    const columnIds: string[] = [];
+    for (const widget of Object.values(WIDGETS)) {
+      if (widget.isFixed && isWidgetAllowed(widget, user?.roles))
+        fixedIds.push(widget.id);
     }
-    onEditingChange(false);
-  }, [layout, onEditingChange, toast, updateDashboardLayout, user]);
+    for (const id of layout ?? []) {
+      const widget = WIDGETS[id];
+      if (!widget || widget.isFixed) continue;
+      if (widget.size === 'full') fullIds.push(id);
+      else columnIds.push(id);
+    }
+    return { fixedIds, fullIds, columnIds };
+  }, [layout, user?.roles]);
+  const desktopColumns = useMemo(() => {
+    const allowed = new Set(columnIds);
+    return (
+      arrangement?.columns.map((column) =>
+        column.filter((id) => allowed.has(id)),
+      ) ?? [[], []]
+    );
+  }, [arrangement, columnIds]);
+  const columns = columnCount === 2 ? desktopColumns : [columnIds];
+  const measured =
+    columnCount === 2 && columnIds.every((id) => heights[id] !== undefined);
+  const balanced = useMemo(
+    () => balanceColumns(desktopColumns, columnIds, heights),
+    [desktopColumns, columnIds, heights],
+  );
+  const canBalance =
+    measured && canImproveBalance(desktopColumns, balanced, heights);
+
+  // Only a fresh/default layout can balance automatically, after content settles.
+  useEffect(() => {
+    if (!autoBalance || !measured || activeId) return;
+    const timer = window.setTimeout(() => {
+      setArrangement((prev) => (prev ? { ...prev, columns: balanced } : prev));
+      setAutoBalance(false);
+    }, PACK_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [autoBalance, measured, activeId, balanced]);
+
+  const beginEdit = useCallback(() => {
+    setAutoBalance(false);
+    dismissUndo();
+  }, [dismissUndo]);
+  const handleSave = useCallback(async () => {
+    if (!user || !arrangement || isSaving) return;
+    beginEdit();
+    setIsSaving(true);
+    try {
+      await updateDashboardLayout({
+        layout: arrangement.layout,
+        columns: arrangement.columns,
+      });
+      saveLayout(user._id, arrangement);
+      toast({ title: 'Dashboard saved across all devices' });
+      onEditingChange(false);
+    } catch {
+      toast({
+        title: 'Could not save dashboard',
+        description: 'Your changes are still here. Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    user,
+    arrangement,
+    isSaving,
+    beginEdit,
+    updateDashboardLayout,
+    toast,
+    onEditingChange,
+  ]);
 
   const handleReset = useCallback(() => {
-    if (!user) return;
-    const fresh = getDefaultLayout();
-    setLayout(fresh);
-    saveLayout(user._id, fresh);
-    toast({ title: 'Dashboard reset to default' });
-  }, [toast, user]);
-
-  const handleRemove = useCallback((id: string) => {
-    setLayout((prev) => (prev ? prev.filter((x) => x !== id) : prev));
-  }, []);
-
-  const handleAdd = useCallback((id: string) => {
-    setLayout((prev) => {
-      if (!prev) return [id];
-      if (prev.includes(id)) return prev;
-      return [...prev, id];
+    beginEdit();
+    const fresh = getDefaultLayout().filter((id) =>
+      isWidgetAllowed(WIDGETS[id], user?.roles),
+    );
+    setArrangement({
+      layout: fresh,
+      columns: normalizeDashboardColumns(undefined, fresh),
     });
-    setPickerOpen(false);
-  }, []);
+    setAutoBalance(true);
+  }, [beginEdit, user?.roles]);
+  const handleRemove = useCallback(
+    (id: string) => {
+      beginEdit();
+      setArrangement((prev) =>
+        prev
+          ? {
+              layout: prev.layout.filter((item) => item !== id),
+              columns: prev.columns.map((column) =>
+                column.filter((item) => item !== id),
+              ),
+            }
+          : prev,
+      );
+    },
+    [beginEdit],
+  );
+  const handleAdd = useCallback(
+    (id: string) => {
+      beginEdit();
+      setArrangement((prev) => {
+        if (!prev || prev.layout.includes(id)) return prev;
+        const target =
+          columnHeight(prev.columns[0], heights) <=
+          columnHeight(prev.columns[1], heights)
+            ? 0
+            : 1;
+        return {
+          layout: [...prev.layout, id],
+          columns: prev.columns.map((column, index) =>
+            index === target ? [...column, id] : column,
+          ),
+        };
+      });
+      setPickerOpen(false);
+    },
+    [beginEdit, heights],
+  );
+  const handleBalance = useCallback(() => {
+    if (!arrangement || !canBalance) return;
+    beginEdit();
+    const previous = arrangement;
+    setArrangement({ ...arrangement, columns: balanced });
+    undoToast.current = toast({
+      title: 'Layout balanced',
+      duration: 10000,
+      action: (
+        <ToastAction
+          altText="Undo layout balancing"
+          onClick={() => {
+            setArrangement(previous);
+            dismissUndo();
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
+    }).dismiss;
+  }, [arrangement, canBalance, beginEdit, balanced, toast, dismissUndo]);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      beginEdit();
+      dragSnapshot.current = arrangement;
+      setActiveId(String(event.active.id));
+    },
+    [beginEdit, arrangement],
+  );
+  const handleDragOver = useCallback(
+    ({ active, over }: DragOverEvent) => {
+      if (columnCount !== 2 || !over) return;
+      setArrangement((prev) => {
+        if (!prev) return prev;
+        const id = String(active.id);
+        const source = prev.columns.findIndex((column) => column.includes(id));
+        const target = String(over.id).startsWith('dashboard-column-')
+          ? Number(String(over.id).replace('dashboard-column-', ''))
+          : prev.columns.findIndex((column) =>
+              column.includes(String(over.id)),
+            );
+        if (source < 0 || target < 0 || target === source) return prev;
+        const overIndex = prev.columns[target].indexOf(String(over.id));
+        const after =
+          active.rect.current.translated &&
+          active.rect.current.translated.top >
+            over.rect.top + over.rect.height / 2;
+        const index =
+          overIndex < 0
+            ? prev.columns[target].length
+            : overIndex + (after ? 1 : 0);
+        return moveToColumn(prev, id, target, index);
+      });
+    },
+    [columnCount],
+  );
+  const handleDragCancel = useCallback(() => {
+    setArrangement(dragSnapshot.current);
     setActiveId(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setLayout((prev) => {
-      if (!prev) return prev;
-      const oldIndex = prev.indexOf(active.id as string);
-      const newIndex = prev.indexOf(over.id as string);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      return arrayMove(prev, oldIndex, newIndex);
-    });
+    dragSnapshot.current = null;
   }, []);
-
-  const { fixedIds, fullIds, columnIds } = useMemo(() => {
-    if (!layout) return { fixedIds: [], fullIds: [], columnIds: [] };
-    const fixed = Object.values(WIDGETS)
-      .filter((w) => w.isFixed && isWidgetAllowed(w, user?.roles))
-      .map((w) => w.id);
-    const dynamic = layout.filter((id) => !WIDGETS[id]?.isFixed);
-    const full = dynamic.filter((id) => WIDGETS[id]?.size === 'full');
-    const cols = dynamic.filter((id) => WIDGETS[id]?.size === 'half');
-    return { fixedIds: fixed, fullIds: full, columnIds: cols };
-  }, [layout, user?.roles]);
-
-  // Distribute valid half-width widgets into N columns by index so the order
-  // remains stable. An odd count necessarily produces a 3/2 split across two
-  // columns; duplicate IDs are removed before this point.
-  const columns = useMemo<string[][]>(() => {
-    if (columnIds.length === 0) return [];
-    const cols: string[][] = Array.from({ length: columnCount }, () => []);
-    for (let i = 0; i < columnIds.length; i++) {
-      cols[i % columnCount].push(columnIds[i]);
-    }
-    return cols;
-  }, [columnIds, columnCount]);
+  const handleDragEnd = useCallback(
+    ({ active, over }: DragEndEvent) => {
+      setActiveId(null);
+      if (!over) {
+        setArrangement(dragSnapshot.current);
+        dragSnapshot.current = null;
+        return;
+      }
+      dragSnapshot.current = null;
+      setArrangement((prev) => {
+        if (!prev || active.id === over.id) return prev;
+        const id = String(active.id);
+        if (columnCount === 1) {
+          const from = prev.layout.indexOf(id),
+            to = prev.layout.indexOf(String(over.id));
+          return from < 0 || to < 0
+            ? prev
+            : withMobileOrder(prev, arrayMove(prev.layout, from, to));
+        }
+        const column = prev.columns.findIndex((items) => items.includes(id));
+        if (column < 0) return prev;
+        const to = prev.columns[column].indexOf(String(over.id));
+        return to < 0 ? prev : moveToColumn(prev, id, column, to);
+      });
+    },
+    [columnCount],
+  );
 
   if (!layout) {
     return (
@@ -298,6 +619,7 @@ export function DashboardLayout({
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
+          <PushReenableAnnouncement />
           <CanvasCalendarAnnouncement />
           {editing ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -308,7 +630,7 @@ export function DashboardLayout({
                     size="sm"
                     leadingIcon={Plus}
                     className="h-9 rounded-full px-4"
-                    disabled={missingWidgets.length === 0}
+                    disabled={missingWidgets.length === 0 || isSaving}
                   >
                     Add widget
                   </Button>
@@ -351,21 +673,40 @@ export function DashboardLayout({
                 </DialogContent>
               </Dialog>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  leadingIcon={Columns2}
+                  className="hidden md:inline-flex"
+                  onClick={handleBalance}
+                  disabled={!canBalance || isSaving || Boolean(activeId)}
+                  title={
+                    columnCount === 1
+                      ? 'Balance layout is available in the two-column view'
+                      : canBalance
+                        ? 'Arrange widgets into shorter columns'
+                        : 'Layout is already balanced'
+                  }
+                >
+                  Balance layout
+                </Button>
                 <Button
                   variant="ghost"
                   size="lg"
                   leadingIcon={RotateCcw}
                   onClick={handleReset}
+                  disabled={isSaving || Boolean(activeId)}
                 >
                   Reset
                 </Button>
                 <Button
                   onClick={handleSave}
+                  disabled={isSaving || Boolean(activeId)}
                   size="lg"
                   leadingIcon={Save}
                 >
-                  Done
+                  {isSaving ? 'Saving…' : 'Done'}
                 </Button>
               </div>
             </div>
@@ -383,75 +724,89 @@ export function DashboardLayout({
             );
           })}
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={[...fullIds, ...columnIds]}
-              strategy={rectSortingStrategy}
-            >
-              <div className="space-y-6">
-                {/* Full-width dynamic widgets */}
-                {fullIds.map((id) => {
-                  const widget = WIDGETS[id];
-                  if (!widget) return null;
-                  return (
-                    <SortableWidget
-                      key={id}
-                      id={id}
-                      widget={widget}
-                      editing={editing}
-                      onRemove={handleRemove}
-                    />
-                  );
-                })}
+          <LazyMotion features={loadMotionFeatures}>
+            <LayoutGroup id="dashboard">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={columnCollision}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDragCancel={handleDragCancel}
+              >
+                <SortableContext
+                  items={fullIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-6">
+                    {/* Full-width dynamic widgets */}
+                    {fullIds.map((id) => {
+                      const widget = WIDGETS[id];
+                      if (!widget) return null;
+                      return (
+                        <SortableWidget
+                          key={id}
+                          id={id}
+                          widget={widget}
+                          editing={editing && !isSaving}
+                          onRemove={handleRemove}
+                        />
+                      );
+                    })}
 
-                {/* Half-width widgets — distributed into N columns by measured
-                    height so widgets pack densely without large gaps. */}
-                {columns.length > 0 && (
-                  <div className="flex flex-col gap-6 md:flex-row">
-                    {columns.map((colIds, colIndex) => (
-                      <div key={colIndex} className="flex flex-1 flex-col gap-6 min-w-0">
-                        {colIds.map((id) => {
-                          const widget = WIDGETS[id];
-                          if (!widget) return null;
-                          return (
-                            <SortableWidget
-                              key={id}
-                              id={id}
-                              widget={widget}
-                              editing={editing}
-                              onRemove={handleRemove}
-                            />
-                          );
-                        })}
+                    {/* Explicit columns preserve the placement shown while dragging. */}
+                    {columns.length > 0 && (
+                      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                        {columns.map((colIds, colIndex) => (
+                          <WidgetColumn
+                            key={`${columnCount}-${colIndex}`}
+                            ids={colIds}
+                            index={colIndex}
+                            editing={editing && !isSaving}
+                          >
+                            {colIds.map((id) => {
+                              const widget = WIDGETS[id];
+                              if (!widget) return null;
+                              return (
+                                <SortableWidget
+                                  key={id}
+                                  id={id}
+                                  widget={widget}
+                                  editing={editing && !isSaving}
+                                  onRemove={handleRemove}
+                                  onMeasure={handleMeasure}
+                                />
+                              );
+                            })}
+                          </WidgetColumn>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                {layout.length === 0 && (
-                  <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
-                    <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
-                    <p className="text-sm font-medium text-foreground">Your dashboard is empty.</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Click <span className="font-semibold">Customize</span> then{' '}
-                      <span className="font-semibold">Add widget</span> to build it up.
-                    </p>
+                    {layout.length === 0 && (
+                      <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
+                        <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
+                        <p className="text-sm font-medium text-foreground">
+                          Your dashboard is empty.
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Click <span className="font-semibold">Customize</span>{' '}
+                          then <span className="font-semibold">Add widget</span>{' '}
+                          to build it up.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </SortableContext>
+                </SortableContext>
 
-            <DragOverlay>
-              {activeId && activeWidget ? (
-                <DragGhost widget={activeWidget} />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+                <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
+                  {activeId && activeWidget ? (
+                    <DragGhost widget={activeWidget} />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </LayoutGroup>
+          </LazyMotion>
         </div>
       </div>
     </PageFrame>

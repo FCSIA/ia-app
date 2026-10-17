@@ -225,6 +225,8 @@ export function serializeBlock(block: Doc<"schoolDayBlocks">) {
   };
 }
 
+// Checked against the validator so a field added here without updating
+// `scheduleFriendUserValidator` fails typecheck instead of failing at runtime.
 export function serializeUser(user: Doc<"users">) {
   return {
     _id: user._id,
@@ -232,7 +234,7 @@ export function serializeUser(user: Doc<"users">) {
     firstName: user.firstName,
     lastName: user.lastName,
     isDeveloper: user.isDeveloper,
-  };
+  } satisfies Infer<typeof scheduleFriendUserValidator>;
 }
 
 export async function getScheduleForUser(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {

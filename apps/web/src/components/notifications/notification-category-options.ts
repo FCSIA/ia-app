@@ -50,10 +50,10 @@ export const NOTIFICATION_CATEGORY_DETAILS = {
     label: 'Club Tag Mentions',
   },
   CLUB_CHANNEL_THREAD: {
-    badgeLabel: 'Thread',
+    badgeLabel: 'Reply',
     defaultEnabled: true,
-    description: 'Replies in club channel threads you are part of.',
-    label: 'Club Thread Replies',
+    description: 'Replies to your club channel messages, and in threads you are part of.',
+    label: 'Club Replies',
   },
   EVENT: {
     badgeLabel: 'Event',

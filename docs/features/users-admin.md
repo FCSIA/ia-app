@@ -14,7 +14,12 @@ User management is handled through Convex functions and the Admin Panel.
 - Creates and links app users to Better Auth users.
 - Imports and exports student rows by CSV, bulk-updates student grade and pathway fields by CSV, and imports administrator accounts by CSV.
 - Activates, deactivates, bulk-deletes, assigns roles, and resets passwords.
-- Stores dashboard layout preferences for each user.
+- Stores dashboard widget order and optional desktop column positions for each user.
+
+The Admin Panel title appears in the app header. On narrow screens, section
+tabs and user-table columns scroll horizontally within their own areas. Filters
+and selection controls wrap to the available width; pagination stays outside
+the scrolling records so it remains reachable.
 
 ## Source Files
 
@@ -44,6 +49,15 @@ User management is handled through Convex functions and the Admin Panel.
 
 The `users` table stores app profile data, role arrays, grade/pathway metadata,
 active state, and Better Auth linkage via `authUserId`.
+
+Dashboard preferences keep `dashboardLayout` as the mobile reading order and
+`dashboardColumns` as two optional desktop columns. Legacy flat preferences retain
+their alternating split. Fresh defaults balance once after widget heights settle;
+manual moves remain in their chosen columns. In the two-column edit view,
+**Balance layout** enables when rearranging can meaningfully shorten the page,
+with a brief animation and Undo. Done persists both preferences to the signed-in
+user only, and keeps the editor open if saving fails. Older clients that save
+only a flat order clear stale desktop positions.
 
 ## Permissions
 

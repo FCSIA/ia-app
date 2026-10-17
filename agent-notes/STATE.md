@@ -2,15 +2,119 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Make Convex usage scale predictably from the 2026-08-31 production
-  baseline toward a 1,500-user, chat-heavy school rollout, without mutating or
-  deploying to production.
+- **Integration**: The user authorized working through the merge backlog.
+  Feedback issue sync (#110) and its security prerequisite (#153) are merged.
+  Dashboard PR #147 is being finished in the isolated `merge-pr147` worktree.
+  The admin, Bun/Nix, and swipe changes are already on main through PRs #148,
+  #149, and #150.
+- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
+  Material UI changes still require design-owner review. Native iPhone swipe
+  verification remains outstanding. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Merge backlog reconciliation (2026-10-15)
+
+- PR #151 is closed as superseded: its trial merge produced exactly the current
+  main tree. PR #121 is also closed: its complete patch is equivalent to commit
+  `4841d245`, already incorporated in main and retained by the Bun migration.
+- Local announcement-pagination and UI-follow-up worktrees correspond to
+  already-merged PRs #125 and #128; their older source must not replace newer
+  main behavior.
+- PR #110 retains the current Convex 1.46.0 environment types, presence
+  component, Google Vision configuration, Bun commands, and current feedback
+  permissions. Thirteen focused tests cover status mapping, signed/forged webhooks,
+  repository isolation, duplicate/stale events, and anonymous/student retry
+  refusal, plus mocked issue creation/failure without exporting submitter identity.
+  All 373 backend tests, backend/web typechecks, web lint (21 existing
+  warnings), brand/devlog checks, production web build, and an isolated local
+  Convex push pass. GitHub webhook activation and production deployment remain
+  separate operations; neither was performed.
+- Merged security prerequisite PR #153 source-patches `braces@3.0.3` after its newly
+  reported nesting vulnerability blocked the merge gate. Nine audit/dependency
+  regression tests and the GitHub security scan pass. The advisory-specific
+  patched-version exception expires on 2026-11-01; replace the patch and remove
+  the exception when a fixed release or replacement is available.
+- PR #147 implements the design owner's approved direction: height-balanced
+  fresh defaults, stable manual placement, and a quiet **Balance layout** action
+  with Undo. Optional desktop column positions persist alongside the mobile
+  reading order; legacy layouts retain their existing split. Pointer and keyboard
+  moves support empty columns and Escape cancellation. Done awaits a successful
+  save. The previous automatic packing could erase a visible drag; it no longer
+  runs after manual changes.
+- Dashboard verification: all 379 backend tests and five column-layout regressions,
+  backend/web typechecks, web lint (21 existing warnings), production web build,
+  and an isolated local Convex push pass. Browser checks cover manual cross-column
+  placement, balancing/Undo, keyboard ordering/empty-column drops/cancellation,
+  Save/reload, live desktop/390px reflow, light/custom dark themes, and reduced
+  motion. Native touch dragging still needs device review. Material visuals remain
+  awaiting owner review before merging #147.
+- The `merge-pr147` worktree serves the compiled dashboard at
+  `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
+  on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.
+  Before/after Balance captures and a phone capture are in
+  `/tmp/ia-dashboard-review/` for local review.
+- Draft PR #152 still explicitly awaits human visual review. PR #117 has
+  unresolved conflicts. Compliance PR #76 remains outside this merge pass.
+
+### Local Bun/Nix setup (2026-10-02)
+
+- Nix/direnv supplies Bun 1.4.2, matching `packageManager` and CI, alongside
+  Node 24.14.0. The Bun assets use verified release digests; changing
+  `package.json` invalidates the direnv shell cache. CocoaPods is macOS-only.
+- The native Apple Silicon shell builds and loads; both Darwin and Linux
+  architectures evaluate. Frozen install leaves the lockfile unchanged.
+  The dependency/audit regression tests and web typecheck, lint, and build
+  pass with Bun 1.4.2. Existing lint warnings remain.
+- PR #149 is merged and contains this setup independently of the admin and
+  swipe changes.
+
+### Mobile sidebar gesture (2026-10-02)
+
+- The shared app-shell gesture owner uses a scoped native non-passive
+  `touchmove` listener. A rightward movement is cancelled before the sidebar
+  reveal, so React's passive delegated listener no longer controls the swipe.
+- Vertical/left gestures, excluded controls, and multi-touch keep their
+  browser behavior. Interrupted or browser-owned gestures cancel the reveal;
+  ownership continues until release when a gesture reverses or opens early.
+- Twelve gesture regression tests pass. The built mobile page has the native
+  listener wired correctly and its explicit sidebar control still works.
+  Native iPhone/PWA Back-gesture verification remains pending because this
+  browser cannot reliably automate touch input. The user authorized merging
+  despite that outstanding device check, and PR #150 is merged.
+
+### Bun stack refresh (2026-10-02)
+
+- PR #100 is merged and retains the newer worktree bootstrap, LAN dev
+  orchestration, deploy marker, and Convex 1.46.0 from main while moving installs
+  and scripts to Bun.
+- PR #111 is merged after #100. It adopts native Convex schema document helpers
+  and generated environment bindings without downgrading Convex 1.46.0 or
+  removing newer schema fields and performance changes.
+- Security dependencies are refreshed, including Next 16.3.8 and image-size
+  2.0.4. node-forge 1.4.0 carries the upstream nested DigestAlgorithm validation
+  patch until a patched release exists; CI tests reproduce and reject the bug.
+- The primary local backend has older whiteboard documents incompatible with
+  the current schema. Use an isolated backend for verification; do not reset
+  the primary dataset.
+
+### Admin mobile layout (2026-10-02)
+
+- The admin title uses the existing app-header slot, including the loading
+  state. Admin tabs and user records use separate horizontal ScrollAreas;
+  the page stays within the viewport width.
+- User filters and bulk-selection controls wrap. Pagination stays in the
+  existing table-panel footer, outside the scrolling records. Names, pathways,
+  and role metadata wrap, and touch action columns reserve space for 44px
+  buttons. Empty results use the existing AdminNotice outside the wide table.
+- Browser verification uses synthetic accounts on the isolated anonymous
+  backend in the attached `merge-100-111` worktree. The primary dataset was not
+  reset. Phone, tablet, desktop, paging, search, selection, and empty-result
+  checks are diagnostic. The user subsequently authorized merging the
+  combined local branch, including this admin layout repair.
 
 ### Convex Usage and Scale Audit (2026-08-31)
 
@@ -177,7 +281,7 @@
   by explicitly initialized loopback Convex deployments, while cloud
   deployments retain an explicit origin allowlist.
 - Same-LAN web PWAs now receive LAN-reachable public Convex URLs from
-  `pnpm sync:convex-env -- --host <LAN IPv4>` while server calls stay on
+  `bun run sync:convex-env -- --host <LAN IPv4>` while server calls stay on
   loopback. Protected-route auth startup renders a branded connection state
   instead of an unexplained blank screen when the backend is slow or
   unreachable.
@@ -239,7 +343,7 @@
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
-  sync via `pnpm sync:convex-env -- --android`.
+  sync via `bun run sync:convex-env -- --android`.
 - Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
   Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
   are reachable from every tab through the shared in-app header, and Profile
@@ -403,27 +507,64 @@
 
 ### Verification (latest)
 
+- Chat read receipts: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both
+  clients. Saved reply boundaries still advance receipts.
+- Issue #126 GIF support on `codex/chat-gif-support`: uploaded GIFs and pasted
+  GIPHY/Tenor links (previews load only from their media CDNs) autoplay, with a compact corner play/pause control on
+  web and mobile. The approved picker now searches a fixed catalog of nine
+  existing online Tenor reaction GIFs; it contains no generated media or open
+  provider search. Selection appends a media link to the draft. Open GIF controls
+  are removed. Web and mobile TypeScript, lint
+  (existing warnings), production build, and focused upload/access/deletion and
+  mobile attachment tests pass. Isolated web component QA verified still
+  previews, playback, keyboard pause, and unavailable media; its temporary route
+  was removed. Signed-in local send, Tenor resolution, playback, and keyboard
+  pause now pass at localhost:3000; the isolated backend runs on 3210/3211.
+  Tenor viewer URLs normalize to direct media, and the PWA worker leaves external
+  images to the browser. React Doctor 0.9.8 reports no new findings. Delete QA
+  remains pending.
+  A clean frozen install with pinned bun run 10.29.3 repaired the stale mobile
+  Convex version; mobile TypeScript now passes. All catalog media loaded during
+  a temporary content review, and that temporary page was removed. Picker flow
+  QA resumed after the user reopened localhost: library display, search, selection,
+  and preserving existing draft text pass. Reduced-motion users start paused;
+  normal playback is automatic. Filename/status chrome and previewed URL text are
+  removed. Copy GIF URL lives in each message's own context menu (web) and actions
+  sheet (mobile), so GIFs never open a second menu; web clipboard QA passes. Appearance includes a persisted browser/device autoplay preference;
+  web persistence and immediate updates across open chats pass. The regression
+  suites pass 20 tests, and React Doctor has no new findings. Mobile-width playback
+  controls pass; native device, theme, and reduced-motion visual review remain
+  pending. Only the isolated local
+  deployment was updated; shared and production deployments were not changed.
+  Convex runtime follow-up: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both clients.
+  Saved reply boundaries still advance receipts. Local sending no longer logs the
+  error; backend typecheck passes. A repeated esbuild warning refers to the parent
+  `../tsconfig.json` outside this repo extending unavailable Astro configuration;
+  no backend function compilation failure is associated with it.
+
 - Custom-theme surface follow-up: card and popup foreground scopes are now
   consistent across schedule, notification, shell, club, admin, and shared UI
   surfaces. Web TypeScript, lint, production build, focused surface/palette
   assertions, and `git diff --check` pass. Lint reports 21 existing warnings;
   signed-in visual review remains pending.
-- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+- `direnv exec . bun run --cwd apps/web tsc --noEmit` - pass after the web UI
   primitive workflow and remediation slices.
-- Web calendar replacement: `pnpm --filter web exec tsc --noEmit`, web lint,
+- Web calendar replacement: `bun run --cwd apps/web tsc --noEmit`, web lint,
   frozen offline install, production build, and `git diff --check` pass. Lint
   reports only existing warnings outside the calendar slice; signed-in visual
   review is still required for responsive calendar states.
-- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+- `direnv exec . bun run --filter web lint` - pass with 7 existing unrelated
   unused-import warnings.
-- `direnv exec . pnpm --filter web build` - pass through compilation,
+- `direnv exec . bun run --filter web build` - pass through compilation,
   TypeScript, page data, all 18 static pages, and route optimization.
-- `pnpm --filter mobile typecheck` - pass
-- `pnpm lint` - pass with 7 existing web warnings outside this slice
-- `pnpm --filter cvx codegen` - pass
-- `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter cvx test` - pass (14 files, 47 tests)
-- `pnpm --filter mobile exec tsc --noEmit` - pass after removing the deprecated
+- `bun run --filter mobile typecheck` - pass
+- `bun run lint` - pass with 7 existing web warnings outside this slice
+- `bun run --filter cvx codegen` - pass
+- `bun run --filter cvx typecheck` - pass
+- `bun run --filter cvx test` - pass (14 files, 47 tests)
+- `bun run --cwd apps/mobile tsc --noEmit` - pass after removing the deprecated
   mobile `baseUrl`, correcting compact density, and reverting the broad visual
   migrations
 - Mobile Vitest suite - pass (14 files, 42 tests)
@@ -438,18 +579,18 @@
   blocked because Expo Go stopped requesting the Metro bundle after reload even
   though Metro `/status` returned `packager-status:running` and `adb reverse`
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
-- `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
+- `bun run --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - pass; web reports 8 pre-existing unused-import warnings and no
+- `bun run lint` - pass; web reports 8 pre-existing unused-import warnings and no
   errors
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
-- `pnpm build` - pass across design tokens, fun facts, Convex, mobile, and web
-- `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
+- `bun run build` - pass across design tokens, fun facts, Convex, mobile, and web
+- `bun run --cwd apps/web tsc --noEmit` and `bun run --filter web build` - pass
   after the compact club-workspace redesign and channel interaction polish;
   signed-in visual QA remains to be run because no browser-control session was
   available.
-- `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
+- `bun run test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex AI guidance and project skills were refreshed with `convex ai-files
@@ -482,9 +623,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
-direnv exec . pnpm lint
-direnv exec . pnpm build
-direnv exec . pnpm test
+bun run --filter cvx codegen
+bun run --filter cvx typecheck
+bun run lint
+bun run build
+bun run test
 ```

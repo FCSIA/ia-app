@@ -81,7 +81,7 @@ Users → Vercel (Next.js) → Convex Cloud
 - Vercel project linked to `apps/web` (or monorepo root with correct root directory).
 - Production env: `NEXT_PUBLIC_CONVEX_URL` → prod Convex deployment.
 - Preview deployments → Convex **staging** deployment.
-- CI: `pnpm --filter cvx deploy` on merge to main (deploy key in Vercel/GitHub secrets).
+- CI: `bun run --filter cvx deploy` on merge to main (deploy key in Vercel/GitHub secrets).
 
 ---
 
@@ -211,14 +211,14 @@ Tools: k6, Locust, or Playwright at scale. Watch Convex dashboard (function dura
 
 | Environment | Convex | Next.js host |
 |-------------|--------|----------------|
-| **Development** | `convex dev` personal deployment | `pnpm dev` locally |
+| **Development** | `convex dev` personal deployment | `bun run dev` locally |
 | **Staging** | Staging Convex deployment | Preview URL (Vercel) or staging Container App |
 | **Production** | Prod Convex deployment | Production URL |
 
 **Typical pipeline:**
 
 1. PR → lint/build web; optional `convex deploy` to staging.
-2. Merge to main → `convex deploy --cmd 'pnpm build'` (or project convention) to prod Convex.
+2. Merge to main → `convex deploy --cmd 'bun run build'` (or project convention) to prod Convex.
 3. Deploy Next.js image or Vercel production with `NEXT_PUBLIC_CONVEX_URL` for prod.
 
 Store `CONVEX_DEPLOY_KEY` in GitHub Actions / Azure DevOps secrets, not on the VM disk in plain text.

@@ -1,7 +1,8 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
+import { schema } from "../schema";
 import { countClubChannels, countClubMembers } from "./counts";
 import {
   getChannelAccess,
@@ -9,9 +10,6 @@ import {
   type ChannelAccessBatchState,
 } from "./channelAccess";
 import {
-  clubChannelAudienceKindValidator,
-  clubChannelPostingPolicyValidator,
-  clubChannelVisibilityValidator,
   clubRolePermissionsValidator,
 } from "../validators";
 
@@ -38,54 +36,19 @@ export const clubViewerStateValidator = v.object({
   hasPendingJoinRequest: v.boolean(),
 });
 
-export const visibleClubChannelValidator = v.object({
-  _id: v.id("clubChannels"),
-  _creationTime: v.number(),
-  clubId: v.id("clubs"),
-  ownerUnitId: v.optional(v.id("clubUnits")),
-  position: v.optional(v.number()),
-  accessPolicyVersion: v.optional(v.literal(2)),
-  accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
-  accessUnitId: v.optional(v.id("clubUnits")),
-  audienceKind: v.optional(clubChannelAudienceKindValidator),
-  audienceUnitId: v.optional(v.id("clubUnits")),
-  includeDescendants: v.optional(v.boolean()),
-  includeAncestorLeaders: v.optional(v.boolean()),
-  postingPolicy: v.optional(clubChannelPostingPolicyValidator),
-  name: v.string(),
-  description: v.optional(v.string()),
-  visibility: clubChannelVisibilityValidator,
-  createdById: v.id("users"),
-  lastMessageAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
+export const visibleClubChannelValidator = schema.doc("clubChannels").extend({
   viewerCanRead: v.boolean(),
   viewerCanPost: v.boolean(),
   memberships: v.array(v.object({ userId: v.id("users") })),
 });
 
-export const workspaceClubChannelValidator = v.object({
-  _id: v.id("clubChannels"),
-  clubId: v.id("clubs"),
-  ownerUnitId: v.optional(v.id("clubUnits")),
-  position: v.optional(v.number()),
-  accessPolicyVersion: v.optional(v.literal(2)),
-  accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
-  accessUnitId: v.optional(v.id("clubUnits")),
-  audienceKind: v.optional(clubChannelAudienceKindValidator),
-  audienceUnitId: v.optional(v.id("clubUnits")),
-  includeDescendants: v.optional(v.boolean()),
-  includeAncestorLeaders: v.optional(v.boolean()),
-  postingPolicy: v.optional(clubChannelPostingPolicyValidator),
-  name: v.string(),
-  description: v.optional(v.string()),
-  visibility: clubChannelVisibilityValidator,
-  createdById: v.id("users"),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  memberships: v.array(v.object({ userId: v.id("users") })),
-  viewerCanPost: v.boolean(),
-});
+export const workspaceClubChannelValidator = schema
+  .doc("clubChannels")
+  .omit("_creationTime")
+  .extend({
+    memberships: v.array(v.object({ userId: v.id("users") })),
+    viewerCanPost: v.boolean(),
+  });
 
 /** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
 export function toClubUserRef(user: Doc<"users">) {
@@ -97,7 +60,7 @@ export function toClubUserRef(user: Doc<"users">) {
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
     isDeveloper: user.isDeveloper,
-  };
+  } satisfies Infer<typeof clubUserRefValidator>;
 }
 
 export const clubSummaryValidator = v.object({
@@ -247,6 +210,7 @@ export async function getVisibleChannels(
       includeDescendants: channel.includeDescendants,
       includeAncestorLeaders: channel.includeAncestorLeaders,
       postingPolicy: channel.postingPolicy,
+      whiteboardsEnabled: channel.whiteboardsEnabled,
       name: channel.name,
       description: channel.description,
       visibility: channel.visibility,
@@ -261,8 +225,7 @@ export async function getVisibleChannels(
     channels: result.sort(
       (a, b) =>
         (a.position ?? Number.MAX_SAFE_INTEGER) -
-          (b.position ?? Number.MAX_SAFE_INTEGER) ||
-        a.createdAt - b.createdAt,
+          (b.position ?? Number.MAX_SAFE_INTEGER) || a.createdAt - b.createdAt,
     ),
     totalCount: channels.length,
   };

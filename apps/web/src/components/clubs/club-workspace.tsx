@@ -550,7 +550,8 @@ export function ClubWorkspace({
           <SheetContent
             side="right"
             className={cn(
-              "w-full max-w-none border-l bg-card p-0 sm:w-[26rem] xl:hidden",
+              // The pane brings its own close control in its header.
+              "w-full max-w-none border-l bg-card p-0 pb-[env(safe-area-inset-bottom)] sm:w-[26rem] sm:pt-[env(safe-area-inset-top)] xl:hidden [&>button]:hidden",
               CARD_SURFACE_FOREGROUND,
             )}
           >
@@ -1157,6 +1158,22 @@ function ChannelRow({
   );
 }
 
+/** Whether any channel this viewer can open sits in the unit or below it. */
+function unitHasVisibleChannels(
+  unit: ClubWorkspaceNavigation["units"][number],
+  units: ClubWorkspaceNavigation["units"],
+  channels: ClubNavigationChannel[],
+): boolean {
+  return (
+    channels.some((channel) => channel.ownerUnitId === unit._id) ||
+    units.some(
+      (child) =>
+        child.parentUnitId === unit._id &&
+        unitHasVisibleChannels(child, units, channels),
+    )
+  );
+}
+
 function UnitChannelTree({
   unit,
   units,
@@ -1170,6 +1187,7 @@ function UnitChannelTree({
   onDeleteChannel,
   openUnitIds,
   onOpenChange,
+  depth = 0,
 }: {
   unit: ClubWorkspaceNavigation["units"][number];
   units: ClubWorkspaceNavigation["units"];
@@ -1183,6 +1201,7 @@ function UnitChannelTree({
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
   openUnitIds: string[];
   onOpenChange: (unitId: string, open: boolean) => void;
+  depth?: number;
 }) {
   const directChannels = channels.filter(
     (channel) => channel.ownerUnitId === unit._id,
@@ -1192,26 +1211,77 @@ function UnitChannelTree({
   );
   if (!directChannels.length && !children.length) return null;
   const expanded = openUnitIds.includes(unit._id);
+  // A unit whose channels this viewer cannot open has nothing to expand.
+  const reachable =
+    directChannels.length > 0 ||
+    children.some((child) => unitHasVisibleChannels(child, units, channels));
+  // Nested units sit among channel rows, so they share their height and type.
+  const unitRowClassName = cn(
+    "flex w-full items-center gap-1.5 rounded-md px-2 text-[13px] font-medium",
+    density === "mobile"
+      ? "min-h-9 pointer-coarse:min-h-11"
+      : "min-h-8 pointer-coarse:min-h-11",
+  );
   return (
     <Collapsible
-      open={expanded}
+      open={reachable && expanded}
       onOpenChange={(open) => onOpenChange(unit._id, open)}
       className="space-y-0.5"
     >
       {children.length && !directChannels.length ? (
-        <div className="flex h-7 items-center px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        depth === 0 ? (
+          <div className="flex h-7 items-center px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {reachable ? (
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-1 text-left outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <ChevronRight
+                    className={cn("size-3 shrink-0", expanded && "rotate-90")}
+                  />
+                  <span className="truncate">{unit.name}</span>
+                </button>
+              </CollapsibleTrigger>
+            ) : (
+              <span className="flex min-w-0 flex-1 items-center gap-1" aria-label={`${unit.name}, no access`}>
+                <span className="truncate">{unit.name}</span>
+                <ClubChannelVisibilityIcon visibility="PRIVATE" className="size-3" />
+              </span>
+            )}
+          </div>
+        ) : reachable ? (
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-center gap-1 text-left outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+              className={cn(
+                unitRowClassName,
+                "text-left text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring",
+              )}
             >
-              <ChevronRight
-                className={cn("size-3 shrink-0", expanded && "rotate-90")}
-              />
-              <span className="truncate">{unit.name}</span>
+              <span className="flex size-6 shrink-0 items-center justify-center">
+                <ChevronRight
+                  className={cn("size-3.5 -translate-x-1", expanded && "rotate-90")}
+                />
+              </span>
+              <span className="min-w-0 flex-1 -translate-x-1.5 truncate">{unit.name}</span>
             </button>
           </CollapsibleTrigger>
-        </div>
+        ) : (
+          <div
+            className={cn(unitRowClassName, "text-muted-foreground/70")}
+            aria-label={`${unit.name}, no access`}
+          >
+            <span aria-hidden="true" className="size-6 shrink-0" />
+            <span className="min-w-0 flex-1 -translate-x-1.5 truncate">{unit.name}</span>
+            <span
+              aria-hidden="true"
+              className="inline-flex size-8 shrink-0 translate-x-1 items-center justify-center"
+            >
+              <ClubChannelVisibilityIcon visibility="PRIVATE" />
+            </span>
+          </div>
+        )
       ) : null}
       {directChannels.length ? (
         <CardGroup
@@ -1239,7 +1309,7 @@ function UnitChannelTree({
           ))}
         </CardGroup>
       ) : null}
-      {children.length ? (
+      {children.length && reachable ? (
         <CollapsibleContent>
           <div className={directChannels.length ? "ml-4 border-l" : ""}>
             {children.map((child) => (
@@ -1257,6 +1327,7 @@ function UnitChannelTree({
                 onDeleteChannel={onDeleteChannel}
                 openUnitIds={openUnitIds}
                 onOpenChange={onOpenChange}
+                depth={depth + 1}
               />
             ))}
           </div>

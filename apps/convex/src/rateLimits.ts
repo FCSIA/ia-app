@@ -42,6 +42,10 @@ export const uploadRateLimiter = new RateLimiter(components.rateLimiter, {
   urlsByUser: { kind: "fixed window", rate: 20, period: MINUTE },
 });
 
+export const chatGifRateLimiter = new RateLimiter(components.rateLimiter, {
+  previewsByUser: { kind: "fixed window", rate: 60, period: MINUTE },
+});
+
 export const scheduleOcrRateLimiter = new RateLimiter(components.rateLimiter, {
   scansByUser: { kind: "fixed window", rate: 8, period: HOUR },
 });
@@ -60,5 +64,18 @@ export const contentRateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 12,
     period: MINUTE,
     capacity: 5,
+  },
+  // Whiteboard clients flush completed strokes and moves in small batches.
+  whiteboardSavesByUser: {
+    kind: "token bucket",
+    rate: 120,
+    period: MINUTE,
+    capacity: 40,
+  },
+  whiteboardManagementByUser: {
+    kind: "token bucket",
+    rate: 30,
+    period: 10 * MINUTE,
+    capacity: 10,
   },
 });

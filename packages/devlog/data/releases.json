@@ -2,6 +2,170 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.36",
+      "date": "2026-10-02",
+      "title": "Online status, Do Not Disturb, and admin analytics",
+      "commit": "2dc48cde",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "chat",
+          "summary": "Chat read receipts now wait for sent messages to finish saving.",
+          "commit": "f84a4648",
+          "pr": 131
+        },
+        {
+          "category": "Improved",
+          "scope": "chat ",
+          "summary": "Paste images into the composer and add/remove attachments when editing.",
+          "commit": "2dc48cde"
+        },
+        {
+          "category": "Added",
+          "scope": "presence",
+          "summary": "You can now see who is online in your clubs, and turn on Do Not Disturb to pause push notifications.",
+          "commit": "698fb5d8",
+          "pr": 145
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Analytics dashboard for super admins.",
+          "commit": "46a89691",
+          "pr": 144
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Pick which reaction a double tap adds: tap the emoji under the reactions when you hold a message.",
+          "commit": "8ec005be",
+          "pr": 142
+        },
+        {
+          "category": "Improved",
+          "scope": "whiteboards",
+          "summary": "Report archived-board unsent edits from the save path.",
+          "commit": "d2618cb4",
+          "pr": 139
+        },
+        {
+          "category": "Internal",
+          "summary": "One-command phone testing with automatic host.",
+          "commit": "68e6b7c1",
+          "pr": 140
+        }
+      ]
+    },
+    {
+      "version": "0.8.35",
+      "date": "2026-10-02",
+      "commit": "7f037ba2",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Club managers can turn whiteboards off for individual channels.",
+          "commit": "1b1aa2d5",
+          "pr": 133
+        },
+        {
+          "category": "Improved",
+          "scope": "notifications",
+          "summary": "If notifications get turned off on your phone, the dashboard now offers a one-tap way to turn them back on.",
+          "commit": "9eb82d3f",
+          "pr": 136
+        },
+        {
+          "category": "Improved",
+          "scope": "mobile",
+          "summary": "Chat read receipts now wait for sent messages to finish saving.",
+          "commit": "f5d21318",
+          "pr": 134
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club chat on phones no longer slides sideways, opens menus by accident, or starts replies when you swipe through images.",
+          "commit": "7f037ba2",
+          "pr": 141
+        },
+        {
+          "category": "Fixed",
+          "scope": "notifications",
+          "summary": "Signing out, or switching accounts on a shared device, now stops the previous account's notifications there.",
+          "commit": "5da23f28",
+          "pr": 138
+        },
+        {
+          "category": "Internal",
+          "summary": "Add Azure school environment plan and hosting migration plan.",
+          "commit": "b015a978"
+        }
+      ]
+    },
+    {
+      "version": "0.8.34",
+      "date": "2026-10-01",
+      "commit": "27185d80",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "chat",
+          "summary": "Chat channels now show where your unread messages begin when you return.",
+          "commit": "a380b943"
+        },
+        {
+          "category": "Improved",
+          "scope": "chat",
+          "summary": "Sending chat messages and thread replies no longer causes read-receipt errors.",
+          "commit": "27185d80"
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Fixed errors when opening a friend group, browsing a channel's shared files, or viewing club unit members that include a developer-designated user.",
+          "commit": "11552124"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "The dashboard stops prompting you to connect your Canvas calendar once a calendar feed is connected.",
+          "commit": "76440602"
+        },
+        {
+          "category": "Improved",
+          "summary": "Custom wallpapers now offer image-matched colors for cards and menus, with your choice saved to your account.",
+          "commit": "98a043c4",
+          "pr": 129
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Fixed an error that could prevent Groups, shared schedules, and calendar invites from loading for developer-designated users.",
+          "commit": "63584e25"
+        },
+        {
+          "category": "Improved",
+          "scope": "ui follow-ups",
+          "summary": "Gallery, dashboard, and announcements.",
+          "commit": "e9b99414"
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Cursor pagination for web and mobile feeds.",
+          "commit": "b8f486e5"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "On phones, open a club chat thread from a message's long-press menu.",
+          "commit": "1085bc9d",
+          "pr": 130
+        }
+      ]
+    },
+    {
       "version": "0.8.33",
       "date": "2026-09-21",
       "commit": "53ab8c80",

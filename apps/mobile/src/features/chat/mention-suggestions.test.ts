@@ -7,6 +7,9 @@ describe("mobile club chat mention suggestions", () => {
       buildChatMentionSuggestions({
         canMentionEveryone: true,
         tags: [{ slug: "build-team", name: "Build Team" }],
+        groups: [
+          { token: "leader", label: "Leader", detail: "Role", kind: "role" },
+        ],
         members: [
           {
             uniqueId: "STU001",
@@ -15,7 +18,7 @@ describe("mobile club chat mention suggestions", () => {
           },
         ],
       }).map((suggestion) => suggestion.token),
-    ).toEqual(["all", "sponsors", "build-team", "STU001"]);
+    ).toEqual(["all", "sponsors", "leader", "build-team", "STU001"]);
   });
 
   test("keeps @all permission-gated and ignores reserved custom slugs", () => {
@@ -23,6 +26,7 @@ describe("mobile club chat mention suggestions", () => {
       buildChatMentionSuggestions({
         canMentionEveryone: false,
         tags: [{ slug: "leaders", name: "Duplicate leaders" }],
+        groups: [],
         members: [],
       }).map((suggestion) => suggestion.token),
     ).toEqual(["sponsors"]);

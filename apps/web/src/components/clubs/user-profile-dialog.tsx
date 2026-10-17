@@ -1,7 +1,7 @@
 'use client';
 
-import { useId, useRef } from 'react';
-import { BookOpen, Building2, UserPlus, UsersRound } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
+import { ArrowLeft, BookOpen, Building2, ChevronDown, UserPlus, UsersRound } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ type UserProfileContentProps = {
   onSendFriendRequest?: (userId: string) => void;
   variant?: 'preview' | 'dialog';
   onNavigate?: () => void;
+  /** Opens another person's profile, e.g. from the mutual friends list. */
+  onOpenPerson?: (person: UserProfilePerson) => void;
 };
 
 function relationshipLabel(status?: FriendshipStatus) {
@@ -86,8 +88,10 @@ export function UserProfileContent({
   onSendFriendRequest,
   variant = 'dialog',
   onNavigate,
+  onOpenPerson,
 }: UserProfileContentProps) {
   const headingId = useId();
+  const [friendsExpanded, setFriendsExpanded] = useState(false);
   const clubEntryHref = useClubEntryHref();
   const profileContext = useQuery(
     api.schedule.friends.getProfileContext,
@@ -99,6 +103,14 @@ export function UserProfileContent({
   );
   const name = fullName(person);
   const isPreview = variant === 'preview';
+  const friendsListEnabled = !isPreview && !!onOpenPerson;
+  // The full list loads only once someone expands it.
+  const allMutualFriends = useQuery(
+    api.schedule.friends.listMutualFriends,
+    active && friendsListEnabled && friendsExpanded && !isCurrentUser
+      ? { personId: person._id }
+      : 'skip',
+  );
   const isStudent = person.roles?.some((role) => ['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN'].includes(role));
   const resolvedFriendshipStatus = profileContext?.friendshipStatus ?? friendshipStatus;
   const canOfferFriendRequest =
@@ -203,24 +215,86 @@ export function UserProfileContent({
           <h3 id={`${headingId}-friends`} className="text-xs font-semibold text-foreground">
             Mutual friends
           </h3>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex shrink-0 -space-x-2">
-              {profileContext.mutualFriends.map((friend) => (
-                <ClubAvatar
-                  key={friend._id}
-                  person={friend}
-                  className="size-7 border-2 border-background"
-                  fallbackClassName="text-[9px]"
-                />
-              ))}
-            </div>
-            <p className="min-w-0 truncate text-xs text-muted-foreground">
-              {profileContext.mutualFriends.map((friend) => fullName(friend)).join(', ')}
-              {profileContext.mutualFriendCount > profileContext.mutualFriends.length
-                ? ` +${profileContext.mutualFriendCount - profileContext.mutualFriends.length} more`
-                : ''}
-            </p>
-          </div>
+          {(() => {
+            const summary = (
+              <>
+                <div className="flex shrink-0 -space-x-2">
+                  {profileContext.mutualFriends.map((friend) => (
+                    <ClubAvatar
+                      key={friend._id}
+                      person={friend}
+                      className="size-7 border-2 border-background"
+                      fallbackClassName="text-[9px]"
+                    />
+                  ))}
+                </div>
+                <p className="min-w-0 truncate text-xs text-muted-foreground">
+                  {profileContext.mutualFriends.map((friend) => fullName(friend)).join(', ')}
+                  {profileContext.mutualFriendCount > profileContext.mutualFriends.length
+                    ? ` +${profileContext.mutualFriendCount - profileContext.mutualFriends.length} more`
+                    : ''}
+                </p>
+              </>
+            );
+            if (!friendsListEnabled) return <div className="mt-2 flex items-center gap-2">{summary}</div>;
+            return (
+              <>
+                <button
+                  type="button"
+                  aria-expanded={friendsExpanded}
+                  aria-controls={`${headingId}-friends-list`}
+                  onClick={() => setFriendsExpanded((expanded) => !expanded)}
+                  className="mt-1 -mx-1.5 flex w-[calc(100%+0.75rem)] min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left outline-none hover:bg-hover focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {summary}
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn(
+                      'ml-auto size-4 shrink-0 text-muted-foreground transition-transform',
+                      friendsExpanded && 'rotate-180',
+                    )}
+                  />
+                  <span className="sr-only">
+                    {friendsExpanded ? 'Hide mutual friends' : 'Show all mutual friends'}
+                  </span>
+                </button>
+                {friendsExpanded ? (
+                  <div
+                    id={`${headingId}-friends-list`}
+                    className="mt-2 max-h-64 overflow-y-auto overscroll-contain"
+                  >
+                    {allMutualFriends === undefined ? (
+                      <div className="space-y-1.5">
+                        {[0, 1, 2].map((row) => (
+                          <Skeleton key={row} className="h-12 w-full rounded-md" />
+                        ))}
+                      </div>
+                    ) : (
+                      <CardGroup orientation="inline" border="outlined">
+                        {allMutualFriends.map((friend) => (
+                          <Card
+                            key={friend._id}
+                            label={`Open ${fullName(friend)}'s profile`}
+                            onClick={() => onOpenPerson?.(friend)}
+                            className="min-h-12"
+                          >
+                            <ClubAvatar
+                              person={friend}
+                              className="size-8"
+                              fallbackClassName="text-[10px]"
+                            />
+                            <CardHeader>
+                              <CardTitle className="truncate">{fullName(friend)}</CardTitle>
+                            </CardHeader>
+                          </Card>
+                        ))}
+                      </CardGroup>
+                    )}
+                  </div>
+                ) : null}
+              </>
+            );
+          })()}
         </section>
       ) : null}
 
@@ -298,7 +372,23 @@ type UserProfileDialogProps = Omit<UserProfileContentProps, 'active' | 'variant'
 
 export function UserProfileDialog({ open, onOpenChange, ...contentProps }: UserProfileDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const name = fullName(contentProps.person);
+  // Profiles opened from inside this one (mutual friends), newest last. The
+  // trail belongs to the person the dialog was opened for and clears on close.
+  const [trail, setTrail] = useState<{ rootId: string; people: UserProfilePerson[] }>({
+    rootId: contentProps.person._id,
+    people: [],
+  });
+  if (trail.people.length > 0 && (!open || trail.rootId !== contentProps.person._id)) {
+    setTrail({ rootId: contentProps.person._id, people: [] });
+  }
+  const opened = trail.rootId === contentProps.person._id ? trail.people.at(-1) : undefined;
+  const shownPerson = opened ?? contentProps.person;
+  const name = fullName(shownPerson);
+  const openPerson = (person: UserProfilePerson) =>
+    setTrail((current) => ({
+      rootId: contentProps.person._id,
+      people: [...(current.rootId === contentProps.person._id ? current.people : []), person],
+    }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -315,7 +405,33 @@ export function UserProfileDialog({ open, onOpenChange, ...contentProps }: UserP
           <DialogTitle>{name}</DialogTitle>
           <DialogDescription>Profile details and shared school connections.</DialogDescription>
         </DialogHeader>
-        <UserProfileContent {...contentProps} active={open} variant="dialog" onNavigate={() => onOpenChange(false)} />
+        {opened ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            leadingIcon={ArrowLeft}
+            className="-ml-2 mb-2 self-start"
+            onClick={() => setTrail((current) => ({ ...current, people: current.people.slice(0, -1) }))}
+          >
+            Back
+          </Button>
+        ) : null}
+        <UserProfileContent
+          // Each person gets fresh content state (expanded lists, queries).
+          key={shownPerson._id}
+          {...(opened
+            ? {
+                person: opened,
+                canSendFriendRequest: contentProps.canSendFriendRequest,
+                onSendFriendRequest: contentProps.onSendFriendRequest,
+              }
+            : contentProps)}
+          active={open}
+          variant="dialog"
+          onNavigate={() => onOpenChange(false)}
+          onOpenPerson={openPerson}
+        />
       </DialogContent>
     </Dialog>
   );

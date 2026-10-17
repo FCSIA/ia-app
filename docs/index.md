@@ -52,6 +52,8 @@ same change.
 - [Data flow](architecture/data-flow.md)
 - [Deployment](architecture/deployment.md)
 - [Azure portability review](architecture/azure-portability.md)
+- [Azure school environment plan](architecture/azure-school-environment-plan.md)
+- [Azure hosting migration](architecture/azure-hosting-migration.md)
 - [Client state ownership](architecture/client-state-ownership.md)
 
 ## Backend
@@ -89,6 +91,7 @@ same change.
 
 ## Features
 
+- [Admin analytics](features/analytics.md)
 - [Announcements](features/announcements.md)
 - [Audit log](features/audit-log.md)
 - [Calendar](features/calendar.md)
@@ -101,6 +104,7 @@ same change.
 - [Schedule](features/schedule.md)
 - [Uploads](features/uploads.md)
 - [Users and admin](features/users-admin.md)
+- [Whiteboards](features/whiteboards.md)
 - [Wrapped](features/wrapped.md)
 
 ## Product Reference
