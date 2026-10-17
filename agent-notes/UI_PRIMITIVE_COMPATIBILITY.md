@@ -175,6 +175,19 @@ context and an accessible name; attention never implies `aria-pressed`. Do not
 recreate the surface or its corners on feature pages. The stretched focus target
 uses the same shape token as the surface and Group hover.
 
+The owner approved `CardGroup corners="compact"` for announcement previews
+(2026-10-17). It gives the frame, attention surface, moving hover, and stretched
+focus target the same 12px corners without changing buttons or the global shape.
+The default continues to follow ShapeContext. Do not substitute feature-level
+radius overrides. In a clickable Card, passive footer text and gaps pass through
+to the stretched target; semantic controls retain independent pointer targets.
+
+Solid neutral Badge uses the shared foreground-based active fill and border,
+so it remains bounded on an attention surface. Colored and dot badges retain
+their existing mappings. Native modal scroll locking must not add a second body
+margin when the root already reserves a stable scrollbar gutter; the global
+`body[data-scroll-locked]` rule handles that supported-browser case.
+
 Fluid proximity components register item geometry. A component can render with
 no errors while silently losing the shared moving highlight if an index or ref
 is swallowed by an intermediate component.

@@ -384,7 +384,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
           aria-label={label}
-          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", containerShape)}
+          className={cn("absolute inset-0 z-20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", containerShape)}
         />
       ) : (
         <button
@@ -392,7 +392,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           onClick={onClick}
           aria-label={label}
           aria-pressed={selected || undefined}
-          className={cn("absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", containerShape)}
+          className={cn("absolute inset-0 z-20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", containerShape)}
         />
       )
     ) : null;
@@ -652,7 +652,7 @@ CardContent.displayName = "CardContent";
 
 const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    const { orientation, hasImage } = useContext(CardContext);
+    const { orientation, hasImage, clickable } = useContext(CardContext);
     const inlineImage = orientation === "inline" && hasImage;
     return (
       <div
@@ -660,6 +660,9 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
         data-slot="card-footer"
         className={cn(
           "relative z-30 flex items-center gap-1",
+          // Passive footer text and gaps belong to the card's stretched link.
+          // Only actual controls intercept it, including slotted triggers.
+          clickable && "pointer-events-none [&_:is(a,button,input,select,textarea,[role=button],[role=checkbox],[role=switch],[tabindex])]:pointer-events-auto",
           inlineImage
             ? // Under the text, left-aligned in natural order (the inline
               // wrapper owns the spacing).
