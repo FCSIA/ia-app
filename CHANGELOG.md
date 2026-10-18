@@ -14,6 +14,8 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ## v0.8.37 — 2026-10-17 (alpha)
 
+**Clearer announcements, simpler settings, and a steadier dashboard**
+
 ### Improved
 
 - **announcements** — Announcements have clearer unread and saved states, compact filters, clickable author profiles, and consistent dashboard previews. Menus and dialogs keep the page in place. ([`81bbca86`](https://github.com/virajdas/ia-app/commit/81bbca86))
