@@ -5,8 +5,9 @@
 - **Announcement layout follow-up**: `fix/announcement-layout-follow-up` owns
   compact mobile feed actions, shared author profiles on announcement details
   and comments, centered empty states, and the Clubs landing-page top inset.
-  New visuals await design-owner review; the prior release-headline PR #162
-  is squash-merged as `00bad9db`.
+  The owner authorized squash-merging PR #163 on October 18 after simplifying
+  profile connections into direct lists with compact shared CardGroup corners.
+  The prior release-headline PR #162 is squash-merged as `00bad9db`.
 - **Integration**: On October 17 the owner explicitly authorized squash-merging
   the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
   #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
@@ -32,12 +33,20 @@
   stay visible beside the audience. Shared Empty owns vertical centering, and
   Clubs uses the standard AppShell top inset. Detail pages use the approved
   compact CardGroup corners and existing save/report/discussion controls.
+- Shared person profiles show mutual-friend and club lists without stat tiles
+  or an extra friend-list disclosure. Both lists use the existing compact
+  CardGroup corner contract. Section gaps apply only between visible content,
+  so identity-only profiles retain equal top and bottom dialog insets.
+  A fuller profile with badges is deferred; the
+  owner's future direction is basic identity for everyone and richer social
+  details for friends. This simplification preserves existing data visibility.
 - Web typecheck, lint (21 existing warnings), production build, a changed-file
   React Doctor scan, backend typecheck, and 21 focused backend tests pass.
   Compiled browser checks cover 320px touch targets, 390px and desktop layouts,
   profile dialogs, save/restore, comment creation/removal, and centered empties.
-  Review captures are in `/tmp/ia-announcement-layout-review/`. Material visual
-  changes still await owner review; native iPhone verification was not run.
+  Review captures are in `/tmp/ia-announcement-layout-review/`. The owner
+  authorized the final profile simplification and PR merge on October 18;
+  native iPhone verification was not run.
 - Only the existing isolated demo backend on localhost:3210 was updated. It
   retains the same database and accounts. No shared or production deployment
   was selected or changed.
