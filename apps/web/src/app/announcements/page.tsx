@@ -437,10 +437,10 @@ export default function AnnouncementsPage() {
                 </PopoverTrigger>
                 <PopoverContent
                   align="end"
-                  className="w-[min(24rem,calc(100vw-2rem))]"
+                  className="w-[min(24rem,calc(100vw-2rem))] px-2 py-3"
                   aria-labelledby="announcement-filters-title"
                 >
-                  <div className="mb-4 flex items-center justify-between gap-3 px-3">
+                  <div className="mb-3 flex items-center justify-between gap-3 px-4">
                     <h3 id="announcement-filters-title" className="text-sm font-medium text-foreground">
                       Filters
                     </h3>

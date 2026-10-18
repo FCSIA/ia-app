@@ -43,7 +43,7 @@ function FilterSelect<T extends string>({
   const id = useId();
 
   return (
-    <Field className="min-w-0 gap-2">
+    <Field className="min-w-0 gap-1.5">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Select size="compact" value={value} onValueChange={(next) => onValueChange(next as T)}>
         <SelectTrigger id={id} className="min-w-0 w-full" />
@@ -130,7 +130,7 @@ export function AnnouncementFilterPanel({
   const scopes = [...new Set([...availableTags, ...(filters.activeTag ? [filters.activeTag] : [])])];
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-3">
       <FieldGroup className="grid grid-cols-2 gap-3 px-3">
         <FilterSelect<FeedFilters['readFilter']>
           label="Read"
