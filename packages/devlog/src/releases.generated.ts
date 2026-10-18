@@ -9,6 +9,7 @@ export const RELEASES: readonly Release[] = [
   {
     "version": "0.8.37",
     "date": "2026-10-17",
+    "title": "Clearer announcements, simpler settings, and a steadier dashboard",
     "commit": "a0d5654f",
     "changes": [
       {
