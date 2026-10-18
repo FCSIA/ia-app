@@ -90,6 +90,10 @@ an explicit vertical content slot for the date numeral and optional metadata.
 Status content must remain in that slot's normal flow so it cannot overlap the
 date.
 
+Calendar day targets also use the adapter's `--cell-size` in touch mode. Fluid's
+generic 44px icon-button expansion would otherwise force a seven-column date
+grid beyond a narrow widget or date-picker popup.
+
 ## Counterexample: actual compounded spacing
 
 Not every oversized primitive is a contract mismatch. The chat mention menu

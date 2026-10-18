@@ -2,11 +2,16 @@
 
 ## Active Focus
 
-- **Announcement layout follow-up**: `fix/announcement-layout-follow-up` owns
-  compact mobile feed actions, shared author profiles on announcement details
-  and comments, centered empty states, and the Clubs landing-page top inset.
-  The owner authorized squash-merging PR #163 on October 18 after simplifying
-  profile connections into direct lists with compact shared CardGroup corners.
+- **Dashboard calendar follow-up**: The owner requested a small commit directly
+  in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
+  October 18. After owner feedback, the month controls and full-calendar arrow
+  share one header through DayPicker's existing Month slot; the redundant
+  Calendar heading is removed. Date targets retain the calendar's cell size in
+  touch mode. Material visual changes remain awaiting owner review.
+  Web typecheck, lint (21 existing warnings), production build, and the pinned
+  changed-file React Doctor scan pass. Browser checks cover 320–1440px layouts,
+  touch date grids, keyboard selection, six-week months, and the shared schedule
+  date picker. Captures: `/tmp/ia-calendar-review/`; native device review was not run.
   The prior release-headline PR #162 is squash-merged as `00bad9db`.
 - **Integration**: On October 17 the owner explicitly authorized squash-merging
   the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
