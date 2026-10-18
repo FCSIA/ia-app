@@ -2,6 +2,11 @@
 
 ## Active Focus
 
+- **Announcement layout follow-up**: `fix/announcement-layout-follow-up` owns
+  compact mobile feed actions, shared author profiles on announcement details
+  and comments, centered empty states, and the Clubs landing-page top inset.
+  New visuals await design-owner review; the prior release-headline PR #162
+  is squash-merged as `00bad9db`.
 - **Integration**: On October 17 the owner explicitly authorized squash-merging
   the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
   #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
@@ -17,6 +22,25 @@
   asked.
 
 ## Current Truth
+
+### Announcement layout and detail pages (2026-10-17)
+
+- Announcement feed and detail views compose the same clickable profile avatar
+  and author metadata. Comment queries now return the same limited author
+  projection, including avatar and roles, without contact or sign-in fields.
+- Mobile feed actions share one row with the author avatar; time and expiry
+  stay visible beside the audience. Shared Empty owns vertical centering, and
+  Clubs uses the standard AppShell top inset. Detail pages use the approved
+  compact CardGroup corners and existing save/report/discussion controls.
+- Web typecheck, lint (21 existing warnings), production build, a changed-file
+  React Doctor scan, backend typecheck, and 21 focused backend tests pass.
+  Compiled browser checks cover 320px touch targets, 390px and desktop layouts,
+  profile dialogs, save/restore, comment creation/removal, and centered empties.
+  Review captures are in `/tmp/ia-announcement-layout-review/`. Material visual
+  changes still await owner review; native iPhone verification was not run.
+- Only the existing isolated demo backend on localhost:3210 was updated. It
+  retains the same database and accounts. No shared or production deployment
+  was selected or changed.
 
 ### UI integration and React Doctor (2026-10-17)
 

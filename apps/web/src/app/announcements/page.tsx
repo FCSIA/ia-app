@@ -8,8 +8,9 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
-import { Card, CardContent, CardGroup } from '@/components/ui/card';
+import { CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   Dialog,
@@ -39,7 +40,6 @@ import { AnnouncementMediaInput } from '@/components/announcements/announcement-
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
-import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -654,21 +654,17 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
         ) : !hasActiveFilters && dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
-          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
-            <Card className="bg-transparent">
-              <CardContent className="text-center py-16 pt-6">No announcements yet</CardContent>
-            </Card>
-          </CardGroup>
+          <Empty className="min-h-32 border">
+            <EmptyHeader><EmptyTitle>No announcements yet</EmptyTitle></EmptyHeader>
+          </Empty>
         ) : filtered.length === 0 ? (
-          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
-            <Card className="bg-transparent">
-              <CardContent className="pt-6 text-center py-16">
-                <p className="text-muted-foreground">No announcements match your filters.</p>
+          <Empty className="min-h-32 border">
+            <EmptyHeader><EmptyTitle>No announcements match your filters.</EmptyTitle></EmptyHeader>
+            {canLoadMore || pinnedStatus === 'CanLoadMore' ? <EmptyContent>
                 {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
                 {pinnedStatus === 'CanLoadMore' ? <Button variant="tertiary" size="sm" className="mt-2" onClick={() => loadMorePins(30)}>Load more pinned announcements</Button> : null}
-              </CardContent>
-            </Card>
-          </CardGroup>
+            </EmptyContent> : null}
+          </Empty>
         ) : (
           <div className="flex flex-col gap-6">
             {pinnedStatus === 'CanLoadMore' || pinnedStatus === 'LoadingMore' ? (

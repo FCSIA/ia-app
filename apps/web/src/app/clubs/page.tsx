@@ -85,7 +85,6 @@ export default function ClubsLandingPage() {
   return (
     <AppShell
       headerSlot={headerSlot}
-      mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
     >
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
         {invites.length > 0 ? (
