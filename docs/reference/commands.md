@@ -26,6 +26,7 @@ tags: [commands, development]
 | `bun run devlog:preview`  | Show the release the current commits would produce             |
 | `bun run devlog:generate` | Regenerate both outputs after editing `releases.json` by hand  |
 | `bun run release`         | Prepare a release PR (`--minor`, `--set=`, or `--dry-run`)     |
+| `bun run release:ship`    | Prepare a release PR using the same flow as `release`         |
 
 See [versioning and the devlog](versioning.md) for the version scheme and how
 commit subjects become changelog entries.

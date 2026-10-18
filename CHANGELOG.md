@@ -12,6 +12,33 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.37 — 2026-10-17 (alpha)
+
+**Clearer announcements, simpler settings, and a steadier dashboard**
+
+### Improved
+
+- **announcements** — Announcements have clearer unread and saved states, compact filters, clickable author profiles, and consistent dashboard previews. Menus and dialogs keep the page in place. ([`81bbca86`](https://github.com/virajdas/ia-app/commit/81bbca86))
+- **feedback** — Feedback has a clearer form and submission history, and its notifications are separate from moderation alerts. ([`ef157d6a`](https://github.com/virajdas/ia-app/commit/ef157d6a))
+- **clubs** — Your clubs have clearer grouping, consistent corners, and an aligned discovery action. ([`df566c46`](https://github.com/virajdas/ia-app/commit/df566c46))
+- **settings** — Profile settings are clearer and stay in place when switching tabs, with shared notification controls and nested club preferences. ([`c53396d7`](https://github.com/virajdas/ia-app/commit/c53396d7))
+- Notifications have aligned controls, and your profile has consistent corners, spacing, and circular pictures. ([`c3a15071`](https://github.com/virajdas/ia-app/commit/c3a15071))
+- **dashboard** — Dashboard widgets stay where you place them, with a Balance layout action and Undo when you want a tidier arrangement. ([#147](https://github.com/virajdas/ia-app/pull/147), [`55b615e1`](https://github.com/virajdas/ia-app/commit/55b615e1))
+- **feedback** — Feedback reviewers can track submitted reports through linked GitHub issues and keep their status in sync. ([`cbb87b8f`](https://github.com/virajdas/ia-app/commit/cbb87b8f))
+- **notifications** — On phones, the profile menu now offers Do not disturb for one hour, with an option to resume notifications early. ([`5aa47b29`](https://github.com/virajdas/ia-app/commit/5aa47b29))
+- **web** — Swiping right in a club opens its navigation without leaving the conversation. ([`80b9a711`](https://github.com/virajdas/ia-app/commit/80b9a711))
+- **backend** — Retain calendar dependency after rebase. ([`a91bed3f`](https://github.com/virajdas/ia-app/commit/a91bed3f))
+- **backend** — Adopt Convex 1.45 helpers. ([`39db4a99`](https://github.com/virajdas/ia-app/commit/39db4a99))
+- **tooling** — Rebase Bun migration onto main. ([`006f0ab4`](https://github.com/virajdas/ia-app/commit/006f0ab4))
+- **tooling** — Migrate pnpm to Bun. ([`1d47a053`](https://github.com/virajdas/ia-app/commit/1d47a053))
+
+### Internal
+
+- Audit production dependency closure. ([`296890ca`](https://github.com/virajdas/ia-app/commit/296890ca))
+- Make Bun lockfile auditing unconditional. ([`98eccc6f`](https://github.com/virajdas/ia-app/commit/98eccc6f))
+- Share validation build environment. ([`213a23bb`](https://github.com/virajdas/ia-app/commit/213a23bb))
+- Enforce release and contributor gates. ([`f2509568`](https://github.com/virajdas/ia-app/commit/f2509568))
+
 ## v0.8.36 — 2026-10-02 (alpha)
 
 **Online status, Do Not Disturb, and admin analytics**
