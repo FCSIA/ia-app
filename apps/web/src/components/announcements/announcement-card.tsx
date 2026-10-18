@@ -7,8 +7,7 @@ import { AnnouncementAudience } from '@/components/announcements/announcement-au
 import type { AnnouncementAudienceInput } from '@/components/announcements/announcement-audience';
 import { Badge } from '@/components/ui/badge';
 import type { BadgeColor } from '@/components/ui/badge';
-import { DeveloperBadge } from '@/components/ui/developer-badge';
-import { UserProfileAvatar, type UserProfilePerson } from '@/components/users/user-profile-avatar';
+import { AnnouncementAuthor, type AnnouncementAuthorPerson } from '@/components/announcements/announcement-author';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -46,14 +45,7 @@ export type AnnouncementCardRecord = AnnouncementAudienceInput & {
   allowComments?: boolean;
   status: string;
   targetType: string;
-  author?: {
-    _id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    isDeveloper?: boolean | null;
-    avatarUrl?: string | null;
-    roles?: UserProfilePerson['roles'];
-  } | null;
+  author?: AnnouncementAuthorPerson | null;
   club?: {
     _id: string;
     name: string;
@@ -101,14 +93,6 @@ function AnnouncementPreview({
   onPinToggle,
 }: AnnouncementPreviewProps) {
   const widget = presentation === 'widget';
-  const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
-  const author = announcement.author?._id ? {
-    ...announcement.author,
-    _id: announcement.author._id as UserProfilePerson['_id'],
-    firstName: announcement.author.firstName ?? '',
-    lastName: announcement.author.lastName ?? '',
-  } : null;
-
   const status = {
     PENDING_APPROVAL: { label: 'Pending review', color: 'amber' },
     REJECTED: { label: 'Needs changes', color: 'red' },
@@ -148,6 +132,15 @@ function AnnouncementPreview({
   </>;
   const canPin = !!onPinToggle && announcement.status === 'ACTIVE';
   const canArchiveAnnouncement = canArchive && !!onArchive && announcement.status === 'ACTIVE';
+  const postedTime = <time dateTime={createdAt.toISOString()} title={hasClientTime ? createdAtTitle.label : createdAt.toISOString()}>
+    {hasClientTime ? formatDistanceToNow(createdAt, { addSuffix: true }) : createdAt.toISOString().slice(0, 10)}
+  </time>;
+  const expiry = announcement.expiresAt ? <span className="inline-flex items-center gap-1">
+    <Clock aria-hidden className="size-3.5" />
+    {expiresAt !== null && expiredAt === expiresAt ? 'Expired' : 'Expires'} {hasClientTime
+      ? formatDistanceToNow(new Date(announcement.expiresAt), { addSuffix: true })
+      : new Date(announcement.expiresAt).toISOString().slice(0, 10)}
+  </span> : null;
 
   return (
     <Card
@@ -161,6 +154,8 @@ function AnnouncementPreview({
       <CardContent className={widget ? 'px-3 pt-4' : 'px-4 pt-4 sm:px-5'}>
         {!widget ? <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {audienceMetadata}
+          <span className="sm:hidden">{postedTime}</span>
+          {expiry ? <span className="sm:hidden">{expiry}</span> : null}
         </div> : null}
         <h3 className={cn(
           'leading-snug text-foreground',
@@ -171,64 +166,52 @@ function AnnouncementPreview({
         )}>{announcement.title}</h3>
         {!widget ? <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p> : null}
       </CardContent>
-      <CardFooter className={cn('flex items-center justify-between gap-y-2', widget ? 'gap-x-2 px-3 pt-1' : 'flex-wrap gap-x-4 px-4 pt-3 sm:px-5')}>
-        <div className={cn('flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground', widget ? 'flex-1 text-xs' : 'text-sm')}>
-          {widget ? audienceMetadata : null}
-          {!widget ? <>
-            {author ? <UserProfileAvatar person={author} /> : null}
-            <span>{authorName || 'Unknown author'}<DeveloperBadge user={announcement.author} size={12} className="ml-1" /></span>
-            <span aria-hidden>·</span>
-          </> : null}
-          <time dateTime={createdAt.toISOString()} title={hasClientTime ? createdAtTitle.label : createdAt.toISOString()}>
-            {hasClientTime ? formatDistanceToNow(createdAt, { addSuffix: true }) : createdAt.toISOString().slice(0, 10)}
-          </time>
-          {announcement.expiresAt ? (
-            <span className="inline-flex items-center gap-1">
-              <Clock aria-hidden className="size-3.5" />
-              {expiresAt !== null && expiredAt === expiresAt ? 'Expired' : 'Expires'} {hasClientTime
-                ? formatDistanceToNow(new Date(announcement.expiresAt), { addSuffix: true })
-                : new Date(announcement.expiresAt).toISOString().slice(0, 10)}
-            </span>
-          ) : null}
-        </div>
-        <div className={cn('ml-auto flex flex-wrap items-center gap-1', widget ? 'shrink-0' : 'max-w-full')}>
-          <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
-            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
-          </Tooltip>
-          {onBookmarkToggle ? (
-            <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
-              <Button
-                variant={announcement.isBookmarked ? 'tertiary' : 'ghost'}
-                size="icon-sm"
-                active={announcement.isBookmarked}
-                aria-pressed={!!announcement.isBookmarked}
-                onClick={() => onBookmarkToggle(announcement)}
-                aria-label={`${announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}: ${announcement.title}`}
-              >
-                <Bookmark fill={announcement.isBookmarked ? 'currentColor' : 'none'} className={announcement.isBookmarked ? 'text-primary' : undefined} />
-              </Button>
+      <CardFooter className={cn('gap-y-2', widget ? 'px-3 pt-1' : 'px-4 pt-3 sm:px-5')}>
+        <div className="flex w-full min-w-0 items-center gap-2">
+          {widget ? <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {audienceMetadata}{postedTime}{expiry}
+          </div> : <AnnouncementAuthor author={announcement.author} className="flex-1" detailsClassName="hidden sm:block">
+            <span className="flex flex-wrap gap-x-2">{postedTime}{expiry}</span>
+          </AnnouncementAuthor>}
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
+              <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
             </Tooltip>
-          ) : null}
-          {announcement.allowComments ? (
-            <Tooltip content="Open comments">
-              <Button asChild variant="ghost" size={widget || !announcement.commentCount ? 'icon-sm' : 'sm'} leadingIcon={widget || !announcement.commentCount ? undefined : MessageCircle}>
-                <Link href={`/announcements/${announcement._id}#comments`} aria-label={`Open comments: ${announcement.title}`}>
-                  {widget || !announcement.commentCount ? <MessageCircle /> : announcement.commentCount}
-                </Link>
-              </Button>
-            </Tooltip>
-          ) : null}
-          {canPin || canArchiveAnnouncement ? (
-            <DropdownMenu>
-              <DropdownTrigger render={
-                <Button id={`announcement-more-${announcement._id}`} variant="ghost" size="icon-sm" aria-label={`More actions: ${announcement.title}`}><Ellipsis /></Button>
-              } />
-              <DropdownContent align="end">
-                {canPin ? <MenuItem index={0} icon={announcement.isPinned ? PinOff : Pin} label={announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'} onSelect={() => onPinToggle?.(announcement)} /> : null}
-                {canArchiveAnnouncement ? <MenuItem index={canPin ? 1 : 0} icon={Archive} label="Archive announcement" onSelect={() => onArchive?.(announcement._id)} /> : null}
-              </DropdownContent>
-            </DropdownMenu>
-          ) : null}
+            {onBookmarkToggle ? (
+              <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
+                <Button
+                  variant={announcement.isBookmarked ? 'tertiary' : 'ghost'}
+                  size="icon-sm"
+                  active={announcement.isBookmarked}
+                  aria-pressed={!!announcement.isBookmarked}
+                  onClick={() => onBookmarkToggle(announcement)}
+                  aria-label={`${announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}: ${announcement.title}`}
+                >
+                  <Bookmark fill={announcement.isBookmarked ? 'currentColor' : 'none'} className={announcement.isBookmarked ? 'text-primary' : undefined} />
+                </Button>
+              </Tooltip>
+            ) : null}
+            {announcement.allowComments ? (
+              <Tooltip content={announcement.commentCount ? `${announcement.commentCount} comments` : 'Open comments'}>
+                <Button asChild variant="ghost" size="icon-sm">
+                  <Link href={`/announcements/${announcement._id}#comments`} aria-label={`Open comments: ${announcement.title}${announcement.commentCount ? ` (${announcement.commentCount})` : ''}`}>
+                    <MessageCircle />
+                  </Link>
+                </Button>
+              </Tooltip>
+            ) : null}
+            {canPin || canArchiveAnnouncement ? (
+              <DropdownMenu>
+                <DropdownTrigger render={
+                  <Button id={`announcement-more-${announcement._id}`} variant="ghost" size="icon-sm" aria-label={`More actions: ${announcement.title}`}><Ellipsis /></Button>
+                } />
+                <DropdownContent align="end">
+                  {canPin ? <MenuItem index={0} icon={announcement.isPinned ? PinOff : Pin} label={announcement.isPinned ? 'Unpin from your feed' : 'Pin to top for you'} onSelect={() => onPinToggle?.(announcement)} /> : null}
+                  {canArchiveAnnouncement ? <MenuItem index={canPin ? 1 : 0} icon={Archive} label="Archive announcement" onSelect={() => onArchive?.(announcement._id)} /> : null}
+                </DropdownContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
         </div>
         {footer ? <div className="w-full">{footer}</div> : null}
       </CardFooter>
