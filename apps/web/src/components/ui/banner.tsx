@@ -455,8 +455,10 @@ const Banner = forwardRef<HTMLDivElement, BannerProps>(
           // With a description the icon and ✕ hold to the title line instead
           // of centring on the whole block.
           "has-data-[slot=banner-description]:items-start",
-          // Even inset on all 4 sides: 16px, 12px compact.
+          // Inline padding follows density. Full-width bars preserve the
+          // shell’s responsive content gutters while their surface stays flush.
           compact ? "p-3" : "p-4",
+          fixed && "md:px-6 lg:px-8",
           // A fixed bar runs edge to edge: square corners, no frame.
           !fixed && shape.container,
           className
