@@ -166,6 +166,24 @@
 - Only this worktree's anonymous local backend on ports 3270/3271 was initialized,
   seeded, and updated. Shared and production deployments were not changed.
   See `docs/features/preferred-names-testing.md` for the review checklist.
+### Desktop notification setup notice (2026-10-19)
+
+- The dashboard's existing push recovery Card now also offers first-time setup
+  on supported desktop browsers. Blocked permission shows browser-settings
+  guidance without an Enable action. Explicit browser opt-outs and the existing
+  30-day dismissal marker are respected; permission/focus/visibility/storage
+  changes refresh the notice. First-time mobile prompts remain unchanged.
+- This is a supported composition of the existing CardGroup/Card and Button
+  adapters. Current Fluid Card, Button, and Banner rendered examples, Code,
+  APIs, and registry sources were inspected; the existing approved Card pattern
+  is retained rather than introducing the newer upstream Banner primitive.
+- Six eligibility tests, web typecheck/lint (21 existing warnings), and production
+  build pass. An isolated browser fixture verifies keyboard setup, loading,
+  successful registration, blocked guidance, opt-out, dismissal/reload/expiry,
+  storage-write failure, and mobile recovery. Light/dark and 390px checks are
+  diagnostic; authenticated dashboard, real push delivery, and native device
+  review were not run. Captures: `/tmp/ia-push-review/`. Visual review remains
+  with the design owner. No shared or production deployment was changed.
 
 ### Announcement layout and detail pages (2026-10-17)
 
