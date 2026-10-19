@@ -168,15 +168,27 @@
   See `docs/features/preferred-names-testing.md` for the review checklist.
 ### Desktop notification setup notice (2026-10-19)
 
-- The dashboard's existing push recovery Card now also offers first-time setup
+- The dashboard's existing push recovery notice now also offers first-time setup
   on supported desktop browsers. Blocked permission shows browser-settings
   guidance without an Enable action. Explicit browser opt-outs and the existing
   30-day dismissal marker are respected; permission/focus/visibility/storage
   changes refresh the notice. First-time mobile prompts remain unchanged.
-- This is a supported composition of the existing CardGroup/Card and Button
-  adapters. Current Fluid Card, Button, and Banner rendered examples, Code,
-  APIs, and registry sources were inspected; the existing approved Card pattern
-  is retained rather than introducing the newer upstream Banner primitive.
+- Owner follow-up requests a square, edge-to-edge banner and no subtitle. The
+  notification notice now composes Fluid `Banner variant="fixed"`, `BannerTitle`
+  and `BannerAction` in AppShell's new `bannerSlot`, outside page padding. Header
+  and banner share a sticky group. Current Fluid rendered example, fixed Code,
+  API, exact registry source and dependencies were inspected; shadcn confirms
+  Radix/new-york/Lucide. Registry dry-run/diff would overwrite shared adapters,
+  so only Banner was added, adapted to existing motion/HSL/type/Button contracts
+  and protected in `fluid:update`. No shared dependencies were overwritten.
+- An isolated fixture renders the actual AppShell/header/sidebar and banner,
+  with account, router and push responses mocked. Desktop geometry is exact:
+  header bottom/banner top 64px; sidebar right/banner left 72px; radius 0px.
+  Edges remain joined after scrolling. 320/390px layouts have no horizontal
+  overflow; blocked copy wraps. Keyboard enable still registers and hides the
+  notice; keyboard dismissal restores focus and removes its row. Light/dark
+  captures: `/tmp/ia-push-review/shell-banner-*.jpg`. This is diagnostic review,
+  not an authenticated dashboard or native-device test.
 - Six eligibility tests, web typecheck/lint (21 existing warnings), and production
   build pass. An isolated browser fixture verifies keyboard setup, loading,
   successful registration, blocked guidance, opt-out, dismissal/reload/expiry,

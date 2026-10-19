@@ -236,7 +236,9 @@ per-browser opt-out instead, which the sync respects and the next explicit
 enable clears.
 
 The dashboard offers first-time setup on supported desktop browsers when
-notification permission is still "ask". Blocked desktop browsers see guidance
+notification permission is still "ask". The square Fluid Banner sits directly
+below the shell header, flush with the sidebar, with one message and no subtitle.
+Blocked desktop browsers see guidance
 to allow notifications in the browser's site settings, without another
 permission request. The notice respects the per-browser opt-out and its existing
 30-day dismissal marker, and hides when permission is granted. Permission,

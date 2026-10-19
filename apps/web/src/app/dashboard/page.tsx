@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { GripVertical, LayoutGrid, PanelBottom } from 'lucide-react';
 import { useMutation } from '@/lib/convex-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { PushNotificationAnnouncement } from '@/components/dashboard/PushNotificationAnnouncement';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -84,6 +85,7 @@ export default function DashboardPage() {
 
   return (
     <AppShell
+      bannerSlot={<PushNotificationAnnouncement />}
       headerSlot={
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
           <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">

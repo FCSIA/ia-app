@@ -17,6 +17,7 @@ const requestedNames = cliArgs
 const adaptedComponents = new Set([
   "accordion",
   "badge",
+  "banner",
   "button",
   "card",
   "checkbox-group",
