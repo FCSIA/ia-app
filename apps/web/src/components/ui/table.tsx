@@ -12,10 +12,9 @@ import {
   type TdHTMLAttributes,
   type ThHTMLAttributes,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
-import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 // ── Context ──────────────────────────────────────────────
@@ -36,6 +35,7 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
 const Table = forwardRef<HTMLTableElement, TableProps>(
   ({ children, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const shouldReduceMotion = useReducedMotion();
 
     const {
       activeIndex,
@@ -86,8 +86,8 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
                   width: activeRect.width,
                   height: activeRect.height,
                 }}
-                exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={{
+                exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                transition={shouldReduceMotion ? { duration: 0 } : {
                   ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
@@ -171,10 +171,11 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
           className
         )}
         style={{
+          // A fixed inherited `wght` axis overrides descendants' font-weight.
+          // Preserve the Fluid defaults while allowing emphasis inside cells.
+          fontWeight: isBodyRow ? 400 : 550,
+          fontVariationSettings: isBodyRow ? "'opsz' 14" : "'opsz' 20",
           ...style,
-          fontVariationSettings: isBodyRow
-            ? fontWeights.normal
-            : fontWeights.semibold,
         }}
         {...props}
       />

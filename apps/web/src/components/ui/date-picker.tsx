@@ -38,9 +38,6 @@ export function DatePicker({
   endMonth,
 }: DatePickerProps) {
   const selectedDate = parseDateValue(value);
-  const anchorYear = (selectedDate ?? new Date()).getFullYear();
-  const navigationStartMonth = startMonth ?? new Date(anchorYear - 1, 0, 1);
-  const navigationEndMonth = endMonth ?? new Date(anchorYear + 2, 11, 1);
 
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -60,16 +57,16 @@ export function DatePicker({
             {selectedDate ? format(selectedDate, 'PPP') : placeholder}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[19rem] p-0" align="start">
+        <PopoverContent className="w-auto p-0" align="start">
           <Calendar
-            className="w-full"
             mode="single"
+            defaultMonth={selectedDate}
             selected={selectedDate}
             onSelect={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
             disabled={disabledDays}
-            startMonth={navigationStartMonth}
-            endMonth={navigationEndMonth}
-            initialFocus
+            startMonth={startMonth}
+            endMonth={endMonth}
+            autoFocus
           />
         </PopoverContent>
       </Popover>

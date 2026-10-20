@@ -12,7 +12,7 @@ import {
   type HTMLAttributes,
 } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
@@ -50,6 +50,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
+    const shouldReduceMotion = useReducedMotion();
 
     const {
       activeIndex: hoveredIndex,
@@ -177,7 +178,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
                   height: selectedRect.height,
                   opacity: isHovering ? 0.8 : 1,
                 }}
-                transition={{
+                transition={shouldReduceMotion ? { duration: 0 } : {
                   ...spring.moderate,
                   opacity: { duration: 0.08 },
                 }}
@@ -211,11 +212,11 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
                           top: selectedRect.top,
                           height: selectedRect.height,
                           opacity: 0,
-                          transition: { ...spring.moderate, opacity: { duration: 0.06 } },
+                          transition: shouldReduceMotion ? { duration: 0 } : { ...spring.moderate, opacity: { duration: 0.06 } },
                         }
-                      : { opacity: 0, transition: spring.fast.exit }
+                      : { opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }
                   }
-                  transition={{
+                  transition={shouldReduceMotion ? { duration: 0 } : {
                     ...spring.fast,
                     opacity: { duration: 0.08 },
                   }}
@@ -235,8 +236,8 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
                     width: focusRect.width + 4,
                     height: focusRect.height + 4,
                   }}
-                  exit={{ opacity: 0, transition: spring.fast.exit }}
-                  transition={{
+                  exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                  transition={shouldReduceMotion ? { duration: 0 } : {
                     ...spring.fast,
                     opacity: { duration: 0.08 },
                   }}
@@ -264,6 +265,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
   ({ icon: Icon, label, index, className, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement | null>(null);
     const shape = useShape();
+    const shouldReduceMotion = useReducedMotion();
     const { registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel } =
       useTabsSubtle();
 
@@ -349,7 +351,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
                 initial={{ width: 0, opacity: 0, marginLeft: 0 }}
                 animate={{ width: "auto", opacity: 1, marginLeft: 8 }}
                 exit={{ width: 0, opacity: 0, marginLeft: 0 }}
-                transition={{
+                transition={shouldReduceMotion ? { duration: 0 } : {
                   ...spring.fast,
                   opacity: { duration: 0.06 },
                 }}
