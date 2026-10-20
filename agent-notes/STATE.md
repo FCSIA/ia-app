@@ -29,6 +29,32 @@
 
 ## Current Truth
 
+### Preferred profile names (2026-10-20)
+
+- Recovered the unmerged preferred-name commits `103981f1` and `f96ddfd5`
+  from `codex/admin-audit-readability`, preserving that checkout's unfinished
+  audit edits. Ported only preferred-name work into an isolated branch, then
+  rebased onto concurrent theme fix `196cf06a` without changing it.
+- Web and native settings set or clear a complete preferred display name.
+  Shared identity projections, initials, mentions, notifications, and both-name
+  searches use the preference while retaining regular roster names and IDs.
+  Newer shared announcement authors/filters and profile components remain intact;
+  audit searches also match full regular names, and initials preserve Unicode
+  code points.
+- Final combined verification: all 406 backend tests and 20 focused client
+  tests, backend/mobile TypeScript, production web build (including web TypeScript),
+  and isolated Convex push pass. Web lint passes with 21 existing warnings;
+  React Doctor 0.9.8 has one low-impact advisory on mapping/filtering two name
+  values in bulk assignment. Devlog generation and whitespace checks pass.
+- Signed-in production-build browser checks at localhost:3004 cover normalized
+  save, reload persistence, regular-name disclosure, header/avatar initials,
+  clearing, and a 390px layout without horizontal overflow or console errors.
+  Design-owner visual review and native device verification remain outstanding.
+  Windows lacks direnv, so checks use the repository-pinned Bun 1.4.2 directly.
+- Only this worktree's anonymous local backend on ports 3270/3271 was initialized,
+  seeded, and updated. Shared and production deployments were not changed.
+  See `docs/features/preferred-names-testing.md` for the review checklist.
+
 ### Announcement layout and detail pages (2026-10-17)
 
 - Announcement feed and detail views compose the same clickable profile avatar
