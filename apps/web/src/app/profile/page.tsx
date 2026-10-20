@@ -1,22 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
 import { useToast } from '@/hooks/use-toast';
 import { hasRole, startLogout, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
-import type { NotificationCategory } from '~/apps/convex/src/validators';
-import { PROFILE_NOTIFICATION_CATEGORIES } from './_constants';
+import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { useSeenRelease } from '@/components/devlog/use-seen-release';
 import {
-  AccountSettingsCard,
-  AppearanceCard,
-  ModerationAlertsCard,
-  NotificationPreferencesCard,
+  AccountSettingsSection,
+  AppearanceSection,
+  ModerationAlertsSection,
   ProfileSidebar,
-  WhatsNewCard,
+  WhatsNewSection,
 } from './_components/ProfileSections';
 import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
 
@@ -24,11 +22,6 @@ const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
   newPassword: '',
   confirm: '',
-};
-
-type PreferenceState = {
-  enabled?: boolean;
-  locked?: boolean;
 };
 
 export default function ProfilePage() {
@@ -41,7 +34,6 @@ export default function ProfilePage() {
   const [signingOut, setSigningOut] = useState(false);
   const [savingTimeFormat, setSavingTimeFormat] = useState(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>('account');
-  const [optimisticPrefs, setOptimisticPrefs] = useState<Record<string, PreferenceState>>({});
   const { unseenCount, markSeen } = useSeenRelease();
 
   useEffect(() => {
@@ -52,8 +44,6 @@ export default function ProfilePage() {
 
   const changePassword = useMutation(api.users.auth.changePassword);
   const updateTimeFormat = useMutation(api.users.me.updateTimeFormat);
-  const upsertPreference = useMutation(api.notifications.preferences.upsert);
-  const prefs = useQuery(api.notifications.preferences.list);
   const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
@@ -69,46 +59,6 @@ export default function ProfilePage() {
     hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN') || moderationAlerts.length > 0;
   const visibleSection =
     activeSection === 'moderation' && !canSeeModeration ? 'account' : activeSection;
-
-  const visiblePreferenceCategories = useMemo(
-    () =>
-      PROFILE_NOTIFICATION_CATEGORIES.filter(
-        (category) => !category.staffOnly || canSeeModeration,
-      ),
-    [canSeeModeration],
-  );
-
-  const storedPrefMap = useMemo(
-    () => {
-      const preferences = prefs ?? [];
-      return Object.fromEntries(
-        preferences.map((preference) => [
-          `${preference.category}:${preference.scopeKey}`,
-          { enabled: preference.enabled, locked: preference.locked },
-        ]),
-      ) as Record<string, PreferenceState | undefined>;
-    },
-    [prefs],
-  );
-
-  const prefMap = useMemo(
-    () => ({ ...storedPrefMap, ...optimisticPrefs }),
-    [optimisticPrefs, storedPrefMap],
-  );
-
-  useEffect(() => {
-    setOptimisticPrefs((current) => {
-      let changed = false;
-      const next = { ...current };
-      for (const [key, value] of Object.entries(current)) {
-        if (storedPrefMap[key]?.enabled === value.enabled) {
-          delete next[key];
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
-  }, [storedPrefMap]);
 
   async function handleChangePassword(data: {
     currentPassword: string;
@@ -147,29 +97,6 @@ export default function ProfilePage() {
     }
   }
 
-  function handlePreferenceToggle({
-    category,
-    enabled,
-  }: {
-    category: NotificationCategory;
-    enabled: boolean;
-  }) {
-    const key = `${category}:global`;
-    if (storedPrefMap[key]?.locked) return;
-    setOptimisticPrefs((current) => ({ ...current, [key]: { enabled } }));
-    void upsertPreference({ category, enabled, scopeKey: 'global' }).catch((error: unknown) => {
-      setOptimisticPrefs((current) => {
-        const next = { ...current };
-        delete next[key];
-        return next;
-      });
-      toast({
-        title: error instanceof Error ? error.message : 'Failed to update notification preference',
-        variant: 'destructive',
-      });
-    });
-  }
-
   return (
     <AppShell>
       <div className="mx-auto grid w-full max-w-5xl gap-5 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
@@ -182,7 +109,7 @@ export default function ProfilePage() {
         />
         <div className="min-w-0">
           {visibleSection === 'account' ? (
-            <AccountSettingsCard
+            <AccountSettingsSection
               user={user}
               changing={changingPassword}
               form={passwordForm}
@@ -195,15 +122,10 @@ export default function ProfilePage() {
             />
           ) : null}
           {visibleSection === 'notifications' ? (
-            <NotificationPreferencesCard
-              categories={visiblePreferenceCategories}
-              loading={prefs === undefined}
-              prefMap={prefMap}
-              onToggle={handlePreferenceToggle}
-            />
+            <NotificationSettingsPanel />
           ) : null}
           {visibleSection === 'appearance' && mounted ? (
-            <AppearanceCard
+            <AppearanceSection
               theme={theme}
               setTheme={setTheme}
               use24HourTime={user?.use24HourTime ?? false}
@@ -212,9 +134,9 @@ export default function ProfilePage() {
             />
           ) : null}
           {visibleSection === 'moderation' && canSeeModeration ? (
-            <ModerationAlertsCard alerts={moderationAlerts} />
+            <ModerationAlertsSection alerts={moderationAlerts} />
           ) : null}
-          {visibleSection === 'whats-new' ? <WhatsNewCard /> : null}
+          {visibleSection === 'whats-new' ? <WhatsNewSection /> : null}
         </div>
       </div>
     </AppShell>

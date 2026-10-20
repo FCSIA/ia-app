@@ -4,31 +4,64 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Already-merged release PR whose tag was not published"
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 jobs:
   tag-release:
-    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     permissions:
       contents: write
+      pull-requests: read
     outputs:
       release_tag: ${{ steps.release.outputs.release_tag }}
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve merged release PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pull_request_number || github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "A positive release PR number is required." >&2
+            exit 1
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > "$RUNNER_TEMP/release-pr.json"
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .merged == true and .base.ref == "main" and
+            .base.repo.full_name == $repo and .head.repo.full_name == $repo and
+            (.head.ref | test("^release/v[0-9]+\\.[0-9]+\\.[0-9]+$")) and
+            (.head.sha | test("^[0-9a-f]{40}$")) and
+            (.merge_commit_sha | test("^[0-9a-f]{40}$"))
+          ' "$RUNNER_TEMP/release-pr.json" > /dev/null
+          {
+            echo "merge_sha=$(jq -r '.merge_commit_sha' "$RUNNER_TEMP/release-pr.json")"
+            echo "head_sha=$(jq -r '.head.sha' "$RUNNER_TEMP/release-pr.json")"
+            echo "branch=$(jq -r '.head.ref' "$RUNNER_TEMP/release-pr.json")"
+            echo "pr_number=$PR_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ steps.pr.outputs.merge_sha }}
           fetch-depth: 0
 
       - name: Validate and create immutable release tag
         id: release
         env:
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-          RELEASE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ steps.pr.outputs.merge_sha }}
+          RELEASE_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          RELEASE_BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           set -euo pipefail
           version="$(node -p "JSON.parse(require('fs').readFileSync('packages/devlog/data/releases.json')).releases[0].version")"
@@ -48,6 +81,10 @@ jobs:
           fi
           if [[ "$(git rev-parse HEAD)" != "$MERGE_SHA" ]]; then
             echo "Checked-out commit does not match the pull request merge commit." >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$MERGE_SHA" origin/main; then
+            echo "Release commit is no longer reachable from main." >&2
             exit 1
           fi
 
@@ -70,7 +107,9 @@ jobs:
             exit 1
           fi
 
-          git tag -a "$tag" -m "Release $tag" "$MERGE_SHA"
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            tag -a "$tag" -m "Release $tag" "$MERGE_SHA"
           git push origin "$tag"
           echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
 

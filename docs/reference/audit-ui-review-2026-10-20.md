@@ -3,6 +3,15 @@
 The primary checkout is on `codex/admin-audit-log-ux`. This is diagnostic
 verification, with material visual changes awaiting the design owner's review.
 
+The subsequent main integration includes `origin/main` through `679f7a00`.
+Its approved calendar cell-sizing rule replaces the overlapping touch-width
+fix described in the initial review below. Other audit and passive-hover changes
+are retained. The merged tree passes web/backend typechecks, web lint (21 existing
+warnings), production build, and all 407 backend tests across 84 files.
+The merged calendar was rechecked at 320px: its grid spans x=20–300, with
+32px date buttons and no horizontal overflow. Captures are
+`/tmp/ia-audit-review/merged-calendar-320.png` and `merged-audit.png`.
+
 ## Primitive decisions
 
 - Reviewed current Fluid examples, Code/API documentation, exact registry source,

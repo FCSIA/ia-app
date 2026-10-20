@@ -134,7 +134,12 @@ export const listPastStatusPage = query({
       // expired ACTIVE row, which the age-based Past stream already covers.
       ? await ctx.db.query("announcements")
           .withIndex("by_status_and_createdAt", (q) => q.eq("status", "ACTIVE").gt("createdAt", args.now - ANNOUNCEMENT_PAST_AGE_MS))
-          .filter((q) => q.lte(q.field("expiresAt"), args.now))
+          // Convex orders undefined below numbers, so <= alone includes posts without expiry.
+          // https://docs.convex.dev/database/reading-data#ordering
+          .filter((q) => q.and(
+            q.neq(q.field("expiresAt"), undefined),
+            q.lte(q.field("expiresAt"), args.now),
+          ))
           .order("desc")
           .paginate(args.paginationOpts)
       : await ctx.db.query("announcements")

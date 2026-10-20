@@ -37,6 +37,7 @@ reports.
 - `api.moderation.reports.update`
 - `api.moderation.reports.listMyFeedback`
 - `api.moderation.reports.addFeedbackResponse`
+- `api.moderation.reports.retryGithubIssueSync`
 
 ## Data Model
 
@@ -45,7 +46,8 @@ reports.
 - `feedbackReportResponses`
 
 Reports store submitter, content type/id, optional club, optional reported user,
-reason, status, escalation flag, review note, and timestamps. General feedback
+reason, status, escalation flag, review note, timestamps, and (for general
+feedback) optional GitHub-issue sync metadata. General feedback
 can include up to three validated PNG, JPEG, GIF, or WebP image attachments;
 only super admins can retrieve their previews. Staff responses are separate,
 append-only records linked to general feedback and limited to 25 per item.
@@ -55,15 +57,34 @@ append-only records linked to general feedback and limited to 25 per item.
 Authenticated users can submit reports and read only their own general-feedback
 history. Teachers and elevated roles can list reports. Admin, super admin, and
 support staff roles can update report review state. Only super admins can add
-staff responses to general feedback; submitters have no reply mutation or
+staff responses to general feedback or retry GitHub issue creation; submitters have no reply mutation or
 composer. Keyword management is admin-only.
 
 ## Side Effects
 
 Keyword and report changes write audit events. A resolved general-feedback item
-notifies its submitter; dismissed feedback remains available only in the
-super-admin archive. Each staff response notifies the original submitter and
+notifies its submitter. Dismissed feedback moves out of the active staff queue
+into the super-admin archive and remains in the submitter's history. Each staff response notifies the original submitter and
 links them to the read-only feedback history.
+
+When configured, each general-feedback submission creates a GitHub issue in
+`virajdas/ia-app` without the submitter's identity or attachments. GitHub's
+signed `issues` webhook updates the app when that issue is closed (`completed`
+becomes resolved; `not_planned` becomes dismissed) or reopened (becomes
+pending). The issue link is visible to feedback reviewers.
+
+## Feedback page
+
+`/report` uses a single labeled textarea and explicit **Send feedback** action.
+Enter adds a new line rather than submitting. Attachment limits and the included
+app version stay beside the form; the draft and attachment controls are disabled
+while submitting. Failed sends retain the draft and selected images.
+
+The read-only history uses one rounded inner group with quiet separators.
+Submission text remains primary, status and time share a metadata row, and staff
+responses sit under the item they answer. Loading and empty history are distinct
+states. Feedback notifications use their own category rather than Moderation;
+see [Notifications](notifications.md).
 
 ## Known Limits
 

@@ -1,15 +1,17 @@
 'use client';
 
-import { useDeferredValue, useMemo, useReducer, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAction, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Check, ChevronDown, Plus, SlidersHorizontal, X } from 'lucide-react';
-import { Card, CardContent, CardGroup } from '@/components/ui/card';
+import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Tooltip } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -23,18 +25,21 @@ import { SearchInput } from '@/components/ui/search';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
-import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
-import { matchesSearchQuery } from '@/lib/search';
+import { ToggleGroup } from '@/components/ui/toggle-group';
+import { FilterToggleIcon, FilterToggleItem } from '@/components/ui/filter-toggle-group';
+import { AnnouncementCard } from '@/components/announcements/announcement-card';
+import { compileAnnouncementFilters, type FeedFilters } from '@/components/announcements/announcement-feed-filters';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { AnnouncementFilterPanel } from '@/components/announcements/announcement-filter-panel';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
-import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -45,24 +50,9 @@ const PATHWAY_OPTIONS = [
 const GRADE_OPTIONS = [9, 10, 11, 12];
 const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
 
-const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
-  ...ANNOUNCEMENT_TAG_LABELS,
-  INTERSECTION: 'Combined audience',
-};
-
 type ClubFilterOption = {
   id: string;
   name: string;
-};
-
-type FeedFilters = {
-  activeTag: string | null;
-  selectedClubIds: string[];
-  readFilter: 'all' | 'unread' | 'read';
-  savedFilter: 'all' | 'saved' | 'pinned';
-  selectedGrades: number[];
-  selectedMajorPathways: string[];
-  selectedMinorPathways: string[];
 };
 
 const defaultFeedFilters: FeedFilters = {
@@ -81,10 +71,6 @@ function feedFiltersReducer(state: FeedFilters, update: FeedFiltersUpdate): Feed
   if (update === 'reset') return defaultFeedFilters;
   const patch = typeof update === 'function' ? update(state) : update;
   return { ...state, ...patch };
-}
-
-function toggleFilterValue<T>(values: T[], value: T): T[] {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
 const defaultAnnouncementForm = {
@@ -243,17 +229,15 @@ export default function AnnouncementsPage() {
   const rejectAnnouncement = useMutation(api.announcements.feed.reject);
 
   const availableTags = useMemo(() => {
-    if (!dataWithPins) return [];
     const tags = new Set<string>();
-    dataWithPins.forEach((announcement: any) => tags.add(announcement.targetType));
-    return Array.from(tags).sort();
-  }, [dataWithPins]);
+    [...dataWithPins, ...pastAllAnnouncements].forEach((announcement: any) => tags.add(announcement.targetType));
+    return ['SCHOOL_WIDE', 'GRADE', 'PATHWAY', 'CLUB', 'INTERSECTION'].filter((tag) => tags.has(tag));
+  }, [dataWithPins, pastAllAnnouncements]);
 
   const availableClubs = useMemo<ClubFilterOption[]>(() => {
-    if (!dataWithPins) return [];
     const clubsById = new Map<string, ClubFilterOption>();
 
-    dataWithPins.forEach((announcement: any) => {
+    [...dataWithPins, ...pastAllAnnouncements].forEach((announcement: any) => {
       if (announcement.club?._id && announcement.club?.name) {
         clubsById.set(announcement.club._id, {
           id: announcement.club._id,
@@ -263,71 +247,39 @@ export default function AnnouncementsPage() {
     });
 
     return Array.from(clubsById.values()).sort((left, right) => left.name.localeCompare(right.name));
-  }, [dataWithPins]);
+  }, [dataWithPins, pastAllAnnouncements]);
 
+  const matchesFilters = useMemo(() => compileAnnouncementFilters(filters, deferredSearch), [filters, deferredSearch]);
   const filtered = useMemo(() => {
     if (!dataWithPins) return [];
 
-    const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return dataWithPins.filter((announcement: any) => {
-      if (activeTag && announcement.targetType !== activeTag) return false;
-      if (readFilter === 'unread' && announcement.isRead) return false;
-      if (readFilter === 'read' && !announcement.isRead) return false;
-      if (savedFilter === 'saved' && !announcement.isBookmarked) return false;
-      if (savedFilter === 'pinned' && !announcement.isPinned) return false;
-      if (selectedGrades.length > 0 && !selectedGrades.some((grade) => announcement.targetGrade === grade || announcement.targetGrades?.includes?.(grade))) {
-        return false;
-      }
-      if (
-        selectedMajorPathways.length > 0 &&
-        !selectedMajorPathways.some((pathway) => announcement.targetPathway === pathway || announcement.targetMajorPathways?.includes?.(pathway))
-      ) {
-        return false;
-      }
-      if (selectedMinorPathways.length > 0 && !selectedMinorPathways.some((pathway) => announcement.targetMinorPathways?.includes?.(pathway))) {
-        return false;
-      }
-
-      if (selectedClubIds.length > 0 && !selectedClubIds.includes(announcement.clubId ?? '')) {
-        return false;
-      }
-
-      return matchesSearchQuery(normalizedSearch, [
-        announcement.title,
-        announcement.body,
-        announcement.author?.firstName,
-        announcement.author?.lastName,
-        announcement.club?.name,
-      ]);
-    }).sort((left: any, right: any) => {
+    return dataWithPins.filter(matchesFilters).sort((left: any, right: any) => {
       if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
       if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
-  }, [activeTag, dataWithPins, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
+  }, [dataWithPins, matchesFilters]);
 
-  const newestAnnouncementId = useMemo(() => {
-    const activeAnnouncements = dataWithPins.filter((announcement: any) => announcement.status === 'ACTIVE');
-    return activeAnnouncements.reduce<any | null>((latest, announcement) => {
-      if (!latest) return announcement;
-      return new Date(announcement.createdAt).getTime() > new Date(latest.createdAt).getTime()
-        ? announcement
-        : latest;
-    }, null)?._id ?? null;
-  }, [dataWithPins]);
+  // These groups explain the ordering the feed already uses. Read state never
+  // changes a post's position in All; only the explicit Unread filter removes it.
+  const feedSections = useMemo(() => [
+    { id: 'personal-pins' as const, label: 'Pinned for you', items: filtered.filter((entry) => entry.isPinned) },
+    { id: 'important' as const, label: 'Important', items: filtered.filter((entry) => !entry.isPinned && entry.isPromoted) },
+    { id: 'latest' as const, label: 'Latest', items: filtered.filter((entry) => !entry.isPinned && !entry.isPromoted) },
+  ].filter((section) => section.items.length > 0), [filtered]);
+  const pendingPinFocus = useRef<{ id: string; pinned: boolean } | null>(null);
+  useEffect(() => {
+    const pending = pendingPinFocus.current;
+    if (!pending || !filtered.some((entry) => entry._id === pending.id && !!entry.isPinned === pending.pinned)) return;
+    // Pinning moves the record to another section and remounts its card. Keep
+    // keyboard users with the record instead of returning focus to the body.
+    document.getElementById(`announcement-more-${pending.id}`)?.focus();
+    pendingPinFocus.current = null;
+  }, [filtered]);
 
-  const filteredPastAnnouncements = useMemo(() => {
-    const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return pastAllAnnouncements.filter((announcement: any) =>
-      matchesSearchQuery(normalizedSearch, [
-        announcement.title,
-        announcement.body,
-        announcement.author?.firstName,
-        announcement.author?.lastName,
-        announcement.club?.name,
-      ]),
-    );
-  }, [deferredSearch, pastAllAnnouncements]);
+  const filteredPastAnnouncements = useMemo(() =>
+    pastAllAnnouncements.filter(matchesFilters),
+  [matchesFilters, pastAllAnnouncements]);
 
   const [reviewPending, setReviewPending] = useState<{
     id: string;
@@ -413,155 +365,122 @@ export default function AnnouncementsPage() {
       }
     >
       <div className="mx-auto max-w-4xl">
-        <div className="mb-5 flex items-center gap-2">
-          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" inputClassName="bg-background" />
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="secondary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
-                Filters
-                {activeFilterCount > 0 ? (
-                  <Badge size="sm" color="blue">
-                    {activeFilterCount}
-                  </Badge>
-                ) : null}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              className="w-[min(44rem,calc(100vw-2rem))] overflow-hidden p-0"
-              aria-labelledby="announcement-filters-title"
-            >
-              <div className="max-h-[min(38rem,var(--radix-popover-content-available-height))] overflow-y-auto p-3">
-                <div className="mb-2 flex items-baseline justify-between gap-3">
-                  <h3 id="announcement-filters-title" className="text-sm font-semibold text-foreground">
-                    Filters
-                  </h3>
-                  {activeFilterCount > 0 ? (
-                    <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
-                      Reset
-                    </Button>
-                  ) : null}
-                </div>
-
-                <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-                <FieldSet className="min-w-0 gap-0">
-                  <FieldLegend variant="label">Read state</FieldLegend>
-                  <RadioGroup value={readFilter} onValueChange={(value) => dispatchFilters({ readFilter: value as FeedFilters['readFilter'] })} orientation="horizontal" className="w-full flex-wrap">
-                    {['all', 'unread', 'read'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} className="min-w-[calc(50%-0.125rem)] flex-1" />
-                    ))}
-                  </RadioGroup>
-                </FieldSet>
-
-                <FieldSet className="min-w-0 gap-0">
-                  <FieldLegend variant="label">Saved state</FieldLegend>
-                  <RadioGroup value={savedFilter} onValueChange={(value) => dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })} orientation="horizontal" className="w-full flex-wrap">
-                    {['all', 'saved', 'pinned'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} className="min-w-[calc(50%-0.125rem)] flex-1" />
-                    ))}
-                  </RadioGroup>
-                </FieldSet>
-
-                {availableTags.length > 0 ? (
-                  <FieldSet className="min-w-0 gap-0">
-                    <FieldLegend variant="label">Audience scope</FieldLegend>
-                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => dispatchFilters({ activeTag: value === 'all' ? null : value })} orientation="horizontal" className="w-full flex-wrap">
-                      {['all', ...availableTags].map((tag, index) => (
-                        <RadioItem
-                          key={tag}
-                          index={index}
-                          value={tag}
-                          label={tag === 'all' ? 'Any' : ANNOUNCEMENT_SCOPE_LABELS[tag] || tag.replace(/_/g, ' ')}
-                          className="min-w-[calc(50%-0.125rem)] flex-1"
-                        />
-                      ))}
-                    </RadioGroup>
-                  </FieldSet>
-                ) : null}
-
-                <FieldSet className="min-w-0 gap-0">
-                  <FieldLegend variant="label">Grade</FieldLegend>
-                  <CheckboxGroup
-                    checkedIndices={new Set(GRADE_OPTIONS.flatMap((grade, index) => (selectedGrades.includes(grade) ? [index] : [])))}
-                    className="w-full"
-                  >
-                    {GRADE_OPTIONS.map((grade, index) => (
-                      <CheckboxItem
-                        key={grade}
-                        index={index}
-                        label={`Grade ${grade}`}
-                        checked={selectedGrades.includes(grade)}
-                        onToggle={() => dispatchFilters((current) => ({ selectedGrades: toggleFilterValue(current.selectedGrades, grade) }))}
-                      />
-                    ))}
-                  </CheckboxGroup>
-                </FieldSet>
-
-                {[
-                  {
-                    label: 'Major pathway',
-                    selected: selectedMajorPathways,
-                    key: 'selectedMajorPathways' as const,
-                  },
-                  {
-                    label: 'Minor pathway',
-                    selected: selectedMinorPathways,
-                    key: 'selectedMinorPathways' as const,
-                  },
-                ].map(({ label, selected, key }) => (
-                  <FieldSet key={label} className="min-w-0 gap-0">
-                    <FieldLegend variant="label">{label}</FieldLegend>
-                    <CheckboxGroup
-                      checkedIndices={new Set(PATHWAY_OPTIONS.flatMap((pathway, index) => (selected.includes(pathway.value) ? [index] : [])))}
-                      className="w-full"
-                    >
-                      {PATHWAY_OPTIONS.map((pathway, index) => (
-                        <CheckboxItem
-                          key={pathway.value}
-                          index={index}
-                          label={pathway.label}
-                          checked={selected.includes(pathway.value)}
-                          onToggle={() => dispatchFilters((current) => ({ [key]: toggleFilterValue(current[key], pathway.value) }))}
-                        />
-                      ))}
-                    </CheckboxGroup>
-                  </FieldSet>
-                ))}
-
-                {availableClubs.length > 0 ? (
-                  <FieldSet className="min-w-0 gap-0 md:col-span-2">
-                    <FieldLegend variant="label">Club</FieldLegend>
-                    <CheckboxGroup
-                      checkedIndices={new Set(availableClubs.flatMap((club, index) => (selectedClubIds.includes(club.id) ? [index] : [])))}
-                      className="w-full"
-                    >
-                      {availableClubs.map((club, index) => (
-                        <CheckboxItem
-                          key={club.id}
-                          index={index}
-                          label={club.name}
-                          checked={selectedClubIds.includes(club.id)}
-                          onToggle={() => dispatchFilters((current) => ({ selectedClubIds: toggleFilterValue(current.selectedClubIds, club.id) }))}
-                        />
-                      ))}
-                    </CheckboxGroup>
-                  </FieldSet>
-                ) : null}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          {canPost ? (
-            <Button
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 lg:grid-cols-[auto_minmax(10rem,1fr)_auto_auto]">
+            <ToggleGroup
+              type="single"
+              aria-label="Announcement feed"
+              orientation="horizontal"
+              variant="outline"
               size="sm"
-              leadingIcon={Plus}
-              onClick={() => {
-                setShowNew(true);
+              className="col-start-1 row-start-2 justify-start gap-1 lg:row-start-1"
+              value={
+                readFilter === 'unread' && savedFilter === 'all'
+                  ? 'unread'
+                  : readFilter === 'all'
+                    ? savedFilter
+                    : ''
+              }
+              onValueChange={(value) => {
+                if (!value) return;
+                dispatchFilters({
+                  readFilter: value === 'unread' ? 'unread' : 'all',
+                  savedFilter: value === 'saved' ? 'saved' : 'all',
+                });
               }}
             >
-              New
-            </Button>
-          ) : null}
+              <FilterToggleItem value="all">
+                <FilterToggleIcon>
+                  <Inbox
+                    aria-hidden
+                    className={readFilter === 'all' && savedFilter === 'all' ? 'text-primary' : undefined}
+                  />
+                </FilterToggleIcon>
+                All
+              </FilterToggleItem>
+              <FilterToggleItem value="unread">
+                <FilterToggleIcon>
+                  <Mail aria-hidden className={readFilter === 'unread' ? 'text-primary' : undefined} />
+                </FilterToggleIcon>
+                Unread
+              </FilterToggleItem>
+              <FilterToggleItem value="saved">
+                <FilterToggleIcon>
+                  <Bookmark
+                    aria-hidden
+                    fill={savedFilter === 'saved' ? 'currentColor' : 'none'}
+                    className={savedFilter === 'saved' ? 'text-primary' : undefined}
+                  />
+                </FilterToggleIcon>
+                Saved
+              </FilterToggleItem>
+            </ToggleGroup>
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Search announcements"
+              size="sm"
+              className="col-start-1 row-start-1 min-w-0 lg:col-start-2"
+              inputClassName="bg-background"
+            />
+            <div className="col-start-2 row-start-1 lg:col-start-3">
+              <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
+                    Filters
+                    {activeFilterCount > 0 ? (
+                      <Badge size="sm" color="blue">
+                        {activeFilterCount}
+                      </Badge>
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-[min(24rem,calc(100vw-2rem))] px-2 py-3"
+                  aria-labelledby="announcement-filters-title"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3 px-4">
+                    <h3 id="announcement-filters-title" className="text-sm font-medium text-foreground">
+                      Filters
+                    </h3>
+                    {activeFilterCount > 0 ? (
+                      <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
+                        Reset
+                      </Button>
+                    ) : null}
+                  </div>
+                  <ScrollArea
+                    className="max-h-[min(36rem,calc(var(--radix-popover-content-available-height)-5rem))]"
+                    viewportClassName="max-h-[min(36rem,calc(var(--radix-popover-content-available-height)-5rem))]"
+                  >
+                    <div className="p-1">
+                      <AnnouncementFilterPanel
+                        filters={filters}
+                        onFiltersChange={dispatchFilters}
+                        availableTags={availableTags}
+                        availableClubs={availableClubs}
+                        gradeOptions={GRADE_OPTIONS}
+                        pathwayOptions={PATHWAY_OPTIONS}
+                      />
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+            </div>
+            {canPost ? (
+              <Tooltip content="New announcement">
+                <Button
+                  className="col-start-2 row-start-2 justify-self-end lg:col-start-4 lg:row-start-1"
+                  size="icon-sm"
+                  onClick={() => setShowNew(true)}
+                  aria-label="New announcement"
+                >
+                  <Plus />
+                </Button>
+              </Tooltip>
+            ) : null}
+          </div>
         </div>
 
         <Dialog open={showNew} onOpenChange={setShowNew}>
@@ -712,7 +631,7 @@ export default function AnnouncementsPage() {
                         checked={form.promoted}
                         onChange={(event) => setForm({ ...form, promoted: event.target.checked })}
                       />
-                      Pin for one month
+                      Mark important for one month
                     </label>
                   ) : null}
                 </div>
@@ -734,27 +653,20 @@ export default function AnnouncementsPage() {
 
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
-        ) : dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
-          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
-            <Card className="bg-transparent">
-              <CardContent className="text-center py-16 pt-6">No announcements yet</CardContent>
-            </Card>
-          </CardGroup>
+        ) : !hasActiveFilters && dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
+          <Empty className="min-h-32 border">
+            <EmptyHeader><EmptyTitle>No announcements yet</EmptyTitle></EmptyHeader>
+          </Empty>
         ) : filtered.length === 0 ? (
-          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
-            <Card className="bg-transparent">
-              <CardContent className="pt-6 text-center py-16">
-                <p className="text-muted-foreground">No announcements match your filters.</p>
-                <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
-                  Clear filters
-                </Button>
+          <Empty className="min-h-32 border">
+            <EmptyHeader><EmptyTitle>No announcements match your filters.</EmptyTitle></EmptyHeader>
+            {canLoadMore || pinnedStatus === 'CanLoadMore' ? <EmptyContent>
                 {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
                 {pinnedStatus === 'CanLoadMore' ? <Button variant="tertiary" size="sm" className="mt-2" onClick={() => loadMorePins(30)}>Load more pinned announcements</Button> : null}
-              </CardContent>
-            </Card>
-          </CardGroup>
+            </EmptyContent> : null}
+          </Empty>
         ) : (
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             {pinnedStatus === 'CanLoadMore' || pinnedStatus === 'LoadingMore' ? (
               <div className="flex justify-center">
                 <Button variant="tertiary" disabled={pinnedStatus !== 'CanLoadMore'} onClick={() => loadMorePins(30)}>
@@ -763,141 +675,141 @@ export default function AnnouncementsPage() {
               </div>
             ) : null}
             {hasActiveFilters && (
-              <p className="px-1 text-xs text-muted-foreground">
-                {filtered.length} of {dataWithPins.length} announcement{dataWithPins.length === 1 ? '' : 's'}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {filtered.length} matching announcement{filtered.length === 1 ? '' : 's'} in the loaded feed
+                </p>
+                <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
+              </div>
             )}
-            <div className="space-y-4">
-              {(filtered as any[]).map((announcement) => {
-                const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
-                const announcementId = announcement._id as Id<'announcements'>;
-                const isReviewPending = reviewPending?.id === announcement._id;
-                const approving = isReviewPending && reviewPending?.action === 'approve';
-                const rejecting = isReviewPending && reviewPending?.action === 'reject';
-                return (
-                  <AnnouncementCard
-                    key={announcement._id}
-                    announcement={announcement}
-                    className={!announcement.isRead && announcement._id === newestAnnouncementId ? 'border-l-2 border-l-primary' : undefined}
-                    canArchive={canArchiveAnnouncement}
-                    onArchive={(id: string) => {
-                      void archiveAnnouncement({
-                        announcementId: id as Id<'announcements'>,
-                      })
-                        .then(() => toast({ title: 'Archived' }))
-                        .catch((error: unknown) =>
-                          toast({
-                            title: error instanceof Error ? error.message : 'Failed to archive',
-                            variant: 'destructive',
-                          }),
-                        );
-                    }}
-                    onBookmarkToggle={(entry) => {
-                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
-                      void toggle({
-                        announcementId: entry._id as Id<'announcements'>,
-                      }).catch(() => undefined);
-                    }}
-                    onPinToggle={canPin ? (entry) => {
-                      const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
-                      void toggle({
-                        announcementId: entry._id as Id<'announcements'>,
-                      })
-                        .then(() => toast({ title: entry.isPinned ? 'Announcement unpinned' : 'Announcement pinned' }))
-                        .catch((error: unknown) =>
-                          toast({
-                            title: error instanceof Error ? error.message : 'Could not update pin',
-                            variant: 'destructive',
-                          }),
-                        );
-                    } : undefined}
-                    footer={
-                      announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
-                        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
-                          <span className="text-xs text-muted-foreground">Sponsor review required</span>
-                          <Button
-                            size="sm"
-                            leadingIcon={Check}
-                            loading={approving}
-                            disabled={isReviewPending}
-                            onClick={() => {
-                              setReviewPending({
-                                id: announcement._id,
-                                action: 'approve',
+            {feedSections.map((section) => (
+              <section key={section.id} aria-labelledby={`announcements-${section.id}`} className="flex flex-col gap-3">
+                <h2 id={`announcements-${section.id}`} className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  {section.id === 'personal-pins' ? <Pin aria-hidden="true" className="size-3.5" fill="currentColor" strokeWidth={1.5} /> : null}
+                  {section.label}
+                </h2>
+                <CardGroup separated corners="compact" border="outlined" aria-label={`${section.label} announcements`}>
+                  {(section.items as any[]).map((announcement) => {
+                    const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
+                    const announcementId = announcement._id as Id<'announcements'>;
+                    const isReviewPending = reviewPending?.id === announcement._id;
+                    const approving = isReviewPending && reviewPending?.action === 'approve';
+                    const rejecting = isReviewPending && reviewPending?.action === 'reject';
+                    return (
+                      <AnnouncementCard
+                        key={announcement._id}
+                        announcement={announcement}
+                        orderingContext={section.id}
+                        canArchive={canArchiveAnnouncement}
+                        onArchive={(id: string) => {
+                          void archiveAnnouncement({
+                            announcementId: id as Id<'announcements'>,
+                          })
+                            .then(() => toast({ title: 'Archived' }))
+                            .catch((error: unknown) =>
+                              toast({
+                                title: error instanceof Error ? error.message : 'Failed to archive',
+                                variant: 'destructive',
+                              }),
+                            );
+                        }}
+                        onBookmarkToggle={(entry) => {
+                          const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
+                          void toggle({
+                            announcementId: entry._id as Id<'announcements'>,
+                          }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
+                        }}
+                        onPinToggle={canPin ? (entry) => {
+                          pendingPinFocus.current = { id: entry._id, pinned: !entry.isPinned };
+                          const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
+                          void toggle({
+                            announcementId: entry._id as Id<'announcements'>,
+                          })
+                            .then(() => toast({ title: entry.isPinned ? 'Announcement unpinned' : 'Announcement pinned' }))
+                            .catch((error: unknown) => {
+                              pendingPinFocus.current = null;
+                              toast({
+                                title: error instanceof Error ? error.message : 'Could not update pin',
+                                variant: 'destructive',
                               });
-                              void approveAnnouncement({ announcementId })
-                                .then(() => toast({ title: 'Announcement published' }))
-                                .catch((error: unknown) =>
-                                  toast({
-                                    title: error instanceof Error ? error.message : 'Failed to publish',
-                                    variant: 'destructive',
-                                  }),
-                                )
-                                .finally(() => setReviewPending(null));
-                            }}
-                          >
-                            Publish
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="tertiary"
-                            leadingIcon={X}
-                            loading={rejecting}
-                            disabled={isReviewPending}
-                            onClick={() => {
-                              setReviewPending({
-                                id: announcement._id,
-                                action: 'reject',
-                              });
-                              void rejectAnnouncement({ announcementId })
-                                .then(() => toast({ title: 'Announcement sent back' }))
-                                .catch((error: unknown) =>
-                                  toast({
-                                    title: error instanceof Error ? error.message : 'Failed to reject',
-                                    variant: 'destructive',
-                                  }),
-                                )
-                                .finally(() => setReviewPending(null));
-                            }}
-                          >
-                            Send back
-                          </Button>
-                        </div>
-                      ) : null
-                    }
-                  />
-                );
-              })}
-            </div>
+                            });
+                        } : undefined}
+                        footer={
+                          announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
+                            <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
+                              <span className="text-xs text-muted-foreground">Sponsor review required</span>
+                              <Button
+                                size="sm"
+                                leadingIcon={Check}
+                                loading={approving}
+                                disabled={isReviewPending}
+                                onClick={() => {
+                                  setReviewPending({
+                                    id: announcement._id,
+                                    action: 'approve',
+                                  });
+                                  void approveAnnouncement({ announcementId })
+                                    .then(() => toast({ title: 'Announcement published' }))
+                                    .catch((error: unknown) =>
+                                      toast({
+                                        title: error instanceof Error ? error.message : 'Failed to publish',
+                                        variant: 'destructive',
+                                      }),
+                                    )
+                                    .finally(() => setReviewPending(null));
+                                }}
+                              >
+                                Publish
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="tertiary"
+                                leadingIcon={X}
+                                loading={rejecting}
+                                disabled={isReviewPending}
+                                onClick={() => {
+                                  setReviewPending({
+                                    id: announcement._id,
+                                    action: 'reject',
+                                  });
+                                  void rejectAnnouncement({ announcementId })
+                                    .then(() => toast({ title: 'Announcement sent back' }))
+                                    .catch((error: unknown) =>
+                                      toast({
+                                        title: error instanceof Error ? error.message : 'Failed to reject',
+                                        variant: 'destructive',
+                                      }),
+                                    )
+                                    .finally(() => setReviewPending(null));
+                                }}
+                              >
+                                Send back
+                              </Button>
+                            </div>
+                          ) : null
+                        }
+                      />
+                    );
+                  })}
+                </CardGroup>
+              </section>
+            ))}
             {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
 
         <Collapsible open={pastOpen} onOpenChange={setPastOpen} className="mt-8">
           <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left text-card-foreground transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Archive className="size-4 text-muted-foreground" aria-hidden />
-                Past Announcements
-                {pastFeedStatus !== 'LoadingFirstPage' ? (
-                  <Badge size="sm" color="gray">{pastAllAnnouncements.length}</Badge>
-                ) : null}
-              </span>
-              <ChevronDown
-                className={`size-4 text-muted-foreground transition-transform ${pastOpen ? 'rotate-180' : ''}`}
-                aria-hidden
-              />
-            </button>
+            <Button variant="ghost" leadingIcon={Archive} trailingIcon={pastOpen ? ChevronUp : ChevronDown} active={pastOpen}>
+              Past announcements
+            </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-4">
             {pastFeedStatus === 'LoadingFirstPage' || expiredStatus === 'LoadingFirstPage' || archivedStatus === 'LoadingFirstPage' || rejectedStatus === 'LoadingFirstPage' || recentlyExpiredStatus === 'LoadingFirstPage' ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Loading past announcements…</p>
             ) : filteredPastAnnouncements.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-                No past announcements.
+                {hasActiveFilters ? 'No past announcements match your filters.' : 'No past announcements.'}
                 {canLoadMorePast ? (
                   <div className="mt-3 flex justify-center"><Button variant="tertiary" disabled={!canLoadPastNow || isLoadingMorePast} onClick={() => {
                     if (pastFeedStatus === 'CanLoadMore') loadMorePastAnnouncements(20);
@@ -907,18 +819,20 @@ export default function AnnouncementsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredPastAnnouncements.map((announcement: any) => (
-                  <AnnouncementCard
-                    key={announcement._id}
-                    announcement={announcement}
-                    onBookmarkToggle={(entry) => {
-                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
-                      void toggle({
-                        announcementId: entry._id as Id<'announcements'>,
-                      }).catch(() => undefined);
-                    }}
-                  />
-                ))}
+                <CardGroup separated corners="compact" border="outlined" aria-label="Past announcements">
+                  {filteredPastAnnouncements.map((announcement: any) => (
+                    <AnnouncementCard
+                      key={announcement._id}
+                      announcement={announcement}
+                      onBookmarkToggle={(entry) => {
+                        const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
+                        void toggle({
+                          announcementId: entry._id as Id<'announcements'>,
+                        }).catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }));
+                      }}
+                    />
+                  ))}
+                </CardGroup>
                 {canLoadMorePast ? (
                   <div className="flex justify-center">
                     <Button

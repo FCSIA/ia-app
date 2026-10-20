@@ -117,11 +117,11 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
         <DialogTrigger asChild>
           <Avatar
             asChild
-            className="size-16 cursor-pointer rounded-2xl border border-border/60 bg-background shadow-sm transition-shadow hover:ring-2 hover:ring-ring/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="size-16 cursor-pointer border border-border/60 bg-background shadow-sm transition-shadow hover:ring-2 hover:ring-ring/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <button type="button" aria-label="Edit profile picture">
               {avatarUrl ? <AvatarImage src={avatarUrl} alt={alt} /> : null}
-              <AvatarFallback className="rounded-2xl bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white">
+              <AvatarFallback className="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white">
                 {initials}
               </AvatarFallback>
             </button>
@@ -136,9 +136,9 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
             alt={alt}
             canEdit
             variant="inline"
-            className="size-16 rounded-2xl"
+            className="size-16"
             fallback={initials}
-            fallbackClassName="rounded-2xl bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white"
+            fallbackClassName="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white"
             imageUrl={avatarUrl}
             loading={uploading}
             onRemove={() => {

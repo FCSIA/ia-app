@@ -37,9 +37,17 @@ export async function resolveNotificationPreference(
       q.eq("userId", input.userId).eq("category", input.category).eq("scopeKey", input.scopeKey),
     )
     .unique();
-  if (scopedPreference || input.scopeKey === "global") {
-    return scopedPreference;
+  if (scopedPreference) return scopedPreference;
+
+  // Feedback previously shared moderation preferences. Preserve every existing
+  // opt-out and delivery level until this user chooses a feedback preference.
+  if (input.category === "FEEDBACK" && input.scopeKey === "global") {
+    return await ctx.db.query("notificationPreferences")
+      .withIndex("by_userId_and_category_and_scopeKey", (q) =>
+        q.eq("userId", input.userId).eq("category", "CONTENT_MODERATED").eq("scopeKey", "global"),
+      ).unique();
   }
+  if (input.scopeKey === "global") return null;
 
   return await ctx.db
     .query("notificationPreferences")

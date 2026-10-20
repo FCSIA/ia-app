@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ColorPicker, ColorSwatch } from '@/components/ui/color-picker';
 import { FileInput } from '@/components/ui/file-input';
+import { Tabs, TabsList, TabItem, TabPanel } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/auth';
@@ -24,41 +25,15 @@ import { paletteFromImage } from '@/lib/wallpaper-palette';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export function CustomThemeEditor() {
-  const [mode, setMode] = useState<'image' | 'colors'>('image');
-
   return (
-    <div className="space-y-3 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] p-4">
-      <div
-        role="tablist"
-        className="inline-flex rounded-full border border-foreground/10 bg-background/40 p-0.5"
-      >
-        {(
-          [
-            { id: 'image', label: 'Image', icon: ImageIcon },
-            { id: 'colors', label: 'Colors', icon: Droplet },
-          ] as const
-        ).map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            role="tab"
-            type="button"
-            aria-selected={mode === id}
-            onClick={() => setMode(id)}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-              mode === id
-                ? 'bg-foreground text-background'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Icon className="size-3.5" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {mode === 'image' ? <CustomBackgroundPanel /> : <CustomColorsPanel />}
-    </div>
+    <Tabs defaultValue="image" className="space-y-3 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] p-4">
+      <TabsList aria-label="Custom theme">
+        <TabItem value="image" icon={ImageIcon} label="Image" />
+        <TabItem value="colors" icon={Droplet} label="Colors" />
+      </TabsList>
+      <TabPanel value="image"><CustomBackgroundPanel /></TabPanel>
+      <TabPanel value="colors"><CustomColorsPanel /></TabPanel>
+    </Tabs>
   );
 }
 
@@ -186,13 +161,10 @@ function CustomBackgroundPanel() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">Background image</p>
           <p className="text-xs text-muted-foreground">
-            Upload a picture and it will sit behind every page. Saved to your account.
+            Saved to your account.
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground/70">
+          <p className="mt-1 text-xs text-muted-foreground">
             If page text blends into the picture, choose a Text color under Colors.
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground/70">
-            JPG, PNG, or WebP. Compressed automatically before upload.
           </p>
         </div>
       </div>
@@ -306,11 +278,10 @@ function CustomColorsPanel() {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-medium text-foreground">Color palette</p>
         <p className="text-xs text-muted-foreground">
           Surface contrast adjusts automatically. Unreadable page, link, and icon combinations are not saved.
         </p>
-        <p className="text-[11px] text-muted-foreground/70">
+        <p className="mt-1 text-xs text-muted-foreground">
           Wallpaper pixels cannot be checked automatically; review page text over your image before leaving.
         </p>
       </div>
@@ -340,9 +311,9 @@ function CustomColorsPanel() {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">{label}</p>
-                  <p className="text-[11px] text-muted-foreground">{help}</p>
+                  <p className="text-xs text-muted-foreground">{help}</p>
                 </div>
-                <span className="font-mono text-[11px] text-muted-foreground">
+                <span className={cn('text-xs text-muted-foreground', hex && 'font-mono')}>
                   {hex ?? 'auto'}
                 </span>
               </button>

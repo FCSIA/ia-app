@@ -3,21 +3,25 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { schema } from "../schema";
 
+const authorValidator = v.union(
+  v.object({
+    _id: v.id("users"),
+    firstName: v.string(),
+    lastName: v.string(),
+    avatarUrl: v.union(v.string(), v.null()),
+    roles: v.array(v.string()),
+    isDeveloper: v.optional(v.boolean()),
+  }),
+  v.null(),
+);
+
 export const announcementListItemValidator = schema.doc("announcements").extend({
   isRead: v.boolean(),
   readAt: v.optional(v.number()),
   isBookmarked: v.boolean(),
   isPinned: v.boolean(),
   isPromoted: v.boolean(),
-  author: v.union(
-    v.object({
-      _id: v.id("users"),
-      firstName: v.string(),
-      lastName: v.string(),
-      isDeveloper: v.optional(v.boolean()),
-    }),
-    v.null(),
-  ),
+  author: authorValidator,
   club: v.union(
     v.object({
       _id: v.id("clubs"),
@@ -37,15 +41,7 @@ export const announcementListItemValidator = schema.doc("announcements").extend(
 });
 
 export const commentWithAuthorValidator = schema.doc("comments").extend({
-  author: v.union(
-    v.object({
-      _id: v.id("users"),
-      firstName: v.string(),
-      lastName: v.string(),
-      isDeveloper: v.optional(v.boolean()),
-    }),
-    v.null(),
-  ),
+  author: authorValidator,
 });
 
 export function isElevatedReader(roles: string[]) {

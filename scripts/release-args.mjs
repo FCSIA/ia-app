@@ -1,4 +1,5 @@
 export function parseReleaseArgs(args) {
+  if (args[0] === "--") args = args.slice(1);
   const dryRun = args.includes("--dry-run");
   const releaseFlags = args.filter(
     (arg) => arg === "--minor" || arg === "--patch" || arg.startsWith("--set="),

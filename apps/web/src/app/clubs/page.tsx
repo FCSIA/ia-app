@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { cn } from "@/lib/utils";
 
 const CLUB_SKELETON_IDS = [
   "club-skeleton-1",
@@ -84,17 +85,20 @@ export default function ClubsLandingPage() {
   return (
     <AppShell
       headerSlot={headerSlot}
-      mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
         {invites.length > 0 ? (
-          <section className="overflow-hidden rounded-lg border border-amber-500/25 bg-amber-500/5">
-            <div className="border-b border-amber-500/15 px-3 py-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                Invites · {invites.length}
-              </h2>
-            </div>
-            <div className="divide-y divide-amber-500/15">
+          <section
+            className="flex flex-col gap-2"
+            aria-labelledby="club-invites-heading"
+          >
+            <h2 id="club-invites-heading" className="text-sm font-semibold">
+              Club invites{" "}
+              <span className="ml-2 font-normal tabular-nums text-muted-foreground">
+                {invites.length}
+              </span>
+            </h2>
+            <div className="divide-y divide-border/30">
               {invites.map((invite) => (
                 <div
                   key={invite._id}
@@ -152,23 +156,17 @@ export default function ClubsLandingPage() {
         ) : null}
 
         <section
-          className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
+          className="flex flex-col gap-2"
+          aria-labelledby="club-list-heading"
         >
-          <div className="flex min-h-12 items-center justify-between border-b px-4 py-2">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-foreground">
-                {hasAdministrativeClubAccess ? "All clubs" : "Your clubs"}
-              </h2>
-              <p className="text-xs text-foreground/80">
-                {hasAdministrativeClubAccess
-                  ? "Open any active club workspace."
-                  : "Open the spaces you belong to."}
-              </p>
-            </div>
-            <span className="text-xs font-medium tabular-nums text-foreground/80">
-              {listedClubs.length}
-            </span>
-          </div>
+          <h2 id="club-list-heading" className="text-sm font-semibold">
+            {hasAdministrativeClubAccess ? "All clubs" : "Your clubs"}{" "}
+            {!isLoading ? (
+              <span className="ml-2 font-normal tabular-nums text-muted-foreground">
+                {listedClubs.length}
+              </span>
+            ) : null}
+          </h2>
           {isLoading ? (
             <div className="flex flex-col gap-2 p-3">
               {CLUB_SKELETON_IDS.map((id) => (
@@ -176,12 +174,15 @@ export default function ClubsLandingPage() {
               ))}
             </div>
           ) : listedClubs.length > 0 ? (
-            <CardGroup orientation="inline" border="outlined">
+            <CardGroup
+              orientation="inline"
+              border="outlined"
+              className={cn("bg-card", CARD_SURFACE_FOREGROUND)}
+            >
               {listedClubs.map((club) => (
                 <ClubListRow
                   key={club._id}
                   club={club}
-                  joined={!hasAdministrativeClubAccess}
                   badge={
                     !hasAdministrativeClubAccess &&
                     "kind" in club &&
@@ -227,12 +228,7 @@ export default function ClubsLandingPage() {
 
         {hasAdministrativeClubAccess || myClubs.length > 0 ? (
           <div className="flex justify-end">
-            <Button
-              asChild
-              variant="tertiary"
-              trailingIcon={ArrowRight}
-              className="border-border bg-card text-card-foreground hover:bg-hover"
-            >
+            <Button asChild variant="tertiary" trailingIcon={ArrowRight}>
               <Link href="/clubs/discover">
                 {hasAdministrativeClubAccess
                   ? "Search clubs"

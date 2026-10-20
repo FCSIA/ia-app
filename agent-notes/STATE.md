@@ -3,18 +3,32 @@
 ## Active Focus
 
 - **Current checkout (2026-10-20)**: The primary checkout is on
-  `codex/admin-audit-log-ux` for the requested audit UI repair. The October 2
-  integration and managed-worktree notes below are historical context.
+  `codex/admin-audit-log-ux` for the requested audit UI repair, now integrating
+  `origin/main` through `679f7a00`. Older integration/worktree notes are history.
 - **Current goal**: Repair the audit composition and remove passive admin card
   hover backgrounds. Browser review is diagnostic; design-owner review remains
   outstanding. No shared Convex deployment changes are authorized.
-- **Integration**: `codex/local-bun-and-mobile-swipe` combines the admin repair,
-  Bun/Nix setup, and swipe fix. Main receives them through PRs #148, #149, and
-  #150; #148 contains the remaining admin changes after #149 and #150 merged.
-- **Goal**: Keep the latest Bun shell and mobile repairs available locally.
-  The user explicitly authorized merging all three branches after the preview
-  and verification handoff. Native iPhone verification remains outstanding.
-  Production deployment is not authorized.
+- **Dashboard calendar follow-up**: The owner requested a small commit directly
+  in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
+  October 18. After owner feedback, the month controls and full-calendar arrow
+  share one header through DayPicker's existing Month slot; the redundant
+  Calendar heading is removed. Date targets retain the calendar's cell size in
+  touch mode. Material visual changes remain awaiting owner review.
+  Web typecheck, lint (21 existing warnings), production build, and the pinned
+  changed-file React Doctor scan pass. Browser checks cover 320–1440px layouts,
+  touch date grids, keyboard selection, six-week months, and the shared schedule
+  date picker. Captures: `/tmp/ia-calendar-review/`; native device review was not run.
+  The prior release-headline PR #162 is squash-merged as `00bad9db`.
+- **Integration**: On October 17 the owner explicitly authorized squash-merging
+  the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
+  #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
+  #158 includes those settings, clubs, and feedback prerequisites and is
+  reconciled with their squash commits so final CI validates the combined source.
+  Each PR retains a separate squash merge.
+  This authorization supersedes older awaiting-owner-review notes below.
+- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
+  New material UI changes still require design-owner review. Native iPhone swipe
+  verification remains outstanding. Production deployment is not authorized.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -30,9 +44,9 @@
   copy are removed; complete details remain available.
 - Passive admin panels, metrics, notices, and feedback/report cards no longer
   highlight on hover. Existing interactive controls retain their feedback.
-- Details restore focus to their opener. The shared calendar adapter lets day
-  columns own their width on touch screens, retaining the button's 44px height
-  while keeping all seven columns inside a 320px viewport.
+- Details restore focus to their opener. Integration retains main's approved
+  calendar cell sizing instead of layering the audit branch's overlapping touch
+  width/aspect rule over it.
 - Web typecheck, lint (21 existing warnings), and production build pass through
   `direnv exec .`. All 17 audit backend tests pass offline. Browser checks cover
   five widths from 320px to 1440px, six themes, long content, filter results,
@@ -41,6 +55,13 @@
   query arguments. Those integrated browser requests fail its validators;
   offline backend tests and disposable UI fixtures cover their separate
   contracts. No deployment or dataset was changed. Fixtures were removed.
+- Port 3210 actually serves the local demo backend stored in the `merge-pr147`
+  worktree. The primary checkout's selected local deployment has the same ports
+  but separate state. Updating the shared demo runtime requires explicit owner
+  authorization; do not start another schema watcher against it.
+- Main integration verification passes web/backend typechecks, web lint (21
+  existing warnings), production compilation, and all 407 backend tests across
+  84 files. Main is merged locally; no push or backend update was performed.
 - See `docs/reference/audit-ui-review-2026-10-20.md` for evidence and remaining
   review limits.
 
@@ -62,6 +83,238 @@
 - The user subsequently authorized a draft PR: #152 is open with
   `sreyassabbani` requested as reviewer. Keep it in draft pending human review.
   See `docs/features/audit-log.md`.
+
+### Announcement layout and detail pages (2026-10-17)
+
+- Announcement feed and detail views compose the same clickable profile avatar
+  and author metadata. Comment queries now return the same limited author
+  projection, including avatar and roles, without contact or sign-in fields.
+- Mobile feed actions share one row with the author avatar; time and expiry
+  stay visible beside the audience. Shared Empty owns vertical centering, and
+  Clubs uses the standard AppShell top inset. Detail pages use the approved
+  compact CardGroup corners and existing save/report/discussion controls.
+- Shared person profiles show mutual-friend and club lists without stat tiles
+  or an extra friend-list disclosure. Both lists use the existing compact
+  CardGroup corner contract. Section gaps apply only between visible content,
+  so identity-only profiles retain equal top and bottom dialog insets.
+  A fuller profile with badges is deferred; the
+  owner's future direction is basic identity for everyone and richer social
+  details for friends. This simplification preserves existing data visibility.
+- Web typecheck, lint (21 existing warnings), production build, a changed-file
+  React Doctor scan, backend typecheck, and 21 focused backend tests pass.
+  Compiled browser checks cover 320px touch targets, 390px and desktop layouts,
+  profile dialogs, save/restore, comment creation/removal, and centered empties.
+  Review captures are in `/tmp/ia-announcement-layout-review/`. The owner
+  authorized the final profile simplification and PR merge on October 18;
+  native iPhone verification was not run.
+- Only the existing isolated demo backend on localhost:3210 was updated. It
+  retains the same database and accounts. No shared or production deployment
+  was selected or changed.
+
+### UI integration and React Doctor (2026-10-17)
+
+- The settings hierarchy now indexes channels and units by parent once rather
+  than repeatedly scanning both collections for each branch. All three existing
+  hierarchy regressions and web typecheck pass; pinned React Doctor 0.9.8 reports
+  no new issues on #155. Clubs and feedback also have no new findings.
+- Announcement filters compile selection sets once per filter/search change and
+  share the predicate across current and past posts. Timestamps hydrate from
+  deterministic dates before showing local relative labels; expiry transitions
+  are scheduled after mount with capped browser timer delays. Seventeen focused
+  tests, web typecheck, and lint pass (21 existing warnings). The pinned scan has
+  no new announcement findings; suppressions were not added.
+- Full CI and security checks remain the merge gate. Production release and
+  deployment are separate operations; this integration does not authorize them.
+- The combined local suite passes all 385 backend tests, shared-package tests,
+  mobile typecheck, web typecheck, and 17 focused announcement tests. The final
+  combined PR scan reports no new React Doctor issues.
+
+### Merge backlog reconciliation (2026-10-15)
+
+- PR #151 is closed as superseded: its trial merge produced exactly the current
+  main tree. PR #121 is also closed: its complete patch is equivalent to commit
+  `4841d245`, already incorporated in main and retained by the Bun migration.
+- Local announcement-pagination and UI-follow-up worktrees correspond to
+  already-merged PRs #125 and #128; their older source must not replace newer
+  main behavior.
+- PR #110 retains the current Convex 1.46.0 environment types, presence
+  component, Google Vision configuration, Bun commands, and current feedback
+  permissions. Thirteen focused tests cover status mapping, signed/forged webhooks,
+  repository isolation, duplicate/stale events, and anonymous/student retry
+  refusal, plus mocked issue creation/failure without exporting submitter identity.
+  All 373 backend tests, backend/web typechecks, web lint (21 existing
+  warnings), brand/devlog checks, production web build, and an isolated local
+  Convex push pass. GitHub webhook activation and production deployment remain
+  separate operations; neither was performed.
+- Merged security prerequisite PR #153 source-patches `braces@3.0.3` after its newly
+  reported nesting vulnerability blocked the merge gate. Nine audit/dependency
+  regression tests and the GitHub security scan pass. The advisory-specific
+  patched-version exception expires on 2026-11-01; replace the patch and remove
+  the exception when a fixed release or replacement is available.
+- PR #147 implements the design owner's approved direction: height-balanced
+  fresh defaults, stable manual placement, and a quiet **Balance layout** action
+  with Undo. Optional desktop column positions persist alongside the mobile
+  reading order; legacy layouts retain their existing split. Pointer and keyboard
+  moves support empty columns and Escape cancellation. Done awaits a successful
+  save. The previous automatic packing could erase a visible drag; it no longer
+  runs after manual changes.
+- Dashboard verification: all 379 backend tests and five column-layout regressions,
+  backend/web typechecks, web lint (21 existing warnings), production web build,
+  and an isolated local Convex push pass. Browser checks cover manual cross-column
+  placement, balancing/Undo, keyboard ordering/empty-column drops/cancellation,
+  Save/reload, live desktop/390px reflow, light/custom dark themes, and reduced
+  motion. Native touch dragging still needs device review. The owner authorized
+  squash-merging #147 after visual review; it landed as `55b615e1` with passing CI.
+- The owner requested follow-up toast/profile geometry repairs: an icon-only Undo,
+  a visible centered close control without a reserved empty strip, shared profile
+  card corners, equal side/bottom navigation insets, and circular profile avatars.
+  These corrections are separate from merged #147 and await a fresh visual review.
+  Web typecheck, lint (21 existing warnings), and production build pass. Compiled
+  browser checks confirm centered 32px toast controls, keyboard Undo and dismissal,
+  equal 9px profile navigation insets on desktop/390px, and circular avatars in
+  the sidebar/editor. Review captures are in `/tmp/ia-ui-geometry-review/`.
+- Notification settings now share `NotificationSettingsPanel` on `/notifications`
+  and `/profile`: redundant subtitles are removed, counts sit inline,
+  channel-count/chevron disclosure remains separate from switches, required locks do not reserve
+  an empty trailing slot, and channel rows follow the workspace unit hierarchy
+  with tree connectors. Owner feedback restored the rounded inner option group,
+  compact rows, quiet separators, and distinct club surfaces, without an outer
+  panel frame. Static groups use a single border without an elevation outline
+  stacked on it. Design guidance distinguishes useful grouping from redundant
+  chrome. Scoped switches reflect global inheritance and report failed saves.
+  The owner's interaction principles are captured in `.impeccable.md`.
+  Three hierarchy regressions, web typecheck/lint (21 existing warnings), and
+  production build pass. Compiled browser checks cover route parity, preference
+  persistence/inheritance, parent disabling, keyboard disclosure/switches,
+  aligned right edges, 390px/touch layouts, reduced motion, and light/custom
+  themes. Demo clubs are flat; nested placement is covered by focused tests.
+  Captures are in `/tmp/ia-notification-settings-review/`. Material visual changes
+  await design-owner review; #154 remains open with passing CI.
+- Profile tab panels no longer use the local `SettingsCard` wrapper, whose
+  full-strength frame/header border differed from notification settings. Repeated
+  panel titles/subtitles and the identity divider are removed; account details
+  use a definition list with wrapping values. Useful inner groups remain. The
+  document owns a persistent vertical scrollbar track and stable gutter to avoid
+  a measured 4px shift when taller panels introduce the 8px scrollbar. Compiled
+  checks confirm identical desktop anchors across short/long tabs, all five
+  panels within 390px, and password form open/cancel. Combined channel-count
+  disclosure works by text click and Enter with a 44px touch target. Group
+  borders compute to 1px with no shadow; all switches share one right edge.
+- Profile typography now uses readable secondary labels without all-caps
+  tracking or unnecessary monospace. Release titles appear once and wrap;
+  scope labels stack above changes on narrow screens. The custom theme editor
+  composes the shared Fluid Tabs adapter with named panels and arrow/Home/End
+  keyboard navigation, replacing manually implemented tabs. Web typecheck,
+  lint (21 existing warnings), production build, and 390px keyboard/touch checks
+  pass. These additions remain in #155 awaiting owner visual review.
+- The owner authorized parallel feedback, clubs landing, and announcements
+  passes in isolated worktrees, stacked on #155. Clubs PR #156 removes the
+  conflicting outer frame around the approved CardGroup and aligns Discover
+  to the same width; typecheck/lint/build and desktop/390px interaction checks
+  pass. Preview: `http://localhost:3002/clubs`.
+- Feedback PR #157 simplifies `/report`, distinguishes GENERAL feedback from
+  moderation notifications (including source-linked legacy inbox records), and
+  preserves existing moderation opt-outs until Feedback is configured. All 383
+  backend tests, backend/web/mobile typechecks, web lint, and production build
+  pass. Independent source review found no blocking compatibility/permission
+  issue. Browser checks cover desktop/390px, light/dark, attachment add/remove,
+  and keyboard behavior; populated history is not browser-verified. Preview:
+  `http://localhost:3001/report`. New backend code is not on the local watcher.
+- Announcements PR #158 simplifies metadata/action layout, exposes common
+  filters, and applies the same matcher to current/past records. Its narrow
+  backend guard excludes non-expiring ACTIVE posts from the recent-expiration
+  stream. All 379 backend tests, backend/web typechecks, web lint, production
+  build, and three web filter tests pass. The registered Past-query test covers
+  expiry boundaries but does not reproduce the old engine bug: convex-test's
+  comparator differs from documented Convex missing-value ordering. No backend
+  push occurred. Compiled desktop/390px checks, read/save restoration, Saved
+  filtering, empty search recovery, and independent comments navigation pass.
+  Preview: `http://localhost:3003/announcements`; captures are in
+  `/tmp/ia-announcements-review/`. The root agent finished QA/PR creation after
+  the announcements subagent exhausted its usage allowance.
+- All new material visuals remain awaiting design-owner review. Agent QA does
+  not authorize merging them or deploying to a shared/production backend.
+- The `merge-pr147` worktree serves the compiled dashboard at
+  `http://localhost:3000/dashboard` with its isolated local-anonymous Convex backend
+  on ports 3210/3211 and development demo fixtures. The primary dataset is untouched.
+  Before/after Balance captures and a phone capture are in
+  `/tmp/ia-dashboard-review/` for local review.
+- Draft PR #152 still explicitly awaits human visual review. PR #117 has
+  unresolved conflicts. Compliance PR #76 remains outside this merge pass.
+
+### Announcement feed and dashboard preview (2026-10-17)
+
+- PR #158 (`feat/announcements-feed-clarity`) is stacked on #155 and remains
+  awaiting design-owner visual review. The owner approved an independent shared
+  Card attention state. Card owns its neutral translucent unread surface and
+  matching focus/hover corners; selection retains its own semantics.
+  On October 17 the owner also approved `CardGroup corners="compact"` (12px).
+  Feed/past/widget cards use it without changing global button shapes. Neutral
+  Badge now composes the shared active fill and border on attention surfaces.
+- Concrete grade/pathway/club audiences share one model across feed, dashboard,
+  club preview, and detail. Legacy scalar/array targets are merged; intersection
+  conditions preserve their AND/OR meaning in accessible text. Numeric grade
+  badges have a graduation-cap context. Missing targeting no longer becomes an
+  invented School-wide label. Serialized `commentCount` replaces the obsolete
+  relation-count field that always displayed zero.
+- The full feed groups Pinned for you, Important, and Latest. Important describes
+  publisher priority, distinct from personal pins and Saved. Reading preserves
+  ordering in All; pin/unpin restores focus to the moved post's More trigger.
+  Per-card Unread pills are removed. Feed/past cards retain quiet outlines in
+  both states, while unread attention and title weight provide emphasis without
+  removing a read post's boundary. Saved uses the existing outlined active Button
+  plus a filled primary icon, distinct from transient hover.
+- Desktop feed choices, search, Filters, and the plus action occupy one toolbar row. Narrow
+  screens deliberately use two rows. Headings have a separate gap before cards.
+  The 24rem filter panel keeps Read/Saved/Audience compact Select controls visible;
+  independent accordions summarize and disclose grade/pathway/club checkbox facets
+  within a bounded ScrollArea. Read actions are icon-only with working tooltips.
+  Full-feed author avatars reuse the existing person dialog; its projection adds
+  photo and roles without adding sign-in identifiers or contact fields. Club
+  people use the same extracted avatar component.
+  Zero-comment actions use an icon so all four 44px controls fit together at
+  320px. The dashboard title is Unread Announcements; its empty state composes
+  the shared unframed Empty inside the existing widget boundary.
+- Shared defects are repaired at their owners: RadioGroup resolves both pointer
+  coordinates for wrapped rows; nested popup portals share the overlay layer;
+  Select and Dropdown share fixed 12px/8px/10px shell/item/focus geometry. The
+  trigger retains global shape. Fixed values avoid the app's `rounded-lg` token
+  resolving to 16px instead of the registry's expected 8px.
+  A stable-gutter root now suppresses react-remove-scroll-bar's duplicate body
+  margin while preserving modal scroll lock. Read/Saved, composer, and profile
+  photo dialogs retain their document geometry. Clickable Card footer metadata
+  passes through to the stretched target with a pointer cursor; semantic controls
+  stay independent. Panel titles flex within the action row rather than forcing
+  the arrow below a long heading. Widget heading/card text align at a 24px inset,
+  with a separate gap above the first card.
+- Default Light/Dark borders/dividers now follow the scoped surface foreground.
+  Explicit Custom Accent, Bubblegum, and opaque high-contrast border palettes
+  are preserved. Their contrast was not retuned; `border-input` is unchanged.
+- Fifteen focused audience/filter/hover-geometry tests, web typecheck, lint
+  (21 existing warnings), and production build pass. Browser checks cover
+  combined Read/Saved filters, nested menu visibility/Escape/focus return,
+  composer targeting, wrapped radio hit testing, 320px/390px action geometry,
+  section rhythm, saved vs hover, and Light/Dark/Contrast/Custom token behavior.
+  Read toggling retains the tested card's 176px height and document position.
+  The owner currently has Robotics and Freshman Grade 9 unread, with Robotics
+  saved; other demo posts are read. Temporary QA toggles were restored to that
+  state. The populated and empty widget were checked at
+  390px. Earlier pin/order, audience, custom-theme, and reduced-motion checks
+  remain applicable; attention is static and existing proximity motion is unchanged.
+- The compiled preview runs at `http://localhost:3003/announcements` and
+  `/dashboard`, sharing the existing isolated demo backend on 3210/3211.
+  October 17's functions were pushed explicitly to that existing isolated local
+  backend, without reseeding or selecting a shared/cloud deployment. The author
+  projection is verified in the browser. Backend tests (381), backend/web/mobile
+  typechecks, web lint, the 15 focused tests, and production build pass. This does
+  not certify the expiry guard's time boundary through browser QA. Creation, archive, approval, and
+  deletion were not exercised. Current captures are in
+  `/tmp/ia-announcement-oct17-review/`; earlier captures remain in
+  `/tmp/ia-announcement-interaction-review/` and
+  `/tmp/ia-announcement-redesign-review/`.
+- The dashboard's existing calendar independently overflows at 320px because its
+  seven 44px day targets exceed the available width. It remains a separate
+  primitive issue, outside this announcement change.
 
 ### Local Bun/Nix setup (2026-10-02)
 

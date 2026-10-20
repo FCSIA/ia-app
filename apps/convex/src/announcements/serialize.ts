@@ -28,6 +28,19 @@ function storageUrl(ctx: QueryCtx, scope: SerializeScope, storageId: Id<"_storag
   return pending;
 }
 
+function serializeAuthor(author: Doc<"users"> | null) {
+  return author
+    ? {
+        _id: author._id,
+        firstName: author.firstName,
+        lastName: author.lastName,
+        avatarUrl: author.avatarUrl ?? null,
+        roles: author.roles,
+        isDeveloper: author.isDeveloper,
+      }
+    : null;
+}
+
 export async function serializeAnnouncement(
   ctx: QueryCtx,
   ann: Doc<"announcements">,
@@ -84,14 +97,7 @@ export async function serializeAnnouncement(
     isBookmarked: !!bookmark,
     isPinned: !!pin,
     isPromoted,
-    author: author
-      ? {
-          _id: author._id,
-          firstName: author.firstName,
-          lastName: author.lastName,
-          isDeveloper: author.isDeveloper,
-        }
-      : null,
+    author: serializeAuthor(author),
     club: club ? { _id: club._id, name: club.name } : null,
     commentCount,
     images: (
@@ -128,14 +134,7 @@ async function serializeComment(
   const author = await loader.get(comment.authorId);
   return {
     ...comment,
-    author: author
-      ? {
-          _id: author._id,
-          firstName: author.firstName,
-          lastName: author.lastName,
-          isDeveloper: author.isDeveloper,
-        }
-      : null,
+    author: serializeAuthor(author),
   };
 }
 

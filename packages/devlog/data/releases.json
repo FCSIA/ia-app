@@ -2,6 +2,112 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.37",
+      "date": "2026-10-17",
+      "title": "Clearer announcements, simpler settings, and a steadier dashboard",
+      "commit": "a0d5654f",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Announcements have clearer unread and saved states, compact filters, clickable author profiles, and consistent dashboard previews. Menus and dialogs keep the page in place.",
+          "commit": "81bbca86"
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Feedback has a clearer form and submission history, and its notifications are separate from moderation alerts.",
+          "commit": "ef157d6a"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Your clubs have clearer grouping, consistent corners, and an aligned discovery action.",
+          "commit": "df566c46"
+        },
+        {
+          "category": "Improved",
+          "scope": "settings",
+          "summary": "Profile settings are clearer and stay in place when switching tabs, with shared notification controls and nested club preferences.",
+          "commit": "c53396d7"
+        },
+        {
+          "category": "Improved",
+          "summary": "Notifications have aligned controls, and your profile has consistent corners, spacing, and circular pictures.",
+          "commit": "c3a15071"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Dashboard widgets stay where you place them, with a Balance layout action and Undo when you want a tidier arrangement.",
+          "commit": "55b615e1",
+          "pr": 147
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Feedback reviewers can track submitted reports through linked GitHub issues and keep their status in sync.",
+          "commit": "cbb87b8f"
+        },
+        {
+          "category": "Improved",
+          "scope": "notifications",
+          "summary": "On phones, the profile menu now offers Do not disturb for one hour, with an option to resume notifications early.",
+          "commit": "5aa47b29"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Swiping right in a club opens its navigation without leaving the conversation.",
+          "commit": "80b9a711"
+        },
+        {
+          "category": "Improved",
+          "scope": "backend",
+          "summary": "Retain calendar dependency after rebase.",
+          "commit": "a91bed3f"
+        },
+        {
+          "category": "Improved",
+          "scope": "backend",
+          "summary": "Adopt Convex 1.45 helpers.",
+          "commit": "39db4a99"
+        },
+        {
+          "category": "Improved",
+          "scope": "tooling",
+          "summary": "Rebase Bun migration onto main.",
+          "commit": "006f0ab4"
+        },
+        {
+          "category": "Improved",
+          "scope": "tooling",
+          "summary": "Migrate pnpm to Bun.",
+          "commit": "1d47a053"
+        },
+        {
+          "category": "Internal",
+          "summary": "Audit production dependency closure.",
+          "commit": "296890ca"
+        },
+        {
+          "category": "Internal",
+          "summary": "Make Bun lockfile auditing unconditional.",
+          "commit": "98eccc6f"
+        },
+        {
+          "category": "Internal",
+          "summary": "Share validation build environment.",
+          "commit": "213a23bb"
+        },
+        {
+          "category": "Internal",
+          "summary": "Enforce release and contributor gates.",
+          "commit": "f2509568"
+        }
+      ]
+    },
+    {
       "version": "0.8.36",
       "date": "2026-10-02",
       "title": "Online status, Do Not Disturb, and admin analytics",

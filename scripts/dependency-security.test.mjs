@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
+import vm from "node:vm";
 
 const require = createRequire(import.meta.url);
 const forge = require("node-forge");
+const braces = require("braces");
 const { getAssetSize } = require("metro/private/Assets");
 const { privateKey: pem } = generateKeyPairSync("rsa", {
   modulusLength: 1024,
@@ -50,4 +52,45 @@ test("Metro reads PNG and GIF dimensions after the image-size security upgrade",
   assert.deepEqual(getAssetSize("png", png, "pixel.png"), { width: 1, height: 1 });
   assert.deepEqual(getAssetSize("gif", gif, "pixel.gif"), { width: 1, height: 1 });
   assert.equal(getAssetSize("txt", Buffer.from("text"), "text.txt"), null);
+});
+
+test("braces rejects excessive string nesting before recursive AST processing (GHSA-vfj7-8cjw-p6xm)", () => {
+  for (const [open, close] of [["{", "}"], ["(", ")"]]) {
+    const pattern = open.repeat(4000) + "a" + close.repeat(4000);
+    for (const method of ["parse", "compile", "stringify", "expand"]) {
+      for (const maxDepth of [undefined, 10000, Infinity, NaN]) {
+        assert.throws(() => braces[method](pattern, { maxDepth }), /exceeds max depth/);
+      }
+    }
+    assert.doesNotThrow(() => braces.parse(open.repeat(100) + "a" + close.repeat(100)));
+    assert.throws(() => braces.parse(open.repeat(101) + "a" + close.repeat(101)), /exceeds max depth/);
+  }
+  assert.throws(() => braces.parse("({a,b})", { maxDepth: 1 }), /exceeds max depth/);
+  assert.doesNotThrow(() => braces.parse("({a,b})", { maxDepth: 2 }));
+});
+
+test("braces guards direct AST inputs and cyclic parent chains", () => {
+  for (const method of ["compile", "stringify", "expand"]) {
+    let ast = { type: "text", value: "a" };
+    for (let index = 0; index < 1000; index += 1) ast = { type: "brace", nodes: [ast] };
+    assert.throws(() => braces[method]({ type: "root", nodes: [ast] }), /exceeds max depth/);
+  }
+  const ast = { type: "paren", nodes: [{ type: "text", value: "a" }] };
+  ast.parent = ast;
+  assert.throws(
+    () => vm.runInNewContext("braces.expand(ast)", { braces, ast }, { timeout: 1000 }),
+    /AST parent chain contains a cycle/,
+  );
+});
+
+test("braces retains ordinary glob expansion and escapeInvalid output", () => {
+  assert.deepEqual(braces.expand("src/{app,lib}/file-{1..3}.ts"), [
+    "src/app/file-1.ts", "src/app/file-2.ts", "src/app/file-3.ts",
+    "src/lib/file-1.ts", "src/lib/file-2.ts", "src/lib/file-3.ts",
+  ]);
+  assert.deepEqual(braces.expand("foo/({a,b})"), ["foo/(a)", "foo/(b)"]);
+  assert.equal(braces.compile("a/{b,c}/d"), "a/(b|c)/d");
+  for (const pattern of ["{{a}}", "{a,{b}}", "{{x}y}", "{a,{b,{c}}}", "{}{a}"]) {
+    assert.equal(braces.stringify(pattern, { escapeInvalid: true }), pattern);
+  }
 });

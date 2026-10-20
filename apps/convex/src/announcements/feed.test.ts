@@ -1,12 +1,21 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from 'convex-test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { api } from '../_generated/api';
+import type { QueryCtx } from '../_generated/server';
 import type { Doc } from '../_generated/dataModel';
 import schema from '../schema';
 import { listForUser, listPinnedForUser } from './feed';
 
-const modules = import.meta.glob('../**/*.*s');
+vi.mock('../../lib/currentUser', () => ({
+  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    return identity ? ctx.db.get(identity.subject as Doc<'users'>['_id']) : null;
+  },
+}));
+
+const modules = import.meta.glob('/src/**/*.*s');
 
 async function fixture() {
   const t = convexTest(schema, modules);
@@ -62,6 +71,33 @@ async function page(
 }
 
 describe('announcement feed pagination', () => {
+  it('exposes author avatars and roles without leaking student IDs or contact details', async () => {
+    const { t, user } = await fixture();
+    await t.run((ctx) => ctx.db.patch(user._id, {
+      avatarUrl: 'https://example.com/avatar.png',
+      email: 'private@example.com',
+    }));
+
+    const result = await t.withIdentity({ subject: user._id }).query(api.announcements.feed.listPage, {
+      paginationOpts: { cursor: null, numItems: 2 },
+    });
+    expect(result.page[0]?.author).toEqual({
+      _id: user._id,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      avatarUrl: 'https://example.com/avatar.png',
+      roles: ['TEACHER'],
+    });
+  });
+
+  it('returns a nullable avatar for authors who have not uploaded one', async () => {
+    const { t, user } = await fixture();
+    const result = await t.withIdentity({ subject: user._id }).query(api.announcements.feed.listPage, {
+      paginationOpts: { cursor: null, numItems: 2 },
+    });
+    expect(result.page[0]?.author?.avatarUrl).toBeNull();
+  });
+
   it('continues a descending feed at exact page boundaries', async () => {
     const { t, user } = await fixture();
     const first = await page(t, user, null);
@@ -246,22 +282,36 @@ describe('announcement feed pagination', () => {
     expect(pins).toEqual([]);
   });
 
-  it('indexes recently archived statuses and active expirations into Past', async () => {
+  it('includes recent archived and expired posts in Past, excluding missing or future expiry', async () => {
     const { t, user } = await fixture();
     const now = Date.now();
-    const recentIds = await t.run(async (ctx) => {
-      const archivedId = await ctx.db.insert('announcements', {
-        authorId: user._id, title: 'recently-archived', body: 'Past by status.', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [], status: 'ARCHIVED', allowComments: false, isAdminGeneral: false, createdAt: now - 100, updatedAt: now,
-      });
-      const expiredId = await ctx.db.insert('announcements', {
-        authorId: user._id, title: 'recently-expired', body: 'Past by expiresAt.', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [], status: 'ACTIVE', allowComments: false, isAdminGeneral: false, expiresAt: now - 1, createdAt: now - 100, updatedAt: now,
-      });
-      const archived = await ctx.db.query('announcements').withIndex('by_status_and_createdAt', (q) => q.eq('status', 'ARCHIVED').gt('createdAt', now - 14 * 24 * 60 * 60 * 1000)).collect();
-      const expired = await ctx.db.query('announcements').withIndex('by_status_and_createdAt', (q) => q.eq('status', 'ACTIVE').gt('createdAt', now - 14 * 24 * 60 * 60 * 1000)).filter((q) => q.lte(q.field('expiresAt'), now)).collect();
-      return { archivedIds: archived.map((item) => item._id), expiredIds: expired.map((item) => item._id), expected: [archivedId, expiredId] };
+    const ids = await t.run(async (ctx) => {
+      const insert = (title: string, status: 'ACTIVE' | 'ARCHIVED', expiresAt?: number) =>
+        ctx.db.insert('announcements', {
+          authorId: user._id, title, body: 'Past expiry boundary fixture.',
+          targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
+          status, allowComments: false, isAdminGeneral: false, expiresAt,
+          createdAt: now - 100, updatedAt: now,
+        });
+      return {
+        archived: await insert('recently-archived', 'ARCHIVED'),
+        expired: await insert('recently-expired', 'ACTIVE', now - 1),
+        boundary: await insert('expires-now', 'ACTIVE', now),
+        future: await insert('not-expired', 'ACTIVE', now + 1),
+        missing: await insert('no-expiry', 'ACTIVE'),
+      };
     });
-    expect(recentIds.archivedIds).toContain(recentIds.expected[0]);
-    expect(recentIds.expiredIds).toContain(recentIds.expected[1]);
+    const reader = t.withIdentity({ subject: user._id });
+    const pastPage = (status: 'ACTIVE' | 'ARCHIVED') => reader.query(api.announcements.feed.listPastStatusPage, {
+      status, now, paginationOpts: { cursor: null, numItems: 20 },
+    });
+    const [archived, expired] = await Promise.all([pastPage('ARCHIVED'), pastPage('ACTIVE')]);
+    expect(archived.page.map((item) => item._id)).toEqual([ids.archived]);
+    expect(expired.page.map((item) => item._id).sort()).toEqual([ids.expired, ids.boundary].sort());
+    const anonymous = await t.query(api.announcements.feed.listPastStatusPage, {
+      status: 'ACTIVE', now, paginationOpts: { cursor: null, numItems: 20 },
+    });
+    expect(anonymous.page).toEqual([]);
   });
 
   it('keeps a pending approval visible to its author after its proposed expiry', async () => {

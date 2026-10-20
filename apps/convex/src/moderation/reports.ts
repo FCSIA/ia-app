@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
 import {
   getCurrentAppUser,
@@ -192,6 +193,7 @@ async function createReport(
     clubId: input.clubId,
     status: "PENDING",
     isEscalated: false,
+    ...(input.contentType === "GENERAL" ? { githubIssueSyncState: "PENDING" as const } : {}),
     createdAt: Date.now(),
   });
   if (input.imageUploadIds) {
@@ -211,7 +213,7 @@ async function createReport(
     ctx,
     recipients.map((admin) => admin._id),
     {
-      category: "CONTENT_MODERATED",
+      category: isFeedback ? "FEEDBACK" : "CONTENT_MODERATED",
       title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
       body: `${user.firstName} ${user.lastName} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
       href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
@@ -226,6 +228,12 @@ async function createReport(
     entityId: reportId,
     meta: { contentType: input.contentType, contentId: input.contentId },
   });
+
+  if (isFeedback) {
+    await ctx.scheduler.runAfter(0, internal.moderation.feedbackGithub.syncFeedbackIssue, {
+      reportId,
+    });
+  }
 
   return reportId;
 }
@@ -456,7 +464,7 @@ export const update = mutation({
     ) {
       await deliverNotification(ctx, {
         userId: report.submitterId,
-        category: "CONTENT_MODERATED",
+        category: "FEEDBACK",
         title: "Your feedback was resolved",
         body: args.reviewNote || "School staff reviewed your feedback.",
         href: "/report",
@@ -472,6 +480,40 @@ export const update = mutation({
       meta: { status: args.status },
     });
 
+    return { success: true };
+  },
+});
+
+export const retryGithubIssueSync = mutation({
+  args: { reportId: v.id("moderationReports") },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    requireAnyRole(user, ["SUPER_ADMIN"]);
+    const report = await ctx.db.get(args.reportId);
+    if (!report || report.contentType !== "GENERAL") {
+      throw new ConvexError("Feedback not found");
+    }
+    if (report.githubIssueNumber) {
+      throw new ConvexError("This feedback already has a GitHub issue");
+    }
+    if (report.githubIssueSyncState === "PENDING") {
+      throw new ConvexError("GitHub issue sync is already queued");
+    }
+
+    await ctx.db.patch(report._id, {
+      githubIssueSyncState: "PENDING",
+      githubIssueSyncError: null,
+    });
+    await ctx.scheduler.runAfter(0, internal.moderation.feedbackGithub.syncFeedbackIssue, {
+      reportId: report._id,
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "FEEDBACK_GITHUB_ISSUE_RETRY_QUEUED",
+      entityType: "Report",
+      entityId: report._id,
+    });
     return { success: true };
   },
 });
@@ -512,7 +554,7 @@ export const addFeedbackResponse = mutation({
 
     await deliverNotification(ctx, {
       userId: report.submitterId,
-      category: "CONTENT_MODERATED",
+      category: "FEEDBACK",
       title: "School staff replied to your feedback",
       body,
       href: "/report",

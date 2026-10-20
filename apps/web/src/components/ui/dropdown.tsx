@@ -22,7 +22,7 @@ import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { Elevated } from "@/lib/elevated";
-import { dropdownShape as shape } from "@/components/ui/dropdown-shape";
+import { popupShape as shape } from "@/components/ui/popup-shape";
 import {
   DropdownContext,
   useDropdown,

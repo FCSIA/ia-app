@@ -34,7 +34,7 @@
     "audit:production": "node scripts/audit-production.mjs",
     "audit:production:test": "bun test scripts/audit-production.test.mjs scripts/dependency-security.test.mjs",
     "devlog:cut": "node scripts/devlog.mjs cut",
-    "release:ship": "node scripts/release-ship.mjs",
+    "release:ship": "node scripts/release.mjs",
     "fluid:update": "node scripts/update-fluid-components.mjs",
     "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
@@ -77,6 +77,7 @@
     "convex": "1.46.0"
   },
   "patchedDependencies": {
-    "node-forge@1.4.0": "patches/node-forge@1.4.0.patch"
+    "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
+    "braces@3.0.3": "patches/braces@3.0.3.patch"
   }
 }

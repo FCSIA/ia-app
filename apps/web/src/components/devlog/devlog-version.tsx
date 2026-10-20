@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
  */
 export function AppVersionStamp({ className }: { className?: string }) {
   return (
-    <p className={cn('font-mono text-xs tracking-wide text-muted-foreground', className)}>
+    <p className={cn('text-xs tabular-nums text-muted-foreground', className)}>
       {appVersionLabel()}
     </p>
   );

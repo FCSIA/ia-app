@@ -3,22 +3,19 @@
 import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Archive, ArrowLeft, Clock3, Flag, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Bookmark, Flag, Send, Trash2 } from 'lucide-react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
-import {
-  ANNOUNCEMENT_BADGE_TEXT_CLASS,
-  ANNOUNCEMENT_TAG_BADGE_COLORS,
-  ANNOUNCEMENT_TAG_LABELS,
-  type AnnouncementCardRecord,
-} from '@/components/announcements/announcement-card';
+import { AnnouncementAudience } from '@/components/announcements/announcement-audience-label';
+import { AnnouncementAuthor } from '@/components/announcements/announcement-author';
 import { Badge } from '@/components/ui/badge';
-import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { AnnouncementMedia } from '@/components/announcements/announcement-media';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardGroup, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
@@ -26,85 +23,15 @@ import remarkGfm from 'remark-gfm';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
-type AnnouncementDetail = AnnouncementCardRecord & {
-  bodyMarkdown?: string | null;
-  embedUrls?: string[];
-  images?: Array<{
-    _id: string;
-    url: string;
-    mimeType: string;
-    size: number;
-  }>;
-  targetGrade?: number | null;
-  targetPathway?: string | null;
-  readAt?: number | null;
-  comments?: Array<{
-    _id: string;
-    authorId: string;
-    body: string;
-    createdAt: number;
-    author?: {
-      _id?: string;
-      firstName?: string | null;
-      lastName?: string | null;
-      isDeveloper?: boolean | null;
-    } | null;
-  }>;
-};
-
-function formatPathway(pathway?: string | null) {
-  if (!pathway) return null;
-  if (pathway === 'HEALTH_SCIENCE') return 'Health Science';
-  if (pathway === 'INFORMATION_TECHNOLOGY') return 'Information Technology';
-  if (pathway === 'ENGINEERING') return 'Engineering';
-  return pathway.replace(/_/g, ' ');
-}
-
 const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
-
-function formatAudience(announcement: AnnouncementDetail) {
-  if (announcement.targetType === 'GRADE' && announcement.targetGrade) {
-    return `Grade ${announcement.targetGrade}`;
-  }
-
-  if (announcement.targetType === 'PATHWAY') {
-    return formatPathway(announcement.targetPathway) ?? 'Pathway audience';
-  }
-
-  if (announcement.targetType === 'CLUB') {
-    return announcement.club?.name ?? 'Club members';
-  }
-
-  return 'School-wide';
-}
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') return 'Active';
   if (status === 'EXPIRED') return 'Expired';
   if (status === 'ARCHIVED') return 'Archived';
   return status.replace(/_/g, ' ');
-}
-
-function formatName(
-  person?: {
-    firstName?: string | null;
-    lastName?: string | null;
-  } | null,
-) {
-  return [person?.firstName, person?.lastName].filter(Boolean).join(' ') || 'Unknown author';
-}
-
-function getInitials(
-  person?: {
-    firstName?: string | null;
-    lastName?: string | null;
-  } | null,
-) {
-  const initials = [person?.firstName?.[0], person?.lastName?.[0]].filter(Boolean).join('');
-  return initials || '?';
 }
 
 function LoadingBlock({ className }: { className: string }) {
@@ -118,7 +45,7 @@ function AnnouncementDetailSkeleton() {
         <LoadingBlock className="h-9 w-24 rounded-full" />
         <LoadingBlock className="h-9 w-9 rounded-full" />
       </div>
-      <div className={cn("rounded-2xl border border-border/70 bg-card px-6 py-6 shadow-sm", CARD_SURFACE_FOREGROUND)}>
+      <CardGroup corners="compact" border="outlined"><Card><CardContent className="space-y-4">
         <div className="flex gap-2">
           <LoadingBlock className="h-5 w-20 rounded-full" />
           <LoadingBlock className="h-5 w-24 rounded-full" />
@@ -131,7 +58,7 @@ function AnnouncementDetailSkeleton() {
           <LoadingBlock className="h-4 w-11/12" />
           <LoadingBlock className="h-4 w-10/12" />
         </div>
-      </div>
+      </CardContent></Card></CardGroup>
       <div className="space-y-4">
         <LoadingBlock className="h-5 w-28" />
         <LoadingBlock className="h-16 w-full rounded-xl" />
@@ -152,6 +79,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const [commentPending, setCommentPending] = useState(false);
   const [deleteCommentPending, setDeleteCommentPending] = useState<string | null>(null);
   const [reportPending, setReportPending] = useState(false);
+  const [bookmarkPending, setBookmarkPending] = useState(false);
   const markReadAttemptsRef = useRef<Set<string> | null>(null);
   if (markReadAttemptsRef.current === null) {
     markReadAttemptsRef.current = new Set<string>();
@@ -162,10 +90,12 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
     now: announcementNow,
   });
   const isLoading = detail === undefined;
-  const announcement: AnnouncementDetail | null = detail ? { ...detail.announcement, comments: detail.comments } : null;
+  const announcement = detail ? { ...detail.announcement, comments: detail.comments } : null;
   const shouldMarkRead = announcement !== null && !announcement.isRead;
 
   const markRead = useMutation(api.announcements.engagement.markRead);
+  const bookmark = useMutation(api.announcements.engagement.bookmark);
+  const unbookmark = useMutation(api.announcements.engagement.unbookmark);
   const addComment = useMutation(api.announcements.comments.add);
   const removeComment = useMutation(api.announcements.comments.remove);
   const submitReport = useMutation(api.moderation.reports.submit);
@@ -191,23 +121,20 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
     return (
       <AppShell>
         <div className="mx-auto w-full max-w-3xl">
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-muted text-foreground">
-              <Archive className="size-5" />
-            </div>
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Announcement not found</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">The post may have been removed or you may not have access to it anymore.</p>
-            <Button asChild className="mt-6">
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Announcement not found</EmptyTitle>
+              <EmptyDescription>The post may have been removed or you may not have access to it anymore.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent><Button asChild>
               <Link href="/announcements">Back to announcements</Link>
-            </Button>
-          </div>
+            </Button></EmptyContent>
+          </Empty>
         </div>
       </AppShell>
     );
   }
 
-  const authorName = formatName(announcement.author);
-  const audienceLabel = formatAudience(announcement);
   const commentCount = announcement.comments?.length ?? 0;
   const canDeleteComment = (commentAuthorId: string) =>
     commentAuthorId === user?._id || !!user?.roles?.some((role: string) => ['ADMIN', 'SUPER_ADMIN'].includes(role));
@@ -216,161 +143,128 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
     <AppShell>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" asChild className="rounded-full">
+          <Button variant="ghost" size="sm" asChild leadingIcon={ArrowLeft}>
             <Link href="/announcements">
-              <ArrowLeft className="mr-2 size-4" />
               Back
             </Link>
           </Button>
 
-          <Button
+          <div className="flex items-center gap-1">
+          <Tooltip content={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}>
+            <Button
+              type="button"
+              variant={announcement.isBookmarked ? 'tertiary' : 'ghost'}
+              size="icon-sm"
+              active={announcement.isBookmarked}
+              aria-pressed={!!announcement.isBookmarked}
+              aria-label={announcement.isBookmarked ? 'Remove from saved' : 'Save announcement'}
+              loading={bookmarkPending}
+              onClick={() => {
+                setBookmarkPending(true);
+                const action = announcement.isBookmarked ? unbookmark : bookmark;
+                void action({ announcementId: id as Id<'announcements'> })
+                  .catch(() => toast({ title: 'Could not update saved announcement', variant: 'destructive' }))
+                  .finally(() => setBookmarkPending(false));
+              }}
+            >
+              <Bookmark fill={announcement.isBookmarked ? 'currentColor' : 'none'} className={announcement.isBookmarked ? 'text-primary' : undefined} />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Report announcement"><Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="rounded-full text-muted-foreground"
+            size="icon-sm"
             onClick={() => setShowReport(true)}
             aria-label="Report announcement"
           >
-            <Flag className="size-4" />
-          </Button>
+            <Flag />
+          </Button></Tooltip>
+          </div>
         </div>
 
-        <Card className={`overflow-hidden rounded-2xl border bg-card ${CARD_SURFACE_FOREGROUND}`}>
-          <CardHeader className="gap-5 border-b border-white/10 bg-background/35 pb-5">
-            <div className="flex flex-wrap items-center gap-2">
-              {announcement.isAdminGeneral ? (
-                <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
-                  Admin
-                </Badge>
-              ) : null}
-              <Badge size="sm" color={ANNOUNCEMENT_TAG_BADGE_COLORS[announcement.targetType] ?? 'gray'}>
-                {ANNOUNCEMENT_TAG_LABELS[announcement.targetType] || announcement.targetType}
-              </Badge>
-              <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
-                {audienceLabel}
-              </Badge>
+        <CardGroup corners="compact" border="outlined"><Card>
+          <CardHeader className="gap-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <AnnouncementAudience announcement={announcement} />
+              {announcement.isPromoted ? <span>Important</span> : null}
               {announcement.status !== 'ACTIVE' ? (
-                <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" size="sm">
                   {formatStatus(announcement.status)}
                 </Badge>
               ) : null}
             </div>
 
-            <div className="space-y-3">
-              <CardTitle className="text-2xl leading-tight tracking-tight text-foreground sm:text-3xl">{announcement.title}</CardTitle>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  Posted by {authorName}
-                  <DeveloperBadge user={announcement.author} size={12} />
-                </span>
-                <span>
+            <h1 className="break-words text-xl font-semibold leading-snug text-foreground sm:text-2xl">{announcement.title}</h1>
+            <AnnouncementAuthor author={announcement.author}>
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <time dateTime={new Date(announcement.createdAt).toISOString()}>
                   {formatDistanceToNow(new Date(announcement.createdAt), {
                     addSuffix: true,
                   })}
-                </span>
+                </time>
                 {announcement.expiresAt ? <span>Expires {format(new Date(announcement.expiresAt), 'MMM d')}</span> : null}
-                {announcement.allowComments ? <span>{commentCount} comments</span> : null}
               </div>
-            </div>
+            </AnnouncementAuthor>
           </CardHeader>
 
-          <CardContent className="space-y-4 bg-background/70 pt-6">
-            {announcement.status === 'EXPIRED' ? (
-              <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-                <Clock3 className="size-4" />
-                Expired announcement
-              </p>
-            ) : null}
-
-            {announcement.status === 'ARCHIVED' ? (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Archive className="size-4" />
-                Archived announcement
-              </p>
-            ) : null}
-
+          <CardContent className="space-y-4 pt-5">
             {announcement.bodyMarkdown ? (
-              <div className="typeset max-w-none text-[15px] leading-7 text-foreground/90">
+              <div className="typeset max-w-none text-base leading-7 text-foreground">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{announcement.bodyMarkdown}</ReactMarkdown>
               </div>
             ) : (
-              <div className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/90">{announcement.body}</div>
+              <div className="whitespace-pre-wrap break-words text-base leading-7 text-foreground">{announcement.body}</div>
             )}
             <AnnouncementMedia images={announcement.images} embedUrls={announcement.embedUrls} />
           </CardContent>
-        </Card>
+        </Card></CardGroup>
 
         {announcement.allowComments ? (
           <section id="comments" className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Discussion</h2>
-                <p className="text-sm text-muted-foreground">Questions and follow-up only.</p>
-              </div>
-              <Badge variant="solid">
-                {commentCount} comment{commentCount === 1 ? '' : 's'}
-              </Badge>
+              <h2 className="text-base font-semibold text-foreground">Discussion <span className="ml-2 font-normal text-muted-foreground">{commentCount}</span></h2>
             </div>
 
             {commentCount > 0 ? (
-              <div className="space-y-4">
+              <ul className="space-y-5">
                 {announcement.comments?.map((entry) => (
-                  <div key={entry._id} className={cn("rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm", CARD_SURFACE_FOREGROUND)}>
-                    <div className="flex items-start gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                        {getInitials(entry.author)}
-                      </div>
+                  <li key={entry._id} className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <AnnouncementAuthor author={entry.author}>
+                        <time dateTime={new Date(entry.createdAt).toISOString()}>{format(new Date(entry.createdAt), 'MMM d · h:mm a')}</time>
+                      </AnnouncementAuthor>
 
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-foreground">
-                              <span className="truncate">{formatName(entry.author)}</span>
-                              <DeveloperBadge user={entry.author} size={12} />
-                            </p>
-                            <p className="text-xs text-muted-foreground">{format(new Date(entry.createdAt), 'EEE, MMM d · h:mm a')}</p>
-                          </div>
-
-                          {canDeleteComment(entry.authorId) ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                              disabled={deleteCommentPending === entry._id}
-                              onClick={() => {
-                                setDeleteCommentPending(entry._id);
-                                void removeComment({
-                                  commentId: entry._id as Id<'comments'>,
-                                })
-                                  .catch(() =>
-                                    toast({
-                                      title: 'Failed to delete comment',
-                                      variant: 'destructive',
-                                    }),
-                                  )
-                                  .finally(() => setDeleteCommentPending(null));
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          ) : null}
-                        </div>
-
-                        <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/85">{entry.body}</p>
-                      </div>
+                      {canDeleteComment(entry.authorId) ? (
+                        <Tooltip content="Delete comment"><Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Delete comment"
+                          loading={deleteCommentPending === entry._id}
+                          onClick={() => {
+                            setDeleteCommentPending(entry._id);
+                            void removeComment({
+                              commentId: entry._id as Id<'comments'>,
+                            })
+                              .catch(() =>
+                                toast({
+                                  title: 'Failed to delete comment',
+                                  variant: 'destructive',
+                                }),
+                              )
+                              .finally(() => setDeleteCommentPending(null));
+                          }}
+                        >
+                          <Trash2 />
+                        </Button></Tooltip>
+                      ) : null}
                     </div>
-                  </div>
+
+                    <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{entry.body}</p>
+                  </li>
                 ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center">
-                <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-muted text-foreground">
-                  <MessageSquare className="size-5" />
-                </div>
-                <p className="mt-4 font-medium text-foreground">No comments yet</p>
-              </div>
-            )}
+              </ul>
+            ) : null}
 
             <form
               className="space-y-3"
@@ -393,6 +287,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               }}
             >
               <Textarea
+                aria-label="Comment"
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 placeholder="Add a comment"

@@ -15,6 +15,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     useQuery(api.moderation.reports.listFeedback, activeTab === 'feedback' ? {} : 'skip') ?? [];
   const updateReport = useMutation(api.moderation.reports.update);
   const addFeedbackResponse = useMutation(api.moderation.reports.addFeedbackResponse);
+  const retryGithubIssueSync = useMutation(api.moderation.reports.retryGithubIssueSync);
 
   const filteredReports = useMemo(() => {
     const query = deferredFeedbackSearch.trim().toLowerCase();
@@ -73,6 +74,19 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     }
   }
 
+  async function retryGithubIssueMutation(reportId: Id<'moderationReports'>) {
+    try {
+      await retryGithubIssueSync({ reportId });
+      toast({ title: 'GitHub issue retry queued' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Unable to retry GitHub issue sync',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  }
+
   return {
     feedbackSearch,
     setFeedbackSearch,
@@ -80,5 +94,6 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     filteredReports,
     reportMutation,
     responseMutation,
+    retryGithubIssueMutation,
   };
 }

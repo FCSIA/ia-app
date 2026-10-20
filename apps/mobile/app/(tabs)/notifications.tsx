@@ -25,6 +25,7 @@ const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
   EVENT: "Event",
   FLEX_FRIDAY: "Flex Friday",
   CONTENT_MODERATED: "Moderation",
+  FEEDBACK: "Feedback",
   FRIEND_REQUEST: "Friend request",
   FRIEND_SCHEDULE_CHANGE: "Schedule update",
 };
