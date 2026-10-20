@@ -18,6 +18,7 @@ import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
 import { normalizeDashboardColumns, normalizeDashboardLayout } from "./dashboardLayout";
+import { MAX_WALLPAPER_BLUR } from "../../../shared/custom-theme";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 const wallpaperColorPattern = /^#[0-9a-f]{6}$/;
@@ -222,7 +223,7 @@ export const saveUserImageMutation = internalMutation({
         customBackgroundUrl: url,
         customBackgroundStorageId: args.storageId,
         customBackgroundPalette: palette,
-        customBackgroundTint: palette[0],
+        customBackgroundTint: user.customBackgroundTint === null ? null : palette[0],
         updatedAt: Date.now(),
       });
     }
@@ -277,6 +278,7 @@ export const clearUserImage = mutation({
         customBackgroundStorageId: undefined,
         customBackgroundPalette: undefined,
         customBackgroundTint: undefined,
+        customBackgroundBlur: undefined,
         updatedAt: Date.now(),
       });
     }
@@ -300,24 +302,43 @@ export const setCustomBackgroundPalette = mutation({
     if (!validWallpaperPalette(palette)) {
       throw new ConvexError("Invalid wallpaper colors");
     }
+    const currentTint = user.customBackgroundTint;
+    const tint = currentTint === null ? null
+      : currentTint && palette.includes(currentTint) ? currentTint : palette[0];
     await ctx.db.patch(user._id, {
       customBackgroundPalette: palette,
-      customBackgroundTint: palette[0],
+      customBackgroundTint: tint,
       updatedAt: Date.now(),
     });
-    return toUserSelfProfile({ ...user, customBackgroundPalette: palette, customBackgroundTint: palette[0] });
+    return toUserSelfProfile({ ...user, customBackgroundPalette: palette, customBackgroundTint: tint });
   },
 });
 
 export const setCustomBackgroundTint = mutation({
-  args: { tint: v.string() },
+  args: { tint: v.union(v.string(), v.null()) },
   returns: userSelfProfileValidator,
   handler: async (ctx, { tint }) => {
     const user = await getCurrentAppUser(ctx);
-    if (!user.customBackgroundStorageId || !user.customBackgroundPalette?.includes(tint)) {
+    if (!user.customBackgroundStorageId || (tint !== null && !user.customBackgroundPalette?.includes(tint))) {
       throw new ConvexError("Choose a color from this image");
     }
     await ctx.db.patch(user._id, { customBackgroundTint: tint, updatedAt: Date.now() });
     return toUserSelfProfile({ ...user, customBackgroundTint: tint });
+  },
+});
+
+export const setCustomBackgroundBlur = mutation({
+  args: { blur: v.number() },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, { blur }) => {
+    const user = await getCurrentAppUser(ctx);
+    if (!user.customBackgroundStorageId) {
+      throw new ConvexError("Upload a background image first");
+    }
+    if (!Number.isInteger(blur) || blur < 0 || blur > MAX_WALLPAPER_BLUR) {
+      throw new ConvexError(`Blur must be between 0 and ${MAX_WALLPAPER_BLUR} pixels`);
+    }
+    await ctx.db.patch(user._id, { customBackgroundBlur: blur, updatedAt: Date.now() });
+    return toUserSelfProfile({ ...user, customBackgroundBlur: blur });
   },
 });

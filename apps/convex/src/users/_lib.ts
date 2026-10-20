@@ -39,6 +39,7 @@ export const userSelfProfileValidator = userProfileValidator.extend(
       "customBackgroundUrl",
       "customBackgroundPalette",
       "customBackgroundTint",
+      "customBackgroundBlur",
     ).fields,
 );
 
@@ -67,6 +68,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     customBackgroundUrl: user.customBackgroundUrl,
     customBackgroundPalette: user.customBackgroundPalette,
     customBackgroundTint: user.customBackgroundTint,
+    customBackgroundBlur: user.customBackgroundBlur,
     isDeveloper: user.isDeveloper,
   } satisfies Infer<typeof userSelfProfileValidator>;
 }
