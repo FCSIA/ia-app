@@ -44,6 +44,14 @@ describe('announcement feed filters', () => {
     expect(compileAnnouncementFilters(filters, 'grade 12')(announcement)).toBe(false);
   });
 
+  it('finds current and past posts by either author name', () => {
+    const renamed = { ...announcement, author: { ...announcement.author, preferredName: 'Jay Rivera' } };
+    for (const query of ['Jane Smith', 'Jay Rivera']) {
+      expect(compileAnnouncementFilters(filters, query)(renamed)).toBe(true);
+    }
+    expect(compileAnnouncementFilters(filters, 'Jay Rivera')(announcement)).toBe(false);
+  });
+
   it('composes grade and pathway dimensions without treating a major as a minor', () => {
     const selection = { ...filters, selectedGrades: [11], selectedMajorPathways: ['INFORMATION_TECHNOLOGY'], selectedMinorPathways: ['ENGINEERING'] };
     expect(compileAnnouncementFilters(selection, '')(announcement)).toBe(true);

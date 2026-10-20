@@ -1,3 +1,4 @@
+import { nameSearchValues } from "../../../shared/user-name";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { query, type QueryCtx } from "../_generated/server";
@@ -124,9 +125,7 @@ export const list = query({
       if (
         actorText &&
         !(
-          includes(event.actor?.firstName, actorText) ||
-          includes(event.actor?.lastName, actorText) ||
-            includes(event.actor?.preferredName, actorText) ||
+          nameSearchValues(event.actor).some((name) => includes(name, actorText)) ||
           includes(event.actor?.uniqueId, actorText)
         )
       ) {
@@ -138,9 +137,7 @@ export const list = query({
           includes(event.action, queryText) ||
           includes(event.entityType, queryText) ||
           includes(event.entityId, queryText) ||
-          includes(event.actor?.firstName, queryText) ||
-          includes(event.actor?.lastName, queryText) ||
-            includes(event.actor?.preferredName, queryText) ||
+          nameSearchValues(event.actor).some((name) => includes(name, queryText)) ||
           includes(event.actor?.uniqueId, queryText)
         )
       ) {
@@ -222,9 +219,7 @@ export const listPage = query({
         if (
           actorText &&
           !(
-            includes(event.actor?.firstName, actorText) ||
-            includes(event.actor?.lastName, actorText) ||
-            includes(event.actor?.preferredName, actorText) ||
+            nameSearchValues(event.actor).some((name) => includes(name, actorText)) ||
             includes(event.actor?.uniqueId, actorText)
           )
         ) {
@@ -236,9 +231,7 @@ export const listPage = query({
             includes(event.action, queryText) ||
             includes(event.entityType, queryText) ||
             includes(event.entityId, queryText) ||
-            includes(event.actor?.firstName, queryText) ||
-            includes(event.actor?.lastName, queryText) ||
-            includes(event.actor?.preferredName, queryText) ||
+            nameSearchValues(event.actor).some((name) => includes(name, queryText)) ||
             includes(event.actor?.uniqueId, queryText)
           )
         ) {

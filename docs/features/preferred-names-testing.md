@@ -1,6 +1,7 @@
 # Preferred-name test checklist
 
-Use the isolated local app at [localhost:3000](http://localhost:3000/profile).
+Use an isolated local deployment. This verification used
+[localhost:3004](http://localhost:3004/profile) with backend ports 3270/3271.
 The seeded student account is `STU001` / `STU001STU001` (Alex Johnson).
 The seeded super-admin account is `SUPER001` / `STU001STU001`.
 These credentials are for the local demo only. Use a separate browser session
@@ -53,7 +54,12 @@ free-form message bodies are content and are not rewritten by a profile edit.
 ## Verification performed
 
 Backend tests exercise identity guards, persistence, clear/replace, atomic search
-updates, global/friend/admin/invitation searches, and existing-message authors.
+updates, global/friend/admin/invitation searches, existing-message authors, full
+regular/preferred audit-actor searches, Unicode initials, and the safe shared
+announcement/comment author projection.
 Client tests cover directory search, native mentions, announcement author search,
 and optimistic chat author names. Web production compilation and all three
-TypeScript projects are checked; native device interaction still needs a device.
+TypeScript projects are checked. Signed-in browser checks cover normalized save,
+reload persistence, regular-name disclosure, header/avatar initials, and clearing
+the preference on the isolated demo account. Native device interaction and
+design-owner visual review remain outstanding.

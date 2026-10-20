@@ -21,7 +21,7 @@ export function greetingName(person: PersonName | null | undefined): string {
 
 export function nameInitials(person: PersonName | null | undefined): string {
   const parts = displayName(person).split(/\s+/).filter(Boolean);
-  return (parts[0]?.[0] ?? "") + (parts.length > 1 ? parts.at(-1)![0] : "");
+  return (Array.from(parts[0] ?? "")[0] ?? "") + (parts.length > 1 ? Array.from(parts.at(-1)!)[0] : "");
 }
 
 export function nameSearchValues(person: PersonName | null | undefined): string[] {

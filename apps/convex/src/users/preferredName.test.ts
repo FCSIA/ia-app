@@ -95,6 +95,21 @@ describe("preferred profile names", () => {
     expect(await bob.query(api.schedule.friends.search, { query: "Alice" })).toHaveLength(1);
   });
 
+  test("finds audit actors by regular full name, preferred name, or account ID", async () => {
+    const { t, alice, admin, aliceId } = await fixture();
+    await t.run(ctx => ctx.db.insert("auditEvents", {
+      actorId: aliceId, action: "PROFILE_TEST", entityType: "User", createdAt: 1,
+    }));
+    await alice.mutation(api.users.me.updatePreferredName, { preferredName: "Ally Rivera" });
+    for (const name of ["Alice Johnson", "Ally Rivera", "NAME001"]) {
+      for (const filter of [{ actor: name }, { query: name }]) {
+        const expected = expect.arrayContaining([expect.objectContaining({ actor: expect.objectContaining({ preferredName: "Ally Rivera" }) })]);
+        expect(await admin.query(api.audit.events.list, filter)).toEqual(expected);
+        expect((await admin.query(api.audit.events.listPage, { ...filter, paginationOpts: { numItems: 20, cursor: null } })).page).toEqual(expected);
+      }
+    }
+  });
+
   test("shows the current name on existing messages and every shared user projection", async () => {
     const { t, alice, bob, aliceId, clubId, channelId } = await fixture();
     const read = () => bob.query(api.clubs.channels.getMessagePage, { clubId, channelId, paginationOpts: { cursor: null, numItems: 20 } });
@@ -118,6 +133,7 @@ describe("preferred profile names", () => {
     expect(nameSearchValues(person)).toEqual(["Alice Johnson", "Élodie 王"]);
     expect(displayName({ ...person, preferredName: " " })).toBe("Alice Johnson");
     expect(greetingName({ ...person, preferredName: undefined })).toBe("Alice");
+    expect(nameInitials({ preferredName: "𠮷野 太郎" })).toBe("𠮷太");
     expect(displayName(null)).toBe("");
   });
 });

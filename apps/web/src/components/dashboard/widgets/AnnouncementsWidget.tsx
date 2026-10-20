@@ -1,6 +1,5 @@
 'use client';
 
-
 import Link from 'next/link';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowRight } from 'lucide-react';

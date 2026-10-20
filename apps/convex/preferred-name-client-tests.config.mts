@@ -7,6 +7,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "../web/src/lib/club-directory-search.test.ts",
+      "../web/src/components/announcements/announcement-feed-filters.test.ts",
       "../web/src/components/schedule/schedule-utils.test.ts",
       "../mobile/src/features/chat/mention-suggestions.test.ts",
       "../mobile/src/features/chat/optimistic-message.test.ts",

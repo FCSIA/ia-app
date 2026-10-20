@@ -34,6 +34,7 @@ export function AnnouncementAuthor({
         _id: author._id as UserProfilePerson['_id'],
         firstName: author.firstName ?? '',
         lastName: author.lastName ?? '',
+        preferredName: author.preferredName ?? undefined,
       }} /> : null}
       <div className={cn('min-w-0', author?._id && detailsClassName)}>
         <div className="flex min-w-0 items-center gap-1 text-foreground">
