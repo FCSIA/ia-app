@@ -81,6 +81,13 @@ async function fixture() {
 }
 
 describe('audit search grammar', () => {
+  test.each(['person:"unfinished', '-person:"unfinished', String.raw`text:"say \"hello`])(
+    'identifies the missing closing quote in %s',
+    (input) => expect(parseAuditSearch(input).error).toBe('Close each quoted value with a double quote.'),
+  );
+  test('distinguishes a missing separator from an unfinished phrase', () => {
+    expect(parseAuditSearch('person:"Alex"action:read').error).toBe('Separate filters with a space.');
+  });
   test('supports phrases, exclusions, case, and readable labels', () => {
     const query = parseAuditSearch(
       'person:"Eniola Famakinwa" action:"message posted" -text:rejected after:2026-10-01 before:2026-10-02',

@@ -2,6 +2,7 @@
 
 import { format } from 'date-fns';
 import { ChevronRight } from 'lucide-react';
+import { Badge, type BadgeColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -31,16 +32,48 @@ type AuditTableProps = {
   onLoadMore: (numItems: number) => void;
 };
 
+const recordColors: Record<string, BadgeColor> = {
+  Announcement: 'blue',
+  Comment: 'violet',
+  Message: 'violet',
+  Channel: 'violet',
+  Club: 'teal',
+  'Club group': 'teal',
+  'People group': 'teal',
+  'Club join request': 'teal',
+  'Student schedule': 'amber',
+  'Schedule group': 'amber',
+  'Schedule sharing link': 'amber',
+  'Flex Friday': 'cyan',
+  'Flex session': 'cyan',
+  Workshop: 'cyan',
+  'Workshop registration': 'cyan',
+  'Workshop assignment': 'cyan',
+  Attendance: 'cyan',
+  Event: 'cyan',
+  'Moderation keyword': 'red',
+  Report: 'red',
+  'Sign-in account': 'orange',
+};
+
 function AuditRecord({ event }: { event: AuditEventRecord }) {
   const type = auditRecordLabel(event.entityType);
   const title = event.context?.title;
   const hasTitle = !!title && title !== type;
+  const removed = /(?:^|[._])(deleted|removed)$/i.test(event.action);
   return (
-    <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
+    <div className="flex min-w-0 flex-col gap-1.5 [overflow-wrap:anywhere]">
       {hasTitle ? <p className="line-clamp-2 text-foreground">{title}</p> : null}
-      <p className="text-xs text-muted-foreground">
-        {type}{event.entityId ? ' · #' + event.entityId.slice(0, 8) : ''}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {recordColors[type] ? (
+          <Badge color={removed ? 'red' : recordColors[type]} size="sm">{type}</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">{type}</span>
+        )}
+        {event.entityId ? (
+          <span className="text-xs text-muted-foreground">#{event.entityId.slice(0, 8)}</span>
+        ) : null}
+      </div>
       {event.context?.subtitle ? (
         <p className="line-clamp-2 text-xs text-muted-foreground">{event.context.subtitle}</p>
       ) : null}
@@ -113,13 +146,13 @@ export function AuditTable({
                         </span>
                       </time>
                     </TableCell>
-                    <TableCell className="hidden align-top text-foreground [overflow-wrap:anywhere] md:table-cell">
+                    <TableCell className="hidden align-top font-medium text-foreground [overflow-wrap:anywhere] md:table-cell">
                       {person}
                     </TableCell>
                     <TableCell className="align-top">
-                      <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
+                      <div className="flex min-w-0 flex-col gap-1.5 [overflow-wrap:anywhere]">
                         <p className="text-foreground md:hidden">{person}</p>
-                        <p className="text-foreground">{action}</p>
+                        <p className="font-semibold text-foreground">{action}</p>
                         <div className="lg:hidden"><AuditRecord event={event} /></div>
                         {preview ? (
                           <p className="line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">

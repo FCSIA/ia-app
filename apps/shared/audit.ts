@@ -89,7 +89,9 @@ export function parseAuditSearch(input: string): AuditSearchResult {
   const fail = (error: string): AuditSearchResult => ({ terms: [], error });
   if (input.length > 2000)
     return fail('Keep the query under 2,000 characters.');
-  const pattern = /(-?)(?:([a-zA-Z]+):)?("(?:[^"\\]|\\["\\])*"|[^\s"]+)/gy;
+  // Do not backtrack an unterminated field phrase into a plain `person:`
+  // token: that would incorrectly report a missing separator at its quote.
+  const pattern = /(-?)(?:([a-zA-Z]+):)?("(?:[^"\\]|\\["\\])*"|(?!-?[a-zA-Z]+:")[^\s"]+)/gy;
   let position = 0;
   while (position < input.length) {
     if (/\s/.test(input[position]!)) {
