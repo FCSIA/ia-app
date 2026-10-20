@@ -541,7 +541,7 @@ function PinnedMessagesButton({
                           {formatChatTimestamp(message.createdAt)}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-muted-foreground">
+                      <span className="mt-0.5 line-clamp-2 block break-words text-sm leading-5 text-muted-foreground">
                         {preview}
                       </span>
                     </span>
