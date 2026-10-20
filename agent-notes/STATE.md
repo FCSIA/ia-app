@@ -7,7 +7,8 @@
   `origin/main` through `679f7a00`. Older integration/worktree notes are history.
 - **Current goal**: Repair the audit composition and remove passive admin card
   hover backgrounds. Browser review is diagnostic; design-owner review remains
-  outstanding. No shared Convex deployment changes are authorized.
+  outstanding. The owner authorized updating the existing local demo backend at
+  `127.0.0.1:3210`; production changes remain unauthorized.
 - **Dashboard calendar follow-up**: The owner requested a small commit directly
   in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
   October 18. After owner feedback, the month controls and full-calendar arrow
@@ -51,17 +52,18 @@
   `direnv exec .`. All 17 audit backend tests pass offline. Browser checks cover
   five widths from 320px to 1440px, six themes, long content, filter results,
   details/raw data, focus return, and loading/empty/pagination states.
-- The running local backend predates this branch's category, date, and advanced
-  query arguments. Those integrated browser requests fail its validators;
-  offline backend tests and disposable UI fixtures cover their separate
-  contracts. No deployment or dataset was changed. Fixtures were removed.
-- Port 3210 actually serves the local demo backend stored in the `merge-pr147`
-  worktree. The primary checkout's selected local deployment has the same ports
-  but separate state. Updating the shared demo runtime requires explicit owner
-  authorization; do not start another schema watcher against it.
+- The owner explicitly authorized updating the existing local demo at port 3210.
+  A one-time, typechecked function push to `anonymous-agent` succeeded without
+  resetting or seeding data. All 55 original audit records remain. Live browser
+  checks pass category views (55 general / 0 flex), an inclusive October 17 date
+  range (16), advanced search (1), invalid-draft preservation, and hydrated Details.
+- Port 3210 serves the demo state stored in the `merge-pr147` worktree. The
+  primary checkout's selected local deployment has the same ports but separate
+  state. Do not start another schema watcher against it. Web alone is running
+  at port 3000; backend updates were performed with an explicit temporary target.
 - Main integration verification passes web/backend typechecks, web lint (21
   existing warnings), production compilation, and all 407 backend tests across
-  84 files. Main is merged locally; no push or backend update was performed.
+  84 files. Main is merged locally. No remote branch push was performed.
 - See `docs/reference/audit-ui-review-2026-10-20.md` for evidence and remaining
   review limits.
 

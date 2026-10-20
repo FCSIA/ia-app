@@ -78,9 +78,16 @@ These temporary artifacts are local review evidence, not tracked project assets.
 - `direnv exec . bun run --filter cvx test src/audit/events.test.ts`: 17 passed,
   including complete 620-record pagination, sparse batches, date boundaries,
   advanced query errors, and authorization gates. These tests run offline.
-- The running local backend rejects this branch's category, date and advanced
-  query arguments because it has older validators. Their full browser-to-backend
-  integration remains unverified against a matching deployment. No shared
-  deployment, stored audit data, or production setting was changed.
+- After explicit owner authorization, a one-time typechecked function push
+  updated the existing local demo at `127.0.0.1:3210` (`anonymous-agent`). No reset,
+  seed, or stored-record mutation was performed. The 55 original audit events
+  remain. Live checks pass General (55), Flex & Events (0), inclusive October 17
+  dates (16), and `action:"comment added"` (1). Invalid query drafts preserve the
+  last applied result. Details resolve the related announcement title.
+- The primary checkout's stale watcher was stopped; web runs alone on port 3000.
+  The demo backend uses the state stored in the `merge-pr147` worktree, distinct
+  from the primary checkout's local selection. Do not start a second schema
+  watcher using that primary selection.
 - Browser emulation does not establish native-device behavior, every possible
-  dataset, or design approval. No merge, push, or deployment was performed.
+  dataset, or design approval. Main is merged locally and the authorized local function update is complete.
+  No remote branch push or production deployment was performed.
