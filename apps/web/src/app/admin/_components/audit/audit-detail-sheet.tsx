@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRef } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -65,16 +66,30 @@ export function AuditDetailSheet({
   isDetailLoading,
 }: Props) {
   const snapshot = eventDetail ? whiteboardSnapshotTarget(eventDetail) : null;
+  const openerRef = useRef<HTMLElement | null>(null);
   return (
     <Sheet
       open={!!selectedEventId}
       onOpenChange={(open) => !open && onSelectedEventIdChange(null)}
     >
-      <SheetContent className="flex h-full w-full flex-col sm:max-w-xl">
+      <SheetContent
+        className="flex h-full w-full flex-col sm:max-w-xl"
+        onOpenAutoFocus={() => {
+          openerRef.current = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (openerRef.current?.isConnected) {
+            event.preventDefault();
+            openerRef.current.focus();
+          }
+        }}
+      >
         <SheetHeader className="shrink-0">
           <SheetTitle>Activity details</SheetTitle>
-          <SheetDescription>
-            Read what happened and the information saved with this activity.
+          <SheetDescription className="sr-only">
+            Recorded activity, related records, and original data.
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="mt-4 min-h-0 flex-1">
@@ -111,9 +126,12 @@ export function AuditDetailSheet({
                     <dd className="mt-1">
                       {eventDetail.context?.title ??
                         auditRecordLabel(eventDetail.entityType)}
-                      <span className="block text-xs text-muted-foreground">
-                        {auditRecordLabel(eventDetail.entityType)}
-                      </span>
+                      {eventDetail.context?.title &&
+                      eventDetail.context.title !== auditRecordLabel(eventDetail.entityType) ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {auditRecordLabel(eventDetail.entityType)}
+                        </span>
+                      ) : null}
                     </dd>
                   </div>
                 </dl>
@@ -176,7 +194,8 @@ export function AuditDetailSheet({
                   <h3 className="font-semibold">Recorded information</h3>
                   {eventDetail.meta &&
                   typeof eventDetail.meta === 'object' &&
-                  !Array.isArray(eventDetail.meta) ? (
+                  !Array.isArray(eventDetail.meta) &&
+                  Object.keys(eventDetail.meta).length > 0 ? (
                     <dl className="space-y-3">
                       {Object.entries(eventDetail.meta).map(([key, value]) => (
                         <div key={key}>
@@ -191,13 +210,14 @@ export function AuditDetailSheet({
                     </dl>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      {eventDetail.meta == null
+                      {eventDetail.meta == null ||
+                      (typeof eventDetail.meta === 'object' && Object.keys(eventDetail.meta).length === 0)
                         ? 'No additional information was recorded.'
                         : JSON.stringify(eventDetail.meta, null, 2)}
                     </p>
                   )}
                 </section>
-                <Accordion type="single" collapsible>
+                <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="original">
                     <AccordionTrigger>Original data and IDs</AccordionTrigger>
                     <AccordionContent>

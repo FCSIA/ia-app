@@ -150,7 +150,7 @@ export function ModerationTab({
           ) : (
             <div className="divide-y rounded-lg border">
               {filteredReports.map((r: ModerationReport) => (
-                <div key={r._id} className="p-3 transition-colors hover:bg-muted/30">
+                <div key={r._id} className="p-3">
                   <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2">

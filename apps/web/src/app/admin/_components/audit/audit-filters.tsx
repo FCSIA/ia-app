@@ -79,11 +79,11 @@ export function AuditFilters({
             placeholder="Names, actions, records, or message text…"
           />
         </div>
-        <Accordion type="single" collapsible>
+        <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="filters">
             <AccordionTrigger>Filters</AccordionTrigger>
             <AccordionContent>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4">
                 <div className="min-w-0 space-y-2">
                   <label
                     htmlFor="audit-person"
@@ -258,7 +258,7 @@ export function AuditFilters({
         <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
           {auditFilterChips.join(' · ')}
         </p>
-      ) : null}{' '}
+      ) : null}
     </>
   );
 }

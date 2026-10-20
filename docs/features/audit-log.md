@@ -15,7 +15,8 @@ The audit log records significant system actions for admin review.
 - Defaults to **All** activity. General and Flex & Events offer narrower views; both historical camel-case and uppercase categories are recognized.
 - Uses cursor pagination across the complete history, newest first. Empty matching batches retain an older-history control. Loaded record counts are not total match counts; continue until **End of history** to find every match.
 - Keeps all original action codes, IDs, timestamps, and metadata in **Details → Original data and IDs**. Whiteboard snapshots and links remain available.
-- Keeps search visible and places the remaining controls in a Filters disclosure. Rows wrap on narrow screens; mobile shows the same timestamp inside the activity cell.
+- Keeps search visible and places the remaining controls in a full-width Filters disclosure. Controls wrap according to available space. Desktop rows separate time, person, activity, and record; narrower screens fold those fields into the activity cell.
+- Limits long record titles, context, and message previews to two lines in the table. Details preserve complete content and original data. Closing Details returns keyboard focus to the row's opener.
 
 ## Search
 
@@ -59,6 +60,7 @@ Full-name, metadata, category, and advanced filters run after each bounded index
 
 ## Related
 
+- [October 20 UI review](../reference/audit-ui-review-2026-10-20.md)
 - [Users and admin](users-admin.md)
 - [Moderation](moderation.md)
 - [Indexes and search](../database/indexes-and-search.md)

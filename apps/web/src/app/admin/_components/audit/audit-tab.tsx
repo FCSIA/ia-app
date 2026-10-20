@@ -2,9 +2,8 @@
 
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
+import { TabsSubtle, TabsSubtleItem, TabsSubtlePanel } from '@/components/ui/tabs-subtle';
 import { useAdminAudit } from '../../_hooks/use-admin-audit';
-import { AdminPanel } from '../admin-ui';
 import { AuditDetailSheet } from './audit-detail-sheet';
 import { AuditFilters } from './audit-filters';
 import { AuditTable } from './audit-table';
@@ -12,10 +11,12 @@ import { AuditAdvancedSearch } from './audit-advanced-search';
 
 export function AuditTab() {
   const audit = useAdminAudit('audit');
+  const viewIndex = ['all', 'general', 'flex'].indexOf(audit.auditSubView);
   const actions = (
-    <>
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
       <TabsSubtle
-        selectedIndex={['all', 'general', 'flex'].indexOf(audit.auditSubView)}
+        selectedIndex={viewIndex}
+        idPrefix="audit-view"
         onSelect={(index) =>
           audit.setAuditSubView(
             index === 0 ? 'all' : index === 1 ? 'general' : 'flex',
@@ -35,23 +36,16 @@ export function AuditTab() {
           leadingIcon={X}
           onClick={audit.clearAuditFilters}
         >
-          Clear
+          Clear filters
         </Button>
       ) : null}
-    </>
+    </div>
   );
 
   return (
     <>
-      <AdminPanel
-        title="Audit Log"
-        actions={actions}
-        contentClassName="space-y-5"
-      >
-        <p className="text-sm text-muted-foreground">
-          Who did what, and when. Open Details for the complete recorded
-          information. All activity includes every category.
-        </p>
+      <section aria-label="Audit activity" className="min-w-0 space-y-4">
+        {actions}
         <AuditFilters
           auditSearch={audit.auditSearch}
           onAuditSearchChange={audit.setAuditSearch}
@@ -80,17 +74,20 @@ export function AuditTab() {
           error={audit.advancedError}
           onApply={audit.applyAdvancedQuery}
         />
-        <AuditTable
-          isAuditLoading={audit.isAuditLoading}
-          displayedAuditEvents={audit.displayedAuditEvents}
-          auditEvents={audit.auditEvents}
-          auditStatus={audit.auditStatus}
-          hasActiveAuditFilters={audit.hasActiveAuditFilters}
-          onClearFilters={audit.clearAuditFilters}
-          onInspect={audit.setSelectedAuditEventId}
-          onLoadMore={audit.loadMoreAuditEvents}
-        />
-      </AdminPanel>
+        {[0, 1, 2].map((index) => (
+          <TabsSubtlePanel key={index} index={index} selectedIndex={viewIndex} idPrefix="audit-view">
+            <AuditTable
+              isAuditLoading={audit.isAuditLoading}
+              displayedAuditEvents={audit.displayedAuditEvents}
+              auditStatus={audit.auditStatus}
+              hasActiveAuditFilters={audit.hasActiveAuditFilters}
+              onClearFilters={audit.clearAuditFilters}
+              onInspect={audit.setSelectedAuditEventId}
+              onLoadMore={audit.loadMoreAuditEvents}
+            />
+          </TabsSubtlePanel>
+        ))}
+      </section>
 
       <AuditDetailSheet
         selectedEventId={audit.selectedAuditEventId}

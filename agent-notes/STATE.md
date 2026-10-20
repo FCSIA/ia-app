@@ -2,6 +2,12 @@
 
 ## Active Focus
 
+- **Current checkout (2026-10-20)**: The primary checkout is on
+  `codex/admin-audit-log-ux` for the requested audit UI repair. The October 2
+  integration and managed-worktree notes below are historical context.
+- **Current goal**: Repair the audit composition and remove passive admin card
+  hover backgrounds. Browser review is diagnostic; design-owner review remains
+  outstanding. No shared Convex deployment changes are authorized.
 - **Integration**: `codex/local-bun-and-mobile-swipe` combines the admin repair,
   Bun/Nix setup, and swipe fix. Main receives them through PRs #148, #149, and
   #150; #148 contains the remaining admin changes after #149 and #150 merged.
@@ -14,6 +20,29 @@
   asked.
 
 ## Current Truth
+
+### Audit UI Repair (2026-10-20)
+
+- Full-width disclosures and a container-fitting grid replace the 288px filter
+  container that squeezed desktop controls into roughly 57px columns. The audit
+  table separates time, person, activity, and record on desktop and folds these
+  into the activity cell as space narrows. Redundant headings and introductory
+  copy are removed; complete details remain available.
+- Passive admin panels, metrics, notices, and feedback/report cards no longer
+  highlight on hover. Existing interactive controls retain their feedback.
+- Details restore focus to their opener. The shared calendar adapter lets day
+  columns own their width on touch screens, retaining the button's 44px height
+  while keeping all seven columns inside a 320px viewport.
+- Web typecheck, lint (21 existing warnings), and production build pass through
+  `direnv exec .`. All 17 audit backend tests pass offline. Browser checks cover
+  five widths from 320px to 1440px, six themes, long content, filter results,
+  details/raw data, focus return, and loading/empty/pagination states.
+- The running local backend predates this branch's category, date, and advanced
+  query arguments. Those integrated browser requests fail its validators;
+  offline backend tests and disposable UI fixtures cover their separate
+  contracts. No deployment or dataset was changed. Fixtures were removed.
+- See `docs/reference/audit-ui-review-2026-10-20.md` for evidence and remaining
+  review limits.
 
 ### Audit Log Readability (2026-10-02)
 

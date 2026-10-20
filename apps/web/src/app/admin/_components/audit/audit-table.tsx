@@ -1,6 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
+import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -23,13 +24,29 @@ import {
 type AuditTableProps = {
   isAuditLoading: boolean;
   displayedAuditEvents: AuditEventRecord[];
-  auditEvents: AuditEventRecord[];
   auditStatus: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
   hasActiveAuditFilters: boolean;
   onClearFilters: () => void;
   onInspect: (eventId: string) => void;
   onLoadMore: (numItems: number) => void;
 };
+
+function AuditRecord({ event }: { event: AuditEventRecord }) {
+  const type = auditRecordLabel(event.entityType);
+  const title = event.context?.title;
+  const hasTitle = !!title && title !== type;
+  return (
+    <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
+      {hasTitle ? <p className="line-clamp-2 text-foreground">{title}</p> : null}
+      <p className="text-xs text-muted-foreground">
+        {type}{event.entityId ? ' · #' + event.entityId.slice(0, 8) : ''}
+      </p>
+      {event.context?.subtitle ? (
+        <p className="line-clamp-2 text-xs text-muted-foreground">{event.context.subtitle}</p>
+      ) : null}
+    </div>
+  );
+}
 
 export function AuditTable({
   isAuditLoading,
@@ -42,37 +59,14 @@ export function AuditTable({
 }: AuditTableProps) {
   if (isAuditLoading) return <AdminNotice message="Loading activity…" />;
   const exhausted = auditStatus === 'Exhausted';
-  const loadMore = !exhausted ? (
-    <Button
-      type="button"
-      variant="tertiary"
-      loading={auditStatus === 'LoadingMore'}
-      disabled={auditStatus !== 'CanLoadMore'}
-      onClick={() => onLoadMore(AUDIT_FETCH_LIMIT)}
-    >
-      {hasActiveAuditFilters ? 'Search older activity' : 'Load older activity'}
-    </Button>
-  ) : null;
   return (
-    <div className="min-w-0 space-y-3">
-      <div
-        className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"
-        role="status"
-        aria-live="polite"
-      >
-        <p>
-          {displayedAuditEvents.length}{' '}
-          {hasActiveAuditFilters ? 'matching ' : ''}records loaded ·{' '}
-          {exhausted ? 'End of history' : 'Newest first'}
-        </p>
-        {loadMore}
-      </div>
-      {!exhausted && hasActiveAuditFilters ? (
-        <p className="text-xs text-muted-foreground">
-          Search runs through history in batches. Continue searching older
-          activity until the end of history to find every match.
-        </p>
-      ) : null}
+    <div className="min-w-0 space-y-3" aria-busy={auditStatus === 'LoadingMore'}>
+      <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+        {displayedAuditEvents.length}{' '}
+        {hasActiveAuditFilters ? 'matching ' : ''}
+        {displayedAuditEvents.length === 1 ? 'record' : 'records'} loaded
+        {exhausted ? ' · End of history' : ' · Newest first'}
+      </p>
       {displayedAuditEvents.length === 0 ? (
         <AdminNotice
           message={
@@ -85,28 +79,30 @@ export function AuditTable({
         />
       ) : (
         <ScrollArea orientation="horizontal" className="max-w-full">
-          <Table className="table-fixed">
+          <Table className="table-fixed" aria-label="Audit activity">
             <colgroup>
               <col className="hidden w-[140px] sm:table-column" />
+              <col className="hidden w-[22%] md:table-column" />
               <col />
-              <col className="w-[88px] sm:w-[100px]" />
+              <col className="hidden w-[28%] lg:table-column" />
+              <col className="w-[60px]" />
             </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden sm:table-cell">When</TableHead>
-                <TableHead>Activity</TableHead>
-                <TableHead>
-                  <span className="sr-only">Record details</span>
-                </TableHead>
+                <TableHead scope="col" className="hidden sm:table-cell">When</TableHead>
+                <TableHead scope="col" className="hidden md:table-cell">Person</TableHead>
+                <TableHead scope="col">Activity</TableHead>
+                <TableHead scope="col" className="hidden lg:table-cell">Record</TableHead>
+                <TableHead scope="col"><span className="sr-only">Details</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {displayedAuditEvents.map((event, index) => {
-                const meta = event.meta ?? {};
-                const preview =
-                  typeof meta.bodyPreview === 'string'
-                    ? meta.bodyPreview
-                    : null;
+                const preview = typeof event.meta?.bodyPreview === 'string'
+                  ? event.meta.bodyPreview
+                  : null;
+                const person = auditPersonName(event);
+                const action = auditActionLabel(event.action);
                 return (
                   <TableRow key={event.id} index={index}>
                     <TableCell className="hidden align-top sm:table-cell">
@@ -117,56 +113,39 @@ export function AuditTable({
                         </span>
                       </time>
                     </TableCell>
+                    <TableCell className="hidden align-top text-foreground [overflow-wrap:anywhere] md:table-cell">
+                      {person}
+                    </TableCell>
                     <TableCell className="align-top">
                       <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
-                        <p>
-                          <span className="font-semibold">
-                            {auditPersonName(event)}
-                          </span>
-                          <span className="block text-muted-foreground sm:inline">
-                            {' '}
-                            {auditActionLabel(event.action)}
-                          </span>
-                        </p>
-                        <p className="text-sm">
-                          {event.context?.title ??
-                            auditRecordLabel(event.entityType)}
-                        </p>
-                        {event.context?.subtitle ? (
-                          <p className="text-xs text-muted-foreground">
-                            {event.context.subtitle}
-                          </p>
-                        ) : null}
+                        <p className="text-foreground md:hidden">{person}</p>
+                        <p className="text-foreground">{action}</p>
+                        <div className="lg:hidden"><AuditRecord event={event} /></div>
                         {preview ? (
-                          <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                          <p className="line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
                             {preview}
                           </p>
                         ) : null}
-                        <p className="text-xs text-muted-foreground">
-                          {auditRecordLabel(event.entityType)}
-                          {event.entityId
-                            ? ` · #${event.entityId.slice(0, 8)}`
-                            : ''}
-                        </p>
                         <time
                           className="block text-xs text-muted-foreground sm:hidden"
                           dateTime={event.createdAt}
                         >
-                          {format(
-                            new Date(event.createdAt),
-                            'MMM d, yyyy · h:mm:ss a',
-                          )}
+                          {format(new Date(event.createdAt), 'MMM d, yyyy · h:mm:ss a')}
                         </time>
                       </div>
+                    </TableCell>
+                    <TableCell className="hidden align-top lg:table-cell">
+                      <AuditRecord event={event} />
                     </TableCell>
                     <TableCell className="align-top">
                       <Button
                         type="button"
-                        variant="tertiary"
-                        aria-label={`Details: ${auditActionLabel(event.action)} by ${auditPersonName(event)}`}
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={'Details: ' + action + ' by ' + person}
                         onClick={() => onInspect(event.id)}
                       >
-                        Details
+                        <ChevronRight aria-hidden="true" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -176,8 +155,23 @@ export function AuditTable({
           </Table>
         </ScrollArea>
       )}
-      {displayedAuditEvents.length > 0 && loadMore ? (
-        <div className="flex justify-center">{loadMore}</div>
+      {!exhausted ? (
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            type="button"
+            variant="tertiary"
+            loading={auditStatus === 'LoadingMore'}
+            disabled={auditStatus !== 'CanLoadMore'}
+            onClick={() => onLoadMore(AUDIT_FETCH_LIMIT)}
+          >
+            {hasActiveAuditFilters ? 'Search older activity' : 'Load older activity'}
+          </Button>
+          {hasActiveAuditFilters ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Search older activity until the end of history to find every match.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
