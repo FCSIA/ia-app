@@ -84,7 +84,6 @@ export function DateTimePicker({
               onChange(combineDateAndTime(date, timeValue));
             }}
             disabled={disabledDays}
-            captionLayout="dropdown"
             autoFocus
           />
           <div className="space-y-2 border-t p-3">
