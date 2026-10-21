@@ -7,6 +7,80 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.38",
+    "date": "2026-10-21",
+    "commit": "2990cac4",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "notifications",
+        "summary": "Enable desktop notifications from a banner that fits below navigation and preserves your keyboard position.",
+        "commit": "2990cac4"
+      },
+      {
+        "category": "Added",
+        "scope": "profiles",
+        "summary": "Choose a preferred name in settings. Profiles still show your regular name, and people can find you by either name.",
+        "commit": "eee3d8c1"
+      },
+      {
+        "category": "Improved",
+        "scope": "admin",
+        "summary": "Staff can search clearer activity history, and calendar controls and keyboard focus outlines fit more reliably.",
+        "commit": "4c464526"
+      },
+      {
+        "category": "Improved",
+        "scope": "admin",
+        "summary": "Feedback replies have a simpler layout.",
+        "commit": "e7dd4f88"
+      },
+      {
+        "category": "Improved",
+        "scope": "media",
+        "summary": "GIFs pause when offscreen and load more efficiently while keeping playback controls and original image quality.",
+        "commit": "a317659e"
+      },
+      {
+        "category": "Improved",
+        "scope": "moderation",
+        "summary": "Preferred names now follow school language filters, with flagged changes sent for staff review.",
+        "commit": "79a8e414"
+      },
+      {
+        "category": "Improved",
+        "scope": "dashboard",
+        "summary": "The dashboard calendar now keeps its month controls in one compact header and fits neatly on smaller screens.",
+        "commit": "679f7a00"
+      },
+      {
+        "category": "Improved",
+        "scope": "announcements",
+        "summary": "Announcement pages now share clickable profiles and compact mobile actions, with simpler connection lists, centered empty states, and more consistent spacing.",
+        "commit": "8b29a445"
+      },
+      {
+        "category": "Fixed",
+        "scope": "themes",
+        "summary": "Custom themes now offer adjustable wallpaper blur, a switch to turn surface tint off, and contrast warnings that let you keep your chosen colors.",
+        "commit": "196cf06a"
+      },
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "Tooltips now match the active theme surface.",
+        "commit": "fa0d0c4b"
+      },
+      {
+        "category": "Fixed",
+        "scope": "chat",
+        "summary": "Long URLs stay inside pinned message previews.",
+        "commit": "70108066"
+      }
+    ],
+    "title": "Preferred names, theme controls, and smoother GIF playback"
+  },
+  {
     "version": "0.8.37",
     "date": "2026-10-17",
     "title": "Clearer announcements, simpler settings, and a steadier dashboard",

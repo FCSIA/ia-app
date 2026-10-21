@@ -12,6 +12,30 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.38 — 2026-10-21 (alpha)
+
+**Preferred names, theme controls, and smoother GIF playback**
+
+### Added
+
+- **notifications** — Enable desktop notifications from a banner that fits below navigation and preserves your keyboard position. ([`2990cac4`](https://github.com/virajdas/ia-app/commit/2990cac4))
+- **profiles** — Choose a preferred name in settings. Profiles still show your regular name, and people can find you by either name. ([`eee3d8c1`](https://github.com/virajdas/ia-app/commit/eee3d8c1))
+
+### Improved
+
+- **admin** — Staff can search clearer activity history, and calendar controls and keyboard focus outlines fit more reliably. ([`4c464526`](https://github.com/virajdas/ia-app/commit/4c464526))
+- **admin** — Feedback replies have a simpler layout. ([`e7dd4f88`](https://github.com/virajdas/ia-app/commit/e7dd4f88))
+- **media** — GIFs pause when offscreen and load more efficiently while keeping playback controls and original image quality. ([`a317659e`](https://github.com/virajdas/ia-app/commit/a317659e))
+- **moderation** — Preferred names now follow school language filters, with flagged changes sent for staff review. ([`79a8e414`](https://github.com/virajdas/ia-app/commit/79a8e414))
+- **dashboard** — The dashboard calendar now keeps its month controls in one compact header and fits neatly on smaller screens. ([`679f7a00`](https://github.com/virajdas/ia-app/commit/679f7a00))
+- **announcements** — Announcement pages now share clickable profiles and compact mobile actions, with simpler connection lists, centered empty states, and more consistent spacing. ([`8b29a445`](https://github.com/virajdas/ia-app/commit/8b29a445))
+
+### Fixed
+
+- **themes** — Custom themes now offer adjustable wallpaper blur, a switch to turn surface tint off, and contrast warnings that let you keep your chosen colors. ([`196cf06a`](https://github.com/virajdas/ia-app/commit/196cf06a))
+- **web** — Tooltips now match the active theme surface. ([`fa0d0c4b`](https://github.com/virajdas/ia-app/commit/fa0d0c4b))
+- **chat** — Long URLs stay inside pinned message previews. ([`70108066`](https://github.com/virajdas/ia-app/commit/70108066))
+
 ## v0.8.37 — 2026-10-17 (alpha)
 
 **Clearer announcements, simpler settings, and a steadier dashboard**
