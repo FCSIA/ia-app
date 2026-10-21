@@ -171,6 +171,12 @@
   See `docs/features/preferred-names-testing.md` for the review checklist.
 ### Desktop notification setup notice (2026-10-19)
 
+- Release integration rechecked desktop/narrow geometry, saved dismissal,
+  loading and permission states. The feature now controls Banner's existing
+  `open` prop through eligibility changes, preserving its collapse lifecycle.
+  Banner also restores focus when a loading action was disabled before closing,
+  while preserving focus explicitly moved elsewhere. Fixture keyboard checks,
+  all six eligibility tests, web typecheck and lint (21 existing warnings) pass.
 - The dashboard's existing push recovery notice now also offers first-time setup
   on supported desktop browsers. Blocked permission shows browser-settings
   guidance without an Enable action. Explicit browser opt-outs and the existing

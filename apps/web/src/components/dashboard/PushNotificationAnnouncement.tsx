@@ -82,10 +82,7 @@ export function PushNotificationAnnouncement() {
     };
   }, [refreshDevice]);
 
-  if (!announcement || dismissed === null || !configuredKey) {
-    return null;
-  }
-
+  const open = Boolean(announcement && dismissed === false && configuredKey);
   const blocked = announcement === 'blocked';
   const title = blocked
     ? 'Allow notifications in your browser’s site settings'
@@ -97,6 +94,7 @@ export function PushNotificationAnnouncement() {
     : 'Turn notifications back on';
 
   const enable = () => {
+    if (!configuredKey) return;
     setBusy(true);
     // Called first, inside the tap, so iOS still shows the permission prompt.
     enablePush(configuredKey)
@@ -134,7 +132,7 @@ export function PushNotificationAnnouncement() {
     <Banner
       variant="fixed"
       icon={BellOff}
-      open={!dismissed}
+      open={open}
       dismissible
       dismissLabel="Dismiss notifications announcement"
       onDismiss={dismiss}

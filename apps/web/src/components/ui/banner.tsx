@@ -264,6 +264,7 @@ function BannerMotion({ fixed, reduceMotion, config, children }: BannerMotionPro
   const pointerEvents = useTransform(shown, (v) => (v > 0.5 ? "auto" : "none"));
 
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
   // Measured in a layout effect, not a ref callback: React attaches refs
   // before it runs layout effects, so a gap set from the ref came before
   // marginBottom's useTransform subscribed to it (in a layout effect above)
@@ -310,7 +311,15 @@ function BannerMotion({ fixed, reduceMotion, config, children }: BannerMotionPro
     // Leaving with keyboard focus inside: hand it to a neighbour, so it
     // doesn't fall back to the top of the page when the banner unmounts.
     const root = rootRef.current;
-    if (root?.contains(document.activeElement)) focusNeighbour(root);
+    const lastFocused = lastFocusedRef.current;
+    // A loading action can become disabled and lose focus before the banner
+    // closes. Recover that focus only while it is still on the document body;
+    // never take it back from another control the user has reached.
+    const lostToDisabledAction = document.activeElement === document.body &&
+      lastFocused?.matches(":disabled") && root?.contains(lastFocused);
+    if (root && (root.contains(document.activeElement) || lostToDisabledAction)) {
+      focusNeighbour(root);
+    }
 
     if (reduceMotion) {
       const hide = animate(shown, 0, spring.fast.exit);
@@ -345,6 +354,7 @@ function BannerMotion({ fixed, reduceMotion, config, children }: BannerMotionPro
   return (
     <motion.div
       ref={rootRef}
+      onFocusCapture={(event) => { lastFocusedRef.current = event.target as HTMLElement; }}
       style={{ gridTemplateRows, marginBottom, overflow }}
       // w-full: the banner is a container (for its narrow layout), so it
       // can't size to its content and has to take the full row.
