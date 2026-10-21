@@ -261,7 +261,7 @@ function FeedbackResponses({
   }
 
   return (
-    <CardGroup border="outlined" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
+    <CardGroup border="none" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
       <Card className="p-4">
         <div className="space-y-3">
           {report.responses.map((response) => (
