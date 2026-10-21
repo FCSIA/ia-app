@@ -38,6 +38,21 @@
 
 ### Audit UI Repair (2026-10-20)
 
+- The latest composition pass puts view tabs, search, and Filters in one desktop
+  toolbar, with inline one/two/four-column filters and nested advanced search.
+  Action and record now share a cell: category plus concise verb, then the title.
+  Duplicate category nouns, title-plus-ID clutter, and repeated basic search
+  summaries are removed. Category colors stay consistent across deletions.
+  Complete timestamps remain on every row; long names and unknown categories
+  are bounded with complete data in Details. Material visuals await owner review.
+- Comment audit events now retain the announcement ID/title in existing metadata,
+  including deletion events. No schema migration or dependency upgrade is needed.
+  The authorized `anonymous-agent` demo update succeeded, preserving 55 historical
+  records. Eight comment tests pass, including deletion/orphan context and refusal
+  for a different user; 32 audit and four engagement tests also pass. Web/backend
+  typechecks, web lint (21 existing warnings), and the production build pass.
+  Five-width, long-content, query recovery, and Details diagnostics are documented
+  in the review notes; the final live console has no errors.
 - The owner requested omitting read/unread audit events. Announcement mutations
   now preserve personal read state without emitting them; other read-state
   domains already omitted them. Existing history is retained. All 25 focused

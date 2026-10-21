@@ -51,6 +51,27 @@ const ACTION_LABELS: Record<string, string> = {
 export function auditActionLabel(action: string): string {
   return ACTION_LABELS[action] ?? auditLabel(action);
 }
+/** Compact action copy when the record type is rendered alongside it.
+ * Remove only the event's own entity path, preserving qualifiers such as
+ * "reaction" or "member role". Filters and original data keep the full label.
+ */
+export function auditActionSummary(action: string, entityType: string): string {
+  const entity = entityType.replace(/[_\s]/g, '').toLowerCase();
+  const aliases: Record<string, string[]> = {
+    comment: ['announcement comment'],
+    studentschedule: ['schedule'],
+    studentschedulegroup: ['schedule group'],
+  };
+  const label = auditLabel(action);
+  const lowerLabel = label.toLowerCase();
+  const prefixes = [auditLabel(entityType).toLowerCase(), ...(aliases[entity] ?? [])];
+  const prefix = prefixes.find((value) => lowerLabel.startsWith(`${value} `));
+  if (!prefix) return auditActionLabel(action);
+  const summary = label.slice(prefix.length + 1);
+  if (summary === 'read') return 'Marked read';
+  if (summary === 'unread') return 'Marked unread';
+  return auditLabel(summary);
+}
 export function isFlexAudit(entityType: string): boolean {
   const type = entityType.replace(/[_\s]/g, '').toLowerCase();
   return type.startsWith('flex') || type === 'event';

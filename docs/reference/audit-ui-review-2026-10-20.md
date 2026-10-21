@@ -3,6 +3,78 @@
 The primary checkout is on `codex/admin-audit-log-ux`. This is diagnostic
 verification, with material visual changes awaiting the design owner's review.
 
+## Latest composition and repetition pass
+
+The previous composition used separate full-width rows for search, Filters, and
+Advanced search. Closed disclosures consumed the same horizontal emphasis as
+results, while desktop Activity and Record columns separated one event's meaning.
+The latest pass replaces that arrangement with the following composition:
+
+- Activity views, search, and a compact Filters trigger share one desktop toolbar.
+  Below desktop width, views sit above the search/filter row. Search remains
+  visible; its value is not repeated in a summary.
+- The filter disclosure expands inline. Existing Field/FieldGroup patterns use
+  one column on mobile, two at `md`, and four at `xl`. Record ID spans two columns;
+  From and To each receive a full column. A first experiment paired both dates
+  inside a single column; selected date text plus two clear actions exposed its
+  insufficient width, so that layout was discarded.
+- Advanced search uses the existing local Radix Collapsible with a Button trigger,
+  inside Filters. Applied field/query summaries and Clear filters remain visible
+  when closed; an unapplied draft remains explicitly distinguished. Invalid
+  drafts keep the last applied query and results.
+- The first table cell contains category plus concise action, followed by the
+  affected record. Person and time use bounded columns. At narrow widths they
+  fold beneath the activity. IDs appear only when the title cannot be resolved.
+- Shared action copy uses `action` and `entityType`, stripping only the event's
+  own entity prefix. Qualifiers such as reaction/member role remain. Unknown
+  pairs fall back to the full label. Original codes remain in search and Details.
+- Category colors now remain constant across additions/deletions; the action
+  states what happened. Long names and unknown category text stop at two lines,
+  alongside existing title/context/preview bounds. Details preserve complete values.
+- A date-on-first-row experiment was discarded: scrolling would leave times
+  without visible date context. Every event retains its date and exact time.
+
+Current Fluid Table and Button rendered examples, Code/API, exact registries,
+and local adapters were checked again. Fluid does not provide Field/Collapsible
+in its current registry; current shadcn **Radix** docs and local adapters were
+reviewed. Collapsible's dry-run matches the installed Radix wrapper. This uses
+existing composition contracts, with no new shared primitive API or geometry
+patch. The existing Table row index contract remains intact.
+
+The schema already separates action, entity type, and entity ID. No normalization
+migration is necessary for the display change. New comment events now retain
+`announcementId` and the title in existing metadata; deletion no longer loses the
+parent's context. Comment text is not added to the audit snapshot. Historical
+missing/deleted relationships cannot be recovered and retain their ID fallback.
+Convex 1.47's [staged validators](https://docs.convex.dev/database/schemas#staged-validators)
+validate proposed schemas in the background; they do not migrate records. The
+repo remains on 1.46.0.
+
+Browser diagnostics cover 320, 390, 768, 1024, and 1440px without document
+horizontal overflow. Selected dates and independent clear buttons fit at 320px
+and tablet width. The October 17 inclusive range returns 16 records. Structured
+`type:Comment` returns two historical events; an unterminated quote keeps those
+results while disabling Apply and showing the validation error. Clearing, empty
+results, filter keyboard order, raw event data, and Escape/focus return pass.
+Synthetic cases cover long Unicode names, unbroken previews/IDs, unknown types,
+automatic/deleted actors, loading, sparse pages, pagination states, six themes,
+and reduced motion. Theme captures also include intermediate transition frames;
+the preceding settled color review still applies because the pass adds no color
+tokens. The temporary fixture route was removed before building;
+the original Custom theme was restored.
+
+Evidence is in `/tmp/ia-audit-review/composition-*.png`, including
+`composition-final-desktop.png`, `composition-expanded-desktop.png`,
+`composition-final-320.png`, `composition-final-390.png`,
+`composition-tablet-filled-dates.png`, and `composition-long-320.png`.
+Earlier experiments remain evidence of diagnosis, not the final design.
+The authorized typechecked local demo function update succeeded with its 55
+historical records intact. Eight comment tests, 32 audit tests, and four
+engagement tests pass. Backend and web typechecks pass; web lint passes with the same 21 existing
+warnings, and the Turbopack production build passes. The final live browser
+console has no errors. Native device behavior and owner visual approval remain
+outstanding; no remote push or production update was performed.
+
 ## Follow-up primitive and readability review
 
 The follow-up fixes the owners of the defects rather than compensating in the

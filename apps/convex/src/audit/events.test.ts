@@ -8,6 +8,7 @@ import type { Id } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
 import {
   auditActionLabel,
+  auditActionSummary,
   auditLabel,
   isFlexAudit,
   matchesAuditSearch,
@@ -81,6 +82,21 @@ async function fixture() {
 }
 
 describe('audit search grammar', () => {
+  test.each([
+    ['ANNOUNCEMENT_READ', 'Announcement', 'Marked read'],
+    ['ANNOUNCEMENT_UNREAD', 'ANNOUNCEMENT', 'Marked unread'],
+    ['ANNOUNCEMENT_COMMENT_DELETED', 'Comment', 'Deleted'],
+    ['CLUB_CHANNEL_MESSAGE_POSTED', 'ClubChannelMessage', 'Posted'],
+    ['CLUB_CHANNEL_MESSAGE_REACTION_REMOVED', 'ClubChannelMessage', 'Reaction removed'],
+    ['CLUB_MEMBER_ROLE_SET', 'Club', 'Member role set'],
+    ['schedule.updated', 'StudentSchedule', 'Updated'],
+    ['schoolDayBlock.created', 'SchoolDayBlock', 'Created'],
+    ['FLEX_WORKSHOP_CREATED', 'FLEX_WORKSHOP', 'Created'],
+    ['FLEX_WORKSHOP_REGISTERED', 'FlexRegistration', 'Registered for a workshop'],
+    ['FUTURE_ACTION', 'Announcement', 'Future action'],
+  ])('summarizes %s beside its record type without losing qualifiers', (action, type, expected) => {
+    expect(auditActionSummary(action, type)).toBe(expected);
+  });
   test.each(['person:"unfinished', '-person:"unfinished', String.raw`text:"say \"hello`])(
     'identifies the missing closing quote in %s',
     (input) => expect(parseAuditSearch(input).error).toBe('Close each quoted value with a double quote.'),

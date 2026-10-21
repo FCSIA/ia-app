@@ -17,9 +17,10 @@ read/unread entries remain available.
 - Defaults to **All** activity. General and Flex & Events offer narrower views; both historical camel-case and uppercase categories are recognized.
 - Uses cursor pagination across the complete history, newest first. Empty matching batches retain an older-history control. Loaded record counts are not total match counts; continue until **End of history** to find every match.
 - Keeps all original action codes, IDs, timestamps, and metadata in **Details → Original data and IDs**. Whiteboard snapshots and links remain available.
-- Keeps search visible and places the remaining controls in a full-width Filters disclosure. Controls wrap according to available space. Desktop rows separate time, person, activity, and record; narrower screens fold those fields into the activity cell.
-- Limits long record titles, context, and message previews to two lines in the table. Details preserve complete content and original data. Closing Details returns keyboard focus to the row's opener.
-- Emphasizes actions and person names, with compact record-category colors and a red tint for removals. Text retains the theme's foreground contrast; IDs and timestamps remain secondary.
+- Places activity views, search, and a compact Filters trigger together on desktop. Filters expand inline into one, two, or four columns; advanced search stays inside that disclosure. Applied field filters remain visible when collapsed. The visible search value is not repeated underneath it.
+- Pairs the record category with a concise action, then shows the affected record beneath it. Existing `action` and `entityType` fields remove duplicate nouns without changing stored codes. Desktop rows keep bounded Person and When columns; narrower screens fold those values into the activity cell.
+- Limits long record titles, person names, context, message previews, and unknown categories to two lines in the table. Details preserve complete content and original data. Closing Details returns keyboard focus to the row's opener.
+- Emphasizes actions, with consistent compact record-category colors across additions and deletions. Text retains the theme's foreground contrast; IDs and timestamps remain secondary. An ID appears in the table only when a record title is unavailable.
 
 ## Search
 
@@ -56,6 +57,10 @@ Supported fields: `person`, `action`, `type`, `record`, `text`, `source`, `after
 `auditEvents` stores actorId, action, entityType, entityId, meta, and createdAt. Admin-facing reads require ADMIN, SUPER_ADMIN, or SUPPORT_STAFF. Unauthorized clients receive no rows, related names, options, or details.
 
 Domain mutations call `logAuditEvent` after significant writes, including message changes/reactions and whiteboard edits. Stored event data is not rewritten by name resolution or search.
+
+New announcement comment events preserve their announcement ID and title in the
+existing metadata field, so the parent remains identifiable after deletion. This
+does not retain comment text or migrate older events that lack the relationship.
 
 ## Known Limits
 

@@ -18,6 +18,7 @@ import { AUDIT_FETCH_LIMIT } from '../../_lib/admin-utils';
 import type { AuditEventRecord } from '../../_lib/types';
 import {
   auditActionLabel,
+  auditActionSummary,
   auditRecordLabel,
   auditPersonName,
 } from '~/apps/shared/audit';
@@ -56,24 +57,31 @@ const recordColors: Record<string, BadgeColor> = {
   'Sign-in account': 'orange',
 };
 
-function AuditRecord({ event }: { event: AuditEventRecord }) {
+function AuditActivity({ event }: { event: AuditEventRecord }) {
   const type = auditRecordLabel(event.entityType);
   const title = event.context?.title;
   const hasTitle = !!title && title !== type;
-  const removed = /(?:^|[._])(deleted|removed)$/i.test(event.action);
   return (
     <div className="flex min-w-0 flex-col gap-1.5 [overflow-wrap:anywhere]">
-      {hasTitle ? <p className="line-clamp-2 text-foreground">{title}</p> : null}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         {recordColors[type] ? (
-          <Badge color={removed ? 'red' : recordColors[type]} size="sm">{type}</Badge>
+          <Badge color={recordColors[type]} size="sm">
+            {type}
+          </Badge>
         ) : (
-          <span className="text-xs text-muted-foreground">{type}</span>
+          <span className="line-clamp-2 min-w-0 max-w-full text-xs text-muted-foreground">
+            {type}
+          </span>
         )}
-        {event.entityId ? (
-          <span className="text-xs text-muted-foreground">#{event.entityId.slice(0, 8)}</span>
-        ) : null}
+        <p className="max-w-full font-semibold text-foreground">
+          {auditActionSummary(event.action, event.entityType)}
+        </p>
       </div>
+      {hasTitle ? (
+        <p className="line-clamp-2 text-foreground">{title}</p>
+      ) : event.entityId ? (
+        <p className="text-xs text-muted-foreground">#{event.entityId.slice(0, 8)}</p>
+      ) : null}
       {event.context?.subtitle ? (
         <p className="line-clamp-2 text-xs text-muted-foreground">{event.context.subtitle}</p>
       ) : null}
@@ -95,8 +103,7 @@ export function AuditTable({
   return (
     <div className="min-w-0 space-y-3" aria-busy={auditStatus === 'LoadingMore'}>
       <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
-        {displayedAuditEvents.length}{' '}
-        {hasActiveAuditFilters ? 'matching ' : ''}
+        {displayedAuditEvents.length} {hasActiveAuditFilters ? 'matching ' : ''}
         {displayedAuditEvents.length === 1 ? 'record' : 'records'} loaded
         {exhausted ? ' · End of history' : ' · Newest first'}
       </p>
@@ -114,61 +121,61 @@ export function AuditTable({
         <ScrollArea orientation="horizontal" className="max-w-full">
           <Table className="table-fixed" aria-label="Audit activity">
             <colgroup>
-              <col className="hidden w-[140px] sm:table-column" />
-              <col className="hidden w-[22%] md:table-column" />
               <col />
-              <col className="hidden w-[28%] lg:table-column" />
+              <col className="hidden w-[160px] md:table-column xl:w-[200px]" />
+              <col className="hidden w-[148px] sm:table-column" />
               <col className="w-[60px]" />
             </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col" className="hidden sm:table-cell">When</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">Person</TableHead>
                 <TableHead scope="col">Activity</TableHead>
-                <TableHead scope="col" className="hidden lg:table-cell">Record</TableHead>
-                <TableHead scope="col"><span className="sr-only">Details</span></TableHead>
+                <TableHead scope="col" className="hidden md:table-cell">
+                  Person
+                </TableHead>
+                <TableHead scope="col" className="hidden sm:table-cell">
+                  When
+                </TableHead>
+                <TableHead scope="col">
+                  <span className="sr-only">Details</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {displayedAuditEvents.map((event, index) => {
-                const preview = typeof event.meta?.bodyPreview === 'string'
-                  ? event.meta.bodyPreview
-                  : null;
+                const preview =
+                  typeof event.meta?.bodyPreview === 'string' ? event.meta.bodyPreview : null;
                 const person = auditPersonName(event);
                 const action = auditActionLabel(event.action);
+                const date = new Date(event.createdAt);
                 return (
                   <TableRow key={event.id} index={index}>
-                    <TableCell className="hidden align-top sm:table-cell">
-                      <time dateTime={event.createdAt}>
-                        {format(new Date(event.createdAt), 'MMM d, yyyy')}
-                        <span className="block text-xs text-muted-foreground">
-                          {format(new Date(event.createdAt), 'h:mm:ss a')}
-                        </span>
-                      </time>
-                    </TableCell>
-                    <TableCell className="hidden align-top font-medium text-foreground [overflow-wrap:anywhere] md:table-cell">
-                      {person}
-                    </TableCell>
                     <TableCell className="align-top">
                       <div className="flex min-w-0 flex-col gap-1.5 [overflow-wrap:anywhere]">
-                        <p className="text-foreground md:hidden">{person}</p>
-                        <p className="font-semibold text-foreground">{action}</p>
-                        <div className="lg:hidden"><AuditRecord event={event} /></div>
+                        <AuditActivity event={event} />
                         {preview ? (
                           <p className="line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
                             {preview}
                           </p>
                         ) : null}
-                        <time
-                          className="block text-xs text-muted-foreground sm:hidden"
-                          dateTime={event.createdAt}
-                        >
-                          {format(new Date(event.createdAt), 'MMM d, yyyy · h:mm:ss a')}
-                        </time>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground md:hidden">
+                          <span className="line-clamp-2 max-w-full">{person}</span>
+                          <time className="sm:hidden" dateTime={event.createdAt}>
+                            {format(date, 'MMM d, yyyy')} ·{' '}
+                            {format(date, 'h:mm:ss a')}
+                          </time>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden align-top lg:table-cell">
-                      <AuditRecord event={event} />
+                    <TableCell className="hidden align-top text-foreground [overflow-wrap:anywhere] md:table-cell">
+                      <span className="line-clamp-2">{person}</span>
+                    </TableCell>
+                    <TableCell className="hidden align-top sm:table-cell">
+                      <time dateTime={event.createdAt}>
+                        {format(date, 'h:mm:ss a')}
+                        <span className="block text-xs text-muted-foreground">
+                          {format(date, 'MMM d, yyyy')}
+                        </span>
+                      </time>
                     </TableCell>
                     <TableCell className="align-top">
                       <Button

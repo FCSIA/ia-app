@@ -150,7 +150,6 @@ export function useAdminAudit(activeTab: AdminTabId) {
   };
 
   const auditFilterChips = [
-    auditSearch.trim() ? `Search: ${auditSearch.trim()}` : null,
     auditActor.trim() ? `Person: ${auditActor.trim()}` : null,
     auditEntityId.trim() ? `Record ID: ${auditEntityId.trim()}` : null,
     auditActionFilter !== 'ALL'
@@ -160,7 +159,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
       ? `Record type: ${auditRecordLabel(auditEntityTypeFilter)}`
       : null,
     auditActorScope !== 'ALL'
-      ? `Source: ${auditActorScope === 'SYSTEM' ? 'System' : 'User'}`
+      ? `Source: ${auditActorScope === 'SYSTEM' ? 'Automatic activity' : 'People'}`
       : null,
     auditStartDate
       ? `From: ${format(new Date(`${auditStartDate}T00:00:00`), 'MMM d, yyyy')}`
