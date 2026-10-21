@@ -30,7 +30,7 @@ browser push delivery for subscribed devices.
 - Service worker registration: `apps/web/src/components/pwa/service-worker-registrar.tsx`
 - Subscription drift repair and device reporting: `apps/web/src/components/notifications/push-subscription-sync.tsx`
 - Enabling push and the re-enable prompt state: `apps/web/src/components/notifications/enable-push.ts`
-- Re-enable prompt: `apps/web/src/components/dashboard/PushReenableAnnouncement.tsx`
+- Desktop setup and re-enable prompt: `apps/web/src/components/dashboard/PushNotificationAnnouncement.tsx`
 - Platform detection: `apps/web/src/lib/pwa.ts`
 - Unread nav badge: `apps/web/src/components/layout/AppShell.tsx`
 
@@ -234,6 +234,17 @@ no longer matches the configured VAPID key. Neither path prompts the user.
 otherwise re-subscribe on the next launch and undo the choice. It records a
 per-browser opt-out instead, which the sync respects and the next explicit
 enable clears.
+
+The dashboard offers first-time setup on supported desktop browsers when
+notification permission is still "ask". The square Fluid Banner sits directly
+below the shell header, flush with the sidebar, with one message and no subtitle.
+Blocked desktop browsers see guidance
+to allow notifications in the browser's site settings, without another
+permission request. The notice respects the per-browser opt-out and its existing
+30-day dismissal marker, and hides when permission is granted. Permission,
+window-focus, visibility, and cross-tab storage changes refresh its state.
+First-time mobile setup remains in notification settings; the dashboard still
+offers recovery for mobile devices reported as having silently lost push.
 
 ### Silent loss on iOS
 

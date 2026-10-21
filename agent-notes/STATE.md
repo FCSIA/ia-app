@@ -2,11 +2,14 @@
 
 ## Active Focus
 
-- **Current checkout (2026-10-20)**: The primary checkout is on
-  `codex/admin-audit-log-ux` for the requested audit UI repair, now integrating
-  `origin/main` through `e7dd4f88`. Older integration/worktree notes are history.
-- **Current goal**: The owner authorized squash-merging audit PR #152 and then
-  running `release:ship` to publish through the existing release workflow.
+- **Current checkout (2026-10-21)**: The primary checkout is on
+  `codex/desktop-notification-banner`, carrying the three earlier local banner
+  commits onto main after audit PR #152 squash-merged as `4c464526`.
+  The original commits are preserved on `work/desktop-notification-banner`.
+- **Current goal**: The owner authorized including the banner in the release,
+  after squash-merging audit PR #152 and running `release:ship`.
+  Release PR #165 is held in draft until the banner lands; regenerate its single
+  release commit from the combined main before validation and production shipping.
   This supersedes earlier draft/awaiting-owner-review and no-production-authorization
   notes for this release. Preserve main's preferred-name display/search support
   when integrating the audit refactor. Local demo data remains intact.
@@ -166,6 +169,42 @@
 - Only this worktree's anonymous local backend on ports 3270/3271 was initialized,
   seeded, and updated. Shared and production deployments were not changed.
   See `docs/features/preferred-names-testing.md` for the review checklist.
+### Desktop notification setup notice (2026-10-19)
+
+- Release integration rechecked desktop/narrow geometry, saved dismissal,
+  loading and permission states. The feature now controls Banner's existing
+  `open` prop through eligibility changes, preserving its collapse lifecycle.
+  Banner also restores focus when a loading action was disabled before closing,
+  while preserving focus explicitly moved elsewhere. Fixture keyboard checks,
+  all six eligibility tests, web typecheck and lint (21 existing warnings) pass.
+- The dashboard's existing push recovery notice now also offers first-time setup
+  on supported desktop browsers. Blocked permission shows browser-settings
+  guidance without an Enable action. Explicit browser opt-outs and the existing
+  30-day dismissal marker are respected; permission/focus/visibility/storage
+  changes refresh the notice. First-time mobile prompts remain unchanged.
+- Owner follow-up requests a square, edge-to-edge banner and no subtitle. The
+  notification notice now composes Fluid `Banner variant="fixed"`, `BannerTitle`
+  and `BannerAction` in AppShell's new `bannerSlot`, outside page padding. Header
+  and banner share a sticky group. Current Fluid rendered example, fixed Code,
+  API, exact registry source and dependencies were inspected; shadcn confirms
+  Radix/new-york/Lucide. Registry dry-run/diff would overwrite shared adapters,
+  so only Banner was added, adapted to existing motion/HSL/type/Button contracts
+  and protected in `fluid:update`. No shared dependencies were overwritten.
+- An isolated fixture renders the actual AppShell/header/sidebar and banner,
+  with account, router and push responses mocked. Desktop geometry is exact:
+  header bottom/banner top 64px; sidebar right/banner left 72px; radius 0px.
+  Edges remain joined after scrolling. 320/390px layouts have no horizontal
+  overflow; blocked copy wraps. Keyboard enable still registers and hides the
+  notice; keyboard dismissal restores focus and removes its row. Light/dark
+  captures: `/tmp/ia-push-review/shell-banner-*.jpg`. This is diagnostic review,
+  not an authenticated dashboard or native-device test.
+- Six eligibility tests, web typecheck/lint (21 existing warnings), and production
+  build pass. An isolated browser fixture verifies keyboard setup, loading,
+  successful registration, blocked guidance, opt-out, dismissal/reload/expiry,
+  storage-write failure, and mobile recovery. Light/dark and 390px checks are
+  diagnostic; authenticated dashboard, real push delivery, and native device
+  review were not run. Captures: `/tmp/ia-push-review/`. Visual review remains
+  with the design owner. No shared or production deployment was changed.
 
 ### Announcement layout and detail pages (2026-10-17)
 
