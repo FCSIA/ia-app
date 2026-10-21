@@ -1,8 +1,10 @@
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 export type AnnouncementFilter = "all" | "unread" | "saved";
 
 type AnnouncementAuthor = {
   firstName?: string | null;
   lastName?: string | null;
+  preferredName?: string | null;
   isDeveloper?: boolean | null;
 };
 
@@ -57,14 +59,13 @@ export function filterAnnouncements<T extends SearchableAnnouncement>(
     if (filter === "saved" && !announcement.isBookmarked) return false;
     if (!terms.length) return true;
 
-    const author = [announcement.author?.firstName, announcement.author?.lastName]
-      .filter(Boolean)
-      .join(" ");
+    const author = displayName(announcement.author);
     const searchText = normalizeSearchText(
       [
         announcement.title,
         announcement.body,
         author,
+        ...nameSearchValues(announcement.author),
         announcementAudience(announcement),
         announcement.targetPathway,
         ...(announcement.targetMajorPathways ?? []),

@@ -3,22 +3,39 @@
 import { useSyncExternalStore } from 'react';
 
 const key = 'ia_gif_autoplay';
-const eventName = 'ia-gif-playback-change';
+const listeners = new Set<() => void>();
+let value = true;
+let initialized = false;
+function readStored() {
+  try { value = localStorage.getItem(key) !== 'false'; } catch { /* Keep this tab's choice when storage is blocked. */ }
+  initialized = true;
+}
 function read() {
-  try { return localStorage.getItem(key) !== 'false'; } catch { return true; }
+  if (!initialized) readStored();
+  return value;
+}
+function onStorage(event: StorageEvent) {
+  if (event.key !== key && event.key !== null) return;
+  readStored();
+  listeners.forEach((listener) => listener());
 }
 function subscribe(listener: () => void) {
-  window.addEventListener('storage', listener);
-  window.addEventListener(eventName, listener);
+  if (listeners.size === 0) {
+    readStored();
+    window.addEventListener('storage', onStorage);
+  }
+  listeners.add(listener);
   return () => {
-    window.removeEventListener('storage', listener);
-    window.removeEventListener(eventName, listener);
+    listeners.delete(listener);
+    if (listeners.size === 0) window.removeEventListener('storage', onStorage);
   };
 }
 const serverSnapshot = () => false;
-function setAutoplay(value: boolean) {
-  localStorage.setItem(key, String(value));
-  window.dispatchEvent(new Event(eventName));
+function setAutoplay(next: boolean) {
+  value = next;
+  initialized = true;
+  try { localStorage.setItem(key, String(next)); } catch { /* Still update this tab. */ }
+  listeners.forEach((listener) => listener());
 }
 export function useGifAutoplay() {
   const autoplay = useSyncExternalStore(subscribe, read, serverSnapshot);

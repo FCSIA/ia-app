@@ -1,5 +1,7 @@
 'use client';
 
+import { nameInitials } from '~/apps/shared/user-name';
+
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
@@ -102,7 +104,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
             {selected ? (
               <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
-                  {selected.firstName[0]}{selected.lastName[0]}
+                  {nameInitials(selected).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{fullName(selected)}</p>
@@ -161,7 +163,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                           className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
                         >
                           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                            {student.firstName[0]}{student.lastName[0]}
+                            {nameInitials(student).toUpperCase()}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{fullName(student)}</p>

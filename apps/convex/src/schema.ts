@@ -68,6 +68,7 @@ export const schema = defineSchema({
     uniqueId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
+    preferredName: v.optional(v.string()),
     gradeLevel: v.optional(v.number()),
     major: v.optional(pathwayValidator),
     minor: v.optional(pathwayValidator),
@@ -96,7 +97,9 @@ export const schema = defineSchema({
     customBackgroundUrl: v.optional(v.string()),
     customBackgroundStorageId: v.optional(v.id("_storage")),
     customBackgroundPalette: v.optional(v.array(v.string())),
-    customBackgroundTint: v.optional(v.string()),
+    // null explicitly disables image tint, including after resampling/replacing it.
+    customBackgroundTint: v.optional(v.union(v.string(), v.null())),
+    customBackgroundBlur: v.optional(v.number()),
     searchText: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),

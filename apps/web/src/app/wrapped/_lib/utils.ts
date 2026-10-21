@@ -1,3 +1,4 @@
+import { displayName as profileName } from '~/apps/shared/user-name';
 import {
   Star,
   Sparkles,
@@ -211,7 +212,7 @@ export function buildSlides(summary: WrappedSummary, displayName: string): Slide
     kind: 'name',
     eyebrow: 'You @-mentioned most',
     value: summary.topMentioned
-      ? `${summary.topMentioned.firstName} ${summary.topMentioned.lastName}`
+      ? profileName(summary.topMentioned)
       : 'Nobody yet',
     caption: summary.topMentioned
       ? `${summary.topMentioned.mentions.toLocaleString()} mentions. They probably owe you a reply.`

@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
@@ -277,7 +279,7 @@ function PassCard({
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs">
           <div className="text-muted-foreground">
             <span className="font-semibold text-foreground">
-              {user?.firstName} {user?.lastName}
+              {displayName(user)}
             </span>
           </div>
         </div>

@@ -8,13 +8,15 @@ import {
   applyCustomColors,
   customColorSlots,
   loadCustomColors,
-  validateCustomColors,
+  customColorWarnings,
   type CustomColorKey,
-  type CustomColorErrors,
   type CustomColors,
 } from '@/lib/custom-theme';
 import { Button } from '@/components/ui/button';
 import { ColorPicker, ColorSwatch } from '@/components/ui/color-picker';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { DEFAULT_WALLPAPER_BLUR, MAX_WALLPAPER_BLUR } from '~/apps/shared/custom-theme';
 import { FileInput } from '@/components/ui/file-input';
 import { Tabs, TabsList, TabItem, TabPanel } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +44,7 @@ function CustomBackgroundPanel() {
   const user = useCurrentUser();
   const [uploading, setUploading] = useState(false);
   const [sampling, setSampling] = useState(false);
-  const [pendingTint, setPendingTint] = useState<string | null>(null);
+  const [pendingTint, setPendingTint] = useState<string | null | undefined>(undefined);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const saveUserImage = useAction(api.users.me.saveUserImage);
   const clearUserImage = useMutation(api.users.me.clearUserImage);
@@ -51,7 +53,7 @@ function CustomBackgroundPanel() {
 
   const preview = user?.customBackgroundUrl ?? null;
   const palette = user?.customBackgroundPalette ?? [];
-  const selectedTint = pendingTint ?? user?.customBackgroundTint;
+  const selectedTint = pendingTint !== undefined ? pendingTint : user?.customBackgroundTint;
 
   async function uploadAndSave(file: File) {
     const wallpaperPalette = await paletteFromImage(file).catch(() => []);
@@ -84,15 +86,15 @@ function CustomBackgroundPanel() {
     }
   }
 
-  async function handleTint(tint: string) {
-    if (pendingTint || tint === selectedTint) return;
+  async function handleTint(tint: string | null) {
+    if (pendingTint !== undefined || tint === selectedTint) return;
     setPendingTint(tint);
     try {
       await setTint({ tint });
     } catch {
       toast({ title: 'Couldn’t save the tint', variant: 'destructive' });
     } finally {
-      setPendingTint(null);
+      setPendingTint(undefined);
     }
   }
 
@@ -193,11 +195,20 @@ function CustomBackgroundPanel() {
       </div>
 
       {preview ? (
+        <WallpaperBlurControl key={preview} savedBlur={user?.customBackgroundBlur ?? DEFAULT_WALLPAPER_BLUR} />
+      ) : null}
+
+      {preview ? (
         <div className="space-y-2 border-t border-foreground/[0.08] pt-3">
           <div>
-            <p className="text-sm font-medium text-foreground">Surface tint</p>
+            <Switch
+              label="Surface tint"
+              checked={Boolean(selectedTint)}
+              disabled={pendingTint !== undefined || (!selectedTint && palette.length === 0)}
+              onCheckedChange={(enabled) => void handleTint(enabled ? palette[0] : null)}
+            />
             <p className="text-xs text-muted-foreground">
-              Choose an image color for cards and menus.
+              Choose an image color for cards and menus, or turn off tint to use your usual surface colors.
             </p>
           </div>
           {palette.length > 0 ? (
@@ -210,7 +221,7 @@ function CustomBackgroundPanel() {
                   selected={selectedTint === color}
                   aria-label={`Wallpaper color ${index + 1}: ${color}`}
                   aria-pressed={selectedTint === color}
-                  aria-disabled={pendingTint !== null}
+                  aria-disabled={pendingTint !== undefined}
                   onClick={() => void handleTint(color)}
                 />
               ))}
@@ -232,17 +243,56 @@ function CustomBackgroundPanel() {
   );
 }
 
+function WallpaperBlurControl({ savedBlur }: { savedBlur: number }) {
+  const { toast } = useToast();
+  const setBlur = useMutation(api.users.me.setCustomBackgroundBlur);
+  const [draft, setDraft] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const blur = draft ?? savedBlur;
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await setBlur({ blur });
+      setDraft(null);
+    } catch {
+      toast({ title: 'Couldn’t save the blur', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 border-t border-foreground/[0.08] pt-3">
+      <Slider
+        size="compact"
+        label="Wallpaper blur"
+        value={blur}
+        min={0}
+        max={MAX_WALLPAPER_BLUR}
+        step={1}
+        disabled={saving}
+        formatValue={(value) => value === 0 ? 'Off' : `${value}px`}
+        onChange={(value) => setDraft(value as number)}
+      />
+      <p className="text-xs text-muted-foreground">
+        Keep your image sharp with blur off, or soften it for easier reading.
+      </p>
+      <Button type="button" size="sm" variant="ghost" disabled={saving || blur === savedBlur} onClick={() => void handleSave()}>
+        {saving ? 'Saving…' : 'Save blur'}
+      </Button>
+    </div>
+  );
+}
+
 function CustomColorsPanel() {
   const { toast } = useToast();
   const [colors, setColors] = useState<CustomColors>(loadCustomColors);
-  const [validationErrors, setValidationErrors] = useState<CustomColorErrors>({});
+  const warnings = customColorWarnings(colors);
   const [openSlot, setOpenSlot] = useState<CustomColorKey | null>(null);
 
   function persist(next: CustomColors) {
     setColors(next);
-    const errors = validateCustomColors(next);
-    setValidationErrors(errors);
-    if (Object.keys(errors).length > 0) return;
 
     try {
       if (Object.keys(next).length === 0) {
@@ -279,7 +329,7 @@ function CustomColorsPanel() {
     <div className="space-y-3">
       <div>
         <p className="text-xs text-muted-foreground">
-          Surface contrast adjusts automatically. Unreadable page, link, and icon combinations are not saved.
+          Surface text adjusts automatically. Contrast warnings are suggestions and won’t prevent saving.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Wallpaper pixels cannot be checked automatically; review page text over your image before leaving.
@@ -290,7 +340,7 @@ function CustomColorsPanel() {
         {customColorSlots.map(({ key, label, help }) => {
           const hex = colors[key];
           const isOpen = openSlot === key;
-          const error = validationErrors[key];
+          const warning = warnings[key];
           return (
             <div
               key={key}
@@ -340,9 +390,9 @@ function CustomColorsPanel() {
                       </Button>
                     ) : null}
                   </div>
-                  {error ? (
-                    <p className="text-xs leading-5 text-destructive" role="alert">
-                      {error} This draft has not been applied or saved.
+                  {warning ? (
+                    <p className="text-xs leading-5 text-muted-foreground" role="status">
+                      {warning} Your colors are still applied and saved.
                     </p>
                   ) : null}
                 </div>

@@ -1,3 +1,4 @@
+import { greetingName } from '~/apps/shared/user-name';
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
@@ -78,7 +79,7 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
 
   return (
     <Screen
-      header={<AppHeader title={user.firstName ? `Hi, ${user.firstName}` : "Home"} />}
+      header={<AppHeader title={greetingName(user) ? `Hi, ${greetingName(user)}` : "Home"} />}
       contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
     >
       {schedule === undefined ? (
@@ -362,7 +363,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
       contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
       header={
         <AppHeader
-          title={user?.firstName ? `Hi, ${user.firstName}` : "Home"}
+          title={greetingName(user) ? `Hi, ${greetingName(user)}` : "Home"}
           action={
             <IconButton
               icon={SlidersHorizontal}
@@ -789,7 +790,7 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
       ? pickDailySchoolMessage("school-over", `${user?._id ?? "guest"}:${format(now, "yyyy-MM-dd")}`)
       : null;
   
-  const firstName = user?.firstName ?? "";
+  const firstName = greetingName(user);
   const hour = now.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 

@@ -31,13 +31,6 @@ export const markRead = mutation({
       });
     }
 
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "ANNOUNCEMENT_READ",
-      entityType: "Announcement",
-      entityId: args.announcementId,
-    });
-
     return { success: true, readAt };
   },
 });
@@ -61,13 +54,6 @@ export const markUnread = mutation({
     if (existing) {
       await ctx.db.delete(existing._id);
     }
-
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "ANNOUNCEMENT_UNREAD",
-      entityType: "Announcement",
-      entityId: args.announcementId,
-    });
 
     return { success: true };
   },

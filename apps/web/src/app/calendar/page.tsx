@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
@@ -93,7 +95,7 @@ function CalendarInviteStrip() {
             <p className="truncate text-sm font-semibold">{invite.entry.title}</p>
             <p className="truncate text-xs text-muted-foreground">
               {format(new Date(invite.entry.startAt), 'MMM d, h:mm a')} ·{' '}
-              {invite.sender.firstName} {invite.sender.lastName}
+              {displayName(invite.sender)}
             </p>
           </div>
           <Button

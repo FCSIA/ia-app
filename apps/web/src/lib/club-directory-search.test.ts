@@ -14,6 +14,12 @@ const person = {
 } as Parameters<typeof peopleSearchValues>[0];
 
 describe("peopleSearchValues", () => {
+  it("finds both the preferred and regular name", () => {
+    const preferred = { ...person, preferredName: "Rohan" };
+    for (const query of ["Rohan", "Rohit Senthilkumar"]) {
+      expect(filterBySearchQuery([preferred], query, peopleSearchValues)).toEqual([preferred]);
+    }
+  });
   it("includes unit names and role types in People search", () => {
     expect(filterBySearchQuery([person], "curie", peopleSearchValues)).toEqual([
       person,

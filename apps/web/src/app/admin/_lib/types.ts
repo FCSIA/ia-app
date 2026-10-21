@@ -22,6 +22,8 @@ export type StudentBulkUpdateResult = {
 export type AuditActorScope = 'ALL' | 'USER' | 'SYSTEM';
 
 export type AuditEventRecord = {
+  actorId?: string | null;
+  context?: { title: string; subtitle: string | null; references: Array<{ id: string; label: string; name: string }> } | null;
   id: string;
   action: string;
   entityType: string;
@@ -32,6 +34,7 @@ export type AuditEventRecord = {
     id: string;
     firstName: string;
     lastName: string;
+    preferredName?: string | null;
     uniqueId: string;
   } | null;
 };
@@ -56,6 +59,7 @@ export type AdminUserRecord = {
   uniqueId: string;
   firstName: string;
   lastName: string;
+  preferredName?: string | null;
   roles?: string[];
   gradeLevel?: number | null;
   major?: string | null;

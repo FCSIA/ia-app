@@ -71,10 +71,10 @@ export function DateTimePicker({
             {selectedDateTime ? format(selectedDateTime, 'PPP · p') : placeholder}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[19rem] p-0" align="start">
+        <PopoverContent className="w-auto p-0" align="start">
           <Calendar
-            className="w-full"
             mode="single"
+            defaultMonth={selectedDate}
             selected={selectedDate}
             onSelect={(date) => {
               if (!date) {
@@ -84,8 +84,7 @@ export function DateTimePicker({
               onChange(combineDateAndTime(date, timeValue));
             }}
             disabled={disabledDays}
-            captionLayout="dropdown"
-            initialFocus
+            autoFocus
           />
           <div className="space-y-2 border-t p-3">
             <Label htmlFor={timeInputId} className="text-xs font-medium text-muted-foreground">

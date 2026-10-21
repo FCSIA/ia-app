@@ -92,7 +92,9 @@ surface.
 ## Layout Components
 
 `AppShell` renders authenticated navigation, unread notification count, profile
-menu, admin links, and the global command palette.
+menu, admin links, and the global command palette. Its `bannerSlot` sits below
+the header, outside page padding; both stay together while scrolling. Use Fluid
+`Banner variant="fixed"` there for square, edge-to-edge notices.
 
 For normal pages, prefer the layout wrappers:
 

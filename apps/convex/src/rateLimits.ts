@@ -57,6 +57,7 @@ export const contentRateLimiter = new RateLimiter(components.rateLimiter, {
     period: MINUTE,
     capacity: 10,
   },
+  preferredNameChangesByUser: { kind: "token bucket", rate: 5, period: 10 * MINUTE, capacity: 5 },
   reportsByUser: { kind: "fixed window", rate: 5, period: 10 * MINUTE },
   joinRequestsByUser: { kind: "fixed window", rate: 10, period: 10 * MINUTE },
   commentsByUser: {

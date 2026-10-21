@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { Plus, Trash2, Info } from 'lucide-react';
 import type { Id, Doc } from '~/apps/convex/src/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +25,8 @@ type ModerationMutation<TArgs> = {
 
 type ModerationKeyword = Doc<'moderationKeywordRules'>;
 type ModerationReport = Doc<'moderationReports'> & {
-  submitter: { firstName: string; lastName: string } | null;
-  reportedUser: { firstName: string; lastName: string } | null;
+  submitter: { firstName: string; lastName: string; preferredName?: string | null } | null;
+  reportedUser: { firstName: string; lastName: string; preferredName?: string | null } | null;
 };
 type ModerationReportStatus = ModerationReport['status'];
 
@@ -150,7 +152,7 @@ export function ModerationTab({
           ) : (
             <div className="divide-y rounded-lg border">
               {filteredReports.map((r: ModerationReport) => (
-                <div key={r._id} className="p-3 transition-colors hover:bg-muted/30">
+                <div key={r._id} className="p-3">
                   <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -165,7 +167,7 @@ export function ModerationTab({
                       </div>
                       <p className="text-sm font-medium text-foreground">{r.reason}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        By {r.submitter?.firstName} {r.submitter?.lastName}
+                        By {displayName(r.submitter)}
                       </p>
                     </div>
                     {r.status === 'PENDING' ? (

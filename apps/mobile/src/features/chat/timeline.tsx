@@ -14,6 +14,7 @@ import {
   FlashList,
   type FlashListRef,
   type ListRenderItemInfo,
+  type ViewToken,
 } from "@shopify/flash-list";
 import { ArrowDown, MessageCircle } from "lucide-react-native";
 import { KeyboardChatScrollView } from "react-native-keyboard-controller";
@@ -24,9 +25,11 @@ import { radii, spacing } from "@/lib/tokens";
 import { ChatMessageRow } from "./message-row";
 import { buildTimelineRows, type TimelineRow } from "./timeline-layout";
 import type { ChatAttachment, ChatMessage, QuickReaction } from "./types";
+import { createMediaViewport, MediaVisibleContext, MediaViewportContext } from "@/lib/media-visibility";
 
 type ChatTimelineProps = {
   messages?: ChatMessage[];
+  mediaActive?: boolean;
   threadRoot?: ChatMessage | null;
   threadHasMoreReplies?: boolean;
   canPost?: boolean;
@@ -48,6 +51,8 @@ type ChatScrollContextValue = {
   keyboardOffset: number;
   extraContentPadding: SharedValue<number>;
   onEndVisible: (visible: boolean) => void;
+  onMediaScroll: () => void;
+  onMediaInset: (bottom: number) => void;
 };
 
 const ChatScrollContext = createContext<ChatScrollContextValue | null>(null);
@@ -69,12 +74,15 @@ const ClubChatScrollView = forwardRef<
       keyboardLiftBehavior="whenAtEnd"
       offset={context?.keyboardOffset ?? 0}
       onEndVisible={context?.onEndVisible}
+      onScroll={(event) => { props.onScroll?.(event); context?.onMediaScroll(); }}
+      onContentInsetChange={(insets) => context?.onMediaInset(insets.bottom)}
     />
   );
 });
 
 export function ChatTimeline({
   messages,
+  mediaActive = true,
   threadRoot,
   threadHasMoreReplies = false,
   canPost,
@@ -95,6 +103,14 @@ export function ChatTimeline({
   const listRef = useRef<FlashListRef<TimelineRow>>(null);
   const [isAtLiveEdge, setIsAtLiveEdge] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
+  const gifViewport = useMemo(createMediaViewport, []);
+  useEffect(() => () => gifViewport.dispose(), [gifViewport]);
+  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
+    const next = new Set(viewableItems.filter((item) => item.isViewable).map((item) => item.key));
+    setVisibleKeys((previous) => previous.size === next.size && [...next].every((key) => previous.has(key)) ? previous : next);
+    gifViewport.check();
+  }, [gifViewport]);
   const rows = useMemo(
     () => buildTimelineRows(messages ?? [], threadRoot),
     [messages, threadRoot],
@@ -122,7 +138,7 @@ export function ChatTimeline({
   }, [isAtLiveEdge, rows]);
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<TimelineRow>) => {
+    ({ item, target }: ListRenderItemInfo<TimelineRow>) => {
       if (item.type === "date") return <DateMarker label={item.label} />;
       if (item.type === "thread-divider") {
         return (
@@ -130,6 +146,7 @@ export function ChatTimeline({
         );
       }
       return (
+        <MediaVisibleContext.Provider value={mediaActive && target === "Cell" && visibleKeys.has(item.key)}>
         <ChatMessageRow
           message={item.message}
           groupedWithPrevious={item.groupedWithPrevious}
@@ -143,6 +160,7 @@ export function ChatTimeline({
           onVotePoll={onVotePoll}
           onOpenAttachment={onOpenAttachment}
         />
+        </MediaVisibleContext.Provider>
       );
     },
     [
@@ -153,6 +171,8 @@ export function ChatTimeline({
       onToggleReaction,
       onVotePoll,
       pendingActions,
+      mediaActive,
+      visibleKeys,
       threadHasMoreReplies,
       threadRoot,
     ],
@@ -167,8 +187,10 @@ export function ChatTimeline({
       keyboardOffset,
       extraContentPadding,
       onEndVisible: handleEndVisible,
+      onMediaScroll: gifViewport.check,
+      onMediaInset: gifViewport.setBottomInset,
     }),
-    [extraContentPadding, handleEndVisible, keyboardOffset],
+    [extraContentPadding, handleEndVisible, keyboardOffset, gifViewport],
   );
 
   const scrollToLiveEdge = useCallback(() => {
@@ -180,12 +202,16 @@ export function ChatTimeline({
 
   return (
     <ChatScrollContext.Provider value={scrollContext}>
-      <View style={{ flex: 1 }}>
+      <MediaViewportContext.Provider value={gifViewport}>
+      <View ref={gifViewport.setViewport} collapsable={false} onLayout={gifViewport.check} style={{ flex: 1 }}>
         <FlashList
           ref={listRef}
           style={{ flex: 1, width: "100%" }}
           data={rows}
           renderItem={renderItem}
+          extraData={visibleKeys}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={GIF_VIEWABILITY_CONFIG}
           keyExtractor={timelineKeyExtractor}
           getItemType={timelineItemType}
           renderScrollComponent={ClubChatScrollView}
@@ -250,9 +276,12 @@ export function ChatTimeline({
           </PressableScale>
         ) : null}
       </View>
+      </MediaViewportContext.Provider>
     </ChatScrollContext.Provider>
   );
 }
+
+const GIF_VIEWABILITY_CONFIG = { viewAreaCoveragePercentThreshold: 0, minimumViewTime: 100 };
 
 function timelineKeyExtractor(row: TimelineRow) {
   return row.key;

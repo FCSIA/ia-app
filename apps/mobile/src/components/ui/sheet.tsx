@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { BackHandler, StyleSheet, useWindowDimensions } from "react-native";
+import { BackHandler, StyleSheet, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -12,6 +12,7 @@ import { SheetInputProvider } from "@/components/ui/sheet-input-context";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
+import { createMediaViewport, MediaViewportContext, MediaVisibleContext } from "@/lib/media-visibility";
 
 type SheetProps = {
   open: boolean;
@@ -34,6 +35,11 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const modalRef = useRef<BottomSheetModal>(null);
+  const mediaViewport = useMemo(createMediaViewport, []);
+  useEffect(() => () => mediaViewport.dispose(), [mediaViewport]);
+  const handleMediaLayout = useCallback((event: LayoutChangeEvent) => {
+    mediaViewport.setViewport(event.currentTarget);
+  }, [mediaViewport]);
   const openRef = useRef(open);
   const onCloseRef = useRef(onClose);
   const presentedRef = useRef(false);
@@ -157,6 +163,8 @@ export function Sheet({
   );
 
   return (
+    <MediaViewportContext.Provider value={mediaViewport}>
+    <MediaVisibleContext.Provider value={open}>
     <BottomSheetModal
       ref={modalRef}
       accessible={false}
@@ -188,9 +196,12 @@ export function Sheet({
       snapPoints={stableSnapPoints}
       topInset={insets.top}
       onDismiss={handleDismiss}
+      onChange={mediaViewport.check}
     >
       {scrollable ? (
         <BottomSheetScrollView
+          onLayout={handleMediaLayout}
+          onScroll={mediaViewport.check}
           accessibilityViewIsModal
           contentContainerStyle={contentStyle}
           keyboardDismissMode="interactive"
@@ -200,11 +211,13 @@ export function Sheet({
           {content}
         </BottomSheetScrollView>
       ) : (
-        <BottomSheetView accessibilityViewIsModal style={contentStyle}>
+        <BottomSheetView onLayout={handleMediaLayout} accessibilityViewIsModal style={contentStyle}>
           {content}
         </BottomSheetView>
       )}
     </BottomSheetModal>
+    </MediaVisibleContext.Provider>
+    </MediaViewportContext.Provider>
   );
 }
 

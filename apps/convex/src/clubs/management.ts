@@ -950,6 +950,7 @@ export const listMyInvites = query({
       _id: v.id("users"),
       firstName: v.string(),
       lastName: v.string(),
+      preferredName: v.optional(v.string()),
       isDeveloper: v.optional(v.boolean()),
     }),
   })),
@@ -983,6 +984,7 @@ export const listMyInvites = query({
             _id: sender._id,
             firstName: sender.firstName,
             lastName: sender.lastName,
+            preferredName: sender.preferredName,
             isDeveloper: sender.isDeveloper,
           },
         };

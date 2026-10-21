@@ -1,5 +1,7 @@
 "use client";
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useMemo } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -85,7 +87,6 @@ export default function ClubsLandingPage() {
   return (
     <AppShell
       headerSlot={headerSlot}
-      mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
     >
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
         {invites.length > 0 ? (
@@ -111,7 +112,7 @@ export default function ClubsLandingPage() {
                       {invite.club.name}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      From {invite.sender.firstName} {invite.sender.lastName}
+                      From {displayName(invite.sender)}
                     </p>
                   </div>
                   <Button

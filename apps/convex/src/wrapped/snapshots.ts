@@ -55,6 +55,7 @@ const wrappedSummaryValidator = v.object({
       userId: v.string(),
       firstName: v.string(),
       lastName: v.string(),
+      preferredName: v.optional(v.string()),
       mentions: v.number(),
     }),
     v.null(),
@@ -273,6 +274,7 @@ async function buildSummaryForUser(
           userId: mentionedId,
           firstName: target.firstName,
           lastName: target.lastName,
+          preferredName: target.preferredName,
           mentions,
         };
       }
@@ -417,7 +419,19 @@ export const getMine = query({
       .unique();
 
     if (existing && existing.schemaVersion === WRAPPED_SCHEMA_VERSION) {
-      return existing.summary as WrappedSummary;
+      const summary = existing.summary as WrappedSummary;
+      if (!summary.topMentioned) return summary;
+      const personId = ctx.db.normalizeId("users", summary.topMentioned.userId);
+      const person = personId ? await ctx.db.get(personId) : null;
+      return person ? {
+        ...summary,
+        topMentioned: {
+          ...summary.topMentioned,
+          firstName: person.firstName,
+          lastName: person.lastName,
+          preferredName: person.preferredName,
+        },
+      } : summary;
     }
 
     const summary = await buildSummaryForUser(ctx, user._id, startYear);

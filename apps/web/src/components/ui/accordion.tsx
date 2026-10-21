@@ -13,7 +13,7 @@ import {
   type ReactNode,
   type HTMLAttributes,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 
 // SSR-safe layout effect (client components still server-render in Next).
@@ -250,6 +250,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     const isHoveringNonOpen =
       activeIndex !== null && !openItemRects.has(activeIndex);
     const shape = useShape();
+    const shouldReduceMotion = useReducedMotion();
 
     // Strip non-HTML props before spreading
     const {
@@ -402,8 +403,8 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                     height: rect.height,
                     opacity: isHoveringNonOpen ? 0.7 : 1,
                   }}
-                  exit={{ opacity: 0, transition: spring.moderate.exit }}
-                  transition={{
+                  exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.moderate.exit }}
+                  transition={shouldReduceMotion ? { duration: 0 } : {
                     top: { duration: 0 },
                     left: { duration: 0 },
                     width: { duration: 0 },
@@ -434,8 +435,8 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                     width: activeRect.width,
                     height: activeRect.height,
                   }}
-                  exit={{ opacity: 0, transition: spring.fast.exit }}
-                  transition={{
+                  exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                  transition={shouldReduceMotion ? { duration: 0 } : {
                     ...spring.fast,
                     opacity: { duration: 0.08 },
                   }}
@@ -455,8 +456,8 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                     width: focusRect.width + 4,
                     height: focusRect.height + 4,
                   }}
-                  exit={{ opacity: 0, transition: spring.fast.exit }}
-                  transition={{
+                  exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                  transition={shouldReduceMotion ? { duration: 0 } : {
                     ...spring.fast,
                     opacity: { duration: 0.08 },
                   }}
@@ -598,6 +599,7 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
     const groupCtx = useAccordionGroup();
     const standaloneOpen = useContext(StandaloneOpenContext);
     const shape = useShape();
+    const shouldReduceMotion = useReducedMotion();
 
     const isOpen = groupCtx?.grouped
       ? groupCtx.openValues.has(value)
@@ -652,8 +654,8 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
                   className={`absolute inset-0 ${shape.bg} bg-accent/20 dark:bg-accent/12 pointer-events-none`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: spring.fast.exit }}
-                  transition={{ duration: 0.08 }}
+                  exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                  transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.08 }}
                 />
               )}
             </AnimatePresence>
@@ -680,6 +682,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
     const groupCtx = useAccordionGroup();
     const { index, isOpen, triggerRef } = useAccordionItemContext();
     const shape = useShape();
+    const shouldReduceMotion = useReducedMotion();
     const [isHovered, setIsHovered] = useState(false);
 
     const isActive = groupCtx?.grouped
@@ -728,7 +731,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
             <motion.span
               className="shrink-0 inline-flex items-center justify-center"
               animate={{ rotate: isOpen ? 90 : 0 }}
-              transition={spring.fast}
+              transition={shouldReduceMotion ? { duration: 0 } : spring.fast}
             >
               <ChevronRight
                 size={16}
@@ -764,8 +767,8 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
               className={`absolute inset-0 ${shape.bg} bg-hover pointer-events-none`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: spring.fast.exit }}
-              transition={{ duration: 0.08 }}
+              exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.08 }}
             />
           )}
         </AnimatePresence>
@@ -787,6 +790,7 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
   ({ children, className, ...props }, ref) => {
     const groupCtx = useAccordionGroup();
     const { isOpen } = useAccordionItemContext();
+    const shouldReduceMotion = useReducedMotion();
 
     // The open height is animated to a self-measured LAYOUT pixel value, not
     // `height: "auto"`: framer resolves an "auto" target by measuring the
@@ -852,7 +856,7 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
           // height has no aesthetic value in bouncing, so a smooth approach
           // reads better.
           transition={
-            needsSnap.current
+            needsSnap.current || shouldReduceMotion
               ? { duration: 0 }
               : { ...spring.moderate, bounce: 0 }
           }

@@ -41,11 +41,13 @@ import {
 } from '@/components/ui/mention-node';
 import { cn } from '@/lib/utils';
 import { SchoolGifPicker } from './school-gif-picker';
-import { extractChatGifLinks } from '~/apps/shared/chat/gifs';
+import { extractChatGifLinks, isGifAttachment } from '~/apps/shared/chat/gifs';
+import { AnimatedGif } from '@/components/media/animated-gif';
 
 export type ChannelMentionSuggestion = {
   token: string;
   label: string;
+  searchNames?: string[];
   detail: string;
   kind: 'built-in' | 'tag' | 'person' | 'role' | 'unit';
 };
@@ -168,11 +170,13 @@ function MarkToolButton({
 function ComposerAttachmentTile({
   name,
   previewUrl,
+  mimeType,
   disabled,
   onRemove,
 }: {
   name: string;
   previewUrl: string | null;
+  mimeType?: string;
   disabled: boolean;
   onRemove: () => void;
 }) {
@@ -183,7 +187,9 @@ function ComposerAttachmentTile({
         previewUrl ? 'size-20' : 'flex h-20 w-40 items-center gap-2 px-2.5',
       )}
     >
-      {previewUrl ? (
+      {previewUrl && isGifAttachment({ fileName: name, mimeType }) ? (
+        <AnimatedGif src={previewUrl} name={name} thumbnail maxHeight={80} />
+      ) : previewUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={previewUrl} alt={name} className="size-full object-cover" />
       ) : (
@@ -353,7 +359,7 @@ export function ChannelMessageComposer({
         label: entry.label,
         detail: entry.detail,
         kind: entry.kind,
-        keywords: [entry.label, entry.detail].filter(Boolean),
+        keywords: [entry.label, entry.detail, ...(entry.searchNames ?? [])].filter(Boolean),
       })),
     [suggestionEntries],
   );
@@ -438,6 +444,7 @@ export function ChannelMessageComposer({
                 <ComposerAttachmentTile
                   key={attachment._id}
                   name={attachment.fileName}
+                  mimeType={attachment.mimeType}
                   previewUrl={
                     isPreviewableImage(attachment.mimeType, attachment.fileName)
                       ? attachment.fileUrl
@@ -454,6 +461,7 @@ export function ChannelMessageComposer({
                 <ComposerAttachmentTile
                   key={draft.id}
                   name={draft.file.name}
+                  mimeType={draft.file.type}
                   previewUrl={draft.previewUrl}
                   disabled={isPending}
                   onRemove={() => removeDraft(draft.id)}

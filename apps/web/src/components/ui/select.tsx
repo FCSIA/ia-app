@@ -12,7 +12,7 @@ import {
   type ReactNode,
   type HTMLAttributes,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import type { IconComponent } from "@/lib/icon-context";
@@ -339,6 +339,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     // Triggers follow the global shape; popup rows keep their concentric
     // 8px curves inside a 12px shell with a 4px inset.
     const shape = popupShape;
+    const shouldReduceMotion = useReducedMotion();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -460,7 +461,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                 ? { opacity: 1, y: 0, scaleY: 1 }
                 : { opacity: 0, y: -4, scaleY: 0.96 }
             }
-            transition={open ? spring.fast : spring.fast.exit}
+            transition={shouldReduceMotion ? { duration: 0 } : open ? spring.fast : spring.fast.exit}
             style={{ transformOrigin: "top center" }}
             // Radix unmounts the popup the moment its open state flips, so
             // that flip is held back (radixOpen in the root) until the exit
@@ -550,8 +551,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                             height: checkedRect.height,
                             opacity: 1,
                           }}
-                          exit={{ opacity: 0, transition: spring.moderate.exit }}
-                          transition={{
+                          exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.moderate.exit }}
+                          transition={shouldReduceMotion ? { duration: 0 } : {
                             ...spring.moderate,
                             opacity: { duration: 0.08 },
                           }}
@@ -581,8 +582,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                             width: activeRect.width,
                             height: activeRect.height,
                           }}
-                          exit={{ opacity: 0, transition: spring.fast.exit }}
-                          transition={{
+                          exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                          transition={shouldReduceMotion ? { duration: 0 } : {
                             ...spring.fast,
                             opacity: { duration: 0.08 },
                           }}
@@ -604,8 +605,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                             width: focusRect.width + 4,
                             height: focusRect.height + 4,
                           }}
-                          exit={{ opacity: 0, transition: spring.fast.exit }}
-                          transition={{
+                          exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                          transition={shouldReduceMotion ? { duration: 0 } : {
                             ...spring.fast,
                             opacity: { duration: 0.08 },
                           }}
@@ -655,6 +656,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const contentCtx = useContext(SelectContentContext);
     const internalRef = useRef<HTMLDivElement>(null);
     const shape = popupShape;
+    const shouldReduceMotion = useReducedMotion();
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
     const hasMounted = useRef(false);
@@ -677,7 +679,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
 
     const isActive = contentCtx?.activeIndex === index;
     const isChecked = selectCtx.value === value;
-    const skipAnimation = !hasMounted.current;
+    const skipAnimation = !hasMounted.current || shouldReduceMotion;
 
     return (
       <SelectPrimitive.Item
@@ -757,11 +759,11 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
                   initial={{ pathLength: skipAnimation ? 1 : 0 }}
                   animate={{
                     pathLength: 1,
-                    transition: { duration: 0.08, ease: "easeOut" },
+                    transition: { duration: shouldReduceMotion ? 0 : 0.08, ease: "easeOut" },
                   }}
                   exit={{
                     pathLength: 0,
-                    transition: { duration: 0.04, ease: "easeIn" },
+                    transition: { duration: shouldReduceMotion ? 0 : 0.04, ease: "easeIn" },
                   }}
                 />
               </motion.svg>

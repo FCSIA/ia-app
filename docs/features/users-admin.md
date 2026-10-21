@@ -14,6 +14,7 @@ User management is handled through Convex functions and the Admin Panel.
 - Creates and links app users to Better Auth users.
 - Imports and exports student rows by CSV, bulk-updates student grade and pathway fields by CSV, and imports administrator accounts by CSV.
 - Activates, deactivates, bulk-deletes, assigns roles, and resets passwords.
+- Lets each user set or clear an optional preferred display name in Profile & Settings on web and native.
 - Stores dashboard widget order and optional desktop column positions for each user.
 
 The Admin Panel title appears in the app header. On narrow screens, section
@@ -41,6 +42,7 @@ so changing panel height does not move the centered layout horizontally.
 
 - `api.users.me.me`
 - `api.users.me.updateDashboardLayout`
+- `api.users.me.updatePreferredName`
 - `api.users.auth.changePassword`
 - `api.users.admin.list`
 - `api.users.admin.createUser`
@@ -68,6 +70,27 @@ with a brief animation and Undo. Done persists both preferences to the signed-in
 user only, and keeps the editor open if saving fails. Older clients that save
 only a flat order clear stale desktop positions.
 
+`preferredName` is optional and represents the complete display name. The shared
+`apps/shared/user-name.ts` helpers select it when present, otherwise the regular
+first and last name. Greetings preserve the regular first-name fallback.
+Profile names, chat authors (including existing and optimistic messages), mentions,
+club directories, schedules, calendars, announcements, events, Flex Friday,
+moderation, audit actors, and Wrapped use this rule on both clients.
+Profile dialogs, hover previews, and the user's own profile also show the regular
+name directly below the preferred name when they differ.
+
+Saving trims and collapses whitespace, limits names to 80 characters, rejects
+control characters, and updates the user search index in the same transaction.
+Blank input removes the preference. Preferred names also pass the server-side
+profanity and active school-rule filter: flagged text is masked before storage
+and indexing, with a pending moderation report, audit event, and author notice.
+Repeated nonempty changes are rate-limited; clearing remains available.
+Both names remain searchable in global,
+friend, admin, invitation, mention, and club directory searches. Regular roster
+names and account identifiers remain available for CSV administration and login.
+Notification text uses the display name when the notification is created;
+previously delivered text is historical content.
+
 ## Permissions
 
 Admin user-management mutations require admin-level roles. Bulk account deletion
@@ -75,6 +98,8 @@ is limited to super admins, cannot include the acting account, and removes the
 linked Better Auth identity, sessions, profile record, and profile images.
 Historical school and collaboration records remain for audit continuity. Normal
 users can read their own public profile and change their own password.
+They can also change their own preferred name; the mutation derives the account
+from the authenticated identity and accepts no target user ID.
 
 Administrator CSV import is restricted to `SUPER_ADMIN`. It accepts up to 200
 rows with `first_name,last_name,administrator_id,email`, creates only `ADMIN`
@@ -91,3 +116,4 @@ state.
 
 - [Auth and roles](../backend/auth-and-roles.md)
 - [Audit log](audit-log.md)
+- [Preferred-name test checklist](preferred-names-testing.md)

@@ -15,6 +15,7 @@ const userProfileValidator = schema
     "uniqueId",
     "firstName",
     "lastName",
+    "preferredName",
     "roles",
     "gradeLevel",
     "major",
@@ -41,6 +42,7 @@ export const userSelfProfileValidator = userProfileValidator.extend(
       "customBackgroundUrl",
       "customBackgroundPalette",
       "customBackgroundTint",
+      "customBackgroundBlur",
     ).fields,
 );
 
@@ -52,6 +54,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
+    preferredName: user.preferredName,
     roles: user.roles,
     gradeLevel: user.gradeLevel,
     major: user.major,
@@ -69,6 +72,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     customBackgroundUrl: user.customBackgroundUrl,
     customBackgroundPalette: user.customBackgroundPalette,
     customBackgroundTint: user.customBackgroundTint,
+    customBackgroundBlur: user.customBackgroundBlur,
     isDeveloper: user.isDeveloper,
     approvedBugCount: user.approvedBugCount,
     bugTagColor: user.bugTagColor,
@@ -81,6 +85,7 @@ export function toAdminUserProfile(user: Doc<"users">) {
     uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
+    preferredName: user.preferredName,
     roles: user.roles,
     gradeLevel: user.gradeLevel,
     major: user.major,
@@ -191,12 +196,14 @@ export function searchText(args: {
   uniqueId: string;
   firstName: string;
   lastName: string;
+  preferredName?: string;
 }) {
   return [
     args.uniqueId,
     args.firstName,
     args.lastName,
     fullName(args.firstName, args.lastName),
+    args.preferredName,
   ]
     .filter(Boolean)
     .join(" ")

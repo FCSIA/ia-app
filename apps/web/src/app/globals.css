@@ -398,17 +398,17 @@
 
   .custom[data-custom-wallpaper] .app-main-surface {
     background-color: hsl(var(--background) / 0.82) !important;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
   }
 
   .custom[data-custom-wallpaper] .app-main-header {
     background-color: hsl(var(--card) / 0.88) !important;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
   }
 
   .custom[data-custom-wallpaper] .app-mobile-tabbar {
     background-color: hsl(var(--card) / 0.88) !important;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
   }
 
   /* The shell already frosts the wallpaper once. Keep the channel timeline
@@ -426,7 +426,7 @@
 
   .custom[data-custom-wallpaper] aside[aria-label="Primary navigation"] {
     background-color: hsl(var(--sidebar) / 0.72) !important;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
   }
 
   .custom[data-custom-wallpaper] .admin-shell {
@@ -788,7 +788,7 @@
 
 /* Wallpaper already supplies visual texture. Tint raised surfaces with the
    chosen image color while keeping text and control colors independent. */
-.custom[data-custom-wallpaper] {
+.custom[data-custom-wallpaper][data-custom-wallpaper-tint] {
   --surface-2: color-mix(in oklab, hsl(var(--card)) 97%, var(--custom-wallpaper-tint, hsl(var(--card))) 3%);
   --surface-3: color-mix(in oklab, hsl(var(--card)) 94%, var(--custom-wallpaper-tint, hsl(var(--card))) 6%);
   --surface-4: color-mix(in oklab, hsl(var(--card)) 91%, var(--custom-wallpaper-tint, hsl(var(--card))) 9%);

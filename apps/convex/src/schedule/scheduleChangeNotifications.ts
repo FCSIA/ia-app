@@ -1,3 +1,4 @@
+import { greetingName } from '../../../shared/user-name';
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -132,7 +133,7 @@ export const fanout = internalMutation({
       await deliverNotification(ctx, {
         userId: friendId,
         category: "FRIEND_SCHEDULE_CHANGE",
-        title: `${user.firstName} updated their schedule`,
+        title: `${greetingName(user)} updated their schedule`,
         body: "A friend updated their shared schedule.",
         href: `/schedule?tab=friends&friend=${user._id}`,
         subject: { kind: "friendSchedule", friendUserId: user._id },

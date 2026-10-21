@@ -42,6 +42,7 @@ export type { ChannelSearchControl } from "@/components/layout/app-shell-header"
 export function AppShell({
   children,
   headerSlot,
+  bannerSlot,
   mainClassName,
   pageTransitionClassName,
   channelSearch,
@@ -51,6 +52,8 @@ export function AppShell({
 }: {
   children: ReactNode;
   headerSlot?: ReactNode;
+  /** Full-width notices below the header, outside page padding. */
+  bannerSlot?: ReactNode;
   mainClassName?: string;
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
@@ -275,21 +278,24 @@ export function AppShell({
             usesVisualViewport && "h-full overflow-hidden",
           )}
         >
-          <AppShellHeader
-            headerSlot={headerSlot}
-            channelSearch={channelSearch}
-            searchScope={searchScope}
-            commandHint={commandHint}
-            user={user}
-            questKeysFound={visibleQuestKeyCount(questProgress, questClock)}
-            onOpenGlobalSearch={() => setCommandOpen(true)}
-            onToggleSearchScope={toggleSearchScope}
-            onOpenProfile={() => {
-              navigationLoading?.startNavigation("/profile");
-              router.push("/profile");
-            }}
-            onLogout={handleLogout}
-          />
+          <div className="sticky top-0 z-20 shrink-0">
+            <AppShellHeader
+              headerSlot={headerSlot}
+              channelSearch={channelSearch}
+              searchScope={searchScope}
+              commandHint={commandHint}
+              user={user}
+              questKeysFound={visibleQuestKeyCount(questProgress, questClock)}
+              onOpenGlobalSearch={() => setCommandOpen(true)}
+              onToggleSearchScope={toggleSearchScope}
+              onOpenProfile={() => {
+                navigationLoading?.startNavigation("/profile");
+                router.push("/profile");
+              }}
+              onLogout={handleLogout}
+            />
+            {bannerSlot}
+          </div>
 
           <main
             className={

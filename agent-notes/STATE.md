@@ -2,6 +2,28 @@
 
 ## Active Focus
 
+- **Current checkout (2026-10-21)**: The primary checkout is on
+  `codex/desktop-notification-banner`, carrying the three earlier local banner
+  commits onto main after audit PR #152 squash-merged as `4c464526`.
+  The original commits are preserved on `work/desktop-notification-banner`.
+- **Current goal**: The owner authorized including the banner in the release,
+  after squash-merging audit PR #152 and running `release:ship`.
+  Release PR #165 is held in draft until the banner lands; regenerate its single
+  release commit from the combined main before validation and production shipping.
+  This supersedes earlier draft/awaiting-owner-review and no-production-authorization
+  notes for this release. Preserve main's preferred-name display/search support
+  when integrating the audit refactor. Local demo data remains intact.
+- **Dashboard calendar follow-up**: The owner requested a small commit directly
+  in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
+  October 18. After owner feedback, the month controls and full-calendar arrow
+  share one header through DayPicker's existing Month slot; the redundant
+  Calendar heading is removed. Date targets retain the calendar's cell size in
+  touch mode. Material visual changes remain awaiting owner review.
+  Web typecheck, lint (21 existing warnings), production build, and the pinned
+  changed-file React Doctor scan pass. Browser checks cover 320–1440px layouts,
+  touch date grids, keyboard selection, six-week months, and the shared schedule
+  date picker. Captures: `/tmp/ia-calendar-review/`; native device review was not run.
+  The prior release-headline PR #162 is squash-merged as `00bad9db`.
 - **Integration**: On October 17 the owner explicitly authorized squash-merging
   the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
   #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
@@ -9,14 +31,207 @@
   reconciled with their squash commits so final CI validates the combined source.
   Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
-- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
-  New material UI changes still require design-owner review. Native iPhone swipe
-  verification remains outstanding. Production deployment is not authorized.
+- **Goal**: Land verified changes and complete the authorized release. Native
+  iPhone swipe verification remains outstanding.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Audit UI Repair (2026-10-20)
+
+- Current-main integration preserves preferred-name display and regular/preferred
+  name searches across basic, paginated, and structured audit queries. All 455
+  backend tests across 87 files, backend/web typechecks, and web lint (21 existing
+  warnings) pass. The owner authorized PR #152's squash merge and `release:ship`;
+  production uses `elated-anaconda-301` and `app.fcsia.com` through release CI.
+- The latest composition pass puts view tabs, search, and Filters in one desktop
+  toolbar, with inline one/two/four-column filters and nested advanced search.
+  Action and record now share a cell: category plus concise verb, then the title.
+  Duplicate category nouns, title-plus-ID clutter, and repeated basic search
+  summaries are removed. Category colors stay consistent across deletions.
+  Complete timestamps remain on every row; long names and unknown categories
+  are bounded with complete data in Details. Material visuals await owner review.
+- Comment audit events now retain the announcement ID/title in existing metadata,
+  including deletion events. No schema migration or dependency upgrade is needed.
+  The authorized `anonymous-agent` demo update succeeded, preserving 55 historical
+  records. Eight comment tests pass, including deletion/orphan context and refusal
+  for a different user; 32 audit and four engagement tests also pass. Web/backend
+  typechecks, web lint (21 existing warnings), and the production build pass.
+  Five-width, long-content, query recovery, and Details diagnostics are documented
+  in the review notes; the final live console has no errors.
+- The owner requested omitting read/unread audit events. Announcement mutations
+  now preserve personal read state without emitting them; other read-state
+  domains already omitted them. Existing history is retained. All 25 focused
+  audit/engagement tests and backend typecheck pass, and the authorized local
+  demo update is complete with its 55 historical records intact.
+- Follow-up repairs shared Calendar/Popover geometry and surface contracts,
+  selected-tab visibility, reduced-motion behavior, and Table's inherited font
+  axis that suppressed nested emphasis. Audit rows now emphasize actions and use
+  compact semantic category colors with readable foreground text. Date pickers
+  reopen on their selected month and retain only caller-specified bounds.
+- DateTimePicker uses standard month navigation so future years are available.
+  Browser checks pass time editing, future navigation, Escape/focus return, and
+  a fitting 248px popup at 390px. The test form was canceled without saving.
+- All 21 focused audit tests pass, including missing-quote recovery. The authorized
+  local demo was updated again with that parser fix; its 55 records remain.
+  Web typecheck/lint (21 existing warnings) and production build pass. Five-width
+  and six-theme diagnostic review is recorded in the QA document; material visuals
+  still await the design owner. No remote branch push was performed.
+- Full-width disclosures and a container-fitting grid replace the 288px filter
+  container that squeezed desktop controls into roughly 57px columns. The audit
+  table separates time, person, activity, and record on desktop and folds these
+  into the activity cell as space narrows. Redundant headings and introductory
+  copy are removed; complete details remain available.
+- Passive admin panels, metrics, notices, and feedback/report cards no longer
+  highlight on hover. Existing interactive controls retain their feedback.
+- Details restore focus to their opener. Integration retains main's approved
+  calendar cell sizing instead of layering the audit branch's overlapping touch
+  width/aspect rule over it.
+- Web typecheck, lint (21 existing warnings), and production build pass through
+  `direnv exec .`. All 17 audit backend tests pass offline. Browser checks cover
+  five widths from 320px to 1440px, six themes, long content, filter results,
+  details/raw data, focus return, and loading/empty/pagination states.
+- The owner explicitly authorized updating the existing local demo at port 3210.
+  A one-time, typechecked function push to `anonymous-agent` succeeded without
+  resetting or seeding data. All 55 original audit records remain. Live browser
+  checks pass category views (55 general / 0 flex), an inclusive October 17 date
+  range (16), advanced search (1), invalid-draft preservation, and hydrated Details.
+- Port 3210 serves the demo state stored in the `merge-pr147` worktree. The
+  primary checkout's selected local deployment has the same ports but separate
+  state. Do not start another schema watcher against it. Web alone is running
+  at port 3000; backend updates were performed with an explicit temporary target.
+- Main integration verification passes web/backend typechecks, web lint (21
+  existing warnings), production compilation, and all 407 backend tests across
+  84 files. Main is merged locally. No remote branch push was performed.
+- See `docs/reference/audit-ui-review-2026-10-20.md` for evidence and remaining
+  review limits.
+
+### Audit Log Readability (2026-10-02)
+
+- Audit-only changes are on `codex/admin-audit-log-ux` in the managed
+  `admin-audit-log-ux/ia-app` worktree. The original checkout contains concurrent
+  preferred-name work and the combined local preview; preserve that work.
+- Plain-language labels, related names, complete original details, an All view,
+  bounded advanced search, and pagination through empty batches are implemented.
+- 36 focused tests pass, including complete 620-record history and access gates.
+  Web/backend TypeScript, web lint, and production compilation pass. `direnv`
+  is unavailable on Windows; verification used the installed Node tooling.
+  Production compilation used webpack because Turbopack failed on the isolated
+  verification copy's dependency junctions.
+- Responsive browser review covered 320px, 390px, 768px, and 1440px widths, basic
+  and advanced filters, details, raw data, and keyboard dismissal. The composition
+  awaits the design owner's visual review, including themes and reduced motion.
+- The user subsequently authorized a draft PR: #152 is open with
+  `sreyassabbani` requested as reviewer. Keep it in draft pending human review.
+  See `docs/features/audit-log.md`.
+
+### Preferred-name moderation (2026-10-20)
+
+- Preferred-name saves now apply the original English profanity dictionary and
+  active school keyword rules before storing or indexing names. Detected language
+  is masked; each flagged save atomically records a staff-only name snapshot in
+  a pending moderation report, an audit event, and an author notification that
+  respects preferences. Existing report-review permissions and status actions
+  apply. These reports do not enter the feedback/GitHub issue pipeline.
+- Nonempty saves have a per-account token bucket (capacity five, five tokens per
+  ten minutes). Clearing remains available during cooldowns or rule-read limits.
+  Tests cover dictionary/custom rules, detected obfuscations, innocent Unicode
+  names, indexing, report access/review, audit, notification opt-outs, and limits.
+- All 415 backend tests and backend/web/mobile TypeScript pass. Devlog and
+  whitespace checks pass; the new dependency bundles successfully in this worktree's anonymous local Convex backend (3270/3271).
+  The older backend's automatic filtering of other content remains unported;
+  see the moderation feature document for that scope and existing UI-copy drift.
+
+### Preferred profile names (2026-10-20)
+
+- Recovered the unmerged preferred-name commits `103981f1` and `f96ddfd5`
+  from `codex/admin-audit-readability`, preserving that checkout's unfinished
+  audit edits. Ported only preferred-name work into an isolated branch, then
+  rebased onto concurrent theme fix `196cf06a` without changing it.
+- Web and native settings set or clear a complete preferred display name.
+  Shared identity projections, initials, mentions, notifications, and both-name
+  searches use the preference while retaining regular roster names and IDs.
+  Newer shared announcement authors/filters and profile components remain intact;
+  audit searches also match full regular names, and initials preserve Unicode
+  code points.
+- Final combined verification: all 406 backend tests and 20 focused client
+  tests, backend/mobile TypeScript, production web build (including web TypeScript),
+  and isolated Convex push pass. Web lint passes with 21 existing warnings;
+  React Doctor 0.9.8 has one low-impact advisory on mapping/filtering two name
+  values in bulk assignment. Devlog generation and whitespace checks pass.
+- Signed-in production-build browser checks at localhost:3004 cover normalized
+  save, reload persistence, regular-name disclosure, header/avatar initials,
+  clearing, and a 390px layout without horizontal overflow or console errors.
+  Design-owner visual review and native device verification remain outstanding.
+  Windows lacks direnv, so checks use the repository-pinned Bun 1.4.2 directly.
+- Only this worktree's anonymous local backend on ports 3270/3271 was initialized,
+  seeded, and updated. Shared and production deployments were not changed.
+  See `docs/features/preferred-names-testing.md` for the review checklist.
+### Desktop notification setup notice (2026-10-19)
+
+- Release integration rechecked desktop/narrow geometry, saved dismissal,
+  loading and permission states. The feature now controls Banner's existing
+  `open` prop through eligibility changes, preserving its collapse lifecycle.
+  Banner also restores focus when a loading action was disabled before closing,
+  while preserving focus explicitly moved elsewhere. Fixture keyboard checks,
+  all six eligibility tests, web typecheck and lint (21 existing warnings) pass.
+- The dashboard's existing push recovery notice now also offers first-time setup
+  on supported desktop browsers. Blocked permission shows browser-settings
+  guidance without an Enable action. Explicit browser opt-outs and the existing
+  30-day dismissal marker are respected; permission/focus/visibility/storage
+  changes refresh the notice. First-time mobile prompts remain unchanged.
+- Owner follow-up requests a square, edge-to-edge banner and no subtitle. The
+  notification notice now composes Fluid `Banner variant="fixed"`, `BannerTitle`
+  and `BannerAction` in AppShell's new `bannerSlot`, outside page padding. Header
+  and banner share a sticky group. Current Fluid rendered example, fixed Code,
+  API, exact registry source and dependencies were inspected; shadcn confirms
+  Radix/new-york/Lucide. Registry dry-run/diff would overwrite shared adapters,
+  so only Banner was added, adapted to existing motion/HSL/type/Button contracts
+  and protected in `fluid:update`. No shared dependencies were overwritten.
+- An isolated fixture renders the actual AppShell/header/sidebar and banner,
+  with account, router and push responses mocked. Desktop geometry is exact:
+  header bottom/banner top 64px; sidebar right/banner left 72px; radius 0px.
+  Edges remain joined after scrolling. 320/390px layouts have no horizontal
+  overflow; blocked copy wraps. Keyboard enable still registers and hides the
+  notice; keyboard dismissal restores focus and removes its row. Light/dark
+  captures: `/tmp/ia-push-review/shell-banner-*.jpg`. This is diagnostic review,
+  not an authenticated dashboard or native-device test.
+- Six eligibility tests, web typecheck/lint (21 existing warnings), and production
+  build pass. An isolated browser fixture verifies keyboard setup, loading,
+  successful registration, blocked guidance, opt-out, dismissal/reload/expiry,
+  storage-write failure, and mobile recovery. Light/dark and 390px checks are
+  diagnostic; authenticated dashboard, real push delivery, and native device
+  review were not run. Captures: `/tmp/ia-push-review/`. Visual review remains
+  with the design owner. No shared or production deployment was changed.
+
+### Announcement layout and detail pages (2026-10-17)
+
+- Announcement feed and detail views compose the same clickable profile avatar
+  and author metadata. Comment queries now return the same limited author
+  projection, including avatar and roles, without contact or sign-in fields.
+- Mobile feed actions share one row with the author avatar; time and expiry
+  stay visible beside the audience. Shared Empty owns vertical centering, and
+  Clubs uses the standard AppShell top inset. Detail pages use the approved
+  compact CardGroup corners and existing save/report/discussion controls.
+- Shared person profiles show mutual-friend and club lists without stat tiles
+  or an extra friend-list disclosure. Both lists use the existing compact
+  CardGroup corner contract. Section gaps apply only between visible content,
+  so identity-only profiles retain equal top and bottom dialog insets.
+  A fuller profile with badges is deferred; the
+  owner's future direction is basic identity for everyone and richer social
+  details for friends. This simplification preserves existing data visibility.
+- Web typecheck, lint (21 existing warnings), production build, a changed-file
+  React Doctor scan, backend typecheck, and 21 focused backend tests pass.
+  Compiled browser checks cover 320px touch targets, 390px and desktop layouts,
+  profile dialogs, save/restore, comment creation/removal, and centered empties.
+  Review captures are in `/tmp/ia-announcement-layout-review/`. The owner
+  authorized the final profile simplification and PR merge on October 18;
+  native iPhone verification was not run.
+- Only the existing isolated demo backend on localhost:3210 was updated. It
+  retains the same database and accounts. No shared or production deployment
+  was selected or changed.
 
 ### UI integration and React Doctor (2026-10-17)
 
