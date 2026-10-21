@@ -2,17 +2,20 @@
 
 ## Active Focus
 
-- **Current checkout (2026-10-21)**: The primary checkout is on
-  `codex/desktop-notification-banner`, carrying the three earlier local banner
-  commits onto main after audit PR #152 squash-merged as `4c464526`.
-  The original commits are preserved on `work/desktop-notification-banner`.
-- **Current goal**: The owner authorized including the banner in the release,
-  after squash-merging audit PR #152 and running `release:ship`.
-  Release PR #165 is held in draft until the banner lands; regenerate its single
-  release commit from the combined main before validation and production shipping.
-  This supersedes earlier draft/awaiting-owner-review and no-production-authorization
-  notes for this release. Preserve main's preferred-name display/search support
-  when integrating the audit refactor. Local demo data remains intact.
+- **Current checkout (2026-10-21)**: `codex/teacher-flex-community-plan`, based on
+  released main `57e7ddb4` (v0.8.38). Audit PR #152, banner PR #166, and release
+  PR #165 are merged; the release reached production. The earlier release
+  preparation and no-push notes below are historical.
+- **Current focus**: Teacher tutoring/Flex Friday issue #82 and navigation
+  structure. The owner chose immediate student booking. The proposal recommends
+  role-specific Friday views and Community with Clubs/Friends siblings, retaining
+  schedule comparison in Schedule. Product implementation remains pending;
+  see `docs/architecture/teacher-flex-community-proposal.md`. The interactive
+  study uses fictional data and does not establish design-owner approval.
+- **Local processes**: The owner requested stopping all IA app processes after
+  the release. Web and Convex remain stopped. Proposal review uses only a temporary
+  static preview server, stopped when its browser review ends. No shared backend
+  or production deployment was changed for this proposal.
 - **Dashboard calendar follow-up**: The owner requested a small commit directly
   in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
   October 18. After owner feedback, the month controls and full-calendar arrow
@@ -31,8 +34,7 @@
   reconciled with their squash commits so final CI validates the combined source.
   Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
-- **Goal**: Land verified changes and complete the authorized release. Native
-  iPhone swipe verification remains outstanding.
+- Native iPhone swipe verification from the preceding UI work remains outstanding.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
