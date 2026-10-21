@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
+import { AnimatedGif } from "@/components/media/animated-gif";
 
 export const MAX_ANNOUNCEMENT_IMAGES = 3;
 export const MAX_ANNOUNCEMENT_EMBEDS = 3;
@@ -143,9 +144,11 @@ export function AnnouncementMedia({
     <div className="space-y-3">
       {images.length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
-          {images.map((image, index) => (
+          {images.map((image, index) => image.mimeType.toLowerCase().split(';', 1)[0] === 'image/gif' ? (
+            <AnimatedGif key={image._id} src={image.url} name={`Announcement image ${index + 1}`} maxHeight={512} fullWidth className="my-0 overflow-hidden rounded-lg border bg-muted/20" />
+          ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={image._id} src={image.url} alt={`Announcement image ${index + 1}`} className="max-h-[32rem] w-full rounded-lg border bg-muted/20 object-contain" />
+            <img key={image._id} src={image.url} alt={`Announcement image ${index + 1}`} loading="lazy" decoding="async" className="max-h-[32rem] w-full rounded-lg border bg-muted/20 object-contain" />
           ))}
         </div>
       ) : null}

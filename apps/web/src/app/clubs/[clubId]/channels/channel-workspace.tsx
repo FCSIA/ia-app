@@ -169,7 +169,9 @@ import {
 } from '@/components/ui/empty';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
-import { ChatGif, ChatGifLinks } from '@/components/clubs/chat-gif';
+import { ChatGifLinks } from '@/components/clubs/chat-gif';
+import { AnimatedGif } from '@/components/media/animated-gif';
+import { MediaPlaybackContext } from '@/hooks/use-media-visibility';
 import { isGifAttachment, messageGifUrls } from '~/apps/shared/chat/gifs';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
@@ -318,7 +320,7 @@ function MessageAttachmentCard({
   const isImage = isImageAttachment(attachment);
 
   if (isGifAttachment(attachment)) {
-    return <ChatGif key={href} src={href} name={attachment.fileName} />;
+    return <AnimatedGif key={href} src={href} name={attachment.fileName} />;
   }
 
   return (
@@ -2411,6 +2413,7 @@ export function ChannelWorkspace() {
 
   return (
     <ImageViewerContext.Provider value={openImageViewer}>
+    <MediaPlaybackContext.Provider value={!imageViewer?.open}>
     <ClubWorkspace
       title={title}
       rightPane={rightPane}
@@ -2639,6 +2642,7 @@ export function ChannelWorkspace() {
         </DialogContent>
       </Dialog>
     </ClubWorkspace>
+    </MediaPlaybackContext.Provider>
     {imageViewer ? (
       <ImageViewer
         images={imageViewer.images}

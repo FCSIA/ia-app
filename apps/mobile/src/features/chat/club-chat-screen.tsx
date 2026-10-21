@@ -752,6 +752,7 @@ export function ClubChatScreen({
           ) : (
             <ChatTimeline
               messages={timelineMessages}
+              mediaActive={isRouteFocused && !viewedAttachment}
               threadRoot={threadRoot}
               threadHasMoreReplies={thread?.hasMoreReplies}
               canPost={canPost}

@@ -11,12 +11,13 @@ import { Card, CardGroup } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { AnimatedGif } from '@/components/media/animated-gif';
 import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
   submitter: { firstName: string; lastName: string; preferredName?: string | null } | null;
-  images: Array<{ _id: Id<'feedbackReportImages'>; url: string }>;
+  images: Array<{ _id: Id<'feedbackReportImages'>; url: string; mimeType: string }>;
   responses: Array<{
     _id: Id<'feedbackReportResponses'>;
     body: string;
@@ -196,11 +197,11 @@ function FeedbackList({
                       rel="noreferrer"
                       className="block size-20 overflow-hidden rounded-lg border border-border/40 bg-muted transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <img
-                        src={image.url}
-                        alt={`Feedback attachment ${index + 1}`}
-                        className="size-full object-cover"
-                      />
+                      {image.mimeType === 'image/gif' ? (
+                        <AnimatedGif src={image.url} name={`Feedback attachment ${index + 1}`} thumbnail maxHeight={80} />
+                      ) : (
+                        <img src={image.url} alt={`Feedback attachment ${index + 1}`} loading="lazy" decoding="async" className="size-full object-cover" />
+                      )}
                     </a>
                   ))}
                 </div>
