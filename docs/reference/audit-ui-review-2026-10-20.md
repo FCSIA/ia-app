@@ -3,6 +3,40 @@
 The primary checkout is on `codex/admin-audit-log-ux`. This is diagnostic
 verification, with material visual changes awaiting the design owner's review.
 
+## Focus edge clipping follow-up
+
+The search field's orange focus ring was clipped by the shared admin scrolling
+panel, rather than duplicated by the SearchInput wrapper. Before the repair,
+both the input and scroll viewport began at y=140, so the 1px outset ring lost
+its entire top edge. Fields at either horizontal edge also lost part of their
+ring. The input itself has the existing neutral border plus accent focus ring.
+
+`AdminScrollTabPanel` now puts the existing 12px top gap inside the viewport.
+The panel also reserves a 4px horizontal gutter with an equal outer expansion,
+preserving content alignment and available width. This repairs the ScrollArea
+composition using its existing `viewportClassName` contract; no input focus
+style, shared primitive API, or audit-specific override changes. The desktop
+search remains at x=343.8359375, y=140, width=1015.2265625, height=36; the clipping
+viewport now begins at y=128. The independently scrolling Users panel retains
+its previous spacing.
+
+The current Fluid index, [InputGroup](https://www.fluidfunctionalism.com/docs/input-group)
+and [Scrollbars](https://www.fluidfunctionalism.com/docs/scrollbars) rendered
+examples, Code, API, registry sources, and local adapters were inspected.
+The existing SearchInput composition is retained. Current shadcn Radix
+[ScrollArea documentation](https://ui.shadcn.com/docs/components/radix/scroll-area),
+example, and Radix API were checked. No registry component was updated.
+
+Desktop pointer/keyboard focus, search clearing, expanded filters, and native
+touch scrolling at 320px were checked. Search and edge fields retain complete
+focus rings without horizontal document overflow; Student roster also fits the
+shared panel. Typecheck and lint pass, with the same 21 existing lint warnings.
+Production build was not repeated for this layout-only adjustment. Captures:
+`/tmp/ia-audit-review/input-focus-before.png`, `input-focus-after.png`,
+`input-focus-side-after.png`, `input-focus-320-touch.png`, and
+`input-focus-320-expanded.png`. Native device testing and owner visual approval
+remain outstanding.
+
 ## Latest composition and repetition pass
 
 The previous composition used separate full-width rows for search, Filters, and
