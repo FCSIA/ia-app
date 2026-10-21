@@ -6,11 +6,13 @@ tags: [feature, moderation, safety]
 
 [Home](../index.md)
 
-Moderation currently covers admin-managed keyword rules and user-submitted
-reports.
+Moderation covers automatic preferred-name filtering, admin-managed keyword
+rules, and user-submitted reports.
 
 ## What It Does
 
+- Filters preferred names before saving or indexing them, using the English
+  `glin-profanity` dictionary plus active school keyword rules.
 - Lets admins manage local keyword rules.
 - Lets users report content such as announcements, comments, events, or club
   messages.
@@ -21,6 +23,7 @@ reports.
 ## Source Files
 
 - Backend: `apps/convex/src/moderation/`
+- Preferred-name filtering: `apps/convex/src/moderation/preferredNames.ts`
 - General report page: `apps/web/src/app/report/page.tsx`
 - Admin UI: `apps/web/src/app/admin/_components/moderation-tab.tsx`
 - Admin hook: `apps/web/src/app/admin/_hooks/use-admin-moderation.ts`
@@ -86,11 +89,36 @@ responses sit under the item they answer. Loading and empty history are distinct
 states. Feedback notifications use their own category rather than Moderation;
 see [Notifications](notifications.md).
 
+## Preferred-name safety
+
+The signed-in user's name mutation enforces length/control-character checks,
+then filters the normalized name before writing the profile and search index in
+the same transaction. Whole-word matching avoids censoring innocent substrings.
+Leetspeak and Unicode normalization are enabled. Detected obfuscations that the
+library cannot mask safely cause the entire preferred name to be masked.
+
+A filtered save creates a pending `PREFERRED_NAME` report with the account as
+both author and reported user, and preserves the submitted name in the staff-only
+report reason. Staff can review, resolve, or dismiss it through the existing
+moderation queue and permissions. The save records `AUTO_MODERATION_FLAGGED`
+in the audit log and delivers a `CONTENT_MODERATED` notice linking to Profile &
+Settings, respecting notification preferences. The notice does not repeat the
+flagged text. These reports never enter the general-feedback/GitHub sync path.
+
+Nonempty name changes share a per-account token bucket with capacity five and
+five replenished tokens per ten minutes, limiting automated-report floods.
+Clearing a name is always allowed, including during a cooldown. More than 1,000
+active school rules makes nonempty saves fail closed instead of silently ignoring
+rules. No role bypasses preferred-name filtering.
+
 ## Known Limits
 
-Some admin UI copy mentions automatic profanity monitoring. The current Convex
-backend surface documents keyword rules and reports; verify or implement
-automatic filtering before promising full automated moderation behavior.
+The former API backend's automatic filtering for other content surfaces has not
+been ported to Convex. Existing admin copy describing automatic club-channel
+monitoring does not establish that behavior. Preferred-name enforcement is
+server-side on both web and native; other surfaces retain their current manual
+reporting behavior. The filter uses its English dictionary and school rules,
+not every available language or optional ML/toxicity detection.
 
 ## Related
 

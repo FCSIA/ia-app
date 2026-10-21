@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
+import rateLimiter from "@convex-dev/rate-limiter/test";
 import { describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
@@ -30,6 +31,7 @@ const modules = import.meta.glob("/src/**/*.*s");
 
 async function fixture() {
   const t = convexTest(schema, modules);
+  rateLimiter.register(t);
   const ids = await t.run(async (ctx) => {
     const makeUser = (uniqueId: string, firstName: string, admin = false) => ctx.db.insert("users", {
       authUserId: uniqueId,
@@ -123,6 +125,85 @@ describe("preferred profile names", () => {
     });
     await alice.mutation(api.users.me.updatePreferredName, { preferredName: "" });
     expect(displayName((await read()).page[0].author)).toBe("Alice Johnson");
+  });
+
+  test("masks profanity before storage/search and creates a reviewable report, audit, and notification", async () => {
+    const { t, alice, bob, admin, aliceId } = await fixture();
+    const saved = await alice.mutation(api.users.me.updatePreferredName, { preferredName: "  Shit   Smith  " });
+    expect(saved).toMatchObject({ firstName: "Alice", lastName: "Johnson", preferredName: "*** Smith" });
+    const stored = await t.run(ctx => ctx.db.get(aliceId));
+    expect(stored?.searchText).not.toContain("shit");
+    expect((await bob.query(api.search.global.palette, { search: "shit" })).people).toHaveLength(0);
+    const reports = await admin.query(api.moderation.reports.list, { status: "PENDING" });
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toMatchObject({ contentType: "PREFERRED_NAME", contentId: aliceId, submitterId: aliceId, reportedUserId: aliceId, isEscalated: false });
+    expect(reports[0].reason).toContain("Shit Smith");
+    expect(reports[0].githubIssueSyncState).toBeUndefined();
+    expect(await bob.query(api.moderation.reports.list, {})).toEqual([]);
+    const audit = await t.run(ctx => ctx.db.query("auditEvents").withIndex("by_createdAt").take(10));
+    expect(audit).toEqual([expect.objectContaining({ actorId: aliceId, action: "AUTO_MODERATION_FLAGGED", entityType: "Report", entityId: reports[0]._id })]);
+    const notices = await alice.query(api.notifications.inbox.list, {});
+    expect(notices).toEqual([expect.objectContaining({ category: "CONTENT_MODERATED", href: "/profile", title: "Preferred name filtered for language" })]);
+    expect(notices[0].body).not.toContain("Shit");
+    await expect(bob.mutation(api.moderation.reports.update, { reportId: reports[0]._id, status: "DISMISSED", reviewNote: "No" })).rejects.toThrow("Forbidden");
+    await admin.mutation(api.moderation.reports.update, { reportId: reports[0]._id, status: "RESOLVED", reviewNote: "Reviewed" });
+    expect(await admin.query(api.moderation.reports.list, { status: "PENDING" })).toEqual([]);
+    await alice.mutation(api.users.me.updatePreferredName, { preferredName: "Ally" });
+    expect((await admin.query(api.moderation.reports.list, { status: "RESOLVED" }))[0].reason).toContain("Shit Smith");
+  });
+
+  test("uses active school rules, skips removed rules, and preserves innocent substrings and Unicode names", async () => {
+    const { t, alice, adminId } = await fixture();
+    await t.run(async ctx => {
+      for (const [keyword, isActive] of [["maple", true], ["river", false]] as const) {
+        await ctx.db.insert("moderationKeywordRules", { keyword, isActive, addedById: adminId, createdAt: 1 });
+      }
+    });
+    expect((await alice.mutation(api.users.me.updatePreferredName, { preferredName: "MAPLE King" })).preferredName).toBe("*** King");
+    for (const name of ["Maplewood River", "Scunthorpe Cassidy", "Élodie 王", "𠮷野 太郎"]) {
+      expect((await alice.mutation(api.users.me.updatePreferredName, { preferredName: name })).preferredName).toBe(name);
+    }
+  });
+
+  test.each(["sh1t King", "ｓｈｉｔ King", "Shít King", "s h i t"]) (
+    "does not publish or index detected obfuscated profanity: %s", async (name) => {
+      const { t, alice, aliceId, admin } = await fixture();
+      const saved = await alice.mutation(api.users.me.updatePreferredName, { preferredName: name });
+      expect(saved.preferredName).not.toBe(name);
+      expect(saved.preferredName).toMatch(/^\*+/);
+      expect((await t.run(ctx => ctx.db.get(aliceId)))?.searchText).not.toContain(name.toLowerCase());
+      expect(await admin.query(api.moderation.reports.list, { status: "PENDING" })).toHaveLength(1);
+    },
+  );
+
+  test("limits report-generating name changes while always allowing a clear", async () => {
+    const { alice, admin } = await fixture();
+    for (let index = 0; index < 5; index++) {
+      await alice.mutation(api.users.me.updatePreferredName, { preferredName: "shit " + index });
+    }
+    await expect(alice.mutation(api.users.me.updatePreferredName, { preferredName: "shit again" })).rejects.toThrow("Too many name changes");
+    expect(await admin.query(api.moderation.reports.list, {})).toHaveLength(5);
+    expect((await alice.mutation(api.users.me.updatePreferredName, { preferredName: "" })).preferredName).toBeUndefined();
+  });
+
+  test("keeps the moderation report even when the author has disabled moderation notifications", async () => {
+    const { t, alice, aliceId, admin } = await fixture();
+    await t.run(ctx => ctx.db.insert("notificationPreferences", { userId: aliceId, category: "CONTENT_MODERATED", scopeKey: "global", enabled: false, level: "OFF", locked: false, createdAt: 1, updatedAt: 1 }));
+    await alice.mutation(api.users.me.updatePreferredName, { preferredName: "shit" });
+    expect(await alice.query(api.notifications.inbox.list, {})).toEqual([]);
+    expect(await admin.query(api.moderation.reports.list, {})).toHaveLength(1);
+  });
+
+  test("refuses to save unchecked names when the active rule set exceeds the read bound", async () => {
+    const { t, alice, aliceId, adminId } = await fixture();
+    await t.run(async ctx => {
+      for (let index = 0; index < 1_001; index++) {
+        await ctx.db.insert("moderationKeywordRules", { keyword: "restricted" + index, isActive: true, addedById: adminId, createdAt: 1 });
+      }
+    });
+    await expect(alice.mutation(api.users.me.updatePreferredName, { preferredName: "Ally" })).rejects.toThrow("Safety rules are temporarily unavailable");
+    expect((await t.run(ctx => ctx.db.get(aliceId)))?.preferredName).toBeUndefined();
+    expect((await alice.mutation(api.users.me.updatePreferredName, { preferredName: "" })).preferredName).toBeUndefined();
   });
 
   test("uses the same fallback for greetings, initials, Unicode names, and local search", () => {

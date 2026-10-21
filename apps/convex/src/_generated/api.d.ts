@@ -83,6 +83,7 @@ import type * as http from "../http.js";
 import type * as moderation_feedbackAccess from "../moderation/feedbackAccess.js";
 import type * as moderation_feedbackGithub from "../moderation/feedbackGithub.js";
 import type * as moderation_keywords from "../moderation/keywords.js";
+import type * as moderation_preferredNames from "../moderation/preferredNames.js";
 import type * as moderation_reportValidation from "../moderation/reportValidation.js";
 import type * as moderation_reports from "../moderation/reports.js";
 import type * as notifications__lib from "../notifications/_lib.js";
@@ -222,6 +223,7 @@ declare const fullApi: ApiFromModules<{
   "moderation/feedbackAccess": typeof moderation_feedbackAccess;
   "moderation/feedbackGithub": typeof moderation_feedbackGithub;
   "moderation/keywords": typeof moderation_keywords;
+  "moderation/preferredNames": typeof moderation_preferredNames;
   "moderation/reportValidation": typeof moderation_reportValidation;
   "moderation/reports": typeof moderation_reports;
   "notifications/_lib": typeof notifications__lib;

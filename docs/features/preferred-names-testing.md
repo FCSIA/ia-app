@@ -26,6 +26,23 @@ Repeat the following scenarios with the name set and after clearing it.
 Use **Lex QA** as the preferred name for easy comparison. Names entered in
 free-form message bodies are content and are not rewritten by a profile edit.
 
+## Moderation
+
+- Save a name containing a built-in restricted term, then an active school term.
+  Expect a masked name in the field, header, profile, and search results; the
+  original spelling must not be indexed. Removed school rules do not apply.
+- Try leetspeak, full-width, accented, and spaced-character obfuscation. Detected
+  variants must be masked; ordinary Unicode names and innocent substrings remain.
+- Inspect the author's Moderation notices and, as authorized staff, the pending
+  report queue. Expect a `PREFERRED_NAME` report retaining the submitted name,
+  a `CONTENT_MODERATED` notification, and an `AUTO_MODERATION_FLAGGED` audit
+  event. Students cannot read the staff queue or review reports. Staff can resolve
+  or dismiss the report, and its context survives later name changes.
+- Disable moderation notifications and repeat: filtering and the staff report
+  still occur. These reports do not create general-feedback GitHub issues.
+- Exhaust five rapid nonempty saves: further changes are refused, but clearing
+  the preference still works.
+
 ## Places to inspect
 
 | Scenario | How to test | Expected result |

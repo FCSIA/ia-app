@@ -29,6 +29,23 @@
 
 ## Current Truth
 
+### Preferred-name moderation (2026-10-20)
+
+- Preferred-name saves now apply the original English profanity dictionary and
+  active school keyword rules before storing or indexing names. Detected language
+  is masked; each flagged save atomically records a staff-only name snapshot in
+  a pending moderation report, an audit event, and an author notification that
+  respects preferences. Existing report-review permissions and status actions
+  apply. These reports do not enter the feedback/GitHub issue pipeline.
+- Nonempty saves have a per-account token bucket (capacity five, five tokens per
+  ten minutes). Clearing remains available during cooldowns or rule-read limits.
+  Tests cover dictionary/custom rules, detected obfuscations, innocent Unicode
+  names, indexing, report access/review, audit, notification opt-outs, and limits.
+- All 415 backend tests and backend/web/mobile TypeScript pass. Devlog and
+  whitespace checks pass; the new dependency bundles successfully in this worktree's anonymous local Convex backend (3270/3271).
+  The older backend's automatic filtering of other content remains unported;
+  see the moderation feature document for that scope and existing UI-copy drift.
+
 ### Preferred profile names (2026-10-20)
 
 - Recovered the unmerged preferred-name commits `103981f1` and `f96ddfd5`

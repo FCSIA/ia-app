@@ -19,6 +19,8 @@ import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
 import { normalizeDashboardColumns, normalizeDashboardLayout } from "./dashboardLayout";
+import { moderatePreferredName } from "../moderation/preferredNames";
+import { contentRateLimiter } from "../rateLimits";
 import { MAX_WALLPAPER_BLUR } from "../../../shared/custom-theme";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
@@ -75,7 +77,12 @@ export const updatePreferredName = mutation({
     if (/[\p{Cc}\p{Cf}]/u.test(preferredName)) {
       throw new ConvexError("Preferred name cannot contain control characters.");
     }
-    const updated = { ...user, preferredName: preferredName || undefined };
+    if (preferredName) {
+      const rate = await contentRateLimiter.limit(ctx, "preferredNameChangesByUser", { key: user._id });
+      if (!rate.ok) throw new ConvexError("Too many name changes. Try again later.");
+    }
+    const moderatedName = await moderatePreferredName(ctx, user, preferredName);
+    const updated = { ...user, preferredName: moderatedName || undefined };
     await ctx.db.patch(user._id, {
       preferredName: updated.preferredName,
       searchText: searchText(updated),

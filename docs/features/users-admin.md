@@ -81,7 +81,11 @@ name directly below the preferred name when they differ.
 
 Saving trims and collapses whitespace, limits names to 80 characters, rejects
 control characters, and updates the user search index in the same transaction.
-Blank input removes the preference. Both names remain searchable in global,
+Blank input removes the preference. Preferred names also pass the server-side
+profanity and active school-rule filter: flagged text is masked before storage
+and indexing, with a pending moderation report, audit event, and author notice.
+Repeated nonempty changes are rate-limited; clearing remains available.
+Both names remain searchable in global,
 friend, admin, invitation, mention, and club directory searches. Regular roster
 names and account identifiers remain available for CSV administration and login.
 Notification text uses the display name when the notification is created;
