@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -94,7 +95,7 @@ export function AttendancePanel({
             <div key={student._id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-background p-2.5 transition-colors hover:bg-hover">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">
-                  {student.lastName}, {student.firstName}
+                  {displayName(student)}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Grade {student.gradeLevel || '—'}
@@ -108,7 +109,7 @@ export function AttendancePanel({
                   className={cn(
                     status === 'PRESENT' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-700'
                   )}
-                  aria-label={`${status === 'PRESENT' ? 'Clear present status for' : 'Mark present:'} ${student.firstName} ${student.lastName}`}
+                  aria-label={`${status === 'PRESENT' ? 'Clear present status for' : 'Mark present:'} ${displayName(student)}`}
                   aria-pressed={status === 'PRESENT'}
                   onClick={() => status === 'PRESENT' ? onClear(student._id) : onMark(student._id, 'PRESENT')}
                   disabled={isMarking}
@@ -121,7 +122,7 @@ export function AttendancePanel({
                   className={cn(
                     status === 'ABSENT' ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
                   )}
-                  aria-label={`${status === 'ABSENT' ? 'Clear absent status for' : 'Mark absent:'} ${student.firstName} ${student.lastName}`}
+                  aria-label={`${status === 'ABSENT' ? 'Clear absent status for' : 'Mark absent:'} ${displayName(student)}`}
                   aria-pressed={status === 'ABSENT'}
                   onClick={() => status === 'ABSENT' ? onClear(student._id) : onMark(student._id, 'ABSENT')}
                   disabled={isMarking}
@@ -134,7 +135,7 @@ export function AttendancePanel({
                   className={cn(
                     status === 'TARDY' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300' : 'text-muted-foreground hover:bg-sky-500/10 hover:text-sky-700'
                   )}
-                  aria-label={`${status === 'TARDY' ? 'Clear tardy status for' : 'Mark tardy:'} ${student.firstName} ${student.lastName}`}
+                  aria-label={`${status === 'TARDY' ? 'Clear tardy status for' : 'Mark tardy:'} ${displayName(student)}`}
                   aria-pressed={status === 'TARDY'}
                   onClick={() => status === 'TARDY' ? onClear(student._id) : onMark(student._id, 'TARDY')}
                   disabled={isMarking}
@@ -147,7 +148,7 @@ export function AttendancePanel({
                   className={cn(
                     status === 'EXCUSED' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'text-muted-foreground hover:bg-amber-500/10 hover:text-amber-700'
                   )}
-                  aria-label={`${status === 'EXCUSED' ? 'Clear excused status for' : 'Mark excused:'} ${student.firstName} ${student.lastName}`}
+                  aria-label={`${status === 'EXCUSED' ? 'Clear excused status for' : 'Mark excused:'} ${displayName(student)}`}
                   aria-pressed={status === 'EXCUSED'}
                   onClick={() => status === 'EXCUSED' ? onClear(student._id) : onMark(student._id, 'EXCUSED')}
                   disabled={isMarking}

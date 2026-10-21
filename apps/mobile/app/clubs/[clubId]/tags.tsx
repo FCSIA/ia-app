@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
@@ -58,7 +59,7 @@ export default function ClubTagsScreen() {
                       const members = tag.members ?? [];
                       const memberNames = members
                         .slice(0, 5)
-                        .map((member: any) => [member.user?.firstName, member.user?.lastName].filter(Boolean).join(" "))
+                        .map((member: any) => displayName(member.user))
                         .filter(Boolean);
                       const remaining = Math.max(0, members.length - memberNames.length);
                       const people = `${memberNames.join(", ")}${remaining ? ` +${remaining}` : ""}`;

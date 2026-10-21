@@ -34,6 +34,7 @@ function serializeAuthor(author: Doc<"users"> | null) {
         _id: author._id,
         firstName: author.firstName,
         lastName: author.lastName,
+        preferredName: author.preferredName,
         avatarUrl: author.avatarUrl ?? null,
         roles: author.roles,
         isDeveloper: author.isDeveloper,

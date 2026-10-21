@@ -1,197 +1,123 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, View } from "react-native";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { View } from "react-native";
 import { Image } from "expo-image";
 import { useReducedMotion } from "react-native-reanimated";
 import { Pause, Play } from "lucide-react-native";
 import { IconButton, Txt } from "@/components/ui";
-import { useGifAutoplay } from "@/lib/gif-playback";
+import { useGifAutoplay, useGifAppActive } from "@/lib/gif-playback";
+import { MediaVisibleContext, useMediaVisibility } from "@/lib/media-visibility";
 import { useReduceMotion } from "@/lib/motion";
 import { spacing } from "@/lib/tokens";
 import { useAction } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
+import { createGifLinkCache } from "~/apps/shared/chat/gif-link-cache";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
 
 export function ChatGifLinks({ text }: { text: string }) {
-  return (
-    <>
-      {extractChatGifLinks(text).map((link) => (
-        <LinkedChatGif key={link.url} link={link} />
-      ))}
-    </>
-  );
+  const links = useMemo(() => extractChatGifLinks(text), [text]);
+  return <>{links.map((link) => <LinkedChatGif key={link.url} link={link} />)}</>;
 }
 
-/**
- * Share links resolved this session. Remounting a message (scrolling, channel
- * switches) reuses the result instead of asking the server again.
- */
-const resolvedShareLinks = new Map<string, Promise<string | null>>();
-const MAX_RESOLVED_SHARE_LINKS = 200;
-
-function resolveShareLink(
-  resolve: (args: { url: string }) => Promise<string | null>,
-  url: string,
-) {
-  let pending = resolvedShareLinks.get(url);
-  if (!pending) {
-    pending = resolve({ url }).catch((error: unknown) => {
-      // Failures (rate limits, offline) are retried on the next mount.
-      resolvedShareLinks.delete(url);
-      throw error;
-    });
-    resolvedShareLinks.set(url, pending);
-    if (resolvedShareLinks.size > MAX_RESOLVED_SHARE_LINKS) {
-      resolvedShareLinks.delete(resolvedShareLinks.keys().next().value!);
-    }
-  }
-  return pending;
-}
-
+const resolveShareLink = createGifLinkCache();
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
+  const visible = useContext(MediaVisibleContext);
+  const appActive = useGifAppActive();
   const resolve = useAction(api.uploads.files.resolveChatGifLink);
-  const [resolved, setResolved] = useState<{
-    url: string;
-    media: string | null;
-  } | null>(null);
+  const [resolved, setResolved] = useState<{ url: string; media: string | null } | null>(null);
   useEffect(() => {
-    if (link.mediaUrl) return;
+    if (link.mediaUrl || !visible || !appActive || resolved?.url === link.url) return;
     let active = true;
     void resolveShareLink(resolve, link.url).then(
-      (media) => {
-        if (active) setResolved({ url: link.url, media });
-      },
-      () => {
-        if (active) setResolved({ url: link.url, media: null });
-      },
+      (media) => { if (active) setResolved({ url: link.url, media }); },
+      () => { if (active) setResolved({ url: link.url, media: null }); },
     );
-    return () => {
-      active = false;
-    };
-  }, [link.url, link.mediaUrl, resolve]);
-  const media =
-    link.mediaUrl ?? (resolved?.url === link.url ? resolved.media : null);
-  return (
-    <ChatGif
-      key={media ?? link.url}
-      src={media}
-      name="GIF"
-      pending={!link.mediaUrl && resolved?.url !== link.url}
-    />
-  );
+    return () => { active = false; };
+  }, [link.url, link.mediaUrl, resolve, visible, appActive, resolved?.url]);
+  const media = link.mediaUrl ?? (resolved?.url === link.url ? resolved.media : null);
+  return <ChatGif src={media} name="GIF" pending={!link.mediaUrl && resolved?.url !== link.url} />;
 }
 
-/**
- * Long-pressing a GIF opens the message's own actions (which include Copy GIF
- * URL), so the GIF never competes with the message for the gesture.
- */
-export function ChatGif({
-  src,
-  name,
-  pending = false,
-}: {
-  src: string | null;
-  name: string;
-  pending?: boolean;
-}) {
+type ChatGifProps = { src: string | null; name: string; pending?: boolean; active?: boolean };
+export function ChatGif(props: ChatGifProps) {
+  return <GifPlayer key={props.src ?? 'pending'} {...props} />;
+}
+
+/** Visibility suspends actual native animation without overwriting the user's play/pause choice. */
+function GifPlayer({ src, name, pending = false, active = true }: ChatGifProps) {
   const { autoplay } = useGifAutoplay();
+  const appActive = useGifAppActive();
+  const { ref, onLayout, visible } = useMediaVisibility();
   const image = useRef<Image>(null);
   const reduceMotion = useReduceMotion();
   const initialReduceMotion = useReducedMotion();
-  const [playing, setPlaying] = useState(autoplay && !initialReduceMotion);
+  const [playbackChoice, setPlaying] = useState<boolean | null>(null);
+  const requested = playbackChoice ?? (autoplay && !initialReduceMotion && !reduceMotion);
+  const playing = requested && visible && appActive && active;
+  const wantsPlaying = useRef(playing);
+  wantsPlaying.current = playing;
   const [ready, setReady] = useState(false);
   const readyRef = useRef(false);
   const [aspectRatio, setAspectRatio] = useState(1);
   const [failed, setFailed] = useState(false);
-  // True while playback is paused only because the app is in the background.
-  const pausedForBackground = useRef(false);
-  const changePlayback = useCallback((next: boolean) => {
-    setPlaying(next);
-    // Before the first frame loads, the `autoplay` prop alone decides.
-    if (!readyRef.current) return;
-    const operation = next
-      ? image.current?.startAnimating()
-      : image.current?.stopAnimating();
-    void operation?.catch(() => setPlaying(false));
+  const playbackTask = useRef(Promise.resolve());
+  const applyPlayback = useCallback(() => {
+    const current = image.current;
+    if (!current || !readyRef.current) return;
+    // Native methods are asynchronous. Serialize them and read the latest intent,
+    // so a delayed start can never win over a newer offscreen/background pause.
+    playbackTask.current = playbackTask.current.catch(() => {}).then(async () => {
+      if (image.current !== current) return;
+      if (wantsPlaying.current) await current.startAnimating();
+      else await current.stopAnimating();
+    }).catch(() => { if (image.current === current) setPlaying(false); });
   }, []);
-  const playingRef = useRef(playing);
-  useEffect(() => {
-    playingRef.current = playing;
-  }, [playing]);
-  useEffect(() => {
-    if (reduceMotion) changePlayback(false);
-  }, [reduceMotion, changePlayback]);
-  useEffect(() => {
-    changePlayback(autoplay && !initialReduceMotion);
-  }, [autoplay, initialReduceMotion, changePlayback]);
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") {
-        if (playingRef.current) {
-          pausedForBackground.current = true;
-          changePlayback(false);
-        }
-      } else if (pausedForBackground.current) {
-        pausedForBackground.current = false;
-        changePlayback(true);
-      }
-    });
-    return () => subscription.remove();
-  }, [changePlayback]);
+  useEffect(() => { applyPlayback(); }, [playing, applyPlayback]);
+  useEffect(() => { if (reduceMotion) setPlaying(false); }, [reduceMotion]);
+  useEffect(() => { setPlaying(null); }, [autoplay]);
+
   return (
     <View
+      ref={ref}
+      collapsable={false}
+      onLayout={onLayout}
       accessibilityLabel={name}
-      style={{
-        width: Math.min(440, 220 * aspectRatio),
-        maxWidth: "100%",
-      }}
+      style={{ width: Math.min(440, 220 * aspectRatio), maxWidth: "100%" }}
     >
-      {src && !failed ? (
-        <Image
-          ref={image}
-          source={{ uri: src }}
-          alt={name}
-          autoplay={playing}
-          contentFit="contain"
-          cachePolicy="memory-disk"
-          onLoad={({ source }) => {
-            if (source.width > 0 && source.height > 0) {
-              setAspectRatio(source.width / source.height);
-            }
-            readyRef.current = true;
-            setReady(true);
-          }}
-          onError={() => setFailed(true)}
-          style={{
-            width: "100%",
-            aspectRatio,
-          }}
-        />
+      {(src || pending) && !failed ? (
+        <View style={{ width: "100%", aspectRatio }}>
+          {src && ((visible && appActive && active) || ready) ? (
+            <Image
+              ref={image}
+              source={{ uri: src }}
+              recyclingKey={src}
+              alt={name}
+              autoplay={false}
+              allowDownscaling
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              onLoad={({ source }) => {
+                if (source.width > 0 && source.height > 0) setAspectRatio(source.width / source.height);
+                readyRef.current = true;
+                setReady(true);
+                applyPlayback();
+                onLayout?.();
+              }}
+              onError={() => setFailed(true)}
+              style={{ width: "100%", height: "100%" }}
+            />
+          ) : null}
+        </View>
       ) : null}
       {pending || (src && !ready && !failed) ? (
-        <Txt variant="caption" tone="muted">
-          Loading…
-        </Txt>
+        <Txt variant="caption" tone="muted">Loading…</Txt>
       ) : failed || !src ? (
-        <Txt variant="caption" tone="muted">
-          Animation unavailable
-        </Txt>
+        <Txt variant="caption" tone="muted">Animation unavailable</Txt>
       ) : null}
-      <View
-        style={{ position: "absolute", bottom: spacing.xs, right: spacing.xs }}
-      >
-        {src && !failed ? (
-          <IconButton
-            size="xs"
-            icon={playing ? Pause : Play}
-            label={`${playing ? "Pause" : "Play"} ${name}`}
-            disabled={!ready}
-            onPress={() => {
-              pausedForBackground.current = false;
-              changePlayback(!playing);
-            }}
-          />
-        ) : null}
-      </View>
+      {src && !failed ? (
+        <View style={{ position: "absolute", bottom: spacing.xs, right: spacing.xs }}>
+          <IconButton size="xs" icon={requested ? Pause : Play} label={`${requested ? "Pause" : "Play"} ${name}`} disabled={!ready} onPress={() => setPlaying(!requested)} />
+        </View>
+      ) : null}
     </View>
   );
 }

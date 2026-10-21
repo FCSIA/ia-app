@@ -1,3 +1,4 @@
+import { displayName, greetingName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
@@ -322,11 +323,11 @@ export function MyWeekView() {
                       key={student._id}
                       leading={
                         <Avatar
-                          name={`${student.firstName} ${student.lastName}`}
+                          name={displayName(student)}
                           size={36}
                         />
                       }
-                      title={`${student.firstName} ${student.lastName}`}
+                      title={displayName(student)}
                       trailing={
                         canRespond ? (
                           <Button
@@ -364,11 +365,11 @@ export function MyWeekView() {
                     key={request.id}
                     leading={
                       <Avatar
-                        name={`${request.user.firstName} ${request.user.lastName}`}
+                        name={displayName(request.user)}
                         size={36}
                       />
                     }
-                    title={`${request.user.firstName} ${request.user.lastName}`}
+                    title={displayName(request.user)}
                     subtitle="Wants to compare schedules"
                     trailing={
                       <Button
@@ -393,11 +394,11 @@ export function MyWeekView() {
                     key={request.id}
                     leading={
                       <Avatar
-                        name={`${request.user.firstName} ${request.user.lastName}`}
+                        name={displayName(request.user)}
                         size={36}
                       />
                     }
-                    title={`${request.user.firstName} ${request.user.lastName}`}
+                    title={displayName(request.user)}
                     subtitle="Request pending"
                     trailing={
                       <Txt variant="caption" tone="muted">
@@ -440,12 +441,12 @@ export function MyWeekView() {
                       }}
                     >
                       <Avatar
-                        name={`${friend.user.firstName} ${friend.user.lastName}`}
+                        name={displayName(friend.user)}
                         size={36}
                       />
                       <View style={{ flex: 1, gap: spacing.xs }}>
                         <Txt variant="label" numberOfLines={1}>
-                          {friend.user.firstName} {friend.user.lastName}
+                          {displayName(friend.user)}
                         </Txt>
                         <Txt variant="caption" tone="muted">
                           {friend.visibility === "PUBLIC"
@@ -458,7 +459,7 @@ export function MyWeekView() {
                       {friend.schedule ? (
                         <IconButton
                           icon={isExpanded ? ChevronDown : ChevronRight}
-                          label={`${isExpanded ? "Collapse" : "Expand"} ${friend.user.firstName}'s schedule`}
+                          label={`${isExpanded ? "Collapse" : "Expand"} ${greetingName(friend.user)}'s schedule`}
                           size="sm"
                           variant="ghost"
                           onPress={() =>
@@ -473,12 +474,12 @@ export function MyWeekView() {
                       ) : null}
                       <IconButton
                         icon={UserMinus}
-                        label={`Remove ${friend.user.firstName}`}
+                        label={`Remove ${greetingName(friend.user)}`}
                         size="sm"
                         variant="ghost"
                         onPress={() =>
                           Alert.alert(
-                            `Remove ${friend.user.firstName}?`,
+                            `Remove ${greetingName(friend.user)}?`,
                             "You will no longer be able to compare schedules.",
                             [
                               { text: "Keep", style: "cancel" },

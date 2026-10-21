@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
+
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -167,7 +169,9 @@ import {
 } from '@/components/ui/empty';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
-import { ChatGif, ChatGifLinks } from '@/components/clubs/chat-gif';
+import { ChatGifLinks } from '@/components/clubs/chat-gif';
+import { AnimatedGif } from '@/components/media/animated-gif';
+import { MediaPlaybackContext } from '@/hooks/use-media-visibility';
 import { isGifAttachment, messageGifUrls } from '~/apps/shared/chat/gifs';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
@@ -258,7 +262,7 @@ function isImageAttachment(attachment: ClubChannelMessageAttachment) {
 function getSearchableText(message: ClubChannelMessage) {
   return [
     message.body,
-    fullName(message.author),
+    ...nameSearchValues(message.author),
     message.author.uniqueId,
     ...message.attachments.map((a) => a.fileName),
   ]
@@ -316,7 +320,7 @@ function MessageAttachmentCard({
   const isImage = isImageAttachment(attachment);
 
   if (isGifAttachment(attachment)) {
-    return <ChatGif key={href} src={href} name={attachment.fileName} />;
+    return <AnimatedGif key={href} src={href} name={attachment.fileName} />;
   }
 
   return (
@@ -541,7 +545,7 @@ function PinnedMessagesButton({
                           {formatChatTimestamp(message.createdAt)}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-muted-foreground">
+                      <span className="mt-0.5 line-clamp-2 block break-words text-sm leading-5 text-muted-foreground">
                         {preview}
                       </span>
                     </span>
@@ -2075,7 +2079,8 @@ export function ChannelWorkspace() {
     const people = (mentionContext?.members ?? [])
       .map((person) => ({
         token: person.uniqueId,
-        label: `${person.firstName} ${person.lastName}`.trim(),
+        label: displayName(person),
+        searchNames: nameSearchValues(person),
         detail: '',
         kind: 'person' as const,
       }));
@@ -2408,6 +2413,7 @@ export function ChannelWorkspace() {
 
   return (
     <ImageViewerContext.Provider value={openImageViewer}>
+    <MediaPlaybackContext.Provider value={!imageViewer?.open}>
     <ClubWorkspace
       title={title}
       rightPane={rightPane}
@@ -2636,6 +2642,7 @@ export function ChannelWorkspace() {
         </DialogContent>
       </Dialog>
     </ClubWorkspace>
+    </MediaPlaybackContext.Provider>
     {imageViewer ? (
       <ImageViewer
         images={imageViewer.images}

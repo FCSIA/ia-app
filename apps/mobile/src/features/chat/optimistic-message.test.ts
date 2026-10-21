@@ -16,6 +16,14 @@ const author = {
 } satisfies OptimisticMessageShapeAuthor;
 
 describe("mobile optimistic chat messages", () => {
+  test("keeps the preferred author name while a message is sending", () => {
+    const message = createOptimisticMessageShape(
+      { channelId: "channel-1", body: "Hello", clientGeneratedId: "name-1", clientSentAt: 100 },
+      { ...author, preferredName: "Lex" },
+    );
+    expect(message?.author).toMatchObject({ firstName: "Alex", lastName: "Johnson", preferredName: "Lex" });
+  });
+
   test("creates a stable local row from client mutation metadata", () => {
     const message = createOptimisticMessageShape(
       {

@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import {
   ResolvedSchoolDay,
   ScheduleWeekday,
@@ -21,8 +22,8 @@ export const WEEKDAYS: Array<{
   { value: "FRIDAY", shortLabel: "Fri", label: "Friday" },
 ];
 
-export function fullName(person: { firstName: string; lastName: string }) {
-  return `${person.firstName} ${person.lastName}`.trim();
+export function fullName(person: { firstName: string; lastName: string; preferredName?: string | null }) {
+  return displayName(person);
 }
 
 export function parseTimeToMinutes(value: string) {

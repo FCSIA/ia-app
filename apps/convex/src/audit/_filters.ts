@@ -8,6 +8,7 @@ import {
   parseAuditSearch,
 } from '../../../shared/audit';
 import type { SearchableAuditEvent } from '../../../shared/audit';
+import { nameSearchValues } from '../../../shared/user-name';
 
 export const auditFilters = {
   query: v.optional(v.string()),
@@ -70,8 +71,7 @@ export function auditMatcher(args: AuditFilters) {
     if (
       !contains(
         [
-          event.actor?.firstName,
-          event.actor?.lastName,
+          ...nameSearchValues(event.actor),
           event.actor?.uniqueId,
           event.actorId,
         ].join(' '),

@@ -1,6 +1,7 @@
 import type { Doc, Id, TableNames } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
 import { auditLabel, auditRecordLabel } from '../../../shared/audit';
+import { displayName } from '../../../shared/user-name';
 
 const ENTITY_TABLES: Record<string, TableNames> = {
   user: 'users',
@@ -57,7 +58,11 @@ export function auditMetaRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 function recordName(value: Record<string, unknown>): string | null {
-  if (typeof value.firstName === 'string') return [value.firstName, value.lastName].filter(Boolean).join(' ');
+  if (typeof value.firstName === 'string') return displayName({
+    firstName: value.firstName,
+    lastName: typeof value.lastName === 'string' ? value.lastName : undefined,
+    preferredName: typeof value.preferredName === 'string' ? value.preferredName : undefined,
+  });
   for (const key of ['title', 'name', 'keyword', 'date']) {
     if (typeof value[key] === 'string' && value[key])
       return value[key] as string;

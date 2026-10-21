@@ -1,8 +1,9 @@
+import { nameSearchValues } from '~/apps/shared/user-name';
 import type { ClubDirectoryEntry } from "@/components/clubs/types";
 
 export function peopleSearchValues(person: ClubDirectoryEntry) {
   return [
-    `${person.firstName} ${person.lastName}`.trim(),
+    ...nameSearchValues(person),
     person.uniqueId,
     person.kind,
     person.clubRole,

@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
@@ -24,7 +25,7 @@ export function AppHeader({ title, subtitle, action }: AppHeaderProps) {
   const { color } = useTheme();
   const prewarm = usePrewarmTab(user);
   const unread = useQuery(api.notifications.inbox.unreadCount, auth.isAuthenticated ? EMPTY_ARGS : "skip");
-  const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Innovation Academy";
+  const name = displayName(user) || "Innovation Academy";
   const unreadLabel = unread?.count && unread.count > 99 ? "99+" : String(unread?.count ?? "");
 
   return (

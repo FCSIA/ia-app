@@ -10,7 +10,7 @@ export const customColorSlots = [
 
 export type CustomColorKey = (typeof customColorSlots)[number]['key'];
 export type CustomColors = Partial<Record<CustomColorKey, string>>;
-export type CustomColorErrors = Partial<Record<CustomColorKey, string>>;
+export type CustomColorWarnings = Partial<Record<CustomColorKey, string>>;
 
 const CUSTOM_COLORS_STYLE_ID = 'ia-custom-colors';
 const MIN_TEXT_CONTRAST = 4.5;
@@ -107,17 +107,21 @@ export function contrastRatio(left: string, right: string): number | null {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-export function validateCustomColors(colors: CustomColors): CustomColorErrors {
+export function customColorWarnings(colors: CustomColors): CustomColorWarnings {
   const resolved = Object.fromEntries(
     customColorSlots.map(({ key }) => [key, colors[key] ?? defaultCustomColors[key]]),
   ) as Record<CustomColorKey, string>;
-  const errors: CustomColorErrors = {};
+  if (colors.background && !colors.foreground) {
+    resolved.foreground = readableForegroundParts(colors.background) === '0 0% 0%'
+      ? '#000000' : '#ffffff';
+  }
+  const warnings: CustomColorWarnings = {};
   const pageContrast = contrastRatio(resolved.foreground, resolved.background);
 
   if (pageContrast !== null && pageContrast < MIN_TEXT_CONTRAST) {
-    const message = `Text and Background need at least 4.5:1 contrast (currently ${pageContrast.toFixed(2)}:1).`;
-    errors.foreground = message;
-    errors.background = message;
+    const message = `Text and Background are easier to read with at least 4.5:1 contrast (currently ${pageContrast.toFixed(2)}:1).`;
+    warnings.foreground = message;
+    warnings.background = message;
   }
 
   const primaryPageContrast = contrastRatio(resolved.primary, resolved.background);
@@ -126,16 +130,16 @@ export function validateCustomColors(colors: CustomColors): CustomColorErrors {
     (primaryPageContrast !== null && primaryPageContrast < MIN_UI_CONTRAST) ||
     (primaryCardContrast !== null && primaryCardContrast < MIN_UI_CONTRAST)
   ) {
-    errors.primary = `Primary needs at least 3:1 contrast against page and card surfaces (currently ${primaryPageContrast?.toFixed(2) ?? 'invalid'}:1 and ${primaryCardContrast?.toFixed(2) ?? 'invalid'}:1).`;
+    warnings.primary = `Primary is easier to see with at least 3:1 contrast against page and card surfaces (currently ${primaryPageContrast?.toFixed(2) ?? 'invalid'}:1 and ${primaryCardContrast?.toFixed(2) ?? 'invalid'}:1).`;
     if (primaryPageContrast !== null && primaryPageContrast < MIN_UI_CONTRAST) {
-      errors.background = errors.background ?? errors.primary;
+      warnings.background = warnings.background ?? warnings.primary;
     }
     if (primaryCardContrast !== null && primaryCardContrast < MIN_UI_CONTRAST) {
-      errors.secondary = errors.primary;
+      warnings.secondary = warnings.primary;
     }
   }
 
-  return errors;
+  return warnings;
 }
 
 export function parseCustomColors(raw: string | null): CustomColors {
@@ -160,15 +164,13 @@ export function parseCustomColors(raw: string | null): CustomColors {
 export function loadCustomColors(): CustomColors {
   if (typeof localStorage === 'undefined') return {};
   try {
-    const colors = parseCustomColors(localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY));
-    return Object.keys(validateCustomColors(colors)).length === 0 ? colors : {};
+    return parseCustomColors(localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY));
   } catch {
     return {};
   }
 }
 
 export function buildCustomThemeRule(colors: CustomColors): string | null {
-  if (Object.keys(validateCustomColors(colors)).length > 0) return null;
   const declarations: string[] = [];
   const validColors: CustomColors = {};
 

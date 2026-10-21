@@ -4,11 +4,12 @@
 
 - **Current checkout (2026-10-20)**: The primary checkout is on
   `codex/admin-audit-log-ux` for the requested audit UI repair, now integrating
-  `origin/main` through `679f7a00`. Older integration/worktree notes are history.
-- **Current goal**: Repair the audit composition and remove passive admin card
-  hover backgrounds. Browser review is diagnostic; design-owner review remains
-  outstanding. The owner authorized updating the existing local demo backend at
-  `127.0.0.1:3210`; production changes remain unauthorized.
+  `origin/main` through `e7dd4f88`. Older integration/worktree notes are history.
+- **Current goal**: The owner authorized squash-merging audit PR #152 and then
+  running `release:ship` to publish through the existing release workflow.
+  This supersedes earlier draft/awaiting-owner-review and no-production-authorization
+  notes for this release. Preserve main's preferred-name display/search support
+  when integrating the audit refactor. Local demo data remains intact.
 - **Dashboard calendar follow-up**: The owner requested a small commit directly
   in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
   October 18. After owner feedback, the month controls and full-calendar arrow
@@ -27,9 +28,8 @@
   reconciled with their squash commits so final CI validates the combined source.
   Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
-- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
-  New material UI changes still require design-owner review. Native iPhone swipe
-  verification remains outstanding. Production deployment is not authorized.
+- **Goal**: Land verified changes and complete the authorized release. Native
+  iPhone swipe verification remains outstanding.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -38,6 +38,11 @@
 
 ### Audit UI Repair (2026-10-20)
 
+- Current-main integration preserves preferred-name display and regular/preferred
+  name searches across basic, paginated, and structured audit queries. All 455
+  backend tests across 87 files, backend/web typechecks, and web lint (21 existing
+  warnings) pass. The owner authorized PR #152's squash merge and `release:ship`;
+  production uses `elated-anaconda-301` and `app.fcsia.com` through release CI.
 - The latest composition pass puts view tabs, search, and Filters in one desktop
   toolbar, with inline one/two/four-column filters and nested advanced search.
   Action and record now share a cell: category plus concise verb, then the title.
@@ -118,6 +123,49 @@
 - The user subsequently authorized a draft PR: #152 is open with
   `sreyassabbani` requested as reviewer. Keep it in draft pending human review.
   See `docs/features/audit-log.md`.
+
+### Preferred-name moderation (2026-10-20)
+
+- Preferred-name saves now apply the original English profanity dictionary and
+  active school keyword rules before storing or indexing names. Detected language
+  is masked; each flagged save atomically records a staff-only name snapshot in
+  a pending moderation report, an audit event, and an author notification that
+  respects preferences. Existing report-review permissions and status actions
+  apply. These reports do not enter the feedback/GitHub issue pipeline.
+- Nonempty saves have a per-account token bucket (capacity five, five tokens per
+  ten minutes). Clearing remains available during cooldowns or rule-read limits.
+  Tests cover dictionary/custom rules, detected obfuscations, innocent Unicode
+  names, indexing, report access/review, audit, notification opt-outs, and limits.
+- All 415 backend tests and backend/web/mobile TypeScript pass. Devlog and
+  whitespace checks pass; the new dependency bundles successfully in this worktree's anonymous local Convex backend (3270/3271).
+  The older backend's automatic filtering of other content remains unported;
+  see the moderation feature document for that scope and existing UI-copy drift.
+
+### Preferred profile names (2026-10-20)
+
+- Recovered the unmerged preferred-name commits `103981f1` and `f96ddfd5`
+  from `codex/admin-audit-readability`, preserving that checkout's unfinished
+  audit edits. Ported only preferred-name work into an isolated branch, then
+  rebased onto concurrent theme fix `196cf06a` without changing it.
+- Web and native settings set or clear a complete preferred display name.
+  Shared identity projections, initials, mentions, notifications, and both-name
+  searches use the preference while retaining regular roster names and IDs.
+  Newer shared announcement authors/filters and profile components remain intact;
+  audit searches also match full regular names, and initials preserve Unicode
+  code points.
+- Final combined verification: all 406 backend tests and 20 focused client
+  tests, backend/mobile TypeScript, production web build (including web TypeScript),
+  and isolated Convex push pass. Web lint passes with 21 existing warnings;
+  React Doctor 0.9.8 has one low-impact advisory on mapping/filtering two name
+  values in bulk assignment. Devlog generation and whitespace checks pass.
+- Signed-in production-build browser checks at localhost:3004 cover normalized
+  save, reload persistence, regular-name disclosure, header/avatar initials,
+  clearing, and a 390px layout without horizontal overflow or console errors.
+  Design-owner visual review and native device verification remain outstanding.
+  Windows lacks direnv, so checks use the repository-pinned Bun 1.4.2 directly.
+- Only this worktree's anonymous local backend on ports 3270/3271 was initialized,
+  seeded, and updated. Shared and production deployments were not changed.
+  See `docs/features/preferred-names-testing.md` for the review checklist.
 
 ### Announcement layout and detail pages (2026-10-17)
 

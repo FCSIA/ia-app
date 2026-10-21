@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import type { ClubChannelReaction } from "~/apps/convex/src/validators";
 import { isGifAttachment } from "../../../../shared/chat/gifs";
 
@@ -5,6 +6,7 @@ export type ChatUser = {
   _id: string;
   firstName?: string | null;
   lastName?: string | null;
+  preferredName?: string | null;
   avatarUrl?: string | null;
   isDeveloper?: boolean | null;
 };
@@ -94,6 +96,7 @@ export type ClubMentionContext = {
     uniqueId: string;
     firstName: string;
     lastName: string;
+    preferredName?: string | null;
   }>;
   tags: Array<{
     slug: string;
@@ -118,9 +121,7 @@ export type ComposerMode =
 
 export function chatAuthorName(message: ChatMessage) {
   return (
-    [message.author?.firstName, message.author?.lastName]
-      .filter(Boolean)
-      .join(" ") || "Member"
+    displayName(message.author) || "Member"
   );
 }
 

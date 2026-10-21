@@ -9,6 +9,7 @@ export const actorValidator = v.union(
     id: v.id("users"),
     firstName: v.string(),
     lastName: v.string(),
+    preferredName: v.optional(v.string()),
     uniqueId: v.string(),
   }),
   v.null(),
@@ -83,6 +84,7 @@ export async function toAuditEvents(
               id: actor._id,
               firstName: actor.firstName,
               lastName: actor.lastName,
+              preferredName: actor.preferredName,
               uniqueId: actor.uniqueId,
             }
           : null,

@@ -1,3 +1,5 @@
+import { displayName, nameSearchValues } from './user-name';
+
 /** Plain-language labels and search grammar shared by the audit backend and UI. */
 export function auditLabel(value: string): string {
   const words = value
@@ -167,7 +169,7 @@ export type SearchableAuditEvent = {
     id: string;
     firstName: string;
     lastName: string;
-
+    preferredName?: string | null;
     uniqueId: string;
   } | null;
   context?: {
@@ -178,7 +180,7 @@ export type SearchableAuditEvent = {
 };
 export function auditPersonName(event: SearchableAuditEvent): string {
   return event.actor
-    ? `${event.actor.firstName} ${event.actor.lastName}`.trim()
+    ? displayName(event.actor)
     : event.actorId
       ? 'Former user (name unavailable)'
       : 'System';
@@ -189,6 +191,7 @@ export function matchesAuditSearch(
 ): boolean {
   const person = [
     auditPersonName(event),
+    ...nameSearchValues(event.actor),
     event.actor?.uniqueId,
     event.actor?.id,
     event.actorId,

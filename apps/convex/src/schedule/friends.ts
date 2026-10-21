@@ -1,3 +1,4 @@
+import { displayName } from '../../../shared/user-name';
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -21,6 +22,7 @@ const profileFriendValidator = v.object({
   _id: v.id("users"),
   firstName: v.string(),
   lastName: v.string(),
+  preferredName: v.optional(v.string()),
   avatarUrl: v.union(v.string(), v.null()),
 });
 
@@ -305,6 +307,7 @@ export const getProfileContext = query({
           _id: friend._id,
           firstName: friend.firstName,
           lastName: friend.lastName,
+          preferredName: friend.preferredName,
           avatarUrl: friend.avatarUrl ?? null,
         })),
       scheduleVisibility,
@@ -344,7 +347,7 @@ export const sendRequest = mutation({
           userId: target._id,
           friendshipId: existing._id,
           title: "Friend request accepted",
-          body: `${user.firstName} ${user.lastName} accepted your friend request.`,
+          body: `${displayName(user)} accepted your friend request.`,
         });
         return { success: true, status: "ACCEPTED" as const, id: existing._id };
       }
@@ -367,7 +370,7 @@ export const sendRequest = mutation({
       userId: target._id,
       friendshipId: id,
       title: "New friend request",
-      body: `${user.firstName} ${user.lastName} wants to be your friend.`,
+      body: `${displayName(user)} wants to be your friend.`,
     });
     return { success: true, status: "PENDING" as const, id };
   },
@@ -403,7 +406,7 @@ export const acceptRequest = mutation({
       userId: args.requesterId,
       friendshipId: request._id,
       title: "Friend request accepted",
-      body: `${user.firstName} ${user.lastName} accepted your friend request.`,
+      body: `${displayName(user)} accepted your friend request.`,
     });
     return { success: true };
   },

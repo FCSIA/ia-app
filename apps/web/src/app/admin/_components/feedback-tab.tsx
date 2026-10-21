@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useState } from 'react';
 import { Archive, Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
@@ -9,17 +11,18 @@ import { Card, CardGroup } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { AnimatedGif } from '@/components/media/animated-gif';
 import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
-  submitter: { firstName: string; lastName: string } | null;
-  images: Array<{ _id: Id<'feedbackReportImages'>; url: string }>;
+  submitter: { firstName: string; lastName: string; preferredName?: string | null } | null;
+  images: Array<{ _id: Id<'feedbackReportImages'>; url: string; mimeType: string }>;
   responses: Array<{
     _id: Id<'feedbackReportResponses'>;
     body: string;
     createdAt: number;
-    author: { firstName: string; lastName: string };
+    author: { firstName: string; lastName: string; preferredName?: string | null };
   }>;
 };
 type FeedbackStatus = FeedbackReport['status'];
@@ -162,7 +165,7 @@ function FeedbackList({
                 <p className="text-sm font-medium text-foreground">{report.reason}</p>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                By {report.submitter?.firstName} {report.submitter?.lastName}
+                By {displayName(report.submitter)}
                 {' · '}
                 Submitted {formatDateTime(report._creationTime)}
                 {report.appVersion ? ` · ${report.appVersion}` : ''}
@@ -194,11 +197,11 @@ function FeedbackList({
                       rel="noreferrer"
                       className="block size-20 overflow-hidden rounded-lg border border-border/40 bg-muted transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <img
-                        src={image.url}
-                        alt={`Feedback attachment ${index + 1}`}
-                        className="size-full object-cover"
-                      />
+                      {image.mimeType === 'image/gif' ? (
+                        <AnimatedGif src={image.url} name={`Feedback attachment ${index + 1}`} thumbnail maxHeight={80} />
+                      ) : (
+                        <img src={image.url} alt={`Feedback attachment ${index + 1}`} loading="lazy" decoding="async" className="size-full object-cover" />
+                      )}
                     </a>
                   ))}
                 </div>
@@ -258,20 +261,20 @@ function FeedbackResponses({
   }
 
   return (
-    <CardGroup proximityHover={false} border="outlined" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
+    <CardGroup proximityHover={false} border="none" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
       <Card className="p-4">
         <div className="space-y-3">
           {report.responses.map((response) => (
             <div key={response._id} className="rounded-lg bg-background p-3 border border-border/40">
               <p className="text-xs font-medium text-muted-foreground">
-                {response.author.firstName} {response.author.lastName}
+                {displayName(response.author)}
               </p>
               <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
             </div>
           ))}
           <form className="space-y-3 pt-3 border-t border-border/40" onSubmit={handleSubmit}>
             <Textarea
-              aria-label={`Respond to feedback from ${report.submitter?.firstName ?? 'submitter'}`}
+              aria-label={`Respond to feedback from ${displayName(report.submitter) || 'submitter'}`}
               placeholder="Write a response for the submitter..."
               value={body}
               onChange={(event) => setBody(event.target.value)}

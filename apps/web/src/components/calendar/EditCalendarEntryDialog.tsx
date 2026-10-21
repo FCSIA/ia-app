@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName } from '~/apps/shared/user-name';
+
 import { useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -33,7 +35,7 @@ interface EditCalendarEntryDialogProps {
     source: string;
     createdById?: string;
     inviteId?: Id<'calendarInvites'>;
-    sharedBy?: { firstName: string; lastName: string };
+    sharedBy?: { firstName: string; lastName: string; preferredName?: string | null };
   };
   trigger?: ((onOpen: () => void) => React.ReactNode) | null;
   open?: boolean;
@@ -164,7 +166,7 @@ export function EditCalendarEntryDialog({
             {isOwnedPersonal
               ? 'Update your reminder details or invite accepted friends.'
               : entry.sharedBy
-                ? `Shared with you by ${entry.sharedBy.firstName} ${entry.sharedBy.lastName}.`
+                ? `Shared with you by ${displayName(entry.sharedBy)}.`
                 : 'Shared calendar event.'}
           </DialogDescription>
         </DialogHeader>
@@ -274,7 +276,7 @@ export function EditCalendarEntryDialog({
                             )
                           }
                         />
-                        {friend.firstName} {friend.lastName}
+                        {displayName(friend)}
                       </label>
                     );
                   })}

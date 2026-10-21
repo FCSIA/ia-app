@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { Linking, View } from "react-native";
 import { Image } from "expo-image";
 import { File, Paths } from "expo-file-system";
@@ -35,6 +36,11 @@ export function AttachmentViewer({
   const [sharing, setSharing] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
+  const [screenFocused, setScreenFocused] = useState(false);
+  useFocusEffect(useCallback(() => {
+    setScreenFocused(true);
+    return () => setScreenFocused(false);
+  }, []));
   const downloadAbortRef = useRef<AbortController | null>(null);
   const safeUrl = attachment
     ? safeRemoteAttachmentUrl(attachment.fileUrl)
@@ -154,7 +160,7 @@ export function AttachmentViewer({
       {attachment ? (
         <>
           {isGifAttachment(attachment) && canUseAttachment ? (
-            <ChatGif key={attachment._id} src={safeUrl} name={attachment.fileName} />
+            <ChatGif key={attachment._id} src={safeUrl} name={attachment.fileName} active={screenFocused} />
           ) : image && canUseAttachment && !imageFailed ? (
             <View
               style={{

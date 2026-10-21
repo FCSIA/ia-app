@@ -9,6 +9,7 @@ import type { QueryCtx } from '../_generated/server';
 import {
   auditActionLabel,
   auditActionSummary,
+  auditPersonName,
   auditLabel,
   isFlexAudit,
   matchesAuditSearch,
@@ -166,6 +167,37 @@ describe('audit search grammar', () => {
 });
 
 describe('audit history and context', () => {
+  test('displays preferred names while retaining regular-name and structured person searches', async () => {
+    const f = await fixture();
+    await f.t.run(async (ctx) => {
+      await ctx.db.patch(f.admin, { preferredName: 'Eni' });
+      await ctx.db.patch(f.student, { preferredName: 'Countess Ada' });
+    });
+    for (const name of ['Eniola Famakinwa', 'Eni', 'ADMIN']) {
+      for (const filter of [
+        { actor: name },
+        { query: name },
+        { advancedQuery: `person:"${name}"` },
+      ]) {
+        const listed = await f.adminClient.query(api.audit.events.list, filter);
+        const paged = await f.adminClient.query(api.audit.events.listPage, {
+          ...filter,
+          paginationOpts: { cursor: null, numItems: 10 },
+        });
+        expect(listed.map((row) => row.id)).toEqual([f.oldest]);
+        expect(paged.page.map((row) => row.id)).toEqual([f.oldest]);
+        expect(auditPersonName(paged.page[0]!)).toBe('Eni');
+      }
+    }
+    const detail = await f.adminClient.query(api.audit.events.get, {
+      auditEventId: f.oldest,
+    });
+    expect(detail!.context.references).toContainEqual({
+      id: f.student,
+      label: 'Student',
+      name: 'Countess Ada',
+    });
+  });
   test('finds older matches after empty batches, preserving cursor and original data', async () => {
     const f = await fixture();
     let cursor: string | null = null;

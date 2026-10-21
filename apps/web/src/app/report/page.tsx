@@ -10,6 +10,7 @@ import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { FileInput } from '@/components/ui/file-input';
+import { AnimatedGif } from '@/components/media/animated-gif';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -143,7 +144,11 @@ export default function ReportPage() {
             <div className="flex flex-wrap gap-3" aria-label="Attached images">
               {images.map((image, index) => (
                 <div key={image.previewUrl} className="relative size-20 overflow-hidden rounded-md bg-muted">
-                  <img src={image.previewUrl} alt={image.file.name} className="size-full object-cover" />
+                  {image.file.type === 'image/gif' ? (
+                    <AnimatedGif src={image.previewUrl} name={image.file.name} thumbnail maxHeight={80} />
+                  ) : (
+                    <img src={image.previewUrl} alt={image.file.name} className="size-full object-cover" />
+                  )}
                   <Button
                     type="button"
                     size="icon-sm"

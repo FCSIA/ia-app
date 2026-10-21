@@ -1,3 +1,4 @@
+import { displayName, regularName, MAX_PREFERRED_NAME_LENGTH } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -32,7 +33,8 @@ export default function ProfileScreen() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const { showToast } = useToast();
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  const fullName = displayName(user);
+  const realName = regularName(user);
 
   async function pickAvatar() {
     let prepared: PreparedAvatarImage | undefined;
@@ -117,6 +119,9 @@ export default function ProfileScreen() {
             </Txt>
             <DeveloperBadge user={user} size={16} />
           </View>
+          {realName && realName !== fullName ? (
+            <Txt variant="caption" tone="muted">{realName}</Txt>
+          ) : null}
         </View>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
@@ -136,6 +141,8 @@ export default function ProfileScreen() {
           />
         ) : null}
       </View>
+
+      {user ? <PreferredNameSettings key={`${user._id}:${user.preferredName ?? ''}`} preferredName={user.preferredName} /> : null}
 
       <Section title="Preferences">
         <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme" as never)} />
@@ -186,6 +193,44 @@ export default function ProfileScreen() {
         />
       </Sheet>
     </Screen>
+  );
+}
+
+function PreferredNameSettings({ preferredName }: { preferredName?: string }) {
+  const [value, setValue] = useState(preferredName ?? "");
+  const [saving, setSaving] = useState(false);
+  const update = useMutation(api.users.me.updatePreferredName);
+  const { showToast } = useToast();
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const updated = await update({ preferredName: value });
+      setValue(updated.preferredName ?? "");
+      showToast({ title: updated.preferredName ? "Preferred name saved" : "Using your regular name", tone: "success" });
+    } catch (error) {
+      showToast({ title: "Name wasn't saved", body: error instanceof Error ? error.message : "Try again.", tone: "warning" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Section title="Preferred name">
+      <Txt variant="label">Preferred name (optional)</Txt>
+      <TextField
+        accessibilityLabel="Preferred name (optional)"
+        value={value}
+        onChangeText={setValue}
+        maxLength={MAX_PREFERRED_NAME_LENGTH}
+        editable={!saving}
+      />
+      <Txt variant="caption" tone="muted">
+        Shown throughout the app, including chats. Leave blank to use your regular name. People can find you by either name.
+      </Txt>
+      <Button title="Save name" loading={saving} disabled={value === (preferredName ?? "")} onPress={() => void save()} />
+    </Section>
   );
 }
 

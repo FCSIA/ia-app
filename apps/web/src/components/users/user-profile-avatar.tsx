@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { displayName } from '~/apps/shared/user-name';
 import { Button } from '@/components/ui/button';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { UserProfileDialog, type UserProfilePerson } from '@/components/clubs/user-profile-dialog';
@@ -19,7 +20,7 @@ type UserProfileAvatarProps = {
 export function UserProfileAvatar({ person, size = 'sm', className, fallbackClassName }: UserProfileAvatarProps) {
   const [open, setOpen] = useState(false);
   const currentUser = useCurrentUser();
-  const name = `${person.firstName} ${person.lastName}`.trim();
+  const name = displayName(person);
 
   return (
     <UserProfileDialog

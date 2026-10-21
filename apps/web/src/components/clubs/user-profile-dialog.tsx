@@ -17,12 +17,13 @@ import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { fullName, formatClubRole } from '@/components/clubs/types';
 import type { ClubUserRef } from '@/components/clubs/types';
 import { cn } from '@/lib/utils';
+import { regularName } from '~/apps/shared/user-name';
 
 export type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
 export type UserProfilePerson = Pick<
   ClubUserRef,
-  '_id' | 'firstName' | 'lastName'
+  '_id' | 'firstName' | 'lastName' | 'preferredName'
 > & Partial<Pick<ClubUserRef, 'avatarUrl' | 'uniqueId' | 'roles'>> & { isDeveloper?: boolean | null };
 
 type UserProfileContentProps = {
@@ -75,6 +76,7 @@ export function UserProfileContent({
     active && !isCurrentUser ? { personId: person._id } : 'skip',
   );
   const name = fullName(person);
+  const realName = regularName(person);
   const isPreview = variant === 'preview';
   const friendsListEnabled = !isPreview && !!onOpenPerson;
   // The dialog shows the list directly; hover previews keep the brief projection.
@@ -120,6 +122,9 @@ export function UserProfileContent({
             <span className="truncate">{name}</span>
             <DeveloperBadge user={person} size={15} />
           </div>
+          {realName && realName !== name ? (
+            <p className="mt-0.5 break-words text-xs text-muted-foreground">{realName}</p>
+          ) : null}
           {person.uniqueId ? <p className="mt-0.5 truncate text-xs text-muted-foreground">ID {person.uniqueId}</p> : null}
           {roleLabels.length > 0 || friendshipLabel ? (
             <div className="mt-2 flex flex-wrap gap-1">

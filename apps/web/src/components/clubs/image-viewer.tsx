@@ -1,6 +1,7 @@
 'use client';
 
 import { ExternalLink, Share } from 'lucide-react';
+import { useEffect } from 'react';
 import Lightbox, { IconButton, useLightboxState } from 'yet-another-react-lightbox';
 import Counter from 'yet-another-react-lightbox/plugins/counter';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
@@ -9,11 +10,16 @@ import 'yet-another-react-lightbox/plugins/counter.css';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import { useToast } from '@/hooks/use-toast';
 import { canShareFile, shareFile, shareUrl } from '@/lib/share';
+import { AnimatedGif } from '@/components/media/animated-gif';
+import { isGifAttachment } from '~/apps/shared/chat/gifs';
 
 declare module 'yet-another-react-lightbox' {
   interface Labels {
     Share?: string;
     'Open original'?: string;
+  }
+  interface SlideTypes {
+    gif: { type: 'gif'; src: string; alt: string };
   }
 }
 
@@ -27,12 +33,17 @@ export type ViewerImage = {
 // file itself to the share sheet inside the tap. Until it arrives, or where
 // the fetch fails, Share falls back to the link.
 const imageFiles = new Map<string, File | null>();
-const imageFilesLoading = new Set<string>();
+const imageFilesLoading = new Map<string, AbortController>();
+const MAX_SHARE_CACHE_BYTES = 32 * 1024 * 1024;
 
 function prefetchImageFile(image: ViewerImage | undefined) {
+  for (const [src, controller] of imageFilesLoading) {
+    if (src !== image?.src) { controller.abort(); imageFilesLoading.delete(src); }
+  }
   if (!image || imageFiles.has(image.src) || imageFilesLoading.has(image.src)) return;
-  imageFilesLoading.add(image.src);
-  void fetch(image.src)
+  const controller = new AbortController();
+  imageFilesLoading.set(image.src, controller);
+  void fetch(image.src, { signal: controller.signal })
     .then((response) => (response.ok ? response.blob() : null))
     .then((blob) =>
       blob
@@ -41,8 +52,15 @@ function prefetchImageFile(image: ViewerImage | undefined) {
     )
     .catch(() => null)
     .then((file) => {
+      if (controller.signal.aborted) return;
       imageFiles.set(image.src, file);
-      imageFilesLoading.delete(image.src);
+      let bytes = [...imageFiles.values()].reduce((total, entry) => total + (entry?.size ?? 0), 0);
+      while (imageFiles.size > 8 || bytes > MAX_SHARE_CACHE_BYTES) {
+        const oldest = imageFiles.keys().next().value!;
+        bytes -= imageFiles.get(oldest)?.size ?? 0;
+        imageFiles.delete(oldest);
+      }
+      if (imageFilesLoading.get(image.src) === controller) imageFilesLoading.delete(image.src);
     });
 }
 
@@ -105,13 +123,17 @@ export function ImageViewer({
 }) {
   const isTouchPrimary = useTouchPrimary();
   const single = images.length <= 1;
+  useEffect(() => {
+    if (!open) prefetchImageFile(undefined);
+    return () => prefetchImageFile(undefined);
+  }, [open]);
 
   return (
     <Lightbox
       open={open}
       close={onClose}
       index={index}
-      slides={images.map((image) => ({ src: image.src, alt: image.fileName }))}
+      slides={images.map((image) => ({ src: image.src, alt: image.fileName, ...(isGifAttachment(image) ? { type: 'gif' as const } : {}) }))}
       plugins={single ? [Zoom] : [Zoom, Counter]}
       carousel={{ finite: true, preload: 1, padding: 0, spacing: 16 }}
       animation={{ fade: 200, swipe: 260, zoom: 220 }}
@@ -120,7 +142,7 @@ export function ImageViewer({
         entering: () => prefetchImageFile(images[index]),
         view: ({ index: viewed }) => prefetchImageFile(images[viewed]),
       }}
-      zoom={{ maxZoomPixelRatio: 3, scrollToZoom: true }}
+      zoom={{ maxZoomPixelRatio: 3, scrollToZoom: true, supports: ['gif'], maxZoom: 8 }}
       toolbar={{
         buttons: [
           <ShareImageButton key="share" images={images} />,
@@ -129,6 +151,9 @@ export function ImageViewer({
         ],
       }}
       render={{
+        slide: ({ slide, offset, rect }) => slide.type === 'gif' ? (
+          <AnimatedGif src={slide.src} name={slide.alt} active={offset === 0} maxHeight={rect.height} maxWidth={rect.width} />
+        ) : undefined,
         // Touch has pinch and swipe; the buttons are for pointers.
         buttonZoom: isTouchPrimary ? () => null : undefined,
         buttonPrev: single || isTouchPrimary ? () => null : undefined,

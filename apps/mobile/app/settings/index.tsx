@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { router } from "expo-router";
 import { Bell, Palette } from "lucide-react-native";
 import { Screen } from "@/components/screen";
@@ -6,7 +7,7 @@ import { useCurrentUser } from "@/lib/auth";
 
 export default function SettingsScreen() {
   const user = useCurrentUser();
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  const fullName = displayName(user);
 
   return (
     <Screen title="Settings">

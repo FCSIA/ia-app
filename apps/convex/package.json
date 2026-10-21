@@ -21,6 +21,7 @@
     "@convex-dev/rate-limiter": "0.4.0",
     "better-auth": "1.6.22",
     "convex": "1.46.0",
+    "glin-profanity": "3.3.0",
     "ical.js": "2.2.1",
     "web-push": "^3.6.7"
   },

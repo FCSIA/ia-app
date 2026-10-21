@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName, nameInitials } from '~/apps/shared/user-name';
+
 import { useEffect, useState } from 'react';
 import { useAction, useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -17,10 +19,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { uploadUserImage } from '@/lib/upload-user-image';
-
-function initialsOf(firstName: string, lastName: string) {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
 
 export function ProfileAvatarEditor({ user }: { user: AppUser }) {
   const { toast } = useToast();
@@ -108,8 +106,8 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
     }
   }
 
-  const initials = initialsOf(user.firstName, user.lastName);
-  const alt = `${user.firstName} ${user.lastName}`;
+  const initials = nameInitials(user).toUpperCase();
+  const alt = displayName(user);
 
   return (
     <>

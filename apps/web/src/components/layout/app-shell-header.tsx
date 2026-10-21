@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import type { ReactNode } from "react";
 import {
   ArrowLeftRight,
@@ -196,13 +197,14 @@ function AppShellHeader({
                   <UserAvatar
                     firstName={user.firstName}
                     lastName={user.lastName}
+                    preferredName={user.preferredName}
                     avatarUrl={user.avatarUrl}
                     className="size-11 sm:size-9"
                     fallbackClassName="text-xs"
                   />
                 </PresenceAvatar>
                 <span className="hidden truncate pl-1 sm:inline">
-                  {user.firstName} {user.lastName}
+                  {displayName(user)}
                 </span>
                 <ChevronDown
                   aria-hidden

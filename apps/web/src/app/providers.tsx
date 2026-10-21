@@ -21,6 +21,7 @@ import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
 import { ThemeFavicon } from '@/components/ui/ia-orbit-mark';
 import { Button } from '@/components/ui/button';
 import { api } from '~/apps/convex/src/_generated/api';
+import { DEFAULT_WALLPAPER_BLUR } from '~/apps/shared/custom-theme';
 
 /**
  * On mount, restore the user's saved custom background image from their account
@@ -40,17 +41,22 @@ function CustomThemeBootstrap() {
         `url("${user.customBackgroundUrl}")`,
       );
       document.documentElement.dataset.customWallpaper = 'true';
+      document.documentElement.style.setProperty('--custom-wallpaper-blur', `${user.customBackgroundBlur ?? DEFAULT_WALLPAPER_BLUR}px`);
       if (user.customBackgroundTint && /^#[0-9a-f]{6}$/i.test(user.customBackgroundTint)) {
         document.documentElement.style.setProperty('--custom-wallpaper-tint', user.customBackgroundTint);
+        document.documentElement.dataset.customWallpaperTint = 'true';
       } else {
         document.documentElement.style.removeProperty('--custom-wallpaper-tint');
+        delete document.documentElement.dataset.customWallpaperTint;
       }
     } else {
       document.documentElement.style.removeProperty('--custom-bg-image');
       document.documentElement.style.removeProperty('--custom-wallpaper-tint');
+      document.documentElement.style.removeProperty('--custom-wallpaper-blur');
       delete document.documentElement.dataset.customWallpaper;
+      delete document.documentElement.dataset.customWallpaperTint;
     }
-  }, [theme, user?.customBackgroundUrl, user?.customBackgroundTint]);
+  }, [theme, user?.customBackgroundUrl, user?.customBackgroundTint, user?.customBackgroundBlur]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

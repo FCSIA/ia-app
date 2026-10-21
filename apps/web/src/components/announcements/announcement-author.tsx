@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { displayName } from '~/apps/shared/user-name';
 import { UserProfileAvatar, type UserProfilePerson } from '@/components/users/user-profile-avatar';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { cn } from '@/lib/utils';
@@ -7,6 +8,7 @@ export type AnnouncementAuthorPerson = {
   _id?: string;
   firstName?: string | null;
   lastName?: string | null;
+  preferredName?: string | null;
   avatarUrl?: string | null;
   roles?: UserProfilePerson['roles'];
   isDeveloper?: boolean | null;
@@ -24,7 +26,7 @@ export function AnnouncementAuthor({
   className?: string;
   detailsClassName?: string;
 }) {
-  const name = [author?.firstName, author?.lastName].filter(Boolean).join(' ') || 'Unknown author';
+  const name = displayName(author) || 'Unknown author';
   return (
     <div className={cn('flex min-w-0 items-center gap-2 text-sm', className)}>
       {author?._id ? <UserProfileAvatar person={{
@@ -32,6 +34,7 @@ export function AnnouncementAuthor({
         _id: author._id as UserProfilePerson['_id'],
         firstName: author.firstName ?? '',
         lastName: author.lastName ?? '',
+        preferredName: author.preferredName ?? undefined,
       }} /> : null}
       <div className={cn('min-w-0', author?._id && detailsClassName)}>
         <div className="flex min-w-0 items-center gap-1 text-foreground">

@@ -1,5 +1,7 @@
 'use client';
 
+import { displayName, greetingName } from '~/apps/shared/user-name';
+
 import { use, useState } from 'react';
 import Link from 'next/link';
 import type { FunctionReturnType } from 'convex/server';
@@ -81,9 +83,9 @@ export default function FriendLinkRedemptionPage({
               </div>
               <h1 className="text-lg font-semibold">
                 {result.status === 'FRIENDS' || result.status === 'ALREADY_FRIENDS'
-                  ? `You and ${result.owner.firstName} are friends`
+                  ? `You and ${greetingName(result.owner)} are friends`
                   : result.status === 'PENDING'
-                    ? `${result.owner.firstName}'s request is already waiting`
+                    ? `${greetingName(result.owner)}'s request is already waiting`
                     : 'Friend request sent'}
               </h1>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -109,10 +111,11 @@ export default function FriendLinkRedemptionPage({
                 <UserAvatar
                   firstName={preview.owner!.firstName}
                   lastName={preview.owner!.lastName}
+                  preferredName={preview.owner!.preferredName}
                   className="size-14"
                 />
                 <h1 className="mt-3 text-lg font-semibold">
-                  Add {preview.owner!.firstName} {preview.owner!.lastName}
+                  Add {displayName(preview.owner!)}
                 </h1>
               </div>
               <div className="space-y-4 p-5">
@@ -134,7 +137,7 @@ export default function FriendLinkRedemptionPage({
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {preview.mode === 'AUTO_ACCEPT'
                         ? 'Continuing adds both of you as friends immediately.'
-                        : `${preview.owner!.firstName} will receive a normal friend request to review.`}
+                        : `${greetingName(preview.owner!)} will receive a normal friend request to review.`}
                     </p>
                   </div>
                 </div>

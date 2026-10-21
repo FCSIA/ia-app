@@ -25,6 +25,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
         report.reason,
         report.submitter?.firstName,
         report.submitter?.lastName,
+        report.submitter?.preferredName,
         report.status,
         ...report.responses.map((response) => response.body),
       ]

@@ -1,3 +1,4 @@
+import { displayName } from '~/apps/shared/user-name';
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
@@ -79,9 +80,7 @@ export default function AnnouncementDetailScreen() {
       <DataBoundary data={detail} emptyTitle="Announcement unavailable">
         {(data) => {
           const announcement = data.announcement;
-          const authorName = [announcement.author?.firstName, announcement.author?.lastName]
-            .filter(Boolean)
-            .join(" ");
+          const authorName = displayName(announcement.author);
 
           return (
             <View style={{ gap: spacing["2xl"] }}>
@@ -156,9 +155,7 @@ export default function AnnouncementDetailScreen() {
                   {data.comments.length ? (
                     <View style={{ gap: spacing.xl }}>
                       {data.comments.map((row: any) => {
-                        const commentAuthor = [row.author?.firstName, row.author?.lastName]
-                          .filter(Boolean)
-                          .join(" ");
+                        const commentAuthor = displayName(row.author);
                         return (
                           <View
                             key={row._id}

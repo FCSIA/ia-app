@@ -1,3 +1,4 @@
+import { displayName } from '../../../shared/user-name';
 import { v } from "convex/values";
 import {
   action,
@@ -113,6 +114,7 @@ export const searchInviteCandidates = query({
       uniqueId: v.string(),
       firstName: v.string(),
       lastName: v.string(),
+      preferredName: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -150,6 +152,7 @@ export const searchInviteCandidates = query({
         uniqueId: candidate.uniqueId,
         firstName: candidate.firstName,
         lastName: candidate.lastName,
+        preferredName: candidate.preferredName,
       });
       if (results.length >= limit) break;
     }
@@ -279,7 +282,7 @@ export const requestToJoin = mutation({
         {
           category: "CLUB_JOIN_REQUEST",
           title: "New club join request",
-          body: `${user.firstName} ${user.lastName} requested to join ${club.name}.`,
+          body: `${displayName(user)} requested to join ${club.name}.`,
           href: `/clubs/${args.clubId}/people?tab=requests`,
           subject: { kind: "club", clubId: args.clubId },
         },

@@ -167,8 +167,25 @@ message actions. GIFs autoplay by default. Appearance settings let
 users disable autoplay for this browser/device, starting animations paused while
 keeping each play button available. Playback preferences persist locally. Users with
 reduced motion enabled start with a paused preview. Enabling
-reduced motion stops playback; users can opt in again with Play. Native GIFs
-paused because the app went to the background resume when it returns.
+reduced motion stops playback; users can opt in again with Play. Offscreen GIFs,
+covered chat timelines, inactive viewer slides, and background pages/apps suspend
+playback without changing the user's play/pause choice. They resume only if that
+choice permits it when they become visible again.
+
+Web uses shared intersection observers for actual playback and nearby loading.
+Paused previews retain a still frame and detach the animated image; far-away
+previews also release their canvas backing buffers while preserving layout.
+Native uses FlashList viewability plus measured image/scrollport intersections,
+keyboard insets, route focus, and one shared app-state subscription. Native playback commands are
+serialized so a late start cannot override a newer pause. Unseen images and share
+links load only as they approach the viewport (when visible on native), and
+duplicate link resolutions share a bounded, 200-entry promise cache. No idle
+scroll polling is used. Uploaded originals keep their quality and frame rate.
+
+The web fullscreen viewer animates only its active slide while keeping zoom,
+swipe, sharing, and original-file access. Its share-file cache is bounded to
+eight files/32 MB, and obsolete fetches are cancelled. Composer and feedback
+thumbnails show still frames; the school GIF picker already uses static posters.
 Unavailable media shows an unavailable state; its URL remains available in the
 message's context menu. Previews contact only the GIPHY/Tenor CDNs; web omits
 the referrer. The web image policy adds just those CDNs, while scripts, frames,

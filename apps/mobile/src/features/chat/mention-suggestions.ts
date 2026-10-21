@@ -1,3 +1,4 @@
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 import type { ClubMentionContext } from "./types";
 import type { ChatMentionSuggestion } from "./mention-format";
 
@@ -42,10 +43,11 @@ export function buildChatMentionSuggestions(
     }));
   const people = context.members.map((person) => {
     const name =
-      [person.firstName, person.lastName].filter(Boolean).join(" ") || "Member";
+      displayName(person) || "Member";
     return {
       token: person.uniqueId,
       label: name,
+      searchNames: nameSearchValues(person),
       displayText: `@${name}`,
       detail: "Club member",
     };

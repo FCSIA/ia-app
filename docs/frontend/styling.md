@@ -135,8 +135,12 @@ Custom palette colors update their paired foreground tokens together. In
 particular, the Secondary color owns card, popover, and muted surfaces, so its
 automatic contrast is applied to each matching foreground token rather than
 only to secondary controls. Automatic foregrounds choose black or white by
-comparing WCAG contrast ratios. The editor refuses to save Text/Background
-pairs below 4.5:1 or Primary colors below 3:1 against page and card surfaces.
+comparing WCAG contrast ratios. The editor warns about Text/Background pairs
+below 4.5:1 or Primary colors below 3:1 against page and card surfaces, while
+still applying, saving, and restoring those colors. Wallpaper blur is saved to
+the account (0–24px, off by default) and controls the shell, header, navigation,
+and mobile tab bar. Surface tint can be disabled; that choice survives image
+resampling and replacement and restores the normal Custom surface ladder.
 The Custom theme also exposes a Text color for page content over a background
 image, whose contrast cannot be inferred from a single color token and still
 requires visual review. `surfaceClasses` and `Elevated` scope generic `foreground`
