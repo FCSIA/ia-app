@@ -1,13 +1,22 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
+import rateLimiter from "@convex-dev/rate-limiter/test";
+import { ConvexError } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { auditContextResolver } from "../audit/_context";
 
 vi.mock("../../lib/currentUser", () => ({
+  getCurrentAppUser: async (ctx: QueryCtx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const user = identity ? await ctx.db.get(identity.subject as Id<"users">) : null;
+    if (!user) throw new ConvexError("Unauthenticated");
+    return user;
+  },
   getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
     const identity = await ctx.auth.getUserIdentity();
     return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
@@ -18,6 +27,7 @@ const modules = import.meta.glob("/src/**/*.*s");
 
 async function fixture() {
   const t = convexTest(schema, modules);
+  rateLimiter.register(t);
   const ids = await t.run(async (ctx) => {
     const user = {
       uniqueId: "private-student-id",
@@ -145,5 +155,64 @@ describe("announcement comment authors", () => {
 
     expect(await t.query(api.announcements.comments.list, { announcementId })).toEqual([]);
     expect(await t.query(api.announcements.feed.get, { announcementId, now: 1 })).toBeNull();
+  });
+});
+
+describe("announcement comment audit context", () => {
+  it("retains the announcement title and relationship after both records are deleted", async () => {
+    const { t, viewerId, announcementId } = await fixture();
+    const viewer = t.withIdentity({ subject: viewerId });
+    const commentId = await viewer.mutation(api.announcements.comments.add, {
+      announcementId,
+      body: "What time do we leave?",
+    });
+    await viewer.mutation(api.announcements.comments.remove, { commentId });
+    await t.run((ctx) => ctx.db.delete(announcementId));
+
+    const { events, contexts } = await t.run(async (ctx) => {
+      const events = await ctx.db.query("auditEvents").collect();
+      const resolve = auditContextResolver(ctx);
+      return { events, contexts: await Promise.all(events.map(resolve)) };
+    });
+    expect(events.map((event) => event.action)).toEqual([
+      "ANNOUNCEMENT_COMMENT_ADDED", "ANNOUNCEMENT_COMMENT_DELETED",
+    ]);
+    for (const event of events) {
+      expect(event).toMatchObject({
+        actorId: viewerId,
+        entityType: "Comment",
+        entityId: commentId,
+        meta: { announcementId, title: "Field trip" },
+      });
+      expect(event.meta).not.toHaveProperty("body");
+    }
+    expect(contexts.map((context) => context.title)).toEqual(["Field trip", "Field trip"]);
+    expect(await t.run((ctx) => ctx.db.get(commentId))).toBeNull();
+  });
+
+  it("does not permit a different user to remove a comment or emit a deletion event", async () => {
+    const { t, viewerId, commentId } = await fixture();
+    await expect(t.withIdentity({ subject: viewerId }).mutation(
+      api.announcements.comments.remove, { commentId },
+    )).rejects.toThrow("Unauthorized");
+    expect(await t.run((ctx) => ctx.db.query("auditEvents").collect())).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.get(commentId))).not.toBeNull();
+  });
+
+  it("retains the parent ID when an author removes an orphaned comment", async () => {
+    const { t, authorId, announcementId, commentId } = await fixture();
+    await t.run((ctx) => ctx.db.delete(announcementId));
+    await t.withIdentity({ subject: authorId }).mutation(
+      api.announcements.comments.remove, { commentId },
+    );
+    const events = await t.run((ctx) => ctx.db.query("auditEvents").collect());
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      action: "ANNOUNCEMENT_COMMENT_DELETED",
+      entityId: commentId,
+      meta: { announcementId },
+    });
+    expect(events[0]?.meta).not.toHaveProperty("title");
+    expect(await t.run((ctx) => ctx.db.get(commentId))).toBeNull();
   });
 });

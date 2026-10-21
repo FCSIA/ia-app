@@ -21,6 +21,8 @@ import type * as announcements_feed from "../announcements/feed.js";
 import type * as announcements_migrations from "../announcements/migrations.js";
 import type * as announcements_seed from "../announcements/seed.js";
 import type * as announcements_serialize from "../announcements/serialize.js";
+import type * as audit__context from "../audit/_context.js";
+import type * as audit__filters from "../audit/_filters.js";
 import type * as audit__lib from "../audit/_lib.js";
 import type * as audit_events from "../audit/events.js";
 import type * as auth from "../auth.js";
@@ -161,6 +163,8 @@ declare const fullApi: ApiFromModules<{
   "announcements/migrations": typeof announcements_migrations;
   "announcements/seed": typeof announcements_seed;
   "announcements/serialize": typeof announcements_serialize;
+  "audit/_context": typeof audit__context;
+  "audit/_filters": typeof audit__filters;
   "audit/_lib": typeof audit__lib;
   "audit/events": typeof audit_events;
   auth: typeof auth;

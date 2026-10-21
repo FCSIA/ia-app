@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { auditContextResolver } from "./_context";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -22,13 +23,27 @@ export const auditEventValidator = v.object({
   createdAt: v.string(),
   meta: v.union(v.any(), v.null()),
   actor: actorValidator,
+  actorId: v.union(v.id("users"), v.null()),
+  context: v.object({
+    title: v.string(),
+    subtitle: v.union(v.string(), v.null()),
+    references: v.array(
+      v.object({ id: v.string(), label: v.string(), name: v.string() }),
+    ),
+  }),
 });
 
 export const auditPageValidator = v.object({
   page: v.array(auditEventValidator),
   isDone: v.boolean(),
   continueCursor: v.string(),
-  pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
+  pageStatus: v.optional(
+    v.union(
+      v.literal("SplitRecommended"),
+      v.literal("SplitRequired"),
+      v.null(),
+    ),
+  ),
   splitCursor: v.optional(v.union(v.string(), v.null())),
 });
 
@@ -45,30 +60,37 @@ export async function toAuditEvents(
     new Set(events.flatMap((event) => (event.actorId ? [event.actorId] : []))),
   );
   const actorEntries = await Promise.all(
-    actorIds.map(async (actorId) => [actorId, await ctx.db.get(actorId)] as const),
+    actorIds.map(
+      async (actorId) => [actorId, await ctx.db.get(actorId)] as const,
+    ),
   );
   const actors = new Map(actorEntries);
 
-  return events.map((event) => {
-    const actor = event.actorId ? actors.get(event.actorId) : null;
-    return {
-      id: event._id,
-      action: event.action,
-      entityType: event.entityType,
-      entityId: event.entityId ?? null,
-      createdAt: new Date(event.createdAt).toISOString(),
-      meta: event.meta ?? null,
-      actor: actor
-        ? {
-            id: actor._id,
-            firstName: actor.firstName,
-            lastName: actor.lastName,
-            preferredName: actor.preferredName,
-            uniqueId: actor.uniqueId,
-          }
-        : null,
-    };
-  });
+  const resolveContext = auditContextResolver(ctx);
+  return await Promise.all(
+    events.map(async (event) => {
+      const actor = event.actorId ? actors.get(event.actorId) : null;
+      return {
+        id: event._id,
+        actorId: event.actorId ?? null,
+        context: await resolveContext(event),
+        action: event.action,
+        entityType: event.entityType,
+        entityId: event.entityId ?? null,
+        createdAt: new Date(event.createdAt).toISOString(),
+        meta: event.meta ?? null,
+        actor: actor
+          ? {
+              id: actor._id,
+              firstName: actor.firstName,
+              lastName: actor.lastName,
+              preferredName: actor.preferredName,
+              uniqueId: actor.uniqueId,
+            }
+          : null,
+      };
+    }),
+  );
 }
 
 export function includes(value: string | null | undefined, needle: string) {

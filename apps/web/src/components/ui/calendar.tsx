@@ -67,11 +67,11 @@ function Calendar({
           defaultClassNames.button_next
         ),
         month_caption: cn(
-          "col-start-3 row-start-1 flex h-[--cell-size] items-center justify-center px-1",
+          "col-start-3 row-start-1 flex h-(--cell-size) items-center justify-center self-center px-1",
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "flex h-[--cell-size] w-full items-center justify-center gap-1.5 text-sm font-medium",
+          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-sm font-medium",
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
@@ -117,7 +117,7 @@ function Calendar({
         ),
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn("bg-accent rounded-r-md", defaultClassNames.range_end),
-        today: cn("text-primary", defaultClassNames.today),
+        today: defaultClassNames.today,
         outside: cn(
           "text-muted-foreground aria-selected:text-muted-foreground",
           defaultClassNames.outside
@@ -209,6 +209,11 @@ function CalendarDayButton({
         // Dense date grids own their target size; generic icon-button touch
         // expansion would force seven 44px columns into narrow calendars.
         "pointer-coarse:size-(--cell-size)",
+        // Fluid's ghost button owns its text color; state on the table cell
+        // cannot override it through inheritance. Apply date states here.
+        "text-foreground",
+        modifiers.outside && "text-muted-foreground",
+        modifiers.today && !modifiers.selected && "bg-accent text-accent-foreground",
         "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 flex aspect-square h-auto w-full min-w-(--cell-size) font-normal leading-none data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px]",
         defaultClassNames.day,
         className

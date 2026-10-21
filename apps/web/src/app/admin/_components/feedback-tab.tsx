@@ -149,9 +149,9 @@ function FeedbackList({
   }
 
   return (
-    <CardGroup border="outlined" className="overflow-hidden divide-y divide-border/40">
+    <CardGroup proximityHover={false} border="outlined" className="overflow-hidden divide-y divide-border/40">
       {reports.map((report) => (
-        <Card key={report._id} className="p-4 transition-colors hover:bg-muted/30">
+        <Card key={report._id} className="p-4">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -261,7 +261,7 @@ function FeedbackResponses({
   }
 
   return (
-    <CardGroup border="none" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
+    <CardGroup proximityHover={false} border="none" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
       <Card className="p-4">
         <div className="space-y-3">
           {report.responses.map((response) => (

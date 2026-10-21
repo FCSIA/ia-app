@@ -2,6 +2,14 @@
 
 ## Active Focus
 
+- **Current checkout (2026-10-20)**: The primary checkout is on
+  `codex/admin-audit-log-ux` for the requested audit UI repair, now integrating
+  `origin/main` through `e7dd4f88`. Older integration/worktree notes are history.
+- **Current goal**: The owner authorized squash-merging audit PR #152 and then
+  running `release:ship` to publish through the existing release workflow.
+  This supersedes earlier draft/awaiting-owner-review and no-production-authorization
+  notes for this release. Preserve main's preferred-name display/search support
+  when integrating the audit refactor. Local demo data remains intact.
 - **Dashboard calendar follow-up**: The owner requested a small commit directly
   in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
   October 18. After owner feedback, the month controls and full-calendar arrow
@@ -20,14 +28,101 @@
   reconciled with their squash commits so final CI validates the combined source.
   Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
-- **Goal**: Land reviewed, verified changes and reconcile superseded PRs.
-  New material UI changes still require design-owner review. Native iPhone swipe
-  verification remains outstanding. Production deployment is not authorized.
+- **Goal**: Land verified changes and complete the authorized release. Native
+  iPhone swipe verification remains outstanding.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Audit UI Repair (2026-10-20)
+
+- Current-main integration preserves preferred-name display and regular/preferred
+  name searches across basic, paginated, and structured audit queries. All 455
+  backend tests across 87 files, backend/web typechecks, and web lint (21 existing
+  warnings) pass. The owner authorized PR #152's squash merge and `release:ship`;
+  production uses `elated-anaconda-301` and `app.fcsia.com` through release CI.
+- The latest composition pass puts view tabs, search, and Filters in one desktop
+  toolbar, with inline one/two/four-column filters and nested advanced search.
+  Action and record now share a cell: category plus concise verb, then the title.
+  Duplicate category nouns, title-plus-ID clutter, and repeated basic search
+  summaries are removed. Category colors stay consistent across deletions.
+  Complete timestamps remain on every row; long names and unknown categories
+  are bounded with complete data in Details. Material visuals await owner review.
+- Comment audit events now retain the announcement ID/title in existing metadata,
+  including deletion events. No schema migration or dependency upgrade is needed.
+  The authorized `anonymous-agent` demo update succeeded, preserving 55 historical
+  records. Eight comment tests pass, including deletion/orphan context and refusal
+  for a different user; 32 audit and four engagement tests also pass. Web/backend
+  typechecks, web lint (21 existing warnings), and the production build pass.
+  Five-width, long-content, query recovery, and Details diagnostics are documented
+  in the review notes; the final live console has no errors.
+- The owner requested omitting read/unread audit events. Announcement mutations
+  now preserve personal read state without emitting them; other read-state
+  domains already omitted them. Existing history is retained. All 25 focused
+  audit/engagement tests and backend typecheck pass, and the authorized local
+  demo update is complete with its 55 historical records intact.
+- Follow-up repairs shared Calendar/Popover geometry and surface contracts,
+  selected-tab visibility, reduced-motion behavior, and Table's inherited font
+  axis that suppressed nested emphasis. Audit rows now emphasize actions and use
+  compact semantic category colors with readable foreground text. Date pickers
+  reopen on their selected month and retain only caller-specified bounds.
+- DateTimePicker uses standard month navigation so future years are available.
+  Browser checks pass time editing, future navigation, Escape/focus return, and
+  a fitting 248px popup at 390px. The test form was canceled without saving.
+- All 21 focused audit tests pass, including missing-quote recovery. The authorized
+  local demo was updated again with that parser fix; its 55 records remain.
+  Web typecheck/lint (21 existing warnings) and production build pass. Five-width
+  and six-theme diagnostic review is recorded in the QA document; material visuals
+  still await the design owner. No remote branch push was performed.
+- Full-width disclosures and a container-fitting grid replace the 288px filter
+  container that squeezed desktop controls into roughly 57px columns. The audit
+  table separates time, person, activity, and record on desktop and folds these
+  into the activity cell as space narrows. Redundant headings and introductory
+  copy are removed; complete details remain available.
+- Passive admin panels, metrics, notices, and feedback/report cards no longer
+  highlight on hover. Existing interactive controls retain their feedback.
+- Details restore focus to their opener. Integration retains main's approved
+  calendar cell sizing instead of layering the audit branch's overlapping touch
+  width/aspect rule over it.
+- Web typecheck, lint (21 existing warnings), and production build pass through
+  `direnv exec .`. All 17 audit backend tests pass offline. Browser checks cover
+  five widths from 320px to 1440px, six themes, long content, filter results,
+  details/raw data, focus return, and loading/empty/pagination states.
+- The owner explicitly authorized updating the existing local demo at port 3210.
+  A one-time, typechecked function push to `anonymous-agent` succeeded without
+  resetting or seeding data. All 55 original audit records remain. Live browser
+  checks pass category views (55 general / 0 flex), an inclusive October 17 date
+  range (16), advanced search (1), invalid-draft preservation, and hydrated Details.
+- Port 3210 serves the demo state stored in the `merge-pr147` worktree. The
+  primary checkout's selected local deployment has the same ports but separate
+  state. Do not start another schema watcher against it. Web alone is running
+  at port 3000; backend updates were performed with an explicit temporary target.
+- Main integration verification passes web/backend typechecks, web lint (21
+  existing warnings), production compilation, and all 407 backend tests across
+  84 files. Main is merged locally. No remote branch push was performed.
+- See `docs/reference/audit-ui-review-2026-10-20.md` for evidence and remaining
+  review limits.
+
+### Audit Log Readability (2026-10-02)
+
+- Audit-only changes are on `codex/admin-audit-log-ux` in the managed
+  `admin-audit-log-ux/ia-app` worktree. The original checkout contains concurrent
+  preferred-name work and the combined local preview; preserve that work.
+- Plain-language labels, related names, complete original details, an All view,
+  bounded advanced search, and pagination through empty batches are implemented.
+- 36 focused tests pass, including complete 620-record history and access gates.
+  Web/backend TypeScript, web lint, and production compilation pass. `direnv`
+  is unavailable on Windows; verification used the installed Node tooling.
+  Production compilation used webpack because Turbopack failed on the isolated
+  verification copy's dependency junctions.
+- Responsive browser review covered 320px, 390px, 768px, and 1440px widths, basic
+  and advanced filters, details, raw data, and keyboard dismissal. The composition
+  awaits the design owner's visual review, including themes and reduced motion.
+- The user subsequently authorized a draft PR: #152 is open with
+  `sreyassabbani` requested as reviewer. Keep it in draft pending human review.
+  See `docs/features/audit-log.md`.
 
 ### Preferred-name moderation (2026-10-20)
 

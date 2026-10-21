@@ -65,6 +65,7 @@ export const add = mutation({
       action: "ANNOUNCEMENT_COMMENT_ADDED",
       entityType: "Comment",
       entityId: id,
+      meta: { announcementId: ann._id, title: ann.title },
     });
 
     return id;
@@ -93,6 +94,10 @@ export const remove = mutation({
       action: "ANNOUNCEMENT_COMMENT_DELETED",
       entityType: "Comment",
       entityId: args.commentId,
+      meta: {
+        announcementId: comment.announcementId,
+        ...(ann ? { title: ann.title } : {}),
+      },
     });
   },
 });

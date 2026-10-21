@@ -1,11 +1,16 @@
 'use client';
 
-import { displayName } from '~/apps/shared/user-name';
-
 import Link from 'next/link';
+import { useRef } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import {
   Sheet,
   SheetContent,
@@ -13,138 +18,237 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { AdminMetric, AdminNotice } from '../admin-ui';
+import { AdminNotice } from '../admin-ui';
 import type { AuditEventDetail } from '../../_lib/types';
-import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import {
+  auditActionLabel,
+  auditRecordLabel,
+  auditLabel,
+  auditPersonName,
+} from '~/apps/shared/audit';
 import { WhiteboardAuditSnapshot } from './whiteboard-audit-snapshot';
 
-/** Whiteboard edit rows can be replayed to show the board after that edit. */
 function whiteboardSnapshotTarget(event: AuditEventDetail) {
   if (
     event.entityType !== 'ClubWhiteboard' ||
-    (event.action !== 'CLUB_WHITEBOARD_EDITED' && event.action !== 'CLUB_WHITEBOARD_RESTORED')
-  ) {
+    !['CLUB_WHITEBOARD_EDITED', 'CLUB_WHITEBOARD_RESTORED'].includes(
+      event.action,
+    )
+  )
     return null;
-  }
   const meta = event.meta as { boardId?: unknown; toSeq?: unknown } | null;
-  if (typeof meta?.boardId !== 'string' || typeof meta.toSeq !== 'number') return null;
+  if (typeof meta?.boardId !== 'string' || typeof meta.toSeq !== 'number')
+    return null;
   return { boardId: meta.boardId as Id<'clubWhiteboards'>, atSeq: meta.toSeq };
 }
-
-type AuditDetailSheetProps = {
+function displayValue(value: unknown, event: AuditEventDetail): string {
+  if (typeof value === 'string')
+    return (
+      event.context?.references.find((ref) => ref.id === value)?.name ?? value
+    );
+  if (value === null) return 'None';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return typeof value === 'object'
+    ? JSON.stringify(value, null, 2)
+    : String(value);
+}
+type Props = {
   selectedEventId: string | null;
   onSelectedEventIdChange: (id: string | null) => void;
   eventDetail?: AuditEventDetail;
   isDetailLoading: boolean;
 };
-
 export function AuditDetailSheet({
   selectedEventId,
   onSelectedEventIdChange,
   eventDetail,
   isDetailLoading,
-}: AuditDetailSheetProps) {
-  const snapshotTarget = eventDetail ? whiteboardSnapshotTarget(eventDetail) : null;
+}: Props) {
+  const snapshot = eventDetail ? whiteboardSnapshotTarget(eventDetail) : null;
+  const openerRef = useRef<HTMLElement | null>(null);
   return (
-    <Sheet open={!!selectedEventId} onOpenChange={(open) => !open && onSelectedEventIdChange(null)}>
-      <SheetContent className="flex h-full w-full flex-col overflow-hidden sm:max-w-xl">
+    <Sheet
+      open={!!selectedEventId}
+      onOpenChange={(open) => !open && onSelectedEventIdChange(null)}
+    >
+      <SheetContent
+        className="flex h-full w-full flex-col sm:max-w-xl"
+        onOpenAutoFocus={() => {
+          openerRef.current = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (openerRef.current?.isConnected) {
+            event.preventDefault();
+            openerRef.current.focus();
+          }
+        }}
+      >
         <SheetHeader className="shrink-0">
-          <SheetTitle>Audit Event Details</SheetTitle>
-          <SheetDescription>
-            Inspect the recorded action, resolved entity context, and raw metadata captured at the time.
+          <SheetTitle>Activity details</SheetTitle>
+          <SheetDescription className="sr-only">
+            Recorded activity, related records, and original data.
           </SheetDescription>
         </SheetHeader>
-
-        <ScrollArea className="mt-6 min-h-0 flex-1">
-          <div className="space-y-5">
-          {isDetailLoading ? (
-            <AdminNotice message="Loading audit context..." />
-          ) : eventDetail ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <AdminMetric label="Action" value={<span className="font-mono text-sm">{eventDetail.action}</span>} compact />
-                <AdminMetric label="When" value={format(new Date(eventDetail.createdAt), 'PPP p')} compact />
-                <AdminMetric
-                  label="Actor"
-                  value={eventDetail.actor ? displayName(eventDetail.actor) : 'System'}
-                  compact
-                />
-                <AdminMetric
-                  label="Entity"
-                  value={eventDetail.entityType}
-                  detail={eventDetail.entityId ? <span className="font-mono">{eventDetail.entityId}</span> : undefined}
-                  compact
-                />
-              </div>
-
-              {eventDetail.entityPreview ? (
-                <div className={`rounded-lg border bg-card p-4 ${CARD_SURFACE_FOREGROUND}`}>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Resolved context
-                      </p>
-                      <h3 className="mt-1.5 text-base font-semibold text-foreground">
-                        {eventDetail.entityPreview.title}
-                      </h3>
-                      {eventDetail.entityPreview.subtitle ? (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {eventDetail.entityPreview.subtitle}
-                        </p>
+        <ScrollArea className="mt-4 min-h-0 flex-1">
+          <div className="min-w-0 space-y-5 [overflow-wrap:anywhere]">
+            {isDetailLoading ? (
+              <AdminNotice message="Loading activity details…" />
+            ) : eventDetail ? (
+              <>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      What happened
+                    </dt>
+                    <dd className="mt-1 font-semibold">
+                      {auditActionLabel(eventDetail.action)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      When (your local time)
+                    </dt>
+                    <dd className="mt-1">
+                      {format(new Date(eventDetail.createdAt), 'PPP pp')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Person</dt>
+                    <dd className="mt-1">{auditPersonName(eventDetail)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Related record
+                    </dt>
+                    <dd className="mt-1">
+                      {eventDetail.context?.title ??
+                        auditRecordLabel(eventDetail.entityType)}
+                      {eventDetail.context?.title &&
+                      eventDetail.context.title !== auditRecordLabel(eventDetail.entityType) ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {auditRecordLabel(eventDetail.entityType)}
+                        </span>
                       ) : null}
-                    </div>
+                    </dd>
+                  </div>
+                </dl>
+                {eventDetail.context?.references.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Related people and places (current names)
+                    </p>
+                    <dl className="grid gap-3 sm:grid-cols-2">
+                      {eventDetail.context.references.map((ref) => (
+                        <div key={`${ref.label}:${ref.id}`}>
+                          <dt className="text-xs text-muted-foreground">
+                            {ref.label}
+                          </dt>
+                          <dd>{ref.name}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ) : null}
+                {eventDetail.entityPreview ? (
+                  <section className="space-y-3">
+                    <h3 className="font-semibold">
+                      {eventDetail.entityPreview.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {eventDetail.entityPreview.subtitle}
+                    </p>
                     {eventDetail.entityPreview.href ? (
-                      <Button asChild variant="tertiary" size="sm">
+                      <Button asChild variant="tertiary">
                         <Link href={eventDetail.entityPreview.href}>
                           {eventDetail.entityPreview.hrefLabel || 'Open record'}
                         </Link>
                       </Button>
                     ) : null}
-                  </div>
-
-                  {eventDetail.entityPreview.body ? (
-                    <div className="mt-4 rounded-lg border bg-muted/20 p-3 text-sm leading-6 text-foreground/90">
-                      {eventDetail.entityPreview.body}
-                    </div>
-                  ) : null}
-
-                  {eventDetail.entityPreview.fields?.length ? (
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {eventDetail.entityPreview.fields.map((field) => (
-                        <AdminMetric
-                          key={`${field.label}-${field.value}`}
-                          label={field.label}
-                          value={field.value}
-                          compact
-                        />
+                    {eventDetail.entityPreview.body ? (
+                      <p className="whitespace-pre-wrap text-sm">
+                        {eventDetail.entityPreview.body}
+                      </p>
+                    ) : null}
+                    <dl className="grid grid-cols-2 gap-3">
+                      {eventDetail.entityPreview.fields?.map((field) => (
+                        <div key={field.label}>
+                          <dt className="text-xs text-muted-foreground">
+                            {field.label}
+                          </dt>
+                          <dd>{field.value}</dd>
+                        </div>
                       ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {snapshotTarget ? <WhiteboardAuditSnapshot {...snapshotTarget} /> : null}
-
-              {eventDetail.meta ? (
-                <div className="space-y-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Raw metadata
-                  </p>
-                  <ScrollArea
-                    orientation="horizontal"
-                    className="rounded-lg border bg-muted/20"
-                  >
-                    <pre className="w-max min-w-full p-3 text-xs leading-6 text-foreground/80">
-                      {JSON.stringify(eventDetail.meta, null, 2)}
-                    </pre>
-                  </ScrollArea>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <AdminNotice message="This audit event could not be loaded." />
-          )}
+                    </dl>
+                  </section>
+                ) : null}
+                {snapshot ? (
+                  <WhiteboardAuditSnapshot
+                    boardId={snapshot.boardId}
+                    atSeq={snapshot.atSeq}
+                  />
+                ) : null}
+                <section className="space-y-3">
+                  <h3 className="font-semibold">Recorded information</h3>
+                  {eventDetail.meta &&
+                  typeof eventDetail.meta === 'object' &&
+                  !Array.isArray(eventDetail.meta) &&
+                  Object.keys(eventDetail.meta).length > 0 ? (
+                    <dl className="space-y-3">
+                      {Object.entries(eventDetail.meta).map(([key, value]) => (
+                        <div key={key}>
+                          <dt className="text-xs text-muted-foreground">
+                            {auditLabel(key)}
+                          </dt>
+                          <dd className="whitespace-pre-wrap text-sm">
+                            {displayValue(value, eventDetail)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {eventDetail.meta == null ||
+                      (typeof eventDetail.meta === 'object' && Object.keys(eventDetail.meta).length === 0)
+                        ? 'No additional information was recorded.'
+                        : JSON.stringify(eventDetail.meta, null, 2)}
+                    </p>
+                  )}
+                </section>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="original">
+                    <AccordionTrigger>Original data and IDs</AccordionTrigger>
+                    <AccordionContent>
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        Complete action codes, IDs, timestamps, and saved
+                        values. Name resolution above does not change the
+                        original record.
+                      </p>
+                      <pre className="max-w-full whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
+                        {JSON.stringify(
+                          {
+                            id: eventDetail.id,
+                            actorId: eventDetail.actorId,
+                            actor: eventDetail.actor,
+                            action: eventDetail.action,
+                            entityType: eventDetail.entityType,
+                            entityId: eventDetail.entityId,
+                            createdAt: eventDetail.createdAt,
+                            meta: eventDetail.meta,
+                          },
+                          null,
+                          2,
+                        )}
+                      </pre>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </>
+            ) : (
+              <AdminNotice message="This activity record could not be loaded." />
+            )}
           </div>
         </ScrollArea>
       </SheetContent>

@@ -22,7 +22,7 @@ export function AdminPanel({
   contentClassName,
 }: AdminPanelProps) {
   return (
-    <CardGroup border="outlined" className={cn('overflow-hidden', className)}>
+    <CardGroup proximityHover={false} border="outlined" className={cn('overflow-hidden', className)}>
       <Card>
         <CardHeader className="flex flex-col gap-3 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/40">
           <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
@@ -43,7 +43,7 @@ type AdminMetricProps = {
 
 export function AdminMetric({ label, value, detail, compact }: AdminMetricProps) {
   return (
-    <CardGroup border="outlined" className="overflow-hidden">
+    <CardGroup proximityHover={false} border="outlined" className="overflow-hidden">
       <Card className="bg-muted/20 p-4">
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         <p className={cn('mt-2 font-bold text-foreground', compact ? 'text-lg' : 'text-3xl')}>
@@ -76,7 +76,7 @@ export function AdminNotice({
   const isSuccess = tone === 'success';
 
   return (
-    <CardGroup border="outlined" className="overflow-hidden">
+    <CardGroup proximityHover={false} border="outlined" className="overflow-hidden">
       <Card
         className={cn(
           'flex flex-col items-center justify-center px-6 py-10 text-center',

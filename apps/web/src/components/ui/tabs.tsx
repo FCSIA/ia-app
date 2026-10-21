@@ -15,7 +15,7 @@ import {
   type ComponentPropsWithoutRef,
 } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
@@ -161,6 +161,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
+    const shouldReduceMotion = useReducedMotion();
     const substrate = useSurface();
     // Active pill lifts 3 levels above substrate (1 above the muted track + 2 for pop).
     // On the page (substrate 1) this lands on surface 4 — matches the original design.
@@ -311,7 +312,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                 height: selectedRect.height,
                 opacity: isHovering ? 0.85 : 1,
               }}
-              transition={{
+              transition={shouldReduceMotion ? { duration: 0 } : {
                 ...spring.moderate,
                 opacity: { duration: 0.08 },
               }}
@@ -348,14 +349,14 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                         top: selectedRect.top,
                         height: selectedRect.height,
                         opacity: 0,
-                        transition: {
+                        transition: shouldReduceMotion ? { duration: 0 } : {
                           ...spring.moderate,
                           opacity: { duration: 0.06 },
                         },
                       }
-                    : { opacity: 0, transition: spring.fast.exit }
+                    : { opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }
                 }
-                transition={{
+                transition={shouldReduceMotion ? { duration: 0 } : {
                   ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
@@ -378,8 +379,8 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
-                exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={{
+                exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
+                transition={shouldReduceMotion ? { duration: 0 } : {
                   ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
@@ -422,6 +423,38 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
 
     const isSelected = selectedValue === value;
     const isActive = hoveredIndex === _index || isSelected;
+
+    useLayoutEffect(() => {
+      const tab = internalRef.current;
+      if (!isSelected || !tab) return;
+      if (tab.closest('[role="tablist"]')?.getAttribute("aria-orientation") === "vertical") return;
+
+      // Controlled selection and viewport changes need the same visibility as
+      // keyboard selection. Scroll only the horizontal owner: scrollIntoView
+      // would also move the page, and focusing would interrupt the user's work.
+      let viewport = tab.parentElement;
+      while (viewport && !/^(auto|scroll)$/.test(getComputedStyle(viewport).overflowX)) {
+        viewport = viewport.parentElement;
+      }
+      if (!viewport) return;
+      const scrollOwner = viewport;
+      const reveal = () => {
+        const bounds = scrollOwner.getBoundingClientRect();
+        const item = tab.getBoundingClientRect();
+        const left = bounds.left + scrollOwner.clientLeft;
+        const right = left + scrollOwner.clientWidth;
+        const delta = item.left < left
+          ? item.left - left
+          : item.right > right ? item.right - right : 0;
+        if (delta) scrollOwner.scrollBy({ left: delta, behavior: "instant" });
+      };
+
+      reveal();
+      const observer = new ResizeObserver(reveal);
+      observer.observe(scrollOwner);
+      observer.observe(tab);
+      return () => observer.disconnect();
+    }, [isSelected]);
 
     return (
       <TabsPrimitive.Trigger

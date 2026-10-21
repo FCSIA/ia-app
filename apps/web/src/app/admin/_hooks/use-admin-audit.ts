@@ -2,21 +2,17 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import {
+  auditActionLabel,
+  auditRecordLabel,
+  parseAuditSearch,
+} from '~/apps/shared/audit';
 import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope } from '../_lib/types';
-
-const FLEX_ENTITY_TYPES = [
-  'FlexFriday',
-  'FlexSession',
-  'FlexWorkshop',
-  'FlexRegistration',
-  'FlexAssignment',
-  'Event',
-];
 
 export function useAdminAudit(activeTab: AdminTabId) {
   const [auditSearch, setAuditSearch] = useState('');
@@ -27,11 +23,23 @@ export function useAdminAudit(activeTab: AdminTabId) {
   const deferredAuditEntityId = useDeferredValue(auditEntityId);
   const [auditActionFilter, setAuditActionFilter] = useState('ALL');
   const [auditEntityTypeFilter, setAuditEntityTypeFilter] = useState('ALL');
-  const [auditActorScope, setAuditActorScope] = useState<AuditActorScope>('ALL');
+  const [auditActorScope, setAuditActorScope] =
+    useState<AuditActorScope>('ALL');
   const [auditStartDate, setAuditStartDate] = useState('');
   const [auditEndDate, setAuditEndDate] = useState('');
-  const [selectedAuditEventId, setSelectedAuditEventId] = useState<string | null>(null);
-  const [auditSubView, setAuditSubView] = useState<'general' | 'flex'>('general');
+  const [selectedAuditEventId, setSelectedAuditEventId] = useState<
+    string | null
+  >(null);
+  const [auditSubView, setAuditSubView] = useState<'all' | 'general' | 'flex'>(
+    'all',
+  );
+
+  const [advancedDraft, setAdvancedDraft] = useState('');
+  const [advancedQuery, setAdvancedQuery] = useState('');
+  const advancedError = parseAuditSearch(advancedDraft).error;
+  const applyAdvancedQuery = () => {
+    if (!advancedError) setAdvancedQuery(advancedDraft.trim());
+  };
 
   const auditQueryParams = useMemo(
     () => ({
@@ -39,12 +47,21 @@ export function useAdminAudit(activeTab: AdminTabId) {
       actor: deferredAuditActor.trim() || undefined,
       entityId: deferredAuditEntityId.trim() || undefined,
       action: auditActionFilter !== 'ALL' ? auditActionFilter : undefined,
-      entityType: auditEntityTypeFilter !== 'ALL' ? auditEntityTypeFilter : undefined,
+      entityType:
+        auditEntityTypeFilter !== 'ALL' ? auditEntityTypeFilter : undefined,
       actorScope: auditActorScope !== 'ALL' ? auditActorScope : undefined,
-      startDate: auditStartDate || undefined,
-      endDate: auditEndDate || undefined,
+      startAt: auditStartDate
+        ? new Date(`${auditStartDate}T00:00:00`).getTime()
+        : undefined,
+      endAt: auditEndDate
+        ? new Date(`${auditEndDate}T23:59:59.999`).getTime()
+        : undefined,
+      advancedQuery: advancedQuery || undefined,
+      category: auditSubView === 'all' ? undefined : auditSubView,
     }),
     [
+      advancedQuery,
+      auditSubView,
       auditActionFilter,
       auditActorScope,
       auditEndDate,
@@ -65,14 +82,10 @@ export function useAdminAudit(activeTab: AdminTabId) {
     activeTab === 'audit' ? auditQueryParams : 'skip',
     { initialNumItems: AUDIT_FETCH_LIMIT },
   );
-  const isAuditLoading = activeTab === 'audit' && auditStatus === 'LoadingFirstPage';
+  const isAuditLoading =
+    activeTab === 'audit' && auditStatus === 'LoadingFirstPage';
 
-  const displayedAuditEvents = useMemo(() => {
-    if (auditSubView === 'flex') {
-      return auditEvents.filter((e) => FLEX_ENTITY_TYPES.includes(e.entityType));
-    }
-    return auditEvents.filter((e) => !FLEX_ENTITY_TYPES.includes(e.entityType));
-  }, [auditEvents, auditSubView]);
+  const displayedAuditEvents = auditEvents;
 
   const auditFilterOptions = useQuery(
     api.audit.events.listFilterOptions,
@@ -85,7 +98,8 @@ export function useAdminAudit(activeTab: AdminTabId) {
       ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> }
       : 'skip',
   );
-  const isAuditDetailLoading = !!selectedAuditEventId && auditEventDetail === undefined;
+  const isAuditDetailLoading =
+    !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(
     () => auditFilterOptions?.actions ?? [],
@@ -98,6 +112,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
   );
 
   const hasActiveAuditFilters =
+    !!advancedQuery ||
     !!auditSearch.trim() ||
     !!auditActor.trim() ||
     !!auditEntityId.trim() ||
@@ -108,6 +123,8 @@ export function useAdminAudit(activeTab: AdminTabId) {
     !!auditEndDate;
 
   const clearAuditFilters = () => {
+    setAdvancedDraft('');
+    setAdvancedQuery('');
     setAuditSearch('');
     setAuditActor('');
     setAuditEntityId('');
@@ -133,21 +150,31 @@ export function useAdminAudit(activeTab: AdminTabId) {
   };
 
   const auditFilterChips = [
-    auditSearch.trim() ? `Search: ${auditSearch.trim()}` : null,
-    auditActor.trim() ? `Actor: ${auditActor.trim()}` : null,
-    auditEntityId.trim() ? `Entity ID: ${auditEntityId.trim()}` : null,
-    auditActionFilter !== 'ALL' ? `Action: ${auditActionFilter}` : null,
-    auditEntityTypeFilter !== 'ALL' ? `Entity: ${auditEntityTypeFilter}` : null,
+    auditActor.trim() ? `Person: ${auditActor.trim()}` : null,
+    auditEntityId.trim() ? `Record ID: ${auditEntityId.trim()}` : null,
+    auditActionFilter !== 'ALL'
+      ? `Action: ${auditActionLabel(auditActionFilter)}`
+      : null,
+    auditEntityTypeFilter !== 'ALL'
+      ? `Record type: ${auditRecordLabel(auditEntityTypeFilter)}`
+      : null,
     auditActorScope !== 'ALL'
-      ? `Source: ${auditActorScope === 'SYSTEM' ? 'System' : 'User'}`
+      ? `Source: ${auditActorScope === 'SYSTEM' ? 'Automatic activity' : 'People'}`
       : null,
     auditStartDate
       ? `From: ${format(new Date(`${auditStartDate}T00:00:00`), 'MMM d, yyyy')}`
       : null,
-    auditEndDate ? `To: ${format(new Date(`${auditEndDate}T00:00:00`), 'MMM d, yyyy')}` : null,
+    auditEndDate
+      ? `To: ${format(new Date(`${auditEndDate}T00:00:00`), 'MMM d, yyyy')}`
+      : null,
   ].filter((value): value is string => !!value);
 
   return {
+    advancedDraft,
+    setAdvancedDraft,
+    advancedQuery,
+    advancedError,
+    applyAdvancedQuery,
     auditSearch,
     setAuditSearch,
     auditActor,
