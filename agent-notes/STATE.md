@@ -2,11 +2,14 @@
 
 ## Active Focus
 
-- **Current checkout (2026-10-20)**: The primary checkout is on
-  `codex/admin-audit-log-ux` for the requested audit UI repair, now integrating
-  `origin/main` through `e7dd4f88`. Older integration/worktree notes are history.
-- **Current goal**: The owner authorized squash-merging audit PR #152 and then
-  running `release:ship` to publish through the existing release workflow.
+- **Current checkout (2026-10-21)**: The primary checkout is on
+  `codex/desktop-notification-banner`, carrying the three earlier local banner
+  commits onto main after audit PR #152 squash-merged as `4c464526`.
+  The original commits are preserved on `work/desktop-notification-banner`.
+- **Current goal**: The owner authorized including the banner in the release,
+  after squash-merging audit PR #152 and running `release:ship`.
+  Release PR #165 is held in draft until the banner lands; regenerate its single
+  release commit from the combined main before validation and production shipping.
   This supersedes earlier draft/awaiting-owner-review and no-production-authorization
   notes for this release. Preserve main's preferred-name display/search support
   when integrating the audit refactor. Local demo data remains intact.
