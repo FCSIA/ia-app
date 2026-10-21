@@ -863,11 +863,11 @@ function ReactionButton({
 }
 
 /**
- * How far from the newest message the chat still counts as "at the bottom":
- * new messages keep following, and the jump button stays hidden, until the
- * reader has scrolled about two messages up.
+ * Use the primitive's normal edge tolerance. A message-sized threshold treats
+ * an upward swipe as still following the bottom; media loading or a new reply
+ * can then pull the reader back to the latest message mid-scroll.
  */
-const CHAT_SCROLL_EDGE_THRESHOLD = 160;
+const CHAT_SCROLL_EDGE_THRESHOLD = 8;
 /**
  * On touch, nothing in the timeline selects as text or shows the iOS callout,
  * including the jump button and markers; Copy text lives in the hold sheet.
