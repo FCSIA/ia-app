@@ -38,6 +38,24 @@
 
 ### Audit UI Repair (2026-10-20)
 
+- The owner requested omitting read/unread audit events. Announcement mutations
+  now preserve personal read state without emitting them; other read-state
+  domains already omitted them. Existing history is retained. All 25 focused
+  audit/engagement tests and backend typecheck pass, and the authorized local
+  demo update is complete with its 55 historical records intact.
+- Follow-up repairs shared Calendar/Popover geometry and surface contracts,
+  selected-tab visibility, reduced-motion behavior, and Table's inherited font
+  axis that suppressed nested emphasis. Audit rows now emphasize actions and use
+  compact semantic category colors with readable foreground text. Date pickers
+  reopen on their selected month and retain only caller-specified bounds.
+- DateTimePicker uses standard month navigation so future years are available.
+  Browser checks pass time editing, future navigation, Escape/focus return, and
+  a fitting 248px popup at 390px. The test form was canceled without saving.
+- All 21 focused audit tests pass, including missing-quote recovery. The authorized
+  local demo was updated again with that parser fix; its 55 records remain.
+  Web typecheck/lint (21 existing warnings) and production build pass. Five-width
+  and six-theme diagnostic review is recorded in the QA document; material visuals
+  still await the design owner. No remote branch push was performed.
 - Full-width disclosures and a container-fitting grid replace the 288px filter
   container that squeezed desktop controls into roughly 57px columns. The audit
   table separates time, person, activity, and record on desktop and folds these

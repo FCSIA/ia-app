@@ -7,6 +7,8 @@ tags: [feature, audit, admin]
 [Home](../index.md)
 
 The audit log records significant system actions for admin review.
+Read/unread changes are personal state and do not create audit events. Historical
+read/unread entries remain available.
 
 ## What It Does
 
@@ -17,6 +19,7 @@ The audit log records significant system actions for admin review.
 - Keeps all original action codes, IDs, timestamps, and metadata in **Details → Original data and IDs**. Whiteboard snapshots and links remain available.
 - Keeps search visible and places the remaining controls in a full-width Filters disclosure. Controls wrap according to available space. Desktop rows separate time, person, activity, and record; narrower screens fold those fields into the activity cell.
 - Limits long record titles, context, and message previews to two lines in the table. Details preserve complete content and original data. Closing Details returns keyboard focus to the row's opener.
+- Emphasizes actions and person names, with compact record-category colors and a red tint for removals. Text retains the theme's foreground contrast; IDs and timestamps remain secondary.
 
 ## Search
 

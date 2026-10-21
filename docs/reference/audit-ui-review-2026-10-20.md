@@ -3,7 +3,76 @@
 The primary checkout is on `codex/admin-audit-log-ux`. This is diagnostic
 verification, with material visual changes awaiting the design owner's review.
 
-The subsequent main integration includes `origin/main` through `679f7a00`.
+## Follow-up primitive and readability review
+
+The follow-up fixes the owners of the defects rather than compensating in the
+audit page. Current Fluid Table, Tabs, Tabs Subtle, Accordion, Select, Button,
+and Badge rendered examples, Code, API, registry sources, and local adapters
+were reviewed. The project remains Radix / new-york; shadcn Calendar and Popover
+dry-run/diff were inspected without overwriting the Fluid adaptations.
+
+- The current [Radix Date Picker Basic example](https://ui.shadcn.com/docs/components/radix/date-picker#basic)
+  uses an intrinsic-width Popover and `defaultMonth={date}`. Both date-picker
+  compositions now follow that geometry and reopen on the selected month.
+  DatePicker no longer invents navigation bounds; callers' explicit bounds remain.
+  The installed DayPicker API's `autoFocus` replaces deprecated `initialFocus`.
+  DateTimePicker uses the standard month-navigation caption: DayPicker's year
+  dropdown defaults to ending at the current year, which blocked future events.
+- Touch dates previously occupied 32px of a 40px column, offsetting their centers
+  by 4px from weekday labels. The audit popup now measures 248px, with matching
+  32px columns and date targets. All seven centers match exactly at 320px.
+- PopoverContent lacked the `data-slot` expected by Calendar's transparency
+  selector. Adding that standard DOM contract lets the raised popup surface
+  show through. Its transform origin now correctly reads Radix's CSS variable.
+- Calendar caption/dropdown heights used invalid CSS-variable syntax. Valid
+  Tailwind v4 syntax and centered grid alignment keep the caption aligned with
+  44px touch navigation. Normal, outside, today, and selected colors belong on
+  the actual Fluid day button, whose own color otherwise overrides cell inheritance.
+  Dashboard's approved Month slot and full-calendar link remain intact.
+- TableRow's inherited fixed `wght` axis prevented nested font-weight emphasis.
+  The adapter preserves normal/semibold defaults and optical sizing through
+  ordinary font weight, so action labels and person names can have their intended
+  hierarchy. Record categories use existing compact Badge colors; removals use
+  a red tint. Badge text stays foreground-colored, and unknown/long record types
+  remain wrapping text. IDs and timestamps remain secondary.
+- The selected shared tab reveals itself within its horizontal scroll owner on
+  selection and resize without changing focus or vertical scroll. Settled checks
+  confirm Audit Log remains visible at 320, 390, 768, 1024, and 1440px.
+- Accordion, Tabs, Tabs Subtle, Select, and Table springs honor reduced motion.
+  Button press scaling and Popover animation do too; normal spring tokens remain.
+- Unfinished quoted search values now identify the missing quote. Four regression
+  cases distinguish that error from a missing separator. Live invalid drafts keep
+  the applied query and its matching row visible.
+
+Follow-up browser checks cover five widths, settled colors in six themes,
+selected-month reopening, popup alignment, Details/focus return, reduced motion,
+and the shared dashboard calendar. Theme transitions were allowed to settle;
+an earlier intermediate Bubblegum frame was not a token defect. No global theme
+tokens were changed. Screenshots are `/tmp/ia-audit-review/final-*.png`, including
+`final-custom.png`, `final-details-390.png`, and `calendar-fixed-320.png`.
+The clean desktop view is `review-audit-final.png`; the date-time popup is
+`final-date-time-390.png`.
+The final typography repair is visible in `final-custom.png` and
+`final-bubblegum-dark.png`; earlier captures precede that repair.
+
+Web typecheck, lint (21 existing warnings), production build, and all 21 focused
+audit tests pass. The authorized local demo function update also passes Convex
+typechecking and retains all 55 original records. DateTimePicker creation-form
+checks pass selected-month reopening, native keyboard time editing, January 2027
+navigation, and Escape focus return. At 390px its 248px popup fits the viewport,
+and caption/navigation centers match. The unsaved form was canceled; no event was
+created. Native hardware and design-owner approval remain outstanding.
+
+After owner direction, announcement read/unread mutations stop emitting audit
+events. Other read-state domains already omitted them. Personal read state,
+access checks, old audit entries, and significant-change logging are preserved.
+All 25 focused audit/engagement tests pass, including four new regressions for
+that behavior and authorization. Backend typecheck and the authorized one-time
+local function update pass. The live audit view retains all 55 historic records;
+its console has no application errors (two unrelated browser-extension errors
+were present).
+
+The earlier main integration includes `origin/main` through `679f7a00`.
 Its approved calendar cell-sizing rule replaces the overlapping touch-width
 fix described in the initial review below. Other audit and passive-hover changes
 are retained. The merged tree passes web/backend typechecks, web lint (21 existing
