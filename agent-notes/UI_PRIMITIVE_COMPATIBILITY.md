@@ -86,9 +86,10 @@ adapter's existing width contract; do not replace its structural class names.
 
 The local Fluid `Button` also wraps button content, while upstream shadcn's
 calendar expects direct day-button children. `CalendarDayButton` therefore owns
-an explicit vertical content slot for the date numeral and optional metadata.
-Status content must remain in that slot's normal flow so it cannot overlap the
-date.
+the numeral and a reserved absolute metadata slot at the bottom of the day
+target. Metadata must use the adapter's `meta` prop; it must not displace the
+centered numeral or be positioned by a caller. Keep metadata compact enough to
+fit that reserved slot.
 
 Calendar day targets also use the adapter's `--cell-size` in touch mode. Fluid's
 generic 44px icon-button expansion would otherwise force a seven-column date

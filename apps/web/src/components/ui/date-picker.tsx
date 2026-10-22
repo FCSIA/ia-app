@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { format, isValid, parseISO } from 'date-fns';
 import { CalendarIcon, X } from 'lucide-react';
 import type { Matcher } from 'react-day-picker';
@@ -38,10 +39,11 @@ export function DatePicker({
   endMonth,
 }: DatePickerProps) {
   const selectedDate = parseDateValue(value);
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -62,7 +64,10 @@ export function DatePicker({
             mode="single"
             defaultMonth={selectedDate}
             selected={selectedDate}
-            onSelect={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+            onSelect={(date) => {
+              onChange(date ? format(date, 'yyyy-MM-dd') : '');
+              if (date) setOpen(false);
+            }}
             disabled={disabledDays}
             startMonth={startMonth}
             endMonth={endMonth}
