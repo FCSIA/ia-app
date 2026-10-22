@@ -55,7 +55,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
                   {event.title}
                 </h3>
               </Link>
-              <div className="flex flex-wrap items-center gap-3 mt-2.5 text-xs text-foreground/70">
+              <div className="flex flex-wrap items-center gap-3 mt-2.5 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Calendar size={12} className="shrink-0" />
                   {hydrated ? format(new Date(event.startAt), 'EEE, MMM d · h:mm a') : '—'}
@@ -270,7 +270,7 @@ export default function EventsPage() {
           <CardGroup border="outlined" className={cn('overflow-hidden bg-card border-border border-dashed', CARD_SURFACE_FOREGROUND)}>
                   <Card className="bg-transparent">
                     <CardContent className="text-center py-12">
-                      <p className="text-foreground/70">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>
+                      <p className="text-muted-foreground">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>
                     </CardContent>
                   </Card>
                 </CardGroup>

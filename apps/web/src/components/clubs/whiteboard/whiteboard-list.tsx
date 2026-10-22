@@ -366,7 +366,7 @@ export function WhiteboardList({
         </div>
 
         {totalActive === 0 ? (
-          <Empty className="border border-dashed py-12">
+          <Empty frame="dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <PencilRuler />

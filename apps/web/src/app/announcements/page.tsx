@@ -654,11 +654,11 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
         ) : !hasActiveFilters && dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
-          <Empty className="min-h-32 border">
+          <Empty size="inline" frame="panel">
             <EmptyHeader><EmptyTitle>No announcements yet</EmptyTitle></EmptyHeader>
           </Empty>
         ) : filtered.length === 0 ? (
-          <Empty className="min-h-32 border">
+          <Empty size="inline" frame="panel">
             <EmptyHeader><EmptyTitle>No announcements match your filters.</EmptyTitle></EmptyHeader>
             {canLoadMore || pinnedStatus === 'CanLoadMore' ? <EmptyContent>
                 {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}

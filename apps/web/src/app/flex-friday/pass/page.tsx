@@ -323,7 +323,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
               </Badge>
             ) : null}
           </div>
-          <h3 className="truncate font-semibold text-foreground/90">{workshop.title}</h3>
+          <h3 className="truncate font-semibold text-foreground">{workshop.title}</h3>
           {workshop.description ? (
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
               {workshop.description}
@@ -339,7 +339,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
           </div>
         </div>
         <div className="flex-shrink-0 text-right">
-          <div className="flex items-center justify-end gap-1 text-sm font-semibold tabular-nums text-foreground/90">
+          <div className="flex items-center justify-end gap-1 text-sm font-semibold tabular-nums text-foreground">
             <Clock size={13} className="text-muted-foreground" />
             {first ? formatTimeRange(first.startTime, first.endTime) : '—'}
           </div>

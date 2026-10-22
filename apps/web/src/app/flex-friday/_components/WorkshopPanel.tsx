@@ -69,7 +69,7 @@ export function WorkshopPanel({
       </div>
 
       {!selectedSession ? (
-        <Empty className="border border-border/60 py-10">
+        <Empty size="inline" frame="panel">
           <EmptyHeader>
             <EmptyMedia variant="icon"><Ticket /></EmptyMedia>
             <EmptyTitle>Select a session</EmptyTitle>
@@ -86,7 +86,7 @@ export function WorkshopPanel({
 
           <div className="grid gap-3">
             {workshops.length === 0 ? (
-              <Empty className="border border-border/60 py-8">
+              <Empty size="inline" frame="panel">
                 <EmptyHeader>
                   <EmptyTitle>No workshops found</EmptyTitle>
                   <EmptyDescription>Try a different search or add a workshop.</EmptyDescription>

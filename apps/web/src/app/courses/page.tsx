@@ -206,7 +206,7 @@ export default function CoursesPage() {
               ) : null}
             </div>
           ) : (
-            <Empty className="rounded-[1.75rem] border border-dashed border-border/70 bg-muted/20">
+            <Empty frame="dashed">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <BookOpen />

@@ -144,7 +144,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-3">About this Event</h3>
-                <div className="whitespace-pre-wrap text-foreground/80 leading-relaxed text-[15px]">
+                <div className="whitespace-pre-wrap text-muted-foreground leading-relaxed text-[15px]">
                   {event.description || 'No description provided for this event.'}
                 </div>
               </div>

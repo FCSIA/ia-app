@@ -10,15 +10,23 @@
   },
   "overrides": [
     {
-      "files": ["src/**/*.{ts,tsx}"],
-      "excludedFiles": ["src/components/ui/**/*", "src/lib/share.ts"],
+      "files": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "excludedFiles": [
+        "src/components/ui/**/*",
+        "src/lib/share.ts"
+      ],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["@radix-ui/*", "@base-ui/*"],
+                "group": [
+                  "@radix-ui/*",
+                  "@base-ui/*"
+                ],
                 "message": "Import the local components/ui adapter. Read agent-notes/WEB_UI_WORKFLOW.md before adding or changing a primitive."
               }
             ]
@@ -45,6 +53,14 @@
           {
             "selector": "JSXOpeningElement[name.name='button'] > JSXAttribute[name.name='aria-pressed']",
             "message": "Use a shared toggle, CheckboxGroup, or filter control instead of a custom pressed button."
+          },
+          {
+            "selector": "Literal[value=/text-(muted-)?foreground\\u002F[0-9]+/]",
+            "message": "Use foreground or muted-foreground for readable theme-aware text; opacity greys create extra text colors."
+          },
+          {
+            "selector": "TemplateElement[value.raw=/text-(muted-)?foreground\\u002F[0-9]+/]",
+            "message": "Use foreground or muted-foreground for readable theme-aware text; opacity greys create extra text colors."
           }
         ]
       }

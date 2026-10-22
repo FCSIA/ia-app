@@ -213,7 +213,7 @@ export default function NotificationsPage() {
                   {isLoading ? (
                     <NotificationListSkeleton />
                   ) : filteredNotifications.length === 0 ? (
-                    <Empty className="py-14">
+                    <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           {hasQuery ? <SearchX /> : <Inbox />}

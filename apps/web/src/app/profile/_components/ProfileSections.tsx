@@ -7,6 +7,7 @@ import {
   Lock,
   LogOut,
   Palette,
+  PanelBottom,
   ShieldAlert,
   User,
   type LucideIcon,
@@ -74,7 +75,7 @@ function InfoRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-baseline gap-4 py-2.5">
-      <dt className="min-w-0 text-sm font-medium text-foreground/80">{label}</dt>
+      <dt className="min-w-0 text-sm font-medium text-muted-foreground">{label}</dt>
       <dd
         className={cn(
           'min-w-0 break-words text-right text-sm font-medium text-foreground',
@@ -100,6 +101,7 @@ export type ProfileSection =
   | 'account'
   | 'notifications'
   | 'appearance'
+  | 'navigation'
   | 'moderation'
   | 'whats-new';
 
@@ -111,6 +113,7 @@ const PROFILE_SECTIONS: Array<{
   { id: 'account', label: 'Account', icon: User },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'navigation', label: 'Navigation', icon: PanelBottom },
   { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
   { id: 'whats-new', label: "What's new" },
 ];
@@ -152,7 +155,7 @@ export function ProfileSidebar({
               <p className="mt-1 break-words text-sm text-muted-foreground">{realName}</p>
             ) : null}
             {user?.roles?.length ? (
-              <CardDescription className="mt-2 text-sm leading-5 text-foreground/80">
+              <CardDescription className="mt-2 text-sm leading-5 text-muted-foreground">
                 {user.roles.map(friendlyRole).join(' · ')}
               </CardDescription>
             ) : null}
@@ -173,7 +176,7 @@ export function ProfileSidebar({
                 leadingIcon={icon}
                 className={cn(
                   'w-full justify-start',
-                  activeSection === id ? 'text-foreground' : 'text-foreground/85 hover:text-foreground',
+                  activeSection === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
                 aria-current={activeSection === id ? 'page' : undefined}
                 // The count is decoration; keep it out of the accessible name
@@ -258,7 +261,7 @@ export function AccountSettingsSection({
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <Lock className="size-3.5 text-foreground/70" aria-hidden />
+              <Lock className="size-3.5 text-muted-foreground" aria-hidden />
               <h2 id="password-heading" className="text-sm font-semibold">
                 Password
               </h2>
