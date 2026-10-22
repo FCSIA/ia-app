@@ -11,21 +11,21 @@ export function useGifRequests(
   enabled: boolean,
   poster = false,
 ) {
-  const pending = useRef(new Map<string, Promise<null>>());
+  const pending = useRef(new Set<string>());
   const [failures, setFailures] = useState<Record<string, boolean>>({});
   const start = useCallback((url: string, retry = false) => {
     if (pending.current.has(url)) return;
+    pending.current.add(url);
     setFailures((current) => {
+      if (!current[url]) return current;
       const next = { ...current };
       delete next[url];
       return next;
     });
-    const task = request({ url, poster, retry });
-    pending.current.set(url, task);
-    void task.catch(() => {
+    void request({ url, poster, retry }).catch(() => {
       setFailures((current) => ({ ...current, [url]: true }));
     }).finally(() => {
-      if (pending.current.get(url) === task) pending.current.delete(url);
+      pending.current.delete(url);
     });
   }, [poster, request]);
   useEffect(() => {

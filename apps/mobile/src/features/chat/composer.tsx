@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import {
   BarChart3,
@@ -29,7 +29,6 @@ import type { ChatComposerController } from "./use-chat-composer";
 import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 import { chatAuthorName } from "./types";
 import { SchoolGifPicker } from "./school-gif-picker";
-import { extractChatGifLinks, removeChatGifLink } from "~/apps/shared/chat/gifs";
 import { useStoredGifs } from "./use-stored-gifs";
 import { ComposerGifPreviews } from "./composer-gif-previews";
 
@@ -89,14 +88,10 @@ export function ChatComposer({
     composer.draft,
     composer.markdownDraft,
   );
-  const gifText = composer.mode.kind === "report" || unavailable ? "" : composer.markdownDraft || composer.draft;
-  const gifUrls = useMemo(() => extractChatGifLinks(gifText).map((link) => link.url), [gifText]);
-  const gifs = useStoredGifs(gifUrls);
+  const gifs = useStoredGifs(unavailable ? [] : composer.gifUrls);
   const submit = () => { if (!gifs.blocked) onSubmit(); };
   const gifPreviews = <ComposerGifPreviews assets={gifs.states} disabled={isPending}
-    onRetry={gifs.retry} onRemove={(url) => composer.setRichDraft(
-      removeChatGifLink(composer.draft, url), removeChatGifLink(composer.markdownDraft, url),
-    )} />;
+    onRetry={gifs.retry} onRemove={composer.removeGif} />;
 
   return (
     <View
@@ -137,8 +132,9 @@ export function ChatComposer({
             <RichChatInput
               accessibilityLabel="Edit message"
               placeholder="Message"
-              plainText={composer.draft}
-              markdown={composer.markdownDraft}
+              plainText={composer.caption}
+              markdown={composer.captionMarkdown}
+              valueRevision={composer.draftRevision}
               onChange={composer.setRichDraft}
               editable={!isPending}
               nativeID={inputNativeID}
@@ -210,7 +206,7 @@ export function ChatComposer({
             <PlainChatInput
               accessibilityLabel="Optional poll message"
               placeholder="Add a note (optional)"
-              value={composer.draft}
+              value={composer.caption}
               onChangeText={composer.setDraft}
               editable={!isPending}
               nativeID={inputNativeID}
@@ -267,8 +263,9 @@ export function ChatComposer({
                     ? "Write a reply"
                     : `Message #${channelName ?? "channel"}`
               }
-              plainText={composer.draft}
-              markdown={composer.markdownDraft}
+              plainText={composer.caption}
+              markdown={composer.captionMarkdown}
+              valueRevision={composer.draftRevision}
               onChange={composer.setRichDraft}
               editable={!isPending}
               nativeID={inputNativeID}
@@ -287,9 +284,7 @@ export function ChatComposer({
                     label="GIF"
                     disabled={
                       isPending ||
-                      extractChatGifLinks(
-                        composer.markdownDraft || composer.draft,
-                      ).length >= 5
+                      composer.gifUrls.length >= 5
                     }
                     onPress={() => setGifPickerOpen(true)}
                   />
@@ -337,10 +332,7 @@ export function ChatComposer({
           open
           onClose={() => setGifPickerOpen(false)}
           onSelect={(gif) => {
-            composer.setRichDraft(
-              `${composer.draft.trimEnd()}${composer.draft.trim() ? "\n" : ""}${gif.url}`,
-              `${composer.markdownDraft.trimEnd()}${composer.markdownDraft.trim() ? "\n" : ""}${gif.url}`,
-            );
+            composer.addGif(gif.url);
             setGifPickerOpen(false);
           }}
         />

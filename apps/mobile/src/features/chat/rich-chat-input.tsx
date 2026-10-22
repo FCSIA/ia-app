@@ -47,6 +47,7 @@ type RichChatInputProps = {
   placeholder: string;
   plainText: string;
   markdown: string;
+  valueRevision: number;
   editable: boolean;
   nativeID?: string;
   suggestions: ChatMentionSuggestion[];
@@ -61,6 +62,7 @@ export function RichChatInput({
   placeholder,
   plainText,
   markdown,
+  valueRevision,
   editable,
   nativeID,
   suggestions,
@@ -84,13 +86,15 @@ export function RichChatInput({
   const [activePanel, setActivePanel] = useState<ComposerPanel>(null);
   const [focused, setFocused] = useState(false);
 
+  // A pasted GIF can normalize back to the same caption. Its revision still
+  // changes, so clear the native URL even when the controlled strings match.
   useEffect(() => {
     const nextMarkdown = sanitizeChatMarkdown(markdown);
     if (nextMarkdown === nativeMarkdownRef.current) return;
     nativeMarkdownRef.current = nextMarkdown;
     nativePlainTextRef.current = plainText;
     inputRef.current?.setValue(nextMarkdown);
-  }, [markdown, plainText]);
+  }, [markdown, plainText, valueRevision]);
 
   const emitChange = useCallback(
     (nextPlainText: string, nextMarkdown: string) => {

@@ -41,10 +41,11 @@ import {
 } from '@/components/ui/mention-node';
 import { cn } from '@/lib/utils';
 import { SchoolGifPicker } from './school-gif-picker';
-import { chatGifLinkRanges, extractChatGifLinks, isGifAttachment, removeChatGifLink } from '~/apps/shared/chat/gifs';
+import { appendChatGifLinks, extractChatGifLinks, isGifAttachment, mergeChatGifUrls, splitChatGifDraft } from '~/apps/shared/chat/gifs';
 import { AnimatedGif } from '@/components/media/animated-gif';
 import { useStoredGifs } from '@/hooks/use-stored-gifs';
 import { ComposerGifPreview } from './composer-gif-preview';
+import { appendComposerGifNodes, detachComposerGifLinks, initialComposerGifDraft } from './composer-gif-draft';
 
 export type ChannelMentionSuggestion = {
   token: string;
@@ -237,10 +238,11 @@ export function ChannelMessageComposer({
   onMentionIntent,
   handleRef,
 }: ChannelMessageComposerProps) {
-  const initialValue = useMemo(
-    () =>
-      initialBodyRich ??
-      deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody),
+  const initialDraft = useMemo(
+    () => initialComposerGifDraft(
+      initialBodyRich ?? deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody),
+      initialBodyMarkdown?.trim() || initialBody,
+    ),
     [initialBody, initialBodyMarkdown, initialBodyRich],
   );
   const editor = usePlateEditor(
@@ -255,7 +257,7 @@ export function ChannelMessageComposer({
         ),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
-      value: initialValue,
+      value: initialDraft.value,
     },
     [],
   );
@@ -339,17 +341,17 @@ export function ChannelMessageComposer({
     addFiles(Array.from(event.dataTransfer.files));
   };
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const [plainText, setPlainText] = useState(() =>
-    serializeClubChannelMessagePlainText(initialValue),
-  );
-  const [richValue, setRichValue] = useState<Value>(initialValue);
+  const [richValue, setRichValue] = useState<Value>(initialDraft.value);
+  const [gifUrls, setGifUrls] = useState(initialDraft.urls);
   const [pollOpen, setPollOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
-  const [markdownSource, setMarkdownSource] = useState(initialBodyMarkdown ?? '');
+  const [markdownSource, setMarkdownSource] = useState(() =>
+    splitChatGifDraft('', initialBodyMarkdown ?? '').markdown,
+  );
 
   const mentionables = useMemo<MentionableItem[]>(
     () =>
@@ -369,47 +371,27 @@ export function ChannelMessageComposer({
     .map((label, index) => ({ id: `option-${index + 1}`, label: label.trim() }))
     .filter((option) => option.label);
   const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
-  const currentBody = isMarkdownSource ? markdownSource : plainText;
-  const gifLinks = useMemo(() => extractChatGifLinks(isMarkdownSource ? markdownSource : serializeClubChannelMessageMarkdown(richValue)), [isMarkdownSource, markdownSource, richValue]);
-  const gifUrls = useMemo(() => gifLinks.map((link) => link.url), [gifLinks]);
+  const currentBody = isMarkdownSource ? markdownSource : serializeClubChannelMessagePlainText(richValue);
   const gifs = useStoredGifs(gifUrls);
   const canSend =
-    !isPending && !gifs.blocked && (currentBody.trim().length > 0 || attachmentCount > 0 || !!hasPoll);
+    !isPending && !gifs.blocked && (currentBody.trim().length > 0 || gifUrls.length > 0 || attachmentCount > 0 || !!hasPoll);
   const hasComposerTools = canAttach || canCreatePoll || !isMarkdownSource;
 
   const removeGif = (url: string) => {
-    if (isMarkdownSource) { setMarkdownSource((value) => removeChatGifLink(value, url)); return; }
-    const leaves: Array<{ path: number[]; start: number; end: number }> = [];
-    let text = '';
-    let block = -1;
-    for (const [node, path] of editor.api.nodes({ at: [], match: (node) => typeof node.text === 'string' })) {
-      if (block !== -1 && block !== path[0]) text += '\n';
-      block = path[0];
-      const value = node.text as string;
-      leaves.push({ path, start: text.length, end: text.length + value.length });
-      text += value;
-    }
-    for (const range of chatGifLinkRanges(text, url).reverse()) {
-      const first = leaves.find((leaf) => leaf.start <= range.start && range.start < leaf.end);
-      const last = leaves.find((leaf) => leaf.start < range.end && range.end <= leaf.end);
-      if (first && last) editor.tf.delete({ at: {
-        anchor: { path: first.path, offset: range.start - first.start },
-        focus: { path: last.path, offset: range.end - last.start },
-      } });
-    }
-    editor.tf.focus();
+    setGifUrls((current) => current.filter((item) => item !== url));
+    if (!isMarkdownSource) editor.tf.focus();
   };
 
   const handleSubmit = () => {
     if (!canSend) return;
 
     onSubmit({
-      body: currentBody,
+      body: appendChatGifLinks(currentBody, gifUrls),
       bodyMarkdown: isMarkdownSource
-        ? markdownSource.trim()
-        : serializeClubChannelMessageMarkdown(richValue),
-      bodyRich: plainText.trim() && !isMarkdownSource
-        ? (richValue as unknown as ClubChannelMessageRichBody)
+        ? appendChatGifLinks(markdownSource, gifUrls)
+        : serializeClubChannelMessageMarkdown(appendComposerGifNodes(richValue, gifUrls)),
+      bodyRich: !isMarkdownSource && (currentBody.trim() || gifUrls.length)
+        ? appendComposerGifNodes(richValue, gifUrls)
         : null,
       files,
       removedAttachmentIds: removedIds,
@@ -442,9 +424,13 @@ export function ChannelMessageComposer({
     <Plate
       editor={editor}
       onValueChange={({ value }) => {
-        const nextValue = value as Value;
-        setRichValue(nextValue);
-        setPlainText(serializeClubChannelMessagePlainText(nextValue));
+        const text = serializeClubChannelMessagePlainText(value);
+        if (extractChatGifLinks(text).length) {
+          const urls = mergeChatGifUrls(gifUrls, text);
+          detachComposerGifLinks(editor, urls);
+          setGifUrls(urls);
+        }
+        setRichValue(editor.children);
       }}
     >
       <MentionablesProvider items={mentionables}>
@@ -577,7 +563,11 @@ export function ChannelMessageComposer({
                 aria-label="Markdown message source"
                 value={markdownSource}
                 maxLength={MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS}
-                onChange={(event) => setMarkdownSource(event.target.value)}
+                onChange={(event) => {
+                  const draft = splitChatGifDraft('', event.target.value, gifUrls);
+                  setMarkdownSource(draft.markdown);
+                  setGifUrls(draft.gifUrls);
+                }}
                 onKeyDown={handleMarkdownSourceKeyDown}
                 placeholder={placeholder}
                 spellCheck
@@ -658,7 +648,7 @@ export function ChannelMessageComposer({
                           type="button"
                           size="icon-sm"
                           aria-label="Choose a GIF"
-                          disabled={isPending || extractChatGifLinks(currentBody).length >= 5}
+                          disabled={isPending || gifUrls.length >= 5}
                           onClick={() => {
                             setToolsOpen(false);
                             setGifPickerOpen(true);
@@ -733,13 +723,7 @@ export function ChannelMessageComposer({
 
       {canAttach ? (
         <SchoolGifPicker open={gifPickerOpen} onOpenChange={setGifPickerOpen} onSelect={(gif) => {
-          if (isMarkdownSource) {
-            setMarkdownSource((current) => `${current.trimEnd()}${current.trim() ? '\n' : ''}${gif.url}`);
-          } else {
-            editor.tf.select(editor.api.end([]));
-            if (plainText.trim()) editor.tf.insertBreak();
-            editor.tf.insertText(gif.url);
-          }
+          setGifUrls((current) => mergeChatGifUrls(current, gif.url));
           setGifPickerOpen(false);
         }} />
       ) : null}

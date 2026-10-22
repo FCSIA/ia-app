@@ -11,6 +11,15 @@ animation. Send/Save waits for all downloads. Errors explain the failure and
 offer Retry and Remove without discarding the caption. Sent GIFs and the
 nine catalog posters also use app object storage.
 
+The follow-up separates GIF items from caption state on both clients. Pasted
+URLs disappear from the editor, removal updates only the item list, and
+serialization/restoration retains the existing message/draft format. Each
+card's Remove action shares its header above the image; it no longer reserves
+a full-height side column. The rich-text conversion lives in a focused Slate
+adapter with tests for marked leaves, mentions, repeated URLs and selection.
+Duplicate URL-removal parsing and an unused resolution cache were removed;
+in-flight requests now need only a Set.
+
 This is a supported composition of the existing Attachment states
 (`processing`, `done`, `error`), Attachment content/actions, Spinner, and Button.
 The existing Command/Dialog picker and Plate editor retain their semantics.
@@ -27,6 +36,18 @@ The project remains on the Radix shadcn base.
 
 ## Verification
 
+- Follow-up: 15 draft/serialization tests and 31 targeted backend GIF tests pass.
+  Regression cases cover a URL split across marked leaves, preserved mention
+  identity and selection, duplicate links, code examples, caption edits,
+  GIF-only drafts and the five-item bound. Native input synchronization also
+  observes the draft revision so a GIF-only paste can clear its URL even when
+  its normalized caption stays empty.
+- Follow-up browser checks on the isolated local deployment (web 3100,
+  backend 3310/3311) confirm URL-free captions, compact headers at desktop and
+  390px, loading/error/retry, removal with continued caption editing, send,
+  reopening for edit, save and reload. Saved GIF image sources remain
+  `/api/storage/` URLs. These temporary servers were stopped after testing;
+  the separately running primary checkout was left alone.
 - All 466 backend tests across 88 files pass. After the live provider exposed
   static GIFs at its .png poster URLs, the validator was corrected and the
   relevant 21 download/parser tests pass again.
@@ -49,6 +70,8 @@ After captures are in `/tmp/ia-gif-review/`: `ready-desktop.png`,
 `ready-mobile.png`, `error-mobile.png`, and `picker-mobile.png`.
 There are no before captures. Reproduce through `/clubs` → Robotics Club →
 `#general` in the isolated seeded local app. The channel IDs are local fixtures.
+Follow-up captures in the same directory are `followup-ready-desktop.png`,
+`followup-ready-mobile.png` and `followup-error-desktop.png`.
 
 ## Human review remaining
 

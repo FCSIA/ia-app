@@ -36,17 +36,19 @@ function ComposerGifPreview({ asset, index, disabled, onRetry, onRemove }: {
   return <View accessibilityLabel={label} accessibilityLiveRegion="polite" style={{
     minHeight: 52, borderRadius: radii.md, borderWidth: 1,
     borderColor: color(error ? "destructive" : "border"), backgroundColor: color("muted"),
-    paddingLeft: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    paddingHorizontal: spacing.sm, paddingBottom: spacing.sm, gap: spacing.xs,
   }}>
-    {!ready ? error ? <ImageOff size={18} color={color("destructive")} /> : <ActivityIndicator accessibilityLabel="Preparing GIF" color={color("primary")} /> : null}
-    <View style={{ minWidth: 0, flex: 1, paddingVertical: spacing.xs, gap: spacing.xs }}>
-      <Txt variant="label">{error ? "Couldn't load GIF" : ready ? label : "Preparing GIF…"}</Txt>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+      {!ready ? error ? <ImageOff size={18} color={color("destructive")} /> : <ActivityIndicator accessibilityLabel="Preparing GIF" color={color("primary")} /> : null}
+      <Txt variant="label" style={{ flex: 1 }}>{error ? "Couldn't load GIF" : ready ? label : "Preparing GIF…"}</Txt>
+      <IconButton icon={X} label={`Remove ${label}`} size="sm" variant="ghost" disabled={disabled} onPress={onRemove} />
+    </View>
+    <View style={{ minWidth: 0, gap: spacing.xs }}>
       {error ? <Txt variant="caption" tone="muted">{gifErrorMessage(asset.error)} Retry or remove it to continue.</Txt>
         : ready ? <ChatGif key={attempt} src={asset.url} name={label} maxHeight={120} onError={() => setFailedUrl(asset.url)} />
         : <Txt variant="caption" tone="muted">Getting your preview ready.</Txt>}
       {error ? <Button title="Retry" size="sm" variant="secondary" disabled={disabled}
         onPress={() => { setFailedUrl(null); setAttempt((value) => value + 1); onRetry(); }} /> : null}
     </View>
-    <IconButton icon={X} label={`Remove ${label}`} size="sm" variant="ghost" disabled={disabled} onPress={onRemove} />
   </View>;
 }

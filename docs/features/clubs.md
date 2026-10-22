@@ -155,14 +155,18 @@ typing cat, Kermit, Jim, Leonardo applause, and Pedro raccoon). The collection
 contains no generated media and exposes no provider-wide search. Each entry in
 `apps/shared/chat/school-gifs.ts` retains its source page and static thumbnail;
 review the complete clip before adding or replacing an entry. Selecting a GIF
-adds its external media URL to the draft, preserving existing text and mentions.
+adds a GIF draft item, preserving existing text and mentions.
 
-Pasting or selecting a GIF immediately adds a composer preview card. It shows
+Pasting or selecting a GIF immediately adds a composer preview card and removes
+its URL from the editable caption. The compact card header holds its label and
+Remove action above the preview, without reserving an empty action column. It shows
 Preparing GIF with a spinner while the backend downloads the bytes into Convex
 object storage, then renders the stored GIF. Send and Save wait for every preview
 to be ready. Errors preserve the draft and explain unavailable, oversized, unsupported,
 or failed downloads, with Retry and Remove actions. Remove deletes only that
-GIF's link, preserving captions, mentions, and other formatting.
+GIF draft item, preserving captions, mentions, and other formatting. URLs are
+serialized with the caption only when sending or persisting a native draft;
+editing/restoring separates them back into cards.
 
 Sent GIFs render without a filename/status card or Open link. A compact icon button
 in the lower-right corner controls playback. Previewed links are hidden from the

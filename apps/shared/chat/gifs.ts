@@ -129,25 +129,35 @@ export function removeChatGifLink(text: string, url: string) {
   return text;
 }
 
+/** Keep GIF items separate from the editable caption; URLs are a wire format only. */
+export function mergeChatGifUrls(urls: string[], source: string) {
+  return extractChatGifLinks([...urls, source].join("\n")).map((link) => link.url);
+}
+
+export function appendChatGifLinks(caption: string, urls: string[]) {
+  if (!urls.length) return caption;
+  return [caption.trimEnd(), ...urls].filter(Boolean).join("\n");
+}
+
+export function splitChatGifDraft(text: string, markdown: string, previousUrls: string[] = []) {
+  const gifUrls = mergeChatGifUrls(previousUrls, markdown || text);
+  const originalText = text;
+  const originalMarkdown = markdown;
+  for (const url of gifUrls) {
+    text = removeChatGifLink(text, url);
+    markdown = removeChatGifLink(markdown, url);
+  }
+  return {
+    text: text === originalText ? text : text.trimEnd(),
+    markdown: markdown === originalMarkdown ? markdown : markdown.trimEnd(),
+    gifUrls,
+  };
+}
+
 /** Hide only URLs represented by bounded previews; keep prose and code intact. */
 export function hideChatGifLinks(text: string, source = text): string {
-  const previews = extractChatGifLinks(source);
-  const hidden = (value: string) => {
-    const link = chatGifLink(value.replace(/\\([_*~])/g, "$1"));
-    return link && previews.some((preview) =>
-      (preview.mediaUrl ?? preview.url) === (link.mediaUrl ?? link.url));
-  };
-  return text.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)/g)
-    .map((part, index) => index % 2 ? part : part
-      .replace(/\[([^\]\n]*)\]\((https:\/\/[^\s]+)\)/gi,
-        (match, _label: string, url: string) => hidden(url) ? "" : match)
-      .replace(/<(https:\/\/[^\s<>]+)>/gi,
-        (match, url: string) => hidden(url) ? "" : match)
-      .replace(/https:\/\/[^\s<>"\[\]]+/gi, (match) => {
-        const url = match.replace(/[),.!?;:]+$/, "");
-        return hidden(url) ? match.slice(url.length) : match;
-      }))
-    .join("").trim();
+  for (const link of extractChatGifLinks(source)) text = removeChatGifLink(text, link.url);
+  return text.trim();
 }
 
 /** Only accept GIF media from Tenor's exact CDN hosts, never provider HTML. */
