@@ -2,6 +2,8 @@ type TimelineMessage = {
   _id: string;
   createdAt: number | string;
   isDeleted?: boolean;
+  authorId?: string;
+  author?: { _id: string };
 };
 
 export type ChannelUnreadBoundary = {
@@ -22,7 +24,10 @@ export function captureChannelUnreadBoundary(
   return {
     conversationKey,
     lastReadAt,
-    latestMessageAt: Math.max(0, ...messages.map((message) => new Date(message.createdAt).getTime())),
+    latestMessageAt: Math.max(
+      0,
+      ...messages.map((message) => new Date(message.createdAt).getTime()),
+    ),
   };
 }
 
@@ -30,10 +35,19 @@ export function captureChannelUnreadBoundary(
 export function firstUnreadChannelMessageId(
   messages: readonly TimelineMessage[],
   boundary: ChannelUnreadBoundary | undefined,
+  viewerId?: string,
 ): string | null {
   if (!boundary) return null;
-  return messages.find((message) => {
-    const createdAt = new Date(message.createdAt).getTime();
-    return !message.isDeleted && createdAt > boundary.lastReadAt && createdAt <= boundary.latestMessageAt;
-  })?._id ?? null;
+  return (
+    messages.find((message) => {
+      const createdAt = new Date(message.createdAt).getTime();
+      return (
+        !message.isDeleted &&
+        !(viewerId && (message.authorId ?? message.author?._id) === viewerId) &&
+        !message._id.startsWith('optimistic:') &&
+        createdAt > boundary.lastReadAt &&
+        createdAt <= boundary.latestMessageAt
+      );
+    })?._id ?? null
+  );
 }
