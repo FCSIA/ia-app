@@ -76,7 +76,7 @@ function GifPlayer({ src, name, pending = false, maxHeight = 320, maxWidth = 840
       style={thumbnail ? undefined : { width: fullWidth ? '100%' : size.width }}
     >
       {(src || pending) && !failed ? (
-        <div className={cn('relative max-w-full', thumbnail && 'size-full')}>
+        <div className={cn('relative max-w-full overflow-hidden rounded-xl', thumbnail && 'size-full')}>
           <canvas
             ref={canvas}
             width={1}

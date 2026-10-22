@@ -14,14 +14,19 @@ nine catalog posters also use app object storage.
 The follow-up separates GIF items from caption state on both clients. Pasted
 URLs disappear from the editor, removal updates only the item list, and
 serialization/restoration retains the existing message/draft format. Each
-card's Remove action shares its header above the image; it no longer reserves
-a full-height side column. The rich-text conversion lives in a focused Slate
+loaded preview is the rounded GIF itself, with no heading, numbering or padded
+frame. Remove overlays its top-right corner; playback remains at bottom-right.
+The media renderer owns the corners for both animated and paused frames on web
+and native. The rich-text conversion lives in a focused Slate
 adapter with tests for marked leaves, mentions, repeated URLs and selection.
 Duplicate URL-removal parsing and an unused resolution cache were removed;
 in-flight requests now need only a Set.
 
 This is a supported composition of the existing Attachment states
-(`processing`, `done`, `error`), Attachment content/actions, Spinner, and Button.
+(`processing`, `error`), Attachment content/actions, Spinner, and Button.
+Ready media follows the existing composer attachment tile's overlay-action
+pattern, also present in Fluid InputMessage's FilePreviewTile. It does not
+override Attachment padding or corners to force it into a media-only tile.
 The existing Command/Dialog picker and Plate editor retain their semantics.
 Fluid InputMessage's attachment example was considered; its local-file composer
 does not replace the established rich-text/mention editor. No shared UI
@@ -43,11 +48,17 @@ The project remains on the Radix shadcn base.
   observes the draft revision so a GIF-only paste can clear its URL even when
   its normalized caption stays empty.
 - Follow-up browser checks on the isolated local deployment (web 3100,
-  backend 3310/3311) confirm URL-free captions, compact headers at desktop and
+  backend 3310/3311) confirm URL-free captions at desktop and
   390px, loading/error/retry, removal with continued caption editing, send,
   reopening for edit, save and reload. Saved GIF image sources remain
   `/api/storage/` URLs. These temporary servers were stopped after testing;
   the separately running primary checkout was left alone.
+- The final shape pass passes web/native typechecks, web lint (the same 21
+  existing warnings), and the production build. Desktop and 390px browser
+  checks confirm no visible title, matching preview/media bounds, 0px media
+  padding, 12px corners, overlaid Remove, and preserved captions after removal.
+  Preparing, error, disabled Send, Retry and Remove still work. This pass used
+  typed link entry; actual clipboard paste was covered in the earlier pass.
 - All 466 backend tests across 88 files pass. After the live provider exposed
   static GIFs at its .png poster URLs, the validator was corrected and the
   relevant 21 download/parser tests pass again.
@@ -72,6 +83,8 @@ There are no before captures. Reproduce through `/clubs` → Robotics Club →
 `#general` in the isolated seeded local app. The channel IDs are local fixtures.
 Follow-up captures in the same directory are `followup-ready-desktop.png`,
 `followup-ready-mobile.png` and `followup-error-desktop.png`.
+The final shape captures are `rounded-ready-desktop.png`,
+`rounded-ready-mobile.png` and `rounded-error-mobile.png`.
 
 ## Human review remaining
 

@@ -158,8 +158,8 @@ review the complete clip before adding or replacing an entry. Selecting a GIF
 adds a GIF draft item, preserving existing text and mentions.
 
 Pasting or selecting a GIF immediately adds a composer preview card and removes
-its URL from the editable caption. The compact card header holds its label and
-Remove action above the preview, without reserving an empty action column. It shows
+its URL from the editable caption. Loaded previews show the rounded GIF directly,
+with no heading or padded frame and a Remove button over its top-right corner. It shows
 Preparing GIF with a spinner while the backend downloads the bytes into Convex
 object storage, then renders the stored GIF. Send and Save wait for every preview
 to be ready. Errors preserve the draft and explain unavailable, oversized, unsupported,

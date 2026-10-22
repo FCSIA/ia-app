@@ -15,14 +15,13 @@ export function ComposerGifPreviews({ assets, disabled, onRetry, onRemove }: {
 }) {
   if (!assets.length) return null;
   return <View accessibilityLabel="GIF previews" style={{ gap: spacing.xs }}>
-    {assets.map((asset, index) => <ComposerGifPreview key={asset.sourceUrl} asset={asset}
-      index={index} disabled={disabled} onRetry={() => onRetry(asset.sourceUrl)} onRemove={() => onRemove(asset.sourceUrl)} />)}
+    {assets.map((asset) => <ComposerGifPreview key={asset.sourceUrl} asset={asset}
+      disabled={disabled} onRetry={() => onRetry(asset.sourceUrl)} onRemove={() => onRemove(asset.sourceUrl)} />)}
   </View>;
 }
 
-function ComposerGifPreview({ asset, index, disabled, onRetry, onRemove }: {
+function ComposerGifPreview({ asset, disabled, onRetry, onRemove }: {
   asset: StoredGif;
-  index: number;
   disabled: boolean;
   onRetry: () => void;
   onRemove: () => void;
@@ -32,20 +31,24 @@ function ComposerGifPreview({ asset, index, disabled, onRetry, onRemove }: {
   const [attempt, setAttempt] = useState(0);
   const error = asset.status === "error" || (!!asset.url && failedUrl === asset.url);
   const ready = asset.status === "ready" && !error;
-  const label = `GIF ${index + 1}`;
-  return <View accessibilityLabel={label} accessibilityLiveRegion="polite" style={{
+  if (ready) return <View style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
+    <ChatGif key={attempt} src={asset.url} name="GIF" maxHeight={120} onError={() => setFailedUrl(asset.url)} />
+    <View style={{ position: "absolute", top: spacing.xs, right: spacing.xs }}>
+      <IconButton icon={X} label="Remove GIF" size="sm" disabled={disabled} onPress={onRemove} />
+    </View>
+  </View>;
+  return <View accessibilityLabel="GIF preview" accessibilityLiveRegion="polite" style={{
     minHeight: 52, borderRadius: radii.md, borderWidth: 1,
     borderColor: color(error ? "destructive" : "border"), backgroundColor: color("muted"),
     paddingHorizontal: spacing.sm, paddingBottom: spacing.sm, gap: spacing.xs,
   }}>
     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-      {!ready ? error ? <ImageOff size={18} color={color("destructive")} /> : <ActivityIndicator accessibilityLabel="Preparing GIF" color={color("primary")} /> : null}
-      <Txt variant="label" style={{ flex: 1 }}>{error ? "Couldn't load GIF" : ready ? label : "Preparing GIF…"}</Txt>
-      <IconButton icon={X} label={`Remove ${label}`} size="sm" variant="ghost" disabled={disabled} onPress={onRemove} />
+      {error ? <ImageOff size={18} color={color("destructive")} /> : <ActivityIndicator accessibilityLabel="Preparing GIF" color={color("primary")} />}
+      <Txt variant="label" style={{ flex: 1 }}>{error ? "Couldn't load GIF" : "Preparing GIF…"}</Txt>
+      <IconButton icon={X} label="Remove GIF" size="sm" variant="ghost" disabled={disabled} onPress={onRemove} />
     </View>
     <View style={{ minWidth: 0, gap: spacing.xs }}>
       {error ? <Txt variant="caption" tone="muted">{gifErrorMessage(asset.error)} Retry or remove it to continue.</Txt>
-        : ready ? <ChatGif key={attempt} src={asset.url} name={label} maxHeight={120} onError={() => setFailedUrl(asset.url)} />
         : <Txt variant="caption" tone="muted">Getting your preview ready.</Txt>}
       {error ? <Button title="Retry" size="sm" variant="secondary" disabled={disabled}
         onPress={() => { setFailedUrl(null); setAttempt((value) => value + 1); onRetry(); }} /> : null}

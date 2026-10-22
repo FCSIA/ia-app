@@ -486,8 +486,8 @@ export function ChannelMessageComposer({
 
           {gifs.states.length > 0 ? (
             <div className="flex flex-wrap gap-2" aria-label="GIF previews">
-              {gifs.states.map((asset, index) => (
-                <ComposerGifPreview key={asset.sourceUrl} asset={asset} index={index} disabled={isPending}
+              {gifs.states.map((asset) => (
+                <ComposerGifPreview key={asset.sourceUrl} asset={asset} disabled={isPending}
                   onRetry={() => gifs.retry(asset.sourceUrl)} onRemove={() => removeGif(asset.sourceUrl)} />
               ))}
             </div>

@@ -7,7 +7,7 @@ import { Button, IconButton, Txt } from "@/components/ui";
 import { useGifAutoplay, useGifAppActive } from "@/lib/gif-playback";
 import { MediaVisibleContext, useMediaVisibility } from "@/lib/media-visibility";
 import { useReduceMotion } from "@/lib/motion";
-import { spacing } from "@/lib/tokens";
+import { radii, spacing } from "@/lib/tokens";
 import { useStoredGifs } from "./use-stored-gifs";
 import { gifErrorMessage } from "~/apps/shared/chat/stored-gifs";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
@@ -77,7 +77,7 @@ function GifPlayer({ src, name, pending = false, active = true, maxHeight = 220,
       style={{ width: Math.min(440, maxHeight * aspectRatio), maxWidth: "100%" }}
     >
       {(src || pending) && !failed ? (
-        <View style={{ width: "100%", aspectRatio }}>
+        <View style={{ width: "100%", aspectRatio, borderRadius: radii.md, overflow: "hidden" }}>
           {src && ((visible && appActive && active) || ready) ? (
             <Image
               ref={image}
