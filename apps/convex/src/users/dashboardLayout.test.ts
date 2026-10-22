@@ -1,8 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDefaultDashboardColumns,
+  getDefaultDashboardLayout,
   normalizeDashboardColumns,
   normalizeDashboardLayout,
 } from "./dashboardLayout";
+
+describe("authored dashboard defaults", () => {
+  it("puts unread news first for students, with the agenda in the right column", () => {
+    expect(getDefaultDashboardLayout(["STUDENT"])).toEqual([
+      "welcome", "announcements", "calendar", "my-clubs",
+    ]);
+    expect(getDefaultDashboardColumns(["STUDENT"])).toEqual([
+      ["announcements", "my-clubs"], ["calendar"],
+    ]);
+  });
+
+  it("prioritizes review work for staff without retired defaults", () => {
+    for (const role of ["TEACHER", "SPONSOR", "ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"]) {
+      expect(getDefaultDashboardColumns([role])).toEqual([
+        ["pending-approvals", "announcements", "my-clubs"], ["calendar"],
+      ]);
+    }
+    expect(getDefaultDashboardLayout(["SUPER_ADMIN"])).not.toContain("my-clubs");
+  });
+});
 
 describe("normalizeDashboardLayout", () => {
   it("keeps the first valid occurrence of every widget in order", () => {
@@ -16,7 +38,7 @@ describe("normalizeDashboardLayout", () => {
         "retired-widget",
         "calendar",
       ]),
-    ).toEqual(["fun-fact", "calendar", "day-progress", "announcements"]);
+    ).toEqual(["fun-fact", "calendar", "announcements"]);
   });
 });
 

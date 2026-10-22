@@ -5,7 +5,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { getClubContext, getViewerContext } from "./access";
+import { getClubContext, getViewerContext, getChannelViewerContext } from "./access";
+import { getChannelAccessForChannels } from "./channelAccess";
 import { clubSummaryValidator, clubSummaryWithCounts, toViewerState } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
 import { adjustClubCounts } from "./counts";
@@ -904,11 +905,19 @@ export const removeMember = mutation({
 });
 
 export const getMyClubs = query({
-  args: {},
-  returns: v.object({ memberOf: v.array(clubSummaryValidator), sponsoring: v.array(clubSummaryValidator) }),
-  handler: async (ctx) => {
+  args: { includeActivity: v.optional(v.boolean()) },
+  returns: v.object({
+    memberOf: v.array(clubSummaryValidator),
+    sponsoring: v.array(clubSummaryValidator),
+    clubs: v.array(v.object({
+      ...clubSummaryValidator.fields,
+      unreadChannels: v.optional(v.number()),
+      unreadHasMore: v.optional(v.boolean()),
+    })),
+  }),
+  handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return { memberOf: [], sponsoring: [] };
+    if (!user) return { memberOf: [], sponsoring: [], clubs: [] };
     const memberships = await ctx.db
       .query("clubMembers")
       .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", user._id))
@@ -937,7 +946,33 @@ export const getMyClubs = query({
       )
     ).filter((club): club is NonNullable<typeof club> => !!club);
 
-    return { memberOf, sponsoring };
+    const unique = new Map<Id<"clubs">, (typeof memberOf)[number]>();
+    const roleRank = (role: string | null) => role === "SPONSOR" ? 2 : role === "LEADER" ? 1 : 0;
+    for (const club of memberOf) {
+      if (!unique.has(club._id) || roleRank(club.role) > roleRank(unique.get(club._id)!.role)) unique.set(club._id, club);
+    }
+    for (const club of sponsoring) unique.set(club._id, club);
+    const clubs = await Promise.all([...unique.values()].map(async (summary, index) => {
+      // Only the three dashboard rows need activity. Bound the channel scan and
+      // apply the same access policy as the workspace before reading messages.
+      if (!args.includeActivity || index >= 3) return summary;
+      const club = await ctx.db.get(summary._id);
+      if (!club) return summary;
+      const context = await getChannelViewerContext(ctx, club, user);
+      const candidates = await ctx.db.query("clubChannels")
+        .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id)).take(51);
+      const channels = candidates.slice(0, 50);
+      const access = await getChannelAccessForChannels(ctx, channels, context, user._id);
+      const unread = await Promise.all(channels.filter((channel) => access.get(channel._id)?.canView).map(async (channel) => {
+        const [message, receipt] = await Promise.all([
+          ctx.db.query("clubChannelMessages").withIndex("by_channelId_and_createdAt", (q) => q.eq("channelId", channel._id)).order("desc").first(),
+          ctx.db.query("clubChannelReadReceipts").withIndex("by_userId_and_channelId", (q) => q.eq("userId", user._id).eq("channelId", channel._id)).first(),
+        ]);
+        return !!message && !message.deletedAt && message.authorId !== user._id && message.createdAt > (receipt?.lastReadAt ?? 0);
+      }));
+      return { ...summary, unreadChannels: unread.filter(Boolean).length, unreadHasMore: candidates.length > 50 };
+    }));
+    return { memberOf, sponsoring, clubs };
   },
 });
 

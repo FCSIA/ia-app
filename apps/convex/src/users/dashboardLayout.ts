@@ -6,12 +6,8 @@
 export const dashboardWidgetIds = [
   "welcome",
   "calendar",
-  "upcoming-events",
   "announcements",
   "pending-approvals",
-  "admin-stats",
-  "quick-actions",
-  "day-progress",
   "flex-friday",
   "my-clubs",
   "fun-fact",
@@ -59,4 +55,18 @@ export function normalizeDashboardColumns(
       result[result[0].length <= result[1].length ? 0 : 1].push(id);
   }
   return result;
+}
+
+/** Authored role defaults are shared with clients; no measurement or re-packing. */
+export function getDefaultDashboardLayout(roles: readonly string[] = []): string[] {
+  const staff = roles.some((role) => ['SPONSOR', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF', 'STUDENT_ADMIN'].includes(role));
+  const ids = staff
+    ? ['welcome', 'pending-approvals', 'calendar', 'announcements', 'my-clubs']
+    : ['welcome', 'announcements', 'calendar', 'my-clubs'];
+  return roles.includes('SUPER_ADMIN') ? ids.filter((id) => id !== 'my-clubs') : ids;
+}
+
+export function getDefaultDashboardColumns(roles: readonly string[] = []): string[][] {
+  const ids = getDefaultDashboardLayout(roles).filter((id) => id !== 'welcome');
+  return [[ids[0], ...ids.slice(2)], [ids[1]]];
 }
