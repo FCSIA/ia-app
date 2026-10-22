@@ -24,14 +24,12 @@ export function FunFactWidget() {
   return (
     <Panel
       title="Did you know?"
-      className="w-full min-w-0 [&>div:first-child]:flex-row [&>div:first-child]:items-center [&>div:first-child]:justify-between"
-      contentClassName="min-w-0 px-6 pb-6 pt-3 sm:p-6"
-      action={
+      className="w-full min-w-0"
+      actions={
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="rounded-full"
           onClick={nextMessage}
           aria-label="Show another fact"
         >
@@ -40,7 +38,7 @@ export function FunFactWidget() {
       }
     >
       <div
-        className="flex min-h-20 w-full min-w-0 items-center rounded-[1.4rem] bg-muted/20 p-4 sm:min-h-24 sm:p-5"
+        className="flex min-h-20 w-full min-w-0 items-center"
         title={fact.text}
       >
         <LoadingFact fact={fact} className="w-full" />

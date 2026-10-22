@@ -9,20 +9,38 @@ import {
 describe("authored dashboard defaults", () => {
   it("puts unread news first for students, with the agenda in the right column", () => {
     expect(getDefaultDashboardLayout(["STUDENT"])).toEqual([
-      "welcome", "announcements", "calendar", "my-clubs",
+      "welcome",
+      "announcements",
+      "calendar",
+      "my-clubs",
     ]);
     expect(getDefaultDashboardColumns(["STUDENT"])).toEqual([
-      ["announcements", "my-clubs"], ["calendar"],
+      ["announcements", "my-clubs"],
+      ["calendar"],
     ]);
   });
 
   it("prioritizes review work for staff without retired defaults", () => {
-    for (const role of ["TEACHER", "SPONSOR", "ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"]) {
+    for (const role of [
+      "TEACHER",
+      "SPONSOR",
+      "ADMIN",
+      "SUPPORT_STAFF",
+      "STUDENT_ADMIN",
+    ]) {
+      expect(getDefaultDashboardLayout([role]).slice(1, 4)).toEqual([
+        "pending-approvals",
+        "announcements",
+        "calendar",
+      ]);
       expect(getDefaultDashboardColumns([role])).toEqual([
-        ["pending-approvals", "announcements", "my-clubs"], ["calendar"],
+        ["pending-approvals", "announcements", "my-clubs"],
+        ["calendar"],
       ]);
     }
-    expect(getDefaultDashboardLayout(["SUPER_ADMIN"])).not.toContain("my-clubs");
+    expect(getDefaultDashboardLayout(["SUPER_ADMIN"])).not.toContain(
+      "my-clubs",
+    );
   });
 });
 

@@ -142,6 +142,20 @@ function AnnouncementPreview({
       : new Date(announcement.expiresAt).toISOString().slice(0, 10)}
   </span> : null;
 
+  if (widget) return (
+    <Card index={index} href={`/announcements/${announcement._id}`} label={`Open announcement: ${announcement.title}`} className={cn('group/preview', className)}>
+      <CardContent className="flex w-full min-h-14 items-center gap-3 pr-4 py-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold">{announcement.title}</h3>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">{audienceMetadata}{postedTime}</div>
+        </div>
+        <div className="opacity-0 focus-within:opacity-100 group-hover/preview:opacity-100 pointer-coarse:opacity-100">
+          <Tooltip content="Mark read"><AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" /></Tooltip>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Card
       index={index}

@@ -1,93 +1,150 @@
-import { useDeferredValue, useMemo, useState } from 'react';
-import { useQuery } from '@/lib/convex-react';
-import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { filterBySearchQuery } from '@/lib/search';
-import { FlexFridayDoc, FlexSessionDoc, FlexWorkshopDoc } from '../_types';
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useQuery } from "@/lib/convex-react";
+import { api } from "~/apps/convex/src/_generated/api";
+import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import { hasRole, useCurrentUser } from "@/lib/auth";
+import { filterBySearchQuery } from "@/lib/search";
+import { FlexFridayDoc, FlexSessionDoc, FlexWorkshopDoc } from "../_types";
 
 export function useFlexFriday() {
   const user = useCurrentUser();
+  const searchParams = useSearchParams();
+  const urlFridayId = searchParams?.get("friday") ?? null;
+  const urlSessionId = searchParams?.get("session") ?? null;
+  const urlAttendanceId = searchParams?.get("attendance") ?? null;
 
-  const [selectedFridayId, setSelectedFridayId] = useState<Id<'flexFridays'> | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<Id<'flexSessions'> | null>(null);
-  const [activeView, setActiveView] = useState<'schedule' | 'audit'>('schedule');
+  const [selectedFridayId, setSelectedFridayId] = useState<string | null>(
+    () => searchParams?.get("friday") ?? null,
+  );
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    () => searchParams?.get("session") ?? null,
+  );
+  const [activeView, setActiveView] = useState<"schedule" | "audit">(
+    "schedule",
+  );
 
-  const [sessionSearch, setSessionSearch] = useState('');
+  const [sessionSearch, setSessionSearch] = useState("");
   const deferredSessionSearch = useDeferredValue(sessionSearch);
-  const [workshopSearch, setWorkshopSearch] = useState('');
+  const [workshopSearch, setWorkshopSearch] = useState("");
   const deferredWorkshopSearch = useDeferredValue(workshopSearch);
 
-  const canManage = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canCreateFriday = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
-  const canCreateSession = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
-  const canManageSessions = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canManageWorkshops = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canManageAttendance = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF', 'STUDENT_ADMIN');
-  const isStudent = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const canManage = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const canCreateFriday =
+    !!user && hasRole(user, "ADMIN", "SUPER_ADMIN", "STUDENT_ADMIN");
+  const canCreateSession =
+    !!user && hasRole(user, "TEACHER", "ADMIN", "SUPER_ADMIN", "STUDENT_ADMIN");
+  const canManageSessions =
+    !!user && hasRole(user, "TEACHER", "ADMIN", "SUPER_ADMIN");
+  const canManageWorkshops =
+    !!user && hasRole(user, "TEACHER", "ADMIN", "SUPER_ADMIN");
+  const canManageAttendance =
+    !!user &&
+    hasRole(
+      user,
+      "TEACHER",
+      "ADMIN",
+      "SUPER_ADMIN",
+      "SUPPORT_STAFF",
+      "STUDENT_ADMIN",
+    );
+  const isStudent =
+    !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
 
   const fridaysQuery = useQuery(api.flexFriday.fridays.list, {});
   const fridays = fridaysQuery ?? [];
   const selectedFriday =
-    fridays.find((friday) => friday._id === selectedFridayId) ?? fridays[0] ?? null;
+    fridays.find((friday) => friday._id === selectedFridayId) ??
+    fridays[0] ??
+    null;
   const isLoading = fridaysQuery === undefined;
 
   const sessions =
     useQuery(
       api.flexFriday.sessions.listByFriday,
-      selectedFriday ? { flexFridayId: selectedFriday._id as Id<'flexFridays'> } : 'skip',
+      selectedFriday
+        ? { flexFridayId: selectedFriday._id as Id<"flexFridays"> }
+        : "skip",
     ) ?? [];
   const selectedSession =
-    sessions.find((session) => session._id === selectedSessionId) ?? sessions[0] ?? null;
+    sessions.find((session) => session._id === selectedSessionId) ??
+    sessions[0] ??
+    null;
 
   const workshops =
     useQuery(
       api.flexFriday.workshops.listBySession,
       selectedFriday && selectedSession
         ? {
-            flexFridayId: selectedFriday._id as Id<'flexFridays'>,
-            sessionId: selectedSession._id as Id<'flexSessions'>,
+            flexFridayId: selectedFriday._id as Id<"flexFridays">,
+            sessionId: selectedSession._id as Id<"flexSessions">,
           }
-        : 'skip',
+        : "skip",
     ) ?? [];
 
-  const myRegs = useQuery(api.flexFriday.registration.getMyRegistrations, {}) ?? [];
-  const myRegWorkshopIds = useMemo(() => new Set((myRegs as any[]).map((r: any) => r.workshopId)), [myRegs]);
+  const myRegs =
+    useQuery(api.flexFriday.registration.getMyRegistrations, {}) ?? [];
+  const myRegWorkshopIds = useMemo(
+    () => new Set((myRegs as any[]).map((r: any) => r.workshopId)),
+    [myRegs],
+  );
 
   const auditQuery = useQuery(
     api.audit.events.list,
-    canManage && activeView === 'audit' ? { query: 'Flex', limit: 10 } : 'skip',
+    canManage && activeView === "audit" ? { query: "Flex", limit: 10 } : "skip",
   );
   const auditEvents = auditQuery ?? [];
-  const auditLoading = canManage && activeView === 'audit' && auditQuery === undefined;
+  const auditLoading =
+    canManage && activeView === "audit" && auditQuery === undefined;
 
   const credits = useQuery(
     api.flexFriday.credits.getMyCredits,
-    user ? {} : 'skip',
+    user ? {} : "skip",
   );
 
-  const [attendanceWorkshopId, setAttendanceWorkshopId] = useState<Id<'flexWorkshops'> | null>(null);
+  const [attendanceWorkshopId, setAttendanceWorkshopId] =
+    useState<Id<"flexWorkshops"> | null>(
+      () =>
+        (searchParams?.get("attendance") ?? null) as Id<"flexWorkshops"> | null,
+    );
+  useEffect(() => {
+    setSelectedFridayId(urlFridayId);
+    setSelectedSessionId(urlSessionId);
+    setAttendanceWorkshopId(urlAttendanceId as Id<"flexWorkshops"> | null);
+  }, [urlFridayId, urlSessionId, urlAttendanceId]);
+  // URL values select only records already returned by the authorized queries.
+  const visibleAttendanceWorkshopId =
+    canManageAttendance &&
+    workshops.some((workshop) => workshop._id === attendanceWorkshopId)
+      ? attendanceWorkshopId
+      : null;
   const rosterData = useQuery(
     api.flexFriday.attendance.getRoster,
-    attendanceWorkshopId && canManageAttendance
-      ? { workshopId: attendanceWorkshopId }
-      : 'skip',
+    visibleAttendanceWorkshopId
+      ? { workshopId: visibleAttendanceWorkshopId }
+      : "skip",
   );
-  const rosterLoading = attendanceWorkshopId != null && rosterData === undefined;
+  const rosterLoading =
+    visibleAttendanceWorkshopId != null && rosterData === undefined;
 
   const filteredSessions = useMemo(() => {
-    return filterBySearchQuery(sessions as FlexSessionDoc[], deferredSessionSearch, (session) => [
-      session.title,
-      session.description ?? '',
-    ]);
+    return filterBySearchQuery(
+      sessions as FlexSessionDoc[],
+      deferredSessionSearch,
+      (session) => [session.title, session.description ?? ""],
+    );
   }, [sessions, deferredSessionSearch]);
 
   const filteredWorkshops = useMemo(() => {
-    return filterBySearchQuery(workshops as FlexWorkshopDoc[], deferredWorkshopSearch, (workshop) => [
-      workshop.title,
-      workshop.description ?? '',
-      workshop.location ?? '',
-    ]);
+    return filterBySearchQuery(
+      workshops as FlexWorkshopDoc[],
+      deferredWorkshopSearch,
+      (workshop) => [
+        workshop.title,
+        workshop.description ?? "",
+        workshop.location ?? "",
+      ],
+    );
   }, [workshops, deferredWorkshopSearch]);
 
   return {
@@ -99,7 +156,7 @@ export function useFlexFriday() {
     canManageWorkshops,
     canManageAttendance,
     isStudent,
-    
+
     selectedFriday,
     setSelectedFriday: (f: FlexFridayDoc | null) => {
       setSelectedFridayId(f?._id ?? null);
@@ -116,7 +173,7 @@ export function useFlexFriday() {
     sessions: filteredSessions,
     workshops: filteredWorkshops,
     isLoading,
-    
+
     sessionSearch,
     setSessionSearch,
     workshopSearch,
@@ -128,7 +185,7 @@ export function useFlexFriday() {
     auditLoading,
     credits,
 
-    attendanceWorkshopId,
+    attendanceWorkshopId: visibleAttendanceWorkshopId,
     setAttendanceWorkshopId,
     rosterData,
     rosterLoading,

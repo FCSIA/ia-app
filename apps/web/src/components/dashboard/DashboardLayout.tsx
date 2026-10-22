@@ -1,6 +1,15 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Component as ReactComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   DragOverlay,
@@ -14,32 +23,34 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
-  type DragOverEvent,
   type DragStartEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Columns2,
   GripVertical,
-  LayoutGrid,
   Plus,
   RotateCcw,
   Save,
   Undo2,
   X,
-} from 'lucide-react';
-import { LayoutGroup, LazyMotion, useReducedMotion } from 'framer-motion';
-import * as m from 'framer-motion/m';
-import { PageFrame } from '@/components/layout/page-frame';
-import { Button } from '@/components/ui/button';
-import { ToastAction } from '@/components/ui/toast';
+} from "lucide-react";
+import { LayoutGroup, LazyMotion, useReducedMotion } from "framer-motion";
+import * as m from "framer-motion/m";
+import {
+  PageFrame,
+  Panel,
+  PanelHeaderDragContext,
+} from "@/components/layout/page-frame";
+import { Button } from "@/components/ui/button";
+import { ToastAction } from "@/components/ui/toast";
 import {
   Dialog,
   DialogContent,
@@ -47,24 +58,34 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { useCurrentUser } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { CanvasCalendarAnnouncement } from './CanvasCalendarAnnouncement';
-import { useMutation } from '@/lib/convex-react';
-import { api } from '~/apps/convex/src/_generated/api';
+} from "@/components/ui/dialog";
+import { useCurrentUser } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import {
+  Card,
+  CardGroup,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardMedia,
+} from "@/components/ui/card";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMutation } from "@/lib/convex-react";
+import { api } from "~/apps/convex/src/_generated/api";
 import {
   normalizeDashboardColumns,
   normalizeDashboardLayout,
-} from '~/apps/convex/src/users/dashboardLayout';
+} from "~/apps/convex/src/users/dashboardLayout";
 import {
   WIDGETS,
   getAvailableWidgets,
   getDefaultLayout,
+  getDefaultColumns,
   isWidgetAllowed,
   type WidgetDefinition,
-} from './widget-registry';
+} from "./widget-registry";
 
 import {
   balanceColumns,
@@ -73,15 +94,43 @@ import {
   moveToColumn,
   withMobileOrder,
   type DashboardArrangement,
-} from './column-layout';
+} from "./column-layout";
 
 const loadMotionFeatures = () =>
-  import('./dashboard-motion').then((module) => module.default);
+  import("./dashboard-motion").then((module) => module.default);
 
-const STORAGE_PREFIX = 'ia_dashboard_layout_';
+const STORAGE_PREFIX = "ia_dashboard_layout_";
 
 const HEIGHT_EPSILON = 8;
-const PACK_SETTLE_MS = 1200;
+
+class WidgetErrorBoundary extends ReactComponent<
+  { title: string; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <Panel title={this.props.title}>
+        <Empty size="inline">
+          <EmptyDescription>Could not load this widget.</EmptyDescription>
+          <Button
+            size="sm"
+            variant="tertiary"
+            onClick={() => this.setState({ failed: false })}
+          >
+            Retry
+          </Button>
+        </Empty>
+      </Panel>
+    );
+  }
+}
 
 function storageKey(userId: string) {
   return `${STORAGE_PREFIX}${userId}`;
@@ -92,17 +141,17 @@ function loadLayout(
 ): { layout: string[]; columns?: string[][] } | null {
   try {
     const parsed: unknown = JSON.parse(
-      localStorage.getItem(storageKey(userId)) ?? 'null',
+      localStorage.getItem(storageKey(userId)) ?? "null",
     );
-    if (Array.isArray(parsed) && parsed.every((id) => typeof id === 'string')) {
+    if (Array.isArray(parsed) && parsed.every((id) => typeof id === "string")) {
       return { layout: parsed };
     }
-    if (!parsed || typeof parsed !== 'object' || !('layout' in parsed))
+    if (!parsed || typeof parsed !== "object" || !("layout" in parsed))
       return null;
     const { layout } = parsed;
-    if (!Array.isArray(layout) || !layout.every((id) => typeof id === 'string'))
+    if (!Array.isArray(layout) || !layout.every((id) => typeof id === "string"))
       return null;
-    const columns = 'columns' in parsed ? parsed.columns : undefined;
+    const columns = "columns" in parsed ? parsed.columns : undefined;
     return {
       layout,
       columns:
@@ -111,7 +160,7 @@ function loadLayout(
         columns.every(
           (column) =>
             Array.isArray(column) &&
-            column.every((id) => typeof id === 'string'),
+            column.every((id) => typeof id === "string"),
         )
           ? columns
           : undefined,
@@ -135,7 +184,7 @@ const columnCollision: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
   const collisions = hits.length ? hits : closestCenter(args);
   const widgets = collisions.filter(
-    (hit) => !String(hit.id).startsWith('dashboard-column-'),
+    (hit) => !String(hit.id).startsWith("dashboard-column-"),
   );
   return widgets.length ? widgets : collisions;
 };
@@ -160,8 +209,9 @@ function WidgetColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex min-w-0 flex-1 flex-col gap-6',
-        editing && 'min-h-40',
+        "flex min-w-0 flex-1 flex-col gap-6",
+        editing &&
+          "min-h-40 rounded-xl outline-1 outline-dashed outline-border",
       )}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
@@ -214,7 +264,7 @@ function SortableWidget({
     if (!node || !onMeasure) return;
     // Measure right away rather than waiting on the first observer callback.
     onMeasure(id, node.getBoundingClientRect().height);
-    if (typeof ResizeObserver === 'undefined') return;
+    if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       onMeasure(id, node.getBoundingClientRect().height);
     });
@@ -237,38 +287,56 @@ function SortableWidget({
     >
       <div
         ref={setRefs}
+        data-dashboard-widget={id}
         style={style}
         className={cn(
-          'relative',
-          editing ? 'rounded-3xl ring-1 ring-dashed ring-border/70' : '',
-          isDragging ? 'opacity-40' : '',
+          "relative",
+          editing
+            ? "rounded-3xl outline-1 outline-dashed outline-offset-4 outline-border"
+            : "",
+          isDragging ? "opacity-40" : "",
         )}
       >
         <div>
           {editing && (
-            <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
-              <button
+            <div className="absolute right-5 -top-4 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
+              <Button
+                size="icon-sm"
+                variant="ghost"
                 type="button"
                 {...attributes}
                 {...listeners}
-                className="flex size-6 touch-none cursor-grab items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                className="touch-none cursor-grab active:cursor-grabbing"
                 aria-label={`Drag ${widget.label}`}
               >
-                <GripVertical className="size-3.5" />
-              </button>
-              <button
+                <GripVertical />
+              </Button>
+              <Button
+                size="icon-sm"
+                variant="ghost"
                 type="button"
                 onClick={() => onRemove(id)}
-                className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+
                 aria-label={`Remove ${widget.label}`}
               >
-                <X className="size-3.5" />
-              </button>
+                <X />
+              </Button>
             </div>
           )}
-          <div className={editing ? 'opacity-95' : ''}>
-            <Component />
-          </div>
+          <PanelHeaderDragContext.Provider
+            value={
+              editing
+                ? {
+                    onMouseDown: (event) => listeners?.onMouseDown?.(event),
+                    onTouchStart: (event) => listeners?.onTouchStart?.(event),
+                  }
+                : undefined
+            }
+          >
+            <WidgetErrorBoundary title={widget.label}>
+              <Component />
+            </WidgetErrorBoundary>
+          </PanelHeaderDragContext.Provider>
         </div>
       </div>
     </m.div>
@@ -291,9 +359,11 @@ function DragGhost({ widget }: { widget: WidgetDefinition }) {
 export function DashboardLayout({
   editing,
   onEditingChange,
+  toolbarTarget,
 }: {
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
+  toolbarTarget?: HTMLElement | null;
 }) {
   const user = useCurrentUser();
   const reducedMotion = useReducedMotion();
@@ -306,8 +376,9 @@ export function DashboardLayout({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [columnCount, setColumnCount] = useState(1);
   const [heights, setHeights] = useState<Record<string, number>>({});
-  const [autoBalance, setAutoBalance] = useState(false);
+  const editSnapshot = useRef<DashboardArrangement | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [addedId, setAddedId] = useState<string | null>(null);
   const dragSnapshot = useRef<DashboardArrangement | null>(null);
   const undoToast = useRef<(() => void) | null>(null);
   const loadedPreference = useRef<string | null>(null);
@@ -320,19 +391,19 @@ export function DashboardLayout({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-      scrollBehavior: reducedMotion ? 'auto' : 'smooth',
+      scrollBehavior: reducedMotion ? "auto" : "smooth",
     }),
   );
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
+    const mq = window.matchMedia("(min-width: 768px)");
     const update = () => {
       setHeights({});
       setColumnCount(mq.matches ? 2 : 1);
     };
     update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
   const dismissUndo = useCallback(() => {
@@ -371,13 +442,15 @@ export function DashboardLayout({
       ? { layout: user.dashboardLayout, columns: user.dashboardColumns }
       : local;
     const nextLayout = normalizeDashboardLayout(
-      saved?.layout ?? getDefaultLayout(),
+      saved?.layout ?? getDefaultLayout(user.roles),
     ).filter((id) => WIDGETS[id] && isWidgetAllowed(WIDGETS[id], user.roles));
     setArrangement({
       layout: nextLayout,
-      columns: normalizeDashboardColumns(saved?.columns, nextLayout),
+      columns: normalizeDashboardColumns(
+        saved ? saved.columns : getDefaultColumns(user.roles),
+        nextLayout,
+      ),
     });
-    setAutoBalance(!saved);
     loadedPreference.current = preferenceKey;
     loadedUser.current = user._id;
     dismissUndo();
@@ -398,7 +471,7 @@ export function DashboardLayout({
     for (const id of layout ?? []) {
       const widget = WIDGETS[id];
       if (!widget || widget.isFixed) continue;
-      if (widget.size === 'full') fullIds.push(id);
+      if (widget.size === "full") fullIds.push(id);
       else columnIds.push(id);
     }
     return { fixedIds, fullIds, columnIds };
@@ -421,18 +494,27 @@ export function DashboardLayout({
   const canBalance =
     measured && canImproveBalance(desktopColumns, balanced, heights);
 
-  // Only a fresh/default layout can balance automatically, after content settles.
   useEffect(() => {
-    if (!autoBalance || !measured || activeId) return;
-    const timer = window.setTimeout(() => {
-      setArrangement((prev) => (prev ? { ...prev, columns: balanced } : prev));
-      setAutoBalance(false);
-    }, PACK_SETTLE_MS);
-    return () => window.clearTimeout(timer);
-  }, [autoBalance, measured, activeId, balanced]);
+    if (editing && !editSnapshot.current) editSnapshot.current = arrangement;
+    if (!editing) editSnapshot.current = null;
+  }, [editing, arrangement]);
+  const handleCancel = useCallback(() => {
+    if (isSaving || activeId) return;
+    if (editSnapshot.current) setArrangement(editSnapshot.current);
+    setPickerOpen(false);
+    dismissUndo();
+    onEditingChange(false);
+  }, [isSaving, activeId, dismissUndo, onEditingChange]);
+  useEffect(() => {
+    if (!editing) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !activeId && !pickerOpen) handleCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editing, activeId, pickerOpen, handleCancel]);
 
   const beginEdit = useCallback(() => {
-    setAutoBalance(false);
     dismissUndo();
   }, [dismissUndo]);
   const handleSave = useCallback(async () => {
@@ -445,13 +527,13 @@ export function DashboardLayout({
         columns: arrangement.columns,
       });
       saveLayout(user._id, arrangement);
-      toast({ title: 'Dashboard saved across all devices' });
+      toast({ title: "Dashboard saved" });
       onEditingChange(false);
     } catch {
       toast({
-        title: 'Could not save dashboard',
-        description: 'Your changes are still here. Try again.',
-        variant: 'destructive',
+        title: "Could not save dashboard",
+        description: "Your changes are still here. Try again.",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -468,15 +550,29 @@ export function DashboardLayout({
 
   const handleReset = useCallback(() => {
     beginEdit();
-    const fresh = getDefaultLayout().filter((id) =>
+    const fresh = getDefaultLayout(user?.roles).filter((id) =>
       isWidgetAllowed(WIDGETS[id], user?.roles),
     );
+    const previous = arrangement;
     setArrangement({
       layout: fresh,
-      columns: normalizeDashboardColumns(undefined, fresh),
+      columns: normalizeDashboardColumns(getDefaultColumns(user?.roles), fresh),
     });
-    setAutoBalance(true);
-  }, [beginEdit, user?.roles]);
+    undoToast.current = toast({
+      title: "Default dashboard restored",
+      action: (
+        <ToastAction
+          altText="Undo dashboard reset"
+          onClick={() => {
+            setArrangement(previous);
+            dismissUndo();
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
+    }).dismiss;
+  }, [beginEdit, user?.roles, arrangement, toast, dismissUndo]);
   const handleRemove = useCallback(
     (id: string) => {
       beginEdit();
@@ -511,16 +607,34 @@ export function DashboardLayout({
         };
       });
       setPickerOpen(false);
+      setAddedId(id);
     },
     [beginEdit, heights],
   );
+  useEffect(() => {
+    if (!addedId || pickerOpen) return;
+    const node = document.querySelector<HTMLElement>(
+      `[data-dashboard-widget="${addedId}"]`,
+    );
+    if (!node) return;
+    node.scrollIntoView({
+      block: "nearest",
+      behavior: reducedMotion ? "instant" : "smooth",
+    });
+    if (!reducedMotion)
+      node.animate(
+        [{ outlineColor: "hsl(var(--ring))" }, { outlineColor: "transparent" }],
+        { duration: 1200 },
+      );
+    setAddedId(null);
+  }, [addedId, pickerOpen, reducedMotion]);
   const handleBalance = useCallback(() => {
     if (!arrangement || !canBalance) return;
     beginEdit();
     const previous = arrangement;
     setArrangement({ ...arrangement, columns: balanced });
     undoToast.current = toast({
-      title: 'Layout balanced',
+      title: "Layout balanced",
       duration: 10000,
       action: (
         <ToastAction
@@ -552,38 +666,12 @@ export function DashboardLayout({
     },
     [beginEdit, arrangement],
   );
-  const handleDragOver = useCallback(
-    ({ active, over }: DragOverEvent) => {
-      if (columnCount !== 2 || !over) return;
-      setArrangement((prev) => {
-        if (!prev) return prev;
-        const id = String(active.id);
-        const source = prev.columns.findIndex((column) => column.includes(id));
-        const target = String(over.id).startsWith('dashboard-column-')
-          ? Number(String(over.id).replace('dashboard-column-', ''))
-          : prev.columns.findIndex((column) =>
-              column.includes(String(over.id)),
-            );
-        if (source < 0 || target < 0 || target === source) return prev;
-        const overIndex = prev.columns[target].indexOf(String(over.id));
-        const after =
-          active.rect.current.translated &&
-          active.rect.current.translated.top >
-            over.rect.top + over.rect.height / 2;
-        const index =
-          overIndex < 0
-            ? prev.columns[target].length
-            : overIndex + (after ? 1 : 0);
-        return moveToColumn(prev, id, target, index);
-      });
-    },
-    [columnCount],
-  );
   const handleDragCancel = useCallback(() => {
     setArrangement(dragSnapshot.current);
     setActiveId(null);
     dragSnapshot.current = null;
   }, []);
+  // Keep container membership stable while measuring; commit cross-column moves on drop.
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
       setActiveId(null);
@@ -603,10 +691,22 @@ export function DashboardLayout({
             ? prev
             : withMobileOrder(prev, arrayMove(prev.layout, from, to));
         }
-        const column = prev.columns.findIndex((items) => items.includes(id));
-        if (column < 0) return prev;
-        const to = prev.columns[column].indexOf(String(over.id));
-        return to < 0 ? prev : moveToColumn(prev, id, column, to);
+        const source = prev.columns.findIndex((items) => items.includes(id));
+        const target = String(over.id).startsWith("dashboard-column-")
+          ? Number(String(over.id).replace("dashboard-column-", ""))
+          : prev.columns.findIndex((items) => items.includes(String(over.id)));
+        if (source < 0 || target < 0) return prev;
+        const overIndex = prev.columns[target].indexOf(String(over.id));
+        const after =
+          source !== target &&
+          active.rect.current.translated &&
+          active.rect.current.translated.top >
+            over.rect.top + over.rect.height / 2;
+        const index =
+          overIndex < 0
+            ? prev.columns[target].length
+            : overIndex + (after ? 1 : 0);
+        return moveToColumn(prev, id, target, index);
       });
     },
     [columnCount],
@@ -615,7 +715,7 @@ export function DashboardLayout({
   if (!layout) {
     return (
       <PageFrame className="pt-0">
-        <div className="h-64 animate-pulse rounded-[2rem] bg-muted/30" />
+        <Skeleton className="h-64" />
       </PageFrame>
     );
   }
@@ -623,101 +723,112 @@ export function DashboardLayout({
   const missingWidgets = availableWidgets.filter((w) => !layout.includes(w.id));
   const activeWidget = activeId ? WIDGETS[activeId] : null;
 
+  const editToolbar = (
+    <div className="flex w-full min-w-0 items-center gap-2">
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="primary"
+            size="sm"
+            leadingIcon={Plus}
+            aria-label="Add widget"
+
+            disabled={missingWidgets.length === 0 || isSaving}
+          >
+            <span className="hidden sm:inline">Add widget</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add a widget</DialogTitle>
+            <DialogDescription>
+              Choose a widget to add to your dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <CardGroup orientation="inline" aria-label="Available widgets">
+            {availableWidgets.map((widget) => (
+              <Card
+                key={widget.id}
+                label={`Add ${widget.label}`}
+                disabled={layout.includes(widget.id)}
+                onClick={() => handleAdd(widget.id)}
+              >
+                <CardMedia icon={widget.icon} />
+                <CardHeader>
+                  <CardTitle>
+                    {widget.label}
+                    {layout.includes(widget.id) ? " · Added" : ""}
+                  </CardTitle>
+                  <CardDescription>{widget.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </CardGroup>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setPickerOpen(false);
+              handleReset();
+            }}
+          >
+            Reset to default
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <div className="ml-auto flex items-center gap-1">
+        {canBalance ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            leadingIcon={Columns2}
+            className="hidden md:inline-flex"
+            onClick={handleBalance}
+            disabled={!canBalance || isSaving || Boolean(activeId)}
+            title="Arrange widgets into shorter columns"
+          >
+            Even out
+          </Button>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          leadingIcon={RotateCcw}
+          className="hidden sm:inline-flex"
+          onClick={handleReset}
+          disabled={isSaving || Boolean(activeId)}
+        >
+          Reset
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCancel}
+          disabled={isSaving || Boolean(activeId)}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving || Boolean(activeId)}
+          size="sm"
+          leadingIcon={Save}
+        >
+          {isSaving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
-          <CanvasCalendarAnnouncement />
-          {editing ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    leadingIcon={Plus}
-                    className="h-9 rounded-full px-4"
-                    disabled={missingWidgets.length === 0 || isSaving}
-                  >
-                    Add widget
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-lg rounded-[2rem]">
-                  <DialogHeader>
-                    <DialogTitle>Add a widget</DialogTitle>
-                    <DialogDescription>
-                      Choose a widget to add to your dashboard.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="mt-4 grid gap-2">
-                    {missingWidgets.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-muted-foreground">
-                        All available widgets are already on your dashboard.
-                      </p>
-                    ) : (
-                      missingWidgets.map((widget) => (
-                        <button
-                          key={widget.id}
-                          type="button"
-                          onClick={() => handleAdd(widget.id)}
-                          className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
-                        >
-                          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <LayoutGrid className="size-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground">
-                              {widget.label}
-                            </p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {widget.description}
-                            </p>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  leadingIcon={Columns2}
-                  className="hidden md:inline-flex"
-                  onClick={handleBalance}
-                  disabled={!canBalance || isSaving || Boolean(activeId)}
-                  title={
-                    columnCount === 1
-                      ? 'Balance layout is available in the two-column view'
-                      : canBalance
-                        ? 'Arrange widgets into shorter columns'
-                        : 'Layout is already balanced'
-                  }
-                >
-                  Balance layout
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  leadingIcon={RotateCcw}
-                  onClick={handleReset}
-                  disabled={isSaving || Boolean(activeId)}
-                >
-                  Reset
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isSaving || Boolean(activeId)}
-                  size="lg"
-                  leadingIcon={Save}
-                >
-                  {isSaving ? 'Saving…' : 'Done'}
-                </Button>
-              </div>
-            </div>
-          ) : null}
+          {editing
+            ? toolbarTarget
+              ? createPortal(editToolbar, toolbarTarget)
+              : editToolbar
+            : null}
 
           {/* Static / Fixed widgets (cannot be moved or removed) */}
           {fixedIds.map((id) => {
@@ -725,7 +836,7 @@ export function DashboardLayout({
             if (!widget) return null;
             const Component = widget.Component;
             return (
-              <div key={id} className={cn(editing ? 'opacity-90' : '')}>
+              <div key={id} className={cn(editing ? "opacity-90" : "")}>
                 <Component />
               </div>
             );
@@ -735,10 +846,22 @@ export function DashboardLayout({
             <LayoutGroup id="dashboard">
               <DndContext
                 sensors={sensors}
+                accessibility={{
+                  announcements: {
+                    onDragStart: ({ active }) =>
+                      `Picked up ${WIDGETS[String(active.id)]?.label ?? "widget"}.`,
+                    onDragOver: ({ active, over }) =>
+                      over
+                        ? `${WIDGETS[String(active.id)]?.label ?? "Widget"} over ${WIDGETS[String(over.id)]?.label ?? "empty column"}.`
+                        : undefined,
+                    onDragEnd: ({ active }) =>
+                      `Placed ${WIDGETS[String(active.id)]?.label ?? "widget"}.`,
+                    onDragCancel: () => "Move canceled.",
+                  },
+                }}
                 collisionDetection={columnCollision}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
                 onDragCancel={handleDragCancel}
               >
                 <SortableContext
@@ -790,19 +913,23 @@ export function DashboardLayout({
                       </div>
                     )}
 
-                    {layout.length === 0 && (
-                      <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
-                        <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
-                        <p className="text-sm font-medium text-foreground">
+                    {columnIds.length + fullIds.length === 0 ? (
+                      <Empty size="inline">
+                        <EmptyDescription>
                           Your dashboard is empty.
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Click <span className="font-semibold">Customize</span>{' '}
-                          then <span className="font-semibold">Add widget</span>{' '}
-                          to build it up.
-                        </p>
-                      </div>
-                    )}
+                        </EmptyDescription>
+                        <Button
+                          variant="ghost"
+                          onClick={() =>
+                            editing
+                              ? setPickerOpen(true)
+                              : onEditingChange(true)
+                          }
+                        >
+                          {editing ? "Add widget" : "Customize"}
+                        </Button>
+                      </Empty>
+                    ) : null}
                   </div>
                 </SortableContext>
 

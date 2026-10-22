@@ -1,30 +1,29 @@
 "use client";
 
-import { greetingName } from '~/apps/shared/user-name';
+import { greetingName } from "~/apps/shared/user-name";
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@/lib/convex-react";
-import { pickDailySchoolMessage } from "@ia/fun-facts";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   getCurrentResolvedScheduleStatus,
   parseTimeToMinutes,
 } from "@/components/schedule/schedule-utils";
-import { Badge } from "@/components/ui/badge";
 import { formatSchoolTime } from "@/lib/time-format";
 import { schoolDateKey } from "@/lib/school-date";
+import { calendarDate } from "@/components/calendar/calendar-date";
 
 export function WelcomeWidget() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(() => calendarDate());
   const user = useCurrentUser();
   const use24HourTime = user?.use24HourTime ?? false;
   const isStudent =
     !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
 
   useEffect(() => {
-    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    const interval = window.setInterval(() => setNow(calendarDate()), 60_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -57,61 +56,62 @@ export function WelcomeWidget() {
     ) ?? -1;
   const schoolIsOver =
     lastBlockEnd >= 0 && now.getHours() * 60 + now.getMinutes() >= lastBlockEnd;
-  const quietMessage =
-    resolvedDay === undefined
-      ? null
-      : !resolvedDay.hasPersonalSchedule || resolvedDay.blocks.length === 0
-        ? pickDailySchoolMessage("no-school", `${user?._id ?? "guest"}:${dateKey}`)
-        : schoolIsOver
-          ? pickDailySchoolMessage("school-over", `${user?._id ?? "guest"}:${dateKey}`)
-          : null;
+  const status = currentBlock
+    ? `Now · ${currentClass} · until ${formatSchoolTime(currentBlock.endTime, use24HourTime)}`
+    : nextBlock
+      ? `Next · ${nextBlock.entry?.className ?? nextBlock.displayLabel} · ${formatSchoolTime(nextBlock.startTime, use24HourTime)}`
+      : schoolIsOver
+        ? "Done for today"
+        : "No classes today";
+  const progress = currentBlock
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          ((now.getHours() * 60 +
+            now.getMinutes() -
+            parseTimeToMinutes(currentBlock.startTime)) /
+            Math.max(
+              1,
+              parseTimeToMinutes(currentBlock.endTime) -
+                parseTimeToMinutes(currentBlock.startTime),
+            )) *
+            100,
+        ),
+      )
+    : 0;
 
   return (
-    <section className="px-1 py-2 sm:px-2 sm:py-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {greeting}
-            {firstName ? `, ${firstName}` : ""}.
-          </h1>
-          <p className="mt-1 text-sm font-medium text-foreground/80 drop-shadow-sm">
-            {quietMessage ?? format(now, "EEEE, MMMM d")}
+    <section className="flex min-w-0 flex-col gap-1">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        {greeting}
+        {firstName ? `, ${firstName}` : ""}.
+      </h1>
+      <p className="text-sm text-muted-foreground">
+        {format(now, "EEEE, MMMM d")}
+      </p>
+      {isStudent ? (
+        <div className="mt-2 min-h-8">
+          <p className="text-base font-medium" aria-live="polite">
+            {resolvedDay === undefined ? "Loading your schedule…" : status}
           </p>
+          {currentBlock ? (
+            <div
+              role="progressbar"
+              aria-label="Current class progress"
+              aria-valuenow={Math.round(progress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="mt-2 h-0.5 max-w-sm overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full bg-primary"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          ) : null}
         </div>
-
-        {isStudent && !quietMessage ? (
-          <div className="min-w-0 sm:text-right">
-            <div className="flex items-baseline gap-2 sm:justify-end">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                Now
-              </p>
-              <time
-                dateTime={now.toISOString()}
-                className="text-sm font-semibold tabular-nums text-foreground"
-              >
-                {formatSchoolTime(format(now, "HH:mm"), use24HourTime)}
-              </time>
-            </div>
-            <h2 className="truncate text-base font-semibold text-foreground">
-              {currentClass ?? "No active class"}
-            </h2>
-            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground sm:justify-end">
-              {currentBlock ? (
-                <Badge variant="solid" className="h-5 px-2 py-0 text-[10px]">
-                  {currentBlock.label}
-                </Badge>
-              ) : null}
-              <span>
-                {!currentClass && nextBlock
-                  ? `Next: ${nextBlock.displayLabel} at ${formatSchoolTime(nextBlock.startTime, use24HourTime)}`
-                  : currentBlock
-                    ? `${formatSchoolTime(currentBlock.startTime, use24HourTime)}–${formatSchoolTime(currentBlock.endTime, use24HourTime)}`
-                    : "No more blocks today"}
-              </span>
-            </div>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
     </section>
   );
 }

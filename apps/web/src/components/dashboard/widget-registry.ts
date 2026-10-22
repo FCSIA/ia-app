@@ -1,12 +1,22 @@
+import {
+  CalendarRange,
+  Megaphone,
+  Inbox,
+  Presentation,
+  UsersRound,
+  Lightbulb,
+  Home,
+  type LucideIcon,
+} from 'lucide-react';
+import {
+  getDefaultDashboardLayout,
+  getDefaultDashboardColumns,
+} from '~/apps/convex/src/users/dashboardLayout';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
-import { UpcomingEventsWidget } from './widgets/UpcomingEventsWidget';
 import { AnnouncementsWidget } from './widgets/AnnouncementsWidget';
 import { PendingApprovalsWidget } from './widgets/PendingApprovalsWidget';
-import { AdminStatsWidget } from './widgets/AdminStatsWidget';
-import { QuickActionsWidget } from './widgets/QuickActionsWidget';
-import { DayProgressWidget } from './widgets/DayProgressWidget';
 import { FlexFridaySnapshotWidget } from './widgets/FlexFridaySnapshotWidget';
 import { MyClubsWidget } from './widgets/MyClubsWidget';
 import { FunFactWidget } from './widgets/FunFactWidget';
@@ -16,6 +26,7 @@ export type WidgetSize = 'full' | 'half';
 export type WidgetDefinition = {
   id: string;
   label: string;
+  icon: LucideIcon;
   description: string;
   size: WidgetSize;
   Component: React.ComponentType;
@@ -30,73 +41,52 @@ export type WidgetDefinition = {
 export const WIDGETS: Record<string, WidgetDefinition> = {
   welcome: {
     id: 'welcome',
+    icon: Home,
     label: 'Overview',
-    description: 'Unified dashboard header with greeting, time, and class info.',
+    description:
+      'Unified dashboard header with greeting, time, and class info.',
     size: 'full',
     Component: WelcomeWidget,
     isFixed: true,
   },
   calendar: {
     id: 'calendar',
-    label: 'Calendar',
-    description: 'Month-at-a-glance with day details.',
+    icon: CalendarRange,
+    label: 'Coming up',
+    description: 'The next seven days in your calendar.',
     size: 'half',
     Component: CalendarWidget,
   },
-  'upcoming-events': {
-    id: 'upcoming-events',
-    label: 'Upcoming Events',
-    description: 'Next few events coming up.',
-    size: 'half',
-    Component: UpcomingEventsWidget,
-  },
+
   announcements: {
     id: 'announcements',
-    label: 'Unread Announcements',
+    icon: Megaphone,
+    label: 'Unread announcements',
     description: 'Unread announcements across your feed.',
     size: 'half',
     Component: AnnouncementsWidget,
   },
   'pending-approvals': {
     id: 'pending-approvals',
-    label: 'Pending Approvals',
-    description: 'Events waiting for your review.',
+    icon: Inbox,
+    label: 'Needs you',
+    description: 'Approvals, invitations, and changes awaiting you.',
     size: 'half',
     Component: PendingApprovalsWidget,
-    allowedRoles: ['SPONSOR', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF'],
   },
-  'admin-stats': {
-    id: 'admin-stats',
-    label: 'Admin Overview',
-    description: 'Reports, keywords, and audit snapshot.',
-    size: 'half',
-    Component: AdminStatsWidget,
-    allowedRoles: ['ADMIN', 'SUPER_ADMIN'],
-  },
-  'quick-actions': {
-    id: 'quick-actions',
-    label: 'Quick Actions',
-    description: 'Shortcuts to the areas you use most.',
-    size: 'half',
-    Component: QuickActionsWidget,
-  },
-  'day-progress': {
-    id: 'day-progress',
-    label: 'Day Progress',
-    description: 'Live timeline tracker of the school day.',
-    size: 'half',
-    Component: DayProgressWidget,
-  },
+
   'flex-friday': {
     id: 'flex-friday',
-    label: 'Flex Friday Snapshot',
+    icon: Presentation,
+    label: 'Flex Friday',
     description: 'Upcoming workshop details and check-in.',
     size: 'half',
     Component: FlexFridaySnapshotWidget,
   },
   'my-clubs': {
     id: 'my-clubs',
-    label: 'My Clubs',
+    icon: UsersRound,
+    label: 'My clubs',
     description: 'Quick access to your active clubs.',
     size: 'half',
     Component: MyClubsWidget,
@@ -104,6 +94,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
   },
   'fun-fact': {
     id: 'fun-fact',
+    icon: Lightbulb,
     label: 'Did you know?',
     description: 'School trivia and fun facts while you browse.',
     size: 'half',
@@ -111,25 +102,29 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
   },
 };
 
-/** Default dashboard for all roles (reset + first-time layout). */
-export const DEFAULT_DASHBOARD_LAYOUT = [
-  'welcome',
-  'fun-fact',
-  'calendar',
-  'announcements',
-] as const;
-
-export function getDefaultLayout(): string[] {
-  return [...DEFAULT_DASHBOARD_LAYOUT];
+/** Authored defaults keep first paint stable and phone order intentional. */
+export function getDefaultLayout(roles: AppRole[] = []): string[] {
+  return getDefaultDashboardLayout(roles);
 }
 
-export function isWidgetAllowed(widget: WidgetDefinition, roles: AppRole[] | undefined): boolean {
+export function getDefaultColumns(roles: AppRole[] = []): string[][] {
+  return getDefaultDashboardColumns(roles);
+}
+
+export function isWidgetAllowed(
+  widget: WidgetDefinition,
+  roles: AppRole[] | undefined,
+): boolean {
   if (widget.excludedRoles?.some((role) => roles?.includes(role))) return false;
   if (!widget.allowedRoles) return true;
   if (!roles) return false;
   return widget.allowedRoles.some((r) => roles.includes(r));
 }
 
-export function getAvailableWidgets(roles: AppRole[] | undefined): WidgetDefinition[] {
-  return Object.values(WIDGETS).filter((w) => !w.isFixed && isWidgetAllowed(w, roles));
+export function getAvailableWidgets(
+  roles: AppRole[] | undefined,
+): WidgetDefinition[] {
+  return Object.values(WIDGETS).filter(
+    (w) => !w.isFixed && isWidgetAllowed(w, roles),
+  );
 }
