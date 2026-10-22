@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -172,12 +173,11 @@ export const markAttendance = mutation({
       });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_ATTENDANCE_MARKED",
       entityId: attendanceId,
       entityType: "FLEX_ATTENDANCE",
-      createdAt: Date.now(),
     });
 
     return attendanceId;
@@ -209,12 +209,11 @@ export const clearAttendance = mutation({
 
     await ctx.db.delete(existing._id);
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_ATTENDANCE_CLEARED",
       entityId: existing._id,
       entityType: "FLEX_ATTENDANCE",
-      createdAt: Date.now(),
     });
 
     return { success: true };

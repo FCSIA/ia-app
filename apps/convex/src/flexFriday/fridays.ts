@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -95,12 +96,11 @@ export const create = mutation({
       createdAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_FRIDAY_CREATED",
       entityId: fridayId,
       entityType: "FLEX_FRIDAY",
-      createdAt: Date.now(),
     });
 
     const friday = await ctx.db.get(fridayId);

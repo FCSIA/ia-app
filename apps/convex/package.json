@@ -15,12 +15,14 @@
   },
   "dependencies": {
     "@better-auth/expo": "^1.6.22",
+    "@convex-dev/aggregate": "^0.3.4",
     "@convex-dev/better-auth": "0.12.2",
     "@convex-dev/migrations": "0.3.6",
     "@convex-dev/presence": "0.4.0",
     "@convex-dev/rate-limiter": "0.4.0",
     "better-auth": "1.6.22",
     "convex": "1.46.0",
+    "convex-helpers": "0.1.128",
     "glin-profanity": "3.3.0",
     "ical.js": "2.2.1",
     "web-push": "^3.6.7"

@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
@@ -104,12 +105,11 @@ export const approveEvent = mutation({
       }
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "EVENT_APPROVED",
       entityId: args.eventId,
       entityType: "EVENT",
-      createdAt: Date.now(),
     });
     return null;
   },
@@ -145,12 +145,11 @@ export const rejectEvent = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "EVENT_REJECTED",
       entityId: args.eventId,
       entityType: "EVENT",
-      createdAt: Date.now(),
     });
     return null;
   },

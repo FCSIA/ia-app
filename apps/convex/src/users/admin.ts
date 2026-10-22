@@ -1358,7 +1358,7 @@ export const rotateAllCredentialAccountsBatch = internalMutation({
         mustResetPassword: true,
         updatedAt: Date.now(),
       });
-      await logAuditEvent(ctx, {
+      await logAuditEvent(ctx, { actorId: "system",
         action: "user.legacy_credential_rotated",
         entityType: "user",
         entityId: user._id,

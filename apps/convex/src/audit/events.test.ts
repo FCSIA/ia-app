@@ -3,17 +3,19 @@ import { convexTest } from 'convex-test';
 import type { FunctionReturnType } from 'convex/server';
 import { describe, expect, test, vi } from 'vitest';
 import schema from '../schema';
-import { api } from '../_generated/api';
+import { api, internal } from '../_generated/api';
+import { logAuditEvent } from './_lib';
 import type { Id } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
 import {
   auditActionLabel,
-  auditActionSummary,
+  auditMetaFields,
   auditPersonName,
   auditLabel,
   isFlexAudit,
   matchesAuditSearch,
   parseAuditSearch,
+  AUDIT_ACTIONS,
 } from '../../../shared/audit';
 
 vi.mock('../../lib/currentUser', async (importOriginal) => ({
@@ -84,19 +86,25 @@ async function fixture() {
 
 describe('audit search grammar', () => {
   test.each([
-    ['ANNOUNCEMENT_READ', 'Announcement', 'Marked read'],
-    ['ANNOUNCEMENT_UNREAD', 'ANNOUNCEMENT', 'Marked unread'],
-    ['ANNOUNCEMENT_COMMENT_DELETED', 'Comment', 'Deleted'],
-    ['CLUB_CHANNEL_MESSAGE_POSTED', 'ClubChannelMessage', 'Posted'],
-    ['CLUB_CHANNEL_MESSAGE_REACTION_REMOVED', 'ClubChannelMessage', 'Reaction removed'],
-    ['CLUB_MEMBER_ROLE_SET', 'Club', 'Member role set'],
-    ['schedule.updated', 'StudentSchedule', 'Updated'],
-    ['schoolDayBlock.created', 'SchoolDayBlock', 'Created'],
-    ['FLEX_WORKSHOP_CREATED', 'FLEX_WORKSHOP', 'Created'],
-    ['FLEX_WORKSHOP_REGISTERED', 'FlexRegistration', 'Registered for a workshop'],
-    ['FUTURE_ACTION', 'Announcement', 'Future action'],
-  ])('summarizes %s beside its record type without losing qualifiers', (action, type, expected) => {
-    expect(auditActionSummary(action, type)).toBe(expected);
+    ['ANNOUNCEMENT_COMMENT_DELETED', 'Deleted announcement comment'],
+    ['CLUB_CHANNEL_MESSAGE_POSTED', 'Posted a message'],
+    ['CLUB_CHANNEL_MESSAGE_REACTION_REMOVED', 'Removed a reaction'],
+    ['CLUB_MEMBER_ROLE_SET', 'Set a club member role'],
+    ['schedule.updated', 'Updated a schedule'],
+    ['schoolDayBlock.created', 'Created school day block'],
+    ['FLEX_WORKSHOP_CREATED', 'Created a workshop'],
+    ['FLEX_WORKSHOP_REGISTERED', 'Registered for a workshop'],
+    ['FUTURE_ACTION', 'Future action'],
+  ])('labels %s consistently in rows, filters, and Details', (action, expected) => {
+    expect(auditActionLabel(action)).toBe(expected);
+  });
+  test('keeps snapshots and changes human while retaining technical data separately', () => {
+    const event = { id: 'message', action: 'CLUB_CHANNEL_MESSAGE_UPDATED', entityType: 'ClubChannelMessage', createdAt: new Date().toISOString(), meta: { previousBodyPreview: 'Old text', bodyPreview: 'New text', bodyLength: 8, attachmentCount: 0, clubId: 'opaque' } };
+    expect(auditMetaFields(event)).toEqual([
+      { key: 'previousBodyPreview', label: 'Before', value: 'Old text' },
+      { key: 'bodyPreview', label: 'After', value: 'New text' },
+    ]);
+    expect(auditMetaFields({ ...event, action: 'CLUB_CHANNEL_MESSAGE_DELETED' })).toEqual([]);
   });
   test.each(['person:"unfinished', '-person:"unfinished', String.raw`text:"say \"hello`])(
     'identifies the missing closing quote in %s',
@@ -198,7 +206,7 @@ describe('audit history and context', () => {
       name: 'Countess Ada',
     });
   });
-  test('finds older matches after empty batches, preserving cursor and original data', async () => {
+  test('fills filtered pages with older matches, preserving original data', async () => {
     const f = await fixture();
     let cursor: string | null = null;
     const matches: FunctionReturnType<
@@ -217,7 +225,7 @@ describe('audit history and context', () => {
       expect(result.continueCursor).not.toBe(cursor);
       cursor = result.continueCursor;
     }
-    expect(emptyPages).toBeGreaterThan(0);
+    expect(emptyPages).toBe(0);
     expect(matches.map((row) => row.id)).toEqual([f.oldest]);
     expect(matches[0]!.context.references).toEqual(
       expect.arrayContaining([
@@ -263,7 +271,7 @@ describe('audit history and context', () => {
       api.audit.events.listFilterOptions,
       {},
     );
-    expect(options.actions).not.toContain('CLUB_CHANNEL_MESSAGE_POSTED');
+    expect(options.actions).toContain('CLUB_CHANNEL_MESSAGE_POSTED');
     let cursor: string | null = null;
     const ids: string[] = [];
     for (let i = 0; i < 4; i++) {
@@ -281,7 +289,7 @@ describe('audit history and context', () => {
     const older = await f.adminClient.query(api.audit.events.listPage, {
       action: 'CLUB_CHANNEL_MESSAGE_POSTED',
       entityType: 'ClubChannelMessage',
-      paginationOpts: { cursor, numItems: 250 },
+      paginationOpts: { cursor: null, numItems: 250 },
     });
     expect(older.page.map((row) => row.id)).toEqual([f.oldest]);
   });
@@ -344,4 +352,87 @@ describe('audit history and context', () => {
       expect(await client.query(api.audit.events.list, {})).toEqual([]);
     }
   });
+});
+
+describe('audit index integrity', () => {
+  test('backfills historical counts idempotently and keeps new logs atomic', async () => {
+    const f = await fixture();
+    expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBeNull();
+    await f.t.mutation(internal.audit.migrations.backfill, {});
+    await f.t.mutation(internal.audit.migrations.backfill, {});
+    expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBe(7);
+    await f.t.run(async (ctx) => {
+      await logAuditEvent(ctx, { actorId: f.admin, action: 'CLUB_CHANNEL_CREATED', entityType: 'ClubChannel', meta: { title: 'A channel' } });
+    });
+    expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBe(8);
+    const person = await f.adminClient.query(api.audit.events.counts, { actorId: f.admin, category: 'clubs-chat' });
+    expect(person).toMatchObject({ total: 2, exact: true });
+    const filtered = await f.adminClient.query(api.audit.events.listPage, { actorId: f.admin, category: 'clubs-chat', paginationOpts: { cursor: null, numItems: 2 } });
+    expect(filtered.page).toHaveLength(2);
+    expect(filtered.page.every((event) => event.actorId === f.admin)).toBe(true);
+    expect((await f.studentClient.query(api.audit.events.counts, {})).total).toBeNull();
+  });
+  test('server context exposes live record routes without linking deleted records', async () => {
+    const f = await fixture();
+    const detail = await f.adminClient.query(api.audit.events.get, { auditEventId: f.oldest });
+    expect(detail?.context.links).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: f.club, href: `/clubs/${f.club}` }),
+      expect.objectContaining({ id: 'removed-message', href: null }),
+    ]));
+  });
+  test('application writers cannot bypass audit provenance and counts', () => {
+    const sources = import.meta.glob('../**/*.ts', { eager: true, query: '?raw', import: 'default' });
+    const bypasses = Object.entries(sources).filter(([path, source]) => !path.endsWith('.test.ts') && path !== './_lib.ts' && /\.insert\(\s*['"]auditEvents['"]/.test(String(source))).map(([path]) => path);
+    expect(bypasses).toEqual([]);
+    const unregistered = Object.entries(sources).filter(([path]) => !path.endsWith('.test.ts')).flatMap(([path, source]) =>
+      [...String(source).matchAll(/logAuditEvent\(ctx,\s*\{([\s\S]*?)\n\s*\}\)/g)].flatMap((call) => {
+        const action = call[1]?.match(/\baction:\s*['"]([^'"]+)['"]/)?.[1];
+        return action && !AUDIT_ACTIONS[action] ? [`${path}: ${action}`] : [];
+      }));
+    expect(unregistered).toEqual([]);
+  });
+  test('distinguishes missing historical actors from explicit automation and tolerates malformed URL person IDs', async () => {
+    const f = await fixture();
+    const unknown = { id: 'historical', action: 'CLUB_CREATED', entityType: 'Club', createdAt: new Date().toISOString() };
+    expect(auditPersonName(unknown)).toBe('Unknown (not recorded)');
+    expect(matchesAuditSearch(unknown, parseAuditSearch('source:system').terms)).toBe(false);
+    expect(auditPersonName({ ...unknown, meta: { auditSource: 'system' } })).toBe('System');
+    const result = await f.adminClient.query(api.audit.events.listPage, { actorId: 'invalid-id', paginationOpts: { numItems: 10, cursor: null } });
+    expect(result).toMatchObject({ page: [], isDone: true });
+  });
+  test('merges legacy record spellings through indexed pagination without changing history', async () => {
+    const f = await fixture();
+    const ids = await f.t.run(async (ctx) => {
+      const first = await ctx.db.insert('auditEvents', { actorId: f.admin, action: 'FLEX_FRIDAY_CREATED', entityType: 'FLEX_FRIDAY', entityId: 'friday', createdAt: 8 });
+      const second = await ctx.db.insert('auditEvents', { actorId: f.admin, action: 'FLEX_FRIDAY_CREATED', entityType: 'FlexFriday', entityId: 'friday', createdAt: 9 });
+      return [second, first];
+    });
+    const first = await f.adminClient.query(api.audit.events.listPage, { entityType: 'FlexFriday', recordId: 'friday', paginationOpts: { numItems: 1, cursor: null } });
+    const second = await f.adminClient.query(api.audit.events.listPage, { entityType: 'FlexFriday', recordId: 'friday', paginationOpts: { numItems: 1, cursor: first.continueCursor } });
+    expect([...first.page, ...second.page].map((row) => row.id)).toEqual(ids);
+    expect(second.page[0]?.entityType).toBe('FLEX_FRIDAY');
+  });
+  test('combines categories and actions with OR within each dimension before pagination', async () => {
+    const f = await fixture();
+    await f.t.mutation(internal.audit.migrations.backfill, {});
+    const args = { categories: ['clubs-chat', 'flex-events'] as ('clubs-chat' | 'flex-events')[], actions: ['CLUB_CHANNEL_MESSAGE_POSTED', 'FLEX_WORKSHOP_CREATED'] };
+    const all: FunctionReturnType<typeof api.audit.events.listPage>['page'] = [];
+    let cursor: string | null = null;
+    let done = false;
+    while (!done) {
+      const result: FunctionReturnType<typeof api.audit.events.listPage> = await f.adminClient.query(api.audit.events.listPage, { ...args, paginationOpts: { numItems: 2, cursor } });
+      all.push(...result.page);
+      cursor = result.continueCursor;
+      done = result.isDone;
+    }
+    expect(all).toHaveLength(7);
+    expect(new Set(all.map((row) => row.id)).size).toBe(7);
+    expect(all.map((row) => Date.parse(row.createdAt))).toEqual([7, 6, 5, 4, 3, 2, 1]);
+    expect(await f.adminClient.query(api.audit.events.counts, { categories: ['clubs-chat', 'flex-events'] })).toMatchObject({ total: 7, exact: true });
+    const narrowed = await f.adminClient.query(api.audit.events.listPage, { ...args, categories: ['clubs-chat'], paginationOpts: { numItems: 10, cursor: null } });
+    expect(narrowed.page).toHaveLength(1);
+    expect(narrowed.page[0]?.id).toBe(f.oldest);
+    expect(await f.adminClient.query(api.audit.events.counts, args)).toMatchObject({ total: 7, exact: false });
+  });
+
 });

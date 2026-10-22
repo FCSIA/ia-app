@@ -1,3 +1,5 @@
+import { auditCategory } from "../../../shared/audit";
+import { auditByActor, auditByCategory } from "./_aggregates";
 import { v } from "convex/values";
 import { auditContextResolver } from "./_context";
 import { components } from "../_generated/api";
@@ -27,6 +29,7 @@ export const auditEventValidator = v.object({
   context: v.object({
     title: v.string(),
     subtitle: v.union(v.string(), v.null()),
+    links: v.array(v.object({ id: v.string(), label: v.string(), name: v.string(), href: v.union(v.string(), v.null()) })),
     references: v.array(
       v.object({ id: v.string(), label: v.string(), name: v.string() }),
     ),
@@ -47,50 +50,37 @@ export const auditPageValidator = v.object({
   splitCursor: v.optional(v.union(v.string(), v.null())),
 });
 
-export async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
-  const [serialized] = await toAuditEvents(ctx, [event]);
-  return serialized!;
-}
-
-export async function toAuditEvents(
-  ctx: QueryCtx,
-  events: Doc<"auditEvents">[],
-) {
-  const actorIds = Array.from(
-    new Set(events.flatMap((event) => (event.actorId ? [event.actorId] : []))),
-  );
-  const actorEntries = await Promise.all(
-    actorIds.map(
-      async (actorId) => [actorId, await ctx.db.get(actorId)] as const,
-    ),
-  );
-  const actors = new Map(actorEntries);
-
+/** One serializer per response shares actor/context reads across streamed rows. */
+export function auditEventSerializer(ctx: QueryCtx) {
+  const actors = new Map<Id<"users">, Promise<Doc<"users"> | null>>();
   const resolveContext = auditContextResolver(ctx);
-  return await Promise.all(
-    events.map(async (event) => {
-      const actor = event.actorId ? actors.get(event.actorId) : null;
-      return {
-        id: event._id,
-        actorId: event.actorId ?? null,
-        context: await resolveContext(event),
-        action: event.action,
-        entityType: event.entityType,
-        entityId: event.entityId ?? null,
-        createdAt: new Date(event.createdAt).toISOString(),
-        meta: event.meta ?? null,
-        actor: actor
-          ? {
-              id: actor._id,
-              firstName: actor.firstName,
-              lastName: actor.lastName,
-              preferredName: actor.preferredName,
-              uniqueId: actor.uniqueId,
-            }
-          : null,
-      };
-    }),
-  );
+  return async (event: Doc<"auditEvents">) => {
+    if (event.actorId && !actors.has(event.actorId)) actors.set(event.actorId, ctx.db.get(event.actorId));
+    const actor = event.actorId ? await actors.get(event.actorId) : null;
+    return {
+      id: event._id,
+      actorId: event.actorId ?? null,
+      context: await resolveContext(event),
+      action: event.action,
+      entityType: event.entityType,
+      entityId: event.entityId ?? null,
+      createdAt: new Date(event.createdAt).toISOString(),
+      meta: event.meta ?? null,
+      actor: actor ? {
+        id: actor._id,
+        firstName: actor.firstName,
+        lastName: actor.lastName,
+        preferredName: actor.preferredName,
+        uniqueId: actor.uniqueId,
+      } : null,
+    };
+  };
+}
+export async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
+  return await auditEventSerializer(ctx)(event);
+}
+export async function toAuditEvents(ctx: QueryCtx, events: Doc<"auditEvents">[]) {
+  return await Promise.all(events.map(auditEventSerializer(ctx)));
 }
 
 export function includes(value: string | null | undefined, needle: string) {
@@ -113,7 +103,7 @@ export function matchesDateRange(
 export async function logAuditEvent(
   ctx: MutationCtx,
   input: {
-    actorId?: Id<"users">;
+    actorId: Id<"users"> | "system";
     action: string;
     entityType: string;
     entityId?: string;
@@ -123,7 +113,9 @@ export async function logAuditEvent(
   // Better Auth keeps the original administrator on an impersonated session.
   // Preserve that provenance on every application audit event while retaining
   // the effective user as `actorId`, which reflects the permissions used.
-  let meta = input.meta;
+  let meta = input.actorId === 'system'
+    ? { ...(isRecord(input.meta) ? input.meta : input.meta === undefined ? {} : { originalMeta: input.meta }), auditSource: 'system' }
+    : input.meta;
   const identity = await ctx.auth.getUserIdentity();
   if (identity?.sessionId) {
     const session = (await ctx.runQuery(components.betterAuth.adapter.findOne, {
@@ -139,20 +131,25 @@ export async function logAuditEvent(
         .unique();
       if (impersonator) {
         meta = {
-          ...(isRecord(input.meta) ? input.meta : { originalMeta: input.meta }),
+          ...(isRecord(meta) ? meta : meta === undefined ? {} : { originalMeta: meta }),
           impersonatedByUserId: impersonator._id,
         };
       }
     }
   }
-  return await ctx.db.insert("auditEvents", {
-    actorId: input.actorId,
+  const id = await ctx.db.insert("auditEvents", {
+    actorId: input.actorId === "system" ? undefined : input.actorId,
+    category: auditCategory(input.entityType, input.action),
     action: input.action,
     entityType: input.entityType,
     entityId: input.entityId,
     meta,
     createdAt: Date.now(),
   });
+  const doc = (await ctx.db.get(id))!;
+  await auditByCategory.insert(ctx, doc);
+  await auditByActor.insert(ctx, doc);
+  return id;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

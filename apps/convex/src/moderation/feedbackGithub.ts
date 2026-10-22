@@ -131,7 +131,7 @@ export const saveGithubIssue = internalMutation({
       githubIssueCreatedAt: Date.now(),
       githubIssueSyncError: null,
     });
-    await logAuditEvent(ctx, {
+    await logAuditEvent(ctx, { actorId: "system",
       action: "FEEDBACK_GITHUB_ISSUE_CREATED",
       entityType: "Report",
       entityId: args.reportId,
@@ -151,7 +151,7 @@ export const saveGithubIssueFailure = internalMutation({
       githubIssueSyncState: "FAILED",
       githubIssueSyncError: args.error,
     });
-    await logAuditEvent(ctx, {
+    await logAuditEvent(ctx, { actorId: "system",
       action: "FEEDBACK_GITHUB_ISSUE_FAILED",
       entityType: "Report",
       entityId: args.reportId,
@@ -251,7 +251,7 @@ export const applyGithubIssueState = internalMutation({
         subject: { kind: "moderationReport", reportId: report._id },
       });
     }
-    await logAuditEvent(ctx, {
+    await logAuditEvent(ctx, { actorId: "system",
       action: "FEEDBACK_GITHUB_ISSUE_STATE_SYNCED",
       entityType: "Report",
       entityId: report._id,

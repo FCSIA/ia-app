@@ -119,6 +119,26 @@ export function auditContextResolver(ctx: QueryCtx) {
       contextNames
         .map((ref) => (ref.label === 'Channel' ? `#${ref.name}` : ref.name))
         .join(' · ') || null;
-    return { title, subtitle, references };
+    const clubId = typeof meta.clubId === 'string' ? meta.clubId : typeof entity?.clubId === 'string' ? entity.clubId : null;
+    const channelId = typeof meta.channelId === 'string' ? meta.channelId : typeof entity?.channelId === 'string' ? entity.channelId : null;
+    const href = (targetTable: TableNames | undefined, id: string): string | null => {
+      if (targetTable === 'users') return `/admin?tab=users&user=${id}`;
+      if (targetTable === 'clubs') return `/clubs/${id}`;
+      if (targetTable === 'clubChannels' && clubId) return `/clubs/${clubId}/channels/${id}`;
+      if (targetTable === 'clubChannelMessages' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?message=${id}`;
+      if (targetTable === 'clubWhiteboards' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?view=whiteboard&board=${id}`;
+      if (targetTable === 'announcements') return `/announcements/${id}`;
+      if (targetTable === 'comments' && typeof (meta.announcementId ?? entity?.announcementId) === 'string') return `/announcements/${meta.announcementId ?? entity?.announcementId}`;
+      if (targetTable === 'events') return `/events/${id}`;
+      if (targetTable?.startsWith('flex')) return '/flex-friday';
+      if (targetTable === 'moderationReports' || targetTable === 'moderationKeywordRules') return '/admin?tab=moderation';
+      if (targetTable?.startsWith('club') && clubId) return `/clubs/${clubId}`;
+      return null;
+    };
+    const links = [
+      ...(event.entityId ? [{ id: event.entityId, label: 'Record', name: title, href: entity ? href(table, event.entityId) : null }] : []),
+      ...references.map((ref) => ({ ...ref, href: href(REFERENCE_TABLES[Object.keys(REFERENCE_TABLES).find((key) => auditLabel(key.replace(/Id$/, '')) === ref.label) ?? ''], ref.id) })),
+    ];
+    return { title, subtitle, references, links };
   };
 }

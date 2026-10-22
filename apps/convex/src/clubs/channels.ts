@@ -657,11 +657,11 @@ export const create = mutation({
       });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_CHANNEL_CREATED",
       entityType: "ClubChannel",
       entityId: channelId,
-      createdAt: Date.now(),
     });
 
     return channelId;

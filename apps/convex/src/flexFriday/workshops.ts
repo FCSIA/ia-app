@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -146,12 +147,11 @@ export const create = mutation({
       });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_WORKSHOP_CREATED",
       entityId: workshopId,
       entityType: "FLEX_WORKSHOP",
-      createdAt: Date.now(),
     });
 
     return workshopId;
@@ -233,12 +233,11 @@ export const update = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_WORKSHOP_UPDATED",
       entityId: args.workshopId,
       entityType: "FLEX_WORKSHOP",
-      createdAt: Date.now(),
     });
   },
 });
@@ -286,12 +285,11 @@ export const remove = mutation({
 
     await ctx.db.delete(args.workshopId);
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_WORKSHOP_DELETED",
       entityId: args.workshopId,
       entityType: "FLEX_WORKSHOP",
-      createdAt: Date.now(),
     });
   },
 });
