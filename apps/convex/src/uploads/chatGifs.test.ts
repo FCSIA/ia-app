@@ -2,9 +2,11 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { fetchTenorGifPage } from "./files";
 import {
   chatGifLink,
+  chatGifLinkRanges,
   extractChatGifLinks,
   hideChatGifLinks,
   isGifAttachment,
+  removeChatGifLink,
   tenorGifFromHtml,
 } from "../../../shared/chat/gifs";
 import { assertSafeStoredFile } from "./fileSignatures";
@@ -12,6 +14,19 @@ import { validateChatAttachmentMetadata } from "./chatAttachments";
 
 describe("chat GIFs", () => {
   afterEach(() => vi.unstubAllGlobals());
+  test("removes only the selected GIF while preserving prose, mentions, code and other links", () => {
+    const url = "https://c.tenor.com/lzbdb_9VJM0AAAAC/tenor.gif";
+    const other = "https://media.giphy.com/media/AbC123/giphy.gif";
+    const text = `Hi @STU001! ${url}. [again](${url}) <${url}> ${other} \`${url}\``;
+    expect(removeChatGifLink(text, url)).toBe(`Hi @STU001! .   ${other} \`${url}\``);
+    const escaped = url.replaceAll("_", "\\_");
+    expect(removeChatGifLink(`before ${escaped} after`, url)).toBe("before  after");
+    expect(chatGifLinkRanges(`a ${url}\nb ${url}`, url)).toEqual([
+      { start: 2, end: 2 + url.length },
+      { start: 5 + url.length, end: 5 + 2 * url.length },
+    ]);
+    expect(removeChatGifLink(`~~~\n${url}\n~~~`, url)).toBe(`~~~\n${url}\n~~~`);
+  });
   test("hides previewed URLs while preserving captions, code and unpreviewed links", () => {
     const url = "https://c.tenor.com/lzbdb_9VJM0AAAAC/tenor.gif";
     expect(hideChatGifLinks(`Nice!\n<${url}>`)).toBe("Nice!");
@@ -124,6 +139,7 @@ describe("chat GIFs", () => {
       "https://tenor.com:444/view/a-123",
       "https://tenor.com.evil.test/view/hello-123",
       "https://example.com/page.html",
+      `https://media.tenor.com/a.gif?q=${"x".repeat(2048)}`,
     ])
       expect(chatGifLink(url)).toBeNull();
   });

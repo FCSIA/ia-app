@@ -129,6 +129,8 @@ import type * as uploads_chatAttachments from "../uploads/chatAttachments.js";
 import type * as uploads_feedbackImages from "../uploads/feedbackImages.js";
 import type * as uploads_fileSignatures from "../uploads/fileSignatures.js";
 import type * as uploads_files from "../uploads/files.js";
+import type * as uploads_gifAssets from "../uploads/gifAssets.js";
+import type * as uploads_gifDownload from "../uploads/gifDownload.js";
 import type * as uploads_limits from "../uploads/limits.js";
 import type * as uploads_orphanCleanup from "../uploads/orphanCleanup.js";
 import type * as uploads_quota from "../uploads/quota.js";
@@ -271,6 +273,8 @@ declare const fullApi: ApiFromModules<{
   "uploads/feedbackImages": typeof uploads_feedbackImages;
   "uploads/fileSignatures": typeof uploads_fileSignatures;
   "uploads/files": typeof uploads_files;
+  "uploads/gifAssets": typeof uploads_gifAssets;
+  "uploads/gifDownload": typeof uploads_gifDownload;
   "uploads/limits": typeof uploads_limits;
   "uploads/orphanCleanup": typeof uploads_orphanCleanup;
   "uploads/quota": typeof uploads_quota;

@@ -54,7 +54,7 @@ export const prepareGifLinkResolution = internalMutation({
       .unique();
     if (
       stored &&
-      (stored.mediaUrl !== null || Date.now() - stored.resolvedAt < GIF_LINK_RETRY_MS)
+      Date.now() - stored.resolvedAt < (stored.mediaUrl !== null ? 24 * GIF_LINK_RETRY_MS : GIF_LINK_RETRY_MS)
     ) {
       return { cached: true as const, mediaUrl: stored.mediaUrl };
     }
@@ -108,7 +108,7 @@ export const resolveChatGifLink = action({
 });
 
 /** The share page's GIF media, null when it has none, undefined on failure. */
-async function fetchTenorGifMedia(url: string): Promise<string | null | undefined> {
+export async function fetchTenorGifMedia(url: string): Promise<string | null | undefined> {
   try {
     const response = await fetchTenorGifPage(url);
     if (typeof response === "string" || response === null) return response;

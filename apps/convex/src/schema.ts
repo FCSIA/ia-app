@@ -1161,6 +1161,15 @@ export const schema = defineSchema({
     resolvedAt: v.number(),
   }).index("by_url", ["url"]),
 
+  chatGifAssets: defineTable({
+    source: v.string(),
+    status: v.union(v.literal("loading"), v.literal("ready"), v.literal("error")),
+    storageId: v.optional(v.id("_storage")),
+    error: v.optional(v.union(v.literal("network"), v.literal("unavailable"), v.literal("too-large"), v.literal("unsupported"))),
+    generation: v.number(),
+    updatedAt: v.number(),
+  }).index("by_source", ["source"]),
+
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),
     userId: v.id("users"),

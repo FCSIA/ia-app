@@ -13,10 +13,8 @@ export function isGifAttachment(file: {
 }
 
 /**
- * GIF media CDNs that previews may load. Every viewer's device fetches a
- * previewed GIF automatically, so an open list would let whoever posts a link
- * log the IP address of everyone who reads it. Keep in sync with the web
- * `img-src` policy in apps/web/next.config.ts.
+ * GIF media CDNs the backend may download into object storage. Keep this list
+ * closed so pasted links cannot turn the downloader into an arbitrary proxy.
  */
 const GIF_MEDIA_HOST = /^(?:(?:media\d*|i)\.giphy\.com|(?:media\d*|c)\.tenor\.com)$/;
 
@@ -41,6 +39,7 @@ export function messageGifUrls(message: {
 }
 
 export function chatGifLink(value: string): ChatGifLink | null {
+  if (value.length > 2048) return null;
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || url.port)
@@ -97,6 +96,37 @@ export function extractChatGifLinks(text: string): ChatGifLink[] {
     if (links.size === 5) break;
   }
   return [...links.values()];
+}
+
+/** Editable ranges let removal preserve surrounding prose, mentions and formatting. */
+export function chatGifLinkRanges(text: string, target: string) {
+  const expected = chatGifLink(target);
+  if (!expected) return [];
+  const key = expected.mediaUrl ?? expected.url;
+  const ranges: Array<{ start: number; end: number }> = [];
+  let offset = 0;
+  const parts = text.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)/g);
+  parts.forEach((part, index) => {
+    if (index % 2 === 0) {
+      for (const match of part.matchAll(/\[[^\]\n]*\]\((https:\/\/[^\s]+)\)|<(https:\/\/[^\s<>]+)>|https:\/\/[^\s<>"\[\]]+/gi)) {
+        const wrapped = match[1] ?? match[2];
+        const raw = wrapped ?? match[0].replace(/[),.!?;:]+$/, "");
+        const link = chatGifLink(raw.replace(/\\([_*~])/g, "$1"));
+        if (link && (link.mediaUrl ?? link.url) === key) {
+          ranges.push({ start: offset + match.index!, end: offset + match.index! + (wrapped ? match[0].length : raw.length) });
+        }
+      }
+    }
+    offset += part.length;
+  });
+  return ranges;
+}
+
+export function removeChatGifLink(text: string, url: string) {
+  for (const range of chatGifLinkRanges(text, url).reverse()) {
+    text = text.slice(0, range.start) + text.slice(range.end);
+  }
+  return text;
 }
 
 /** Hide only URLs represented by bounded previews; keep prose and code intact. */
