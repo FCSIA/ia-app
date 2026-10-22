@@ -20,6 +20,7 @@ type AnimatedGifProps = {
   className?: string;
   /** Composer thumbnails show a still; the sent media retains its full animation. */
   thumbnail?: boolean;
+  onError?: () => void;
 };
 
 export function AnimatedGif(props: AnimatedGifProps) {
@@ -27,7 +28,7 @@ export function AnimatedGif(props: AnimatedGifProps) {
   return <GifPlayer key={props.src ?? 'pending'} {...props} />;
 }
 
-function GifPlayer({ src, name, pending = false, maxHeight = 320, maxWidth = 840, active = true, fullWidth = false, thumbnail = false, className }: AnimatedGifProps) {
+function GifPlayer({ src, name, pending = false, maxHeight = 320, maxWidth = 840, active = true, fullWidth = false, thumbnail = false, className, onError }: AnimatedGifProps) {
   const { autoplay } = useGifAutoplay();
   const { ref, visible, nearby, pageActive } = useMediaVisibility();
   const reduceMotion = useReducedMotion();
@@ -106,7 +107,7 @@ function GifPlayer({ src, name, pending = false, maxHeight = 320, maxWidth = 840
                 setSize({ width: source.naturalWidth * scale, height: source.naturalHeight * scale });
                 setReady(true);
               }}
-              onError={() => setFailed(true)}
+              onError={() => { setFailed(true); onError?.(); }}
             />
           ) : null}
         </div>

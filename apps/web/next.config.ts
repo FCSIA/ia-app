@@ -20,10 +20,6 @@ const imageSources = [
   "'self'",
   'data:',
   'blob:',
-  // Chat GIF previews load only from these CDNs; keep in sync with
-  // GIF_MEDIA_HOST in apps/shared/chat/gifs.ts.
-  'https://*.giphy.com',
-  'https://*.tenor.com',
   convexUrl,
   convexSiteUrl,
   ...localStorageOrigins,

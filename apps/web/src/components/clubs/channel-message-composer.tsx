@@ -41,8 +41,10 @@ import {
 } from '@/components/ui/mention-node';
 import { cn } from '@/lib/utils';
 import { SchoolGifPicker } from './school-gif-picker';
-import { extractChatGifLinks, isGifAttachment } from '~/apps/shared/chat/gifs';
+import { chatGifLinkRanges, extractChatGifLinks, isGifAttachment, removeChatGifLink } from '~/apps/shared/chat/gifs';
 import { AnimatedGif } from '@/components/media/animated-gif';
+import { useStoredGifs } from '@/hooks/use-stored-gifs';
+import { ComposerGifPreview } from './composer-gif-preview';
 
 export type ChannelMentionSuggestion = {
   token: string;
@@ -368,9 +370,35 @@ export function ChannelMessageComposer({
     .filter((option) => option.label);
   const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
   const currentBody = isMarkdownSource ? markdownSource : plainText;
+  const gifLinks = useMemo(() => extractChatGifLinks(isMarkdownSource ? markdownSource : serializeClubChannelMessageMarkdown(richValue)), [isMarkdownSource, markdownSource, richValue]);
+  const gifUrls = useMemo(() => gifLinks.map((link) => link.url), [gifLinks]);
+  const gifs = useStoredGifs(gifUrls);
   const canSend =
-    !isPending && (currentBody.trim().length > 0 || attachmentCount > 0 || !!hasPoll);
+    !isPending && !gifs.blocked && (currentBody.trim().length > 0 || attachmentCount > 0 || !!hasPoll);
   const hasComposerTools = canAttach || canCreatePoll || !isMarkdownSource;
+
+  const removeGif = (url: string) => {
+    if (isMarkdownSource) { setMarkdownSource((value) => removeChatGifLink(value, url)); return; }
+    const leaves: Array<{ path: number[]; start: number; end: number }> = [];
+    let text = '';
+    let block = -1;
+    for (const [node, path] of editor.api.nodes({ at: [], match: (node) => typeof node.text === 'string' })) {
+      if (block !== -1 && block !== path[0]) text += '\n';
+      block = path[0];
+      const value = node.text as string;
+      leaves.push({ path, start: text.length, end: text.length + value.length });
+      text += value;
+    }
+    for (const range of chatGifLinkRanges(text, url).reverse()) {
+      const first = leaves.find((leaf) => leaf.start <= range.start && range.start < leaf.end);
+      const last = leaves.find((leaf) => leaf.start < range.end && range.end <= leaf.end);
+      if (first && last) editor.tf.delete({ at: {
+        anchor: { path: first.path, offset: range.start - first.start },
+        focus: { path: last.path, offset: range.end - last.start },
+      } });
+    }
+    editor.tf.focus();
+  };
 
   const handleSubmit = () => {
     if (!canSend) return;
@@ -468,6 +496,15 @@ export function ChannelMessageComposer({
                 />
               ))}
             </ul>
+          ) : null}
+
+          {gifs.states.length > 0 ? (
+            <div className="flex flex-wrap gap-2" aria-label="GIF previews">
+              {gifs.states.map((asset, index) => (
+                <ComposerGifPreview key={asset.sourceUrl} asset={asset} index={index} disabled={isPending}
+                  onRetry={() => gifs.retry(asset.sourceUrl)} onRemove={() => removeGif(asset.sourceUrl)} />
+              ))}
+            </div>
           ) : null}
 
           {attachmentError ? (

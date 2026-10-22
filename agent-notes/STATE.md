@@ -39,6 +39,25 @@
 
 ## Current Truth
 
+### Chat GIF Storage — Issue #167 (2026-10-21)
+
+- Branch `codex/chat-gif-storage` lives in the managed worktree
+  `/Users/sreysus/.codex/worktrees/chat-gif-storage/ia-app`, based on
+  `57e7ddb4`. The primary checkout and its teacher/community plan are untouched.
+- Linked GIFs and fixed-picker posters now download through authenticated,
+  rate-limited backend jobs into expiring object storage. Web and mobile
+  composers immediately show loading/ready/error previews and wait for storage
+  before sending. Retry and Remove preserve surrounding draft content.
+- All 466 backend tests pass; the final poster MIME correction also passes
+  the 21 relevant download/parser tests. Backend, web, and mobile typechecks,
+  web lint (21 existing warnings), and the production web build pass.
+  Desktop/390px browser diagnostics cover paste, loading, errors, retry, removal,
+  picker search/selection, sending, reload, and storage-only media URLs.
+- Only a fresh worktree-local anonymous deployment was initialized and seeded.
+  No shared or production deployment was changed. Material visuals await owner
+  review; a real school laptop/network and native device remain unverified.
+  Review details: `docs/reference/chat-gif-storage-review-2026-10-21.md`.
+
 ### Audit UI Repair (2026-10-20)
 
 - Current-main integration preserves preferred-name display and regular/preferred

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import {
   BarChart3,
@@ -29,7 +29,9 @@ import type { ChatComposerController } from "./use-chat-composer";
 import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 import { chatAuthorName } from "./types";
 import { SchoolGifPicker } from "./school-gif-picker";
-import { extractChatGifLinks } from "~/apps/shared/chat/gifs";
+import { extractChatGifLinks, removeChatGifLink } from "~/apps/shared/chat/gifs";
+import { useStoredGifs } from "./use-stored-gifs";
+import { ComposerGifPreviews } from "./composer-gif-previews";
 
 type ChatComposerProps = {
   composer: ChatComposerController;
@@ -87,6 +89,14 @@ export function ChatComposer({
     composer.draft,
     composer.markdownDraft,
   );
+  const gifText = composer.mode.kind === "report" || unavailable ? "" : composer.markdownDraft || composer.draft;
+  const gifUrls = useMemo(() => extractChatGifLinks(gifText).map((link) => link.url), [gifText]);
+  const gifs = useStoredGifs(gifUrls);
+  const submit = () => { if (!gifs.blocked) onSubmit(); };
+  const gifPreviews = <ComposerGifPreviews assets={gifs.states} disabled={isPending}
+    onRetry={gifs.retry} onRemove={(url) => composer.setRichDraft(
+      removeChatGifLink(composer.draft, url), removeChatGifLink(composer.markdownDraft, url),
+    )} />;
 
   return (
     <View
@@ -135,6 +145,7 @@ export function ChatComposer({
               suggestions={suggestions}
               onMentionIntent={onMentionIntent}
             />
+            {gifPreviews}
             <ComposerLengthStatus
               error={lengthError}
               markdownLength={composer.markdownDraft.length}
@@ -143,8 +154,8 @@ export function ChatComposer({
               title="Save changes"
               size="sm"
               loading={isPending}
-              disabled={!composer.draft.trim() || !!lengthError}
-              onPress={onSubmit}
+              disabled={!composer.draft.trim() || !!lengthError || gifs.blocked}
+              onPress={submit}
             />
           </>
         ) : composer.mode.kind === "report" ? (
@@ -220,11 +231,12 @@ export function ChatComposer({
                 icon={Send}
                 loading={isPending}
                 disabled={
-                  !composer.pollQuestion.trim() || !composer.pollOptions.trim()
+                  !composer.pollQuestion.trim() || !composer.pollOptions.trim() || gifs.blocked
                 }
-                onPress={onSubmit}
+                onPress={submit}
               />
             </View>
+            {gifPreviews}
           </>
         ) : (
           <>
@@ -241,6 +253,7 @@ export function ChatComposer({
               disabled={isPending}
               onRemove={onRemoveAttachment}
             />
+            {gifPreviews}
             <RichChatInput
               accessibilityLabel={
                 threadMode || composer.mode.kind === "reply"
@@ -304,10 +317,11 @@ export function ChatComposer({
                     isPending ||
                     attachmentPickerBusy ||
                     attachmentSubmissionBlocked ||
+                    gifs.blocked ||
                     (!composer.draft.trim() && !hasReadyAttachments) ||
                     !!lengthError
                   }
-                  onPress={onSubmit}
+                  onPress={submit}
                 />
               }
             />

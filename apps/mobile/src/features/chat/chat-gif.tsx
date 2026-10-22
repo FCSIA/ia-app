@@ -3,14 +3,13 @@ import { View } from "react-native";
 import { Image } from "expo-image";
 import { useReducedMotion } from "react-native-reanimated";
 import { Pause, Play } from "lucide-react-native";
-import { IconButton, Txt } from "@/components/ui";
+import { Button, IconButton, Txt } from "@/components/ui";
 import { useGifAutoplay, useGifAppActive } from "@/lib/gif-playback";
 import { MediaVisibleContext, useMediaVisibility } from "@/lib/media-visibility";
 import { useReduceMotion } from "@/lib/motion";
 import { spacing } from "@/lib/tokens";
-import { useAction } from "@/lib/convex-react";
-import { api } from "~/apps/convex/src/_generated/api";
-import { createGifLinkCache } from "~/apps/shared/chat/gif-link-cache";
+import { useStoredGifs } from "./use-stored-gifs";
+import { gifErrorMessage } from "~/apps/shared/chat/stored-gifs";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
 
 export function ChatGifLinks({ text }: { text: string }) {
@@ -18,32 +17,26 @@ export function ChatGifLinks({ text }: { text: string }) {
   return <>{links.map((link) => <LinkedChatGif key={link.url} link={link} />)}</>;
 }
 
-const resolveShareLink = createGifLinkCache();
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
   const visible = useContext(MediaVisibleContext);
   const appActive = useGifAppActive();
-  const resolve = useAction(api.uploads.files.resolveChatGifLink);
-  const [resolved, setResolved] = useState<{ url: string; media: string | null } | null>(null);
-  useEffect(() => {
-    if (link.mediaUrl || !visible || !appActive || resolved?.url === link.url) return;
-    let active = true;
-    void resolveShareLink(resolve, link.url).then(
-      (media) => { if (active) setResolved({ url: link.url, media }); },
-      () => { if (active) setResolved({ url: link.url, media: null }); },
-    );
-    return () => { active = false; };
-  }, [link.url, link.mediaUrl, resolve, visible, appActive, resolved?.url]);
-  const media = link.mediaUrl ?? (resolved?.url === link.url ? resolved.media : null);
-  return <ChatGif src={media} name="GIF" pending={!link.mediaUrl && resolved?.url !== link.url} />;
+  const urls = useMemo(() => [link.url], [link.url]);
+  const { states, retry } = useStoredGifs(urls, visible && appActive);
+  const asset = states[0];
+  if (asset.status === "error") return <View style={{ gap: spacing.xs }}>
+    <Txt variant="caption" tone="muted">{gifErrorMessage(asset.error)}</Txt>
+    <Button title="Retry GIF" size="sm" variant="ghost" onPress={() => retry(link.url)} />
+  </View>;
+  return <ChatGif src={asset.url} name="GIF" pending={asset.status !== "ready"} />;
 }
 
-type ChatGifProps = { src: string | null; name: string; pending?: boolean; active?: boolean };
+type ChatGifProps = { src: string | null; name: string; pending?: boolean; active?: boolean; maxHeight?: number; onError?: () => void };
 export function ChatGif(props: ChatGifProps) {
   return <GifPlayer key={props.src ?? 'pending'} {...props} />;
 }
 
 /** Visibility suspends actual native animation without overwriting the user's play/pause choice. */
-function GifPlayer({ src, name, pending = false, active = true }: ChatGifProps) {
+function GifPlayer({ src, name, pending = false, active = true, maxHeight = 220, onError }: ChatGifProps) {
   const { autoplay } = useGifAutoplay();
   const appActive = useGifAppActive();
   const { ref, onLayout, visible } = useMediaVisibility();
@@ -81,7 +74,7 @@ function GifPlayer({ src, name, pending = false, active = true }: ChatGifProps) 
       collapsable={false}
       onLayout={onLayout}
       accessibilityLabel={name}
-      style={{ width: Math.min(440, 220 * aspectRatio), maxWidth: "100%" }}
+      style={{ width: Math.min(440, maxHeight * aspectRatio), maxWidth: "100%" }}
     >
       {(src || pending) && !failed ? (
         <View style={{ width: "100%", aspectRatio }}>
@@ -102,7 +95,7 @@ function GifPlayer({ src, name, pending = false, active = true }: ChatGifProps) 
                 applyPlayback();
                 onLayout?.();
               }}
-              onError={() => setFailed(true)}
+              onError={() => { setFailed(true); onError?.(); }}
               style={{ width: "100%", height: "100%" }}
             />
           ) : null}

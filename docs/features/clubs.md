@@ -146,9 +146,8 @@ Chat accepts uploaded GIFs through the existing file picker (up to five files,
 10 MB each), preserving the original animation. Web and mobile also preview
 GIPHY and Tenor links, including Markdown links: share links and direct `.gif`
 URLs on their media CDNs (`media*.giphy.com`, `i.giphy.com`, `media*.tenor.com`,
-`c.tenor.com`). GIFs on any other host stay ordinary links, because every
-viewer's device loads a preview automatically and an open list would let
-whoever posts a link log the IP address of everyone who reads it.
+`c.tenor.com`). GIFs on any other host stay ordinary links; the backend
+downloader is restricted to these providers rather than acting as an open proxy.
 Previews are deduplicated and limited to five per message; code examples stay
 text. Web and native composers also offer a searchable, fixed collection of
 nine existing online reaction GIFs (SpongeBob, Pikachu, Homer, Spider-Man,
@@ -158,7 +157,14 @@ contains no generated media and exposes no provider-wide search. Each entry in
 review the complete clip before adding or replacing an entry. Selecting a GIF
 adds its external media URL to the draft, preserving existing text and mentions.
 
-GIFs render without a filename/status card or Open link. A compact icon button
+Pasting or selecting a GIF immediately adds a composer preview card. It shows
+Preparing GIF with a spinner while the backend downloads the bytes into Convex
+object storage, then renders the stored GIF. Send and Save wait for every preview
+to be ready. Errors preserve the draft and explain unavailable, oversized, unsupported,
+or failed downloads, with Retry and Remove actions. Remove deletes only that
+GIF's link, preserving captions, mentions, and other formatting.
+
+Sent GIFs render without a filename/status card or Open link. A compact icon button
 in the lower-right corner controls playback. Previewed links are hidden from the
 message text; surrounding prose and code examples remain. The message's own
 context menu (right-click or long-press on web, the message actions sheet on
@@ -178,30 +184,35 @@ previews also release their canvas backing buffers while preserving layout.
 Native uses FlashList viewability plus measured image/scrollport intersections,
 keyboard insets, route focus, and one shared app-state subscription. Native playback commands are
 serialized so a late start cannot override a newer pause. Unseen images and share
-links load only as they approach the viewport (when visible on native), and
-duplicate link resolutions share a bounded, 200-entry promise cache. No idle
-scroll polling is used. Uploaded originals keep their quality and frame rate.
+links download only as they approach the viewport (when visible on native).
+Reactive cache subscriptions share completion across composers and viewers.
+No idle scroll polling is used. Uploaded originals keep their quality and frame rate.
 
 The web fullscreen viewer animates only its active slide while keeping zoom,
 swipe, sharing, and original-file access. Its share-file cache is bounded to
-eight files/32 MB, and obsolete fetches are cancelled. Composer and feedback
-thumbnails show still frames; the school GIF picker already uses static posters.
-Unavailable media shows an unavailable state; its URL remains available in the
-message's context menu. Previews contact only the GIPHY/Tenor CDNs; web omits
-the referrer. The web image policy adds just those CDNs, while scripts, frames,
-and connection origins retain their existing restrictions.
+eight files/32 MB, and obsolete fetches are cancelled. Uploaded-file composer
+and feedback thumbnails show still frames; linked composer previews use the
+normal playback preference. The school GIF picker uses static posters.
+Unavailable media shows an error and Retry action; its source URL remains
+available in the message's context menu. Linked GIFs and catalog posters load
+from app object storage on both platforms. The web image policy no longer permits
+direct GIPHY/Tenor images.
 
-Tenor share pages are resolved by an authenticated, rate-limited Convex action
+Tenor share pages are resolved on the backend
 with a five-second timeout, a 512 KB response limit, and at most two redirects
 within validated Tenor share URLs; a short link that redirects straight to the
 Tenor CDN returns that media. Only Tenor CDN GIF URLs are returned; provider
 HTML and scripts are never rendered. GIPHY links use their public media URL.
-Each share link is fetched once and stored in `chatGifLinkResolutions`, so
-viewers share the result and only cache misses count toward the rate limit;
-links that could not be resolved are retried after an hour, and network
-failures are not stored. Clients also reuse a resolution for the rest of the
-session. Provider failures show an unavailable state without blocking the
-message; the original link can still be copied from the message's menu.
+Authenticated mutations coalesce cache misses into one scheduled download per
+source in `chatGifAssets`. Only misses and explicit retries count toward the
+per-user rate limit. Media downloads have an eight-second deadline, at most two
+allowlisted redirects, signature/MIME checks, and a 10 MB limit (1 MB for catalog
+posters). Provider cache headers determine expiry, capped at 24 hours;
+responses forbidding caching are rejected. Expiry deletes the stored bytes.
+Failures are retained for an hour with explicit, rate-limited retry available.
+A 30-second watchdog and generation checks prevent stuck requests,
+stale completions, or orphaned files. The legacy URL-resolution endpoint remains
+available for older clients, with successful resolutions refreshed after 24 hours.
 
 Pasted GIFs remain in the message body, so channel permissions, edits, deletion,
 and moderation apply to the message as usual. Uploads retain the existing

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AnimatedGif } from "@/components/media/animated-gif";
 import { useMediaVisibility } from "@/hooks/use-media-visibility";
-import { useAction } from "@/lib/convex-react";
-import { api } from "~/apps/convex/src/_generated/api";
-import { createGifLinkCache } from "~/apps/shared/chat/gif-link-cache";
+import { useStoredGifs } from "@/hooks/use-stored-gifs";
+import { Button } from "@/components/ui/button";
+import { gifErrorMessage } from "~/apps/shared/chat/stored-gifs";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
 
 export function ChatGifLinks({ text }: { text: string }) {
@@ -13,25 +13,19 @@ export function ChatGifLinks({ text }: { text: string }) {
   return <>{links.map((link) => <LinkedChatGif key={link.url} link={link} />)}</>;
 }
 
-const resolveShareLink = createGifLinkCache();
-
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
   const { ref, nearby, pageActive } = useMediaVisibility();
-  const resolve = useAction(api.uploads.files.resolveChatGifLink);
-  const [resolved, setResolved] = useState<{ url: string; media: string | null } | null>(null);
-  useEffect(() => {
-    if (link.mediaUrl || !nearby || !pageActive || resolved?.url === link.url) return;
-    let active = true;
-    void resolveShareLink(resolve, link.url).then(
-      (media) => { if (active) setResolved({ url: link.url, media }); },
-      () => { if (active) setResolved({ url: link.url, media: null }); },
-    );
-    return () => { active = false; };
-  }, [link.url, link.mediaUrl, resolve, nearby, pageActive, resolved?.url]);
-  const media = link.mediaUrl ?? (resolved?.url === link.url ? resolved.media : null);
+  const urls = useMemo(() => [link.url], [link.url]);
+  const { states, retry } = useStoredGifs(urls, nearby && pageActive);
+  const asset = states[0];
   return (
     <div ref={ref} className="max-w-full">
-      <AnimatedGif src={media} name="GIF" pending={!link.mediaUrl && resolved?.url !== link.url} />
+      {asset.status === "error" ? (
+        <div className="flex flex-wrap items-center gap-2" role="status">
+          <p className="text-sm text-muted-foreground">{gifErrorMessage(asset.error)}</p>
+          <Button type="button" size="sm" variant="ghost" onClick={() => retry(link.url)}>Retry GIF</Button>
+        </div>
+      ) : <AnimatedGif src={asset.url} name="GIF" pending={asset.status !== "ready"} />}
     </div>
   );
 }
