@@ -142,6 +142,7 @@ export const schema = defineSchema({
 
   auditEvents: defineTable({
     actorId: v.optional(v.id("users")),
+    category: v.optional(v.string()),
     action: v.string(),
     entityType: v.string(),
     entityId: v.optional(v.string()),
@@ -150,6 +151,8 @@ export const schema = defineSchema({
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
+    .index("by_category_and_createdAt", ["category", "createdAt"])
+    .index("by_action_and_createdAt", ["action", "createdAt"])
     .index("by_entityType_and_entityId_and_createdAt", [
       "entityType",
       "entityId",
@@ -1047,6 +1050,7 @@ export const schema = defineSchema({
     pollQuestion: v.optional(v.string()),
     pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
     deletedAt: v.optional(v.number()),
+    editedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1266,7 +1270,11 @@ export const schema = defineSchema({
   })
     .index("by_eventId", ["eventId"])
     .index("by_flexFridayId", ["flexFridayId"])
-    .index("by_startAt", ["startAt"]),
+    .index("by_startAt", ["startAt"])
+    .index("by_source_and_startAt", ["source", "startAt"])
+    .index("by_createdById_and_source_and_startAt", ["createdById", "source", "startAt"])
+    .index("by_source_and_endAt", ["source", "endAt"])
+    .index("by_createdById_and_source_and_endAt", ["createdById", "source", "endAt"]),
 
   calendarInvites: defineTable({
     calendarEntryId: v.id("calendarEntries"),
@@ -1315,11 +1323,14 @@ export const schema = defineSchema({
     location: v.optional(v.string()),
     startAt: v.number(),
     endAt: v.optional(v.number()),
+    allDay: v.optional(v.boolean()),
+    url: v.optional(v.string()),
     tags: v.array(v.string()),
     lastSeenAt: v.number(),
   })
     .index("by_subscriptionId_and_externalId", ["subscriptionId", "externalId"])
     .index("by_userId_and_startAt", ["userId", "startAt"])
+    .index("by_userId_and_endAt", ["userId", "endAt"])
     .index("by_subscriptionId_and_lastSeenAt", [
       "subscriptionId",
       "lastSeenAt",
