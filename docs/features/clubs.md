@@ -142,6 +142,13 @@ keeps the stable school unique ID used for backend resolution.
 
 ### Chat GIFs
 
+The GIPHY storage integration is held pending written provider approval. The
+owner chose to retain object storage. A beta key is configured only in the GIF
+worktree's local deployment; `GIPHY_STORAGE_APPROVED=false` blocks provider
+verification and new downloads. The key alone cannot enable them. The approved
+GIPHY picker replacement, caching revalidation and attribution requirements
+remain to be implemented after provider approval.
+
 Chat accepts uploaded GIFs through the existing file picker (up to five files,
 10 MB each), preserving the original animation. Web and mobile also preview
 GIPHY and Tenor links, including Markdown links: share links and direct `.gif`

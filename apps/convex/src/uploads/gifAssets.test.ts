@@ -39,8 +39,23 @@ async function fixture() {
 }
 
 describe("stored chat GIFs", () => {
-  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("GIPHY_API_KEY", "test-key"); limit.mockResolvedValue({ ok: true }); });
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("GIPHY_API_KEY", "test-key"); vi.stubEnv("GIPHY_STORAGE_APPROVED", "true"); limit.mockResolvedValue({ ok: true }); });
   afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
+
+  test("a configured API key cannot download or store media without provider approval", async () => {
+    vi.stubEnv("GIPHY_STORAGE_APPROVED", "false");
+    const { t, first } = await fixture();
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await first.mutation(api.uploads.gifAssets.request, { url: URL });
+    const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
+    await t.action(internal.uploads.gifAssets.download, { id: asset!._id, generation: 1, poster: false });
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([
+      { status: "error", error: "unverified", url: null },
+    ]);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await t.run((ctx) => ctx.db.get(asset!._id)))?.storageId).toBeUndefined();
+  });
 
   test("shows loading before download, coalesces viewers, then returns object storage to both", async () => {
     const { t, first, second } = await fixture();

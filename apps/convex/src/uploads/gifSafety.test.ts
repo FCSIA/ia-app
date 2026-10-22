@@ -7,8 +7,19 @@ const item = (rating: unknown = "g") => ({ id: "abc123", rating, images: { origi
 const response = (data: unknown, meta = { status: 200 }) => Response.json({ data, meta });
 
 describe("GIF rating verification", () => {
-  beforeEach(() => vi.stubEnv("GIPHY_API_KEY", "test-key"));
+  beforeEach(() => {
+    vi.stubEnv("GIPHY_API_KEY", "test-key");
+    vi.stubEnv("GIPHY_STORAGE_APPROVED", "true");
+  });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+
+  test.each([undefined, "", "false", "1", "TRUE"])("does not contact GIPHY before explicit storage approval (%s)", async (approval) => {
+    vi.stubEnv("GIPHY_STORAGE_APPROVED", approval);
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(verifyGifForStorage(media)).rejects.toMatchObject({ code: "unverified" });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 
   test("requests G-only metadata and returns the provider's rendition for the exact item", async () => {
     const fetcher = vi.fn(async () => response(item()));

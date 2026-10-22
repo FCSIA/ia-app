@@ -105,12 +105,15 @@ that old unchecked timeline GIFs disappear, a missing key produces the safety
 verification error, Send stays disabled, and Remove preserves the caption.
 Capture: `/tmp/ia-gif-review/safety-unverified-desktop.png`. No console errors
 appeared. Successful provider verification is covered with mocked metadata;
-a live key has not yet been configured.
+no live provider verification or GIPHY media download has been performed.
 
-The user authorized API-key setup via Computer, signed in, and chose to replace
-the Tenor picker with GIPHY. The web API application is filled in but unsubmitted;
-its API Terms checkbox requires explicit confirmation. No key has been created
-or configured. Tenor's current quickstart says new API clients have not been
+The user authorized API-key setup via Computer, signed in, chose to replace
+the Tenor picker with GIPHY, and explicitly approved API Terms acceptance.
+The free beta web API key for "Innovation Academy Chat" was created and
+configured only on the worktree's local anonymous backend (3310/3311).
+Readback matches the created key without printing its value; the temporary
+secret file was removed. No production/shared key configuration was performed.
+Tenor's current quickstart says new API clients have not been
 accepted since January 2026. Its ID endpoint does not document content filtering,
 so Tenor previews and the existing Tenor picker remain blocked.
 
@@ -119,11 +122,15 @@ require client-side API/media requests and prohibit media caching, rewriting or
 storage without prior written approval. Its [API Terms](https://support.giphy.com/hc/en-us/articles/360028134111-GIPHY-API-Terms-of-Service)
 also restrict building a GIF directory and require provider/source attribution.
 These requirements conflict with the implemented server verification, fixed
-catalog and object-storage delivery. The owner was asked whether to change to
-direct client delivery or retain storage pending written GIPHY approval, and
-whether to accept the API Terms for the prepared beta-key application. The
-rating follow-up remains unpushed and undeployed to shared environments; do not
-enable its GIPHY storage flow without resolving this provider approval.
+catalog and object-storage delivery. The owner chose to retain object storage
+and wait for written GIPHY approval. `GIPHY_STORAGE_APPROVED=false` is configured
+locally, and the backend defaults to disabled unless the exact value `true` is
+provided. The gate runs before any provider request, so adding the key cannot
+activate new downloads. All 51 focused GIF tests, backend typecheck and the local
+function push pass. Tests include absent/false/invalid approval values and an
+authenticated request with a key present that fetches nothing and stores no
+media. The picker replacement, provider-required revalidation and attribution
+remain pending approval. No shared deployment was changed.
 
 ### Visual and device review
 

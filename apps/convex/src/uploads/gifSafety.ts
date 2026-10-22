@@ -1,5 +1,6 @@
 import { giphyGifId } from "../../../shared/chat/gifs";
 import { GifDownloadError } from "./gifDownload";
+import { env } from "../_generated/server";
 
 /** Bump when stored media must be checked again under a newer policy. */
 export const GIF_SAFETY_VERSION = 1;
@@ -46,8 +47,11 @@ async function metadata(url: URL): Promise<Record<string, unknown>> {
 
 /** Only download the rendition returned for the exact, positively G-rated item. */
 export async function verifyGifForStorage(source: string): Promise<string> {
+  // A beta API key does not grant permission to proxy or store GIPHY media.
+  // Enable only after written provider approval and its caching requirements.
+  if (env.GIPHY_STORAGE_APPROVED !== "true") throw new GifDownloadError("unverified");
   const id = giphyGifId(source);
-  const key = process.env.GIPHY_API_KEY?.trim();
+  const key = env.GIPHY_API_KEY?.trim();
   // Tenor has no documented rating filter on ID lookup and no new API clients.
   // Direct media and share pages cannot prove a rating. Never fall back to them.
   if (!id || !key) throw new GifDownloadError("unverified");

@@ -63,14 +63,18 @@
   and revalidated. All 501 backend tests, backend/web/native typechecks, web lint
   (21 existing warnings), production build, and the worktree-local function push
   pass. Browser checks confirm missing-key errors, disabled Send and preserved
-  captions after removal. This follow-up is not pushed or deployed to a shared
-  environment. The user signed in to GIPHY and approved replacing the Tenor
-  picker. The web API application is prepared but unsubmitted, awaiting explicit
-  API Terms acceptance. GIPHY's current integration requirements prohibit server
-  proxying and media caching/storage without prior written approval; the owner
-  was asked to choose direct client delivery or retain storage pending approval.
-  No key was created or configured. Tenor previews remain blocked because its
-  documented ID endpoint cannot verify a rating and new API clients are closed.
+  captions after removal. No shared deployment was changed. The user approved
+  replacing the Tenor picker, then chose to retain object storage and wait for
+  written GIPHY approval. With explicit API Terms consent, the free beta web API
+  key for "Innovation Academy Chat" was created and configured only on this
+  worktree's local anonymous deployment (3310/3311). Its value was read back
+  without printing it; the temporary secret file was deleted.
+  `GIPHY_STORAGE_APPROVED=false` keeps provider requests and new downloads
+  disabled even with the key present. The gate uses typed deployment env vars;
+  all 51 focused GIF tests, backend typecheck and local function push pass.
+  The GIPHY picker replacement and caching revalidation/attribution work remain
+  pending provider approval. Tenor previews remain blocked because its documented
+  ID endpoint cannot verify a rating and new API clients are closed.
 
 ### Audit UI Repair (2026-10-20)
 

@@ -41,18 +41,24 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 The rating follow-up is currently held: GIPHY's
 [integration requirements](https://developers.giphy.com/docs/api/#prohibited-integration-practices)
 require direct client-side requests and prior written approval for media
-caching/storage. Resolve that provider approval or change the delivery design
-before enabling the backend flow described below.
+caching/storage. The owner chose to retain storage and wait for written approval.
+`GIPHY_STORAGE_APPROVED` defaults to disabled and must remain unset or `false`
+until that approval and its required caching revalidation, attribution, and
+catalog changes are implemented. Only the exact value `true` enables provider
+verification and new downloads; a key alone cannot enable them.
 
-Set `GIPHY_API_KEY` in the selected Convex deployment's environment. It is a
+Store `GIPHY_API_KEY` in the selected Convex deployment's environment. It is a
 backend-only key; do not add a `NEXT_PUBLIC_` or `EXPO_PUBLIC_` copy. The linked
-GIF downloader calls GIPHY's single-item lookup with `rating=g`, verifies the
+GIF downloader, once approved and enabled, calls GIPHY's single-item lookup with `rating=g`, verifies the
 returned ID and rating, and stores only its validated media rendition. Without
 the key, previews fail closed rather than downloading unchecked content.
 
 Use the Convex CLI's stdin or `--from-file` support to keep the value out of
 shell history. Configuring the local anonymous deployment does not configure
 production; production environment changes require explicit authorization.
+The "Innovation Academy Chat" free beta web API key is configured only on the
+GIF worktree's anonymous local deployment (3310/3311), with storage approval
+explicitly set to `false`. No production key configuration was performed.
 
 Tenor's current quickstart says new API clients have not been accepted since
 January 2026. Its ID endpoint does not document a content filter or rating

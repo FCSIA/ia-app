@@ -13,6 +13,8 @@ const app = defineApp({
     GITHUB_FEEDBACK_TOKEN: v.optional(v.string()),
     GITHUB_FEEDBACK_WEBHOOK_SECRET: v.optional(v.string()),
     GOOGLE_VISION_SERVICE_ACCOUNT_JSON: v.optional(v.string()),
+    GIPHY_API_KEY: v.optional(v.string()),
+    GIPHY_STORAGE_APPROVED: v.optional(v.string()),
   },
 });
 
