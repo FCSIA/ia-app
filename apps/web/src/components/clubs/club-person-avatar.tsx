@@ -4,13 +4,13 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { cn } from '@/lib/utils';
 import { ClubUserRef } from './types';
 
-type ClubAvatarProps = {
+type ClubPersonAvatarProps = {
   person: Pick<ClubUserRef, 'firstName' | 'lastName' | 'preferredName' | 'avatarUrl'>;
   className?: string;
   fallbackClassName?: string;
 };
 
-export function ClubAvatar({ person, className, fallbackClassName }: ClubAvatarProps) {
+export function ClubPersonAvatar({ person, className, fallbackClassName }: ClubPersonAvatarProps) {
   return (
     <UserAvatar
       firstName={person.firstName}

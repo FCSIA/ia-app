@@ -137,7 +137,7 @@ import {
 } from '@/components/clubs/channel-message-composer';
 import { ClubChannelVisibilityIcon } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { ClubPersonAvatar } from '@/components/clubs/club-person-avatar';
 import {
   PresenceAvatar,
   useMemberPresence,
@@ -663,7 +663,7 @@ function ChannelSearch({
                     );
                   }}
                 >
-                  <ClubAvatar person={message.author} className="size-7" />
+                  <ClubPersonAvatar person={message.author} className="size-7" />
                   <span className="min-w-0">
                     <span className="block text-xs text-muted-foreground">
                       {fullName(message.author)} ·{' '}
@@ -737,7 +737,7 @@ function MessageAuthorPreview({
         className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
       >
         <PresenceAvatar status={presence}>
-          <ClubAvatar
+          <ClubPersonAvatar
             person={author}
             className={compact ? 'size-7' : 'size-9'}
             fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
@@ -1180,7 +1180,7 @@ function MessageReplyReference({
     >
       <span className="sr-only">In reply to</span>
       {author ? (
-        <ClubAvatar
+        <ClubPersonAvatar
           person={author}
           className="size-4"
           fallbackClassName="text-[7px]"
@@ -1951,7 +1951,7 @@ function MessageRow({
           onOpenChange={setActionSheetOpen}
           preview={{
             avatar: (
-              <ClubAvatar
+              <ClubPersonAvatar
                 person={message.author}
                 className="size-9"
                 fallbackClassName="text-[11px]"
@@ -1986,7 +1986,7 @@ function MessageRow({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete message?</AlertDialogTitle>
             <div className="my-2 flex gap-3 rounded-lg bg-muted/60 p-3">
-              <ClubAvatar person={message.author} className="size-9" />
+              <ClubPersonAvatar person={message.author} className="size-9" />
               <div className="min-w-0">
                 <p className="text-sm font-medium">
                   {fullName(message.author)}

@@ -33,7 +33,7 @@ import { useClubId } from "../../club-route";
 import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
-import { ClubAvatar } from "@/components/clubs/club-avatar";
+import { ClubPersonAvatar } from "@/components/clubs/club-person-avatar";
 import { PresenceAvatar, useMemberPresence } from "@/components/presence/club-presence";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
@@ -1559,7 +1559,7 @@ function PersonRow({
           className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
         >
           <PresenceAvatar status={presence}>
-            <ClubAvatar
+            <ClubPersonAvatar
               person={person}
               className="size-9"
               fallbackClassName="text-[11px]"
