@@ -132,6 +132,32 @@ authenticated request with a key present that fetches nothing and stores no
 media. The picker replacement, provider-required revalidation and attribution
 remain pending approval. No shared deployment was changed.
 
+### Written approval request — October 22, 2026
+
+With the owner's explicit authorization, the approval request was sent via Gmail
+to `developers@giphy.com` at 11:22 UTC, subject "Written integration approval
+request: Innovation Academy Chat (server-side delivery and caching)". Sent-mail
+readback confirms the recipient, subject and complete body. The request identifies
+the Innovation Academy Chat beta application without including its API key,
+student information or credentials.
+
+The request asks for written permission for server-side metadata verification,
+media fetching, expiring Convex storage and alternate delivery URLs. It also asks
+whether a fixed nine-reaction picker is permitted, the required retention,
+revalidation-before-serving and purge behavior, provider/creator/source attribution,
+platform-key requirements, beta testing and production licensing, and review timing.
+It explains the observed Tenor school-network failure without claiming GIPHY's
+CDN has been tested there. It does not activate a paid plan or constitute provider
+approval. Cache expiry alone is explicitly not presented as compliant revalidation.
+
+No approval response or ETA has been received. `GIPHY_STORAGE_APPROVED=false`
+remains in place, and the picker/revalidation/attribution implementation remains
+pending the provider's requirements. PR [#169](https://github.com/virajdas/ia-app/pull/169)
+and the status comments on issues [#167](https://github.com/virajdas/ia-app/issues/167#issuecomment-6339036856)
+and [#170](https://github.com/virajdas/ia-app/issues/170#issuecomment-6339037194)
+record the request and remaining work. A production-key application is separate
+and has not been submitted by this work.
+
 ### Visual and device review
 
 Material visuals are ready for owner review. Inspect processing, ready, error,
@@ -140,4 +166,4 @@ states, light/alternate themes and reduced motion. Browser diagnostics used the
 current dark theme; alternate themes were not visually reviewed.
 Native code was typechecked; native device interaction was not tested.
 A school-managed laptop/network must still confirm that the app's storage host
-is allowed. No production deployment or GitHub issue update was performed.
+is allowed. No production deployment was performed; GitHub status is recorded above.

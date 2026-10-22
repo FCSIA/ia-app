@@ -75,6 +75,14 @@
   The GIPHY picker replacement and caching revalidation/attribution work remain
   pending provider approval. Tenor previews remain blocked because its documented
   ID endpoint cannot verify a rating and new API clients are closed.
+- Approval request sent through the owner's authorized Gmail on October 22,
+  2026 at 11:22 UTC to `developers@giphy.com`, subject "Written integration
+  approval request: Innovation Academy Chat (server-side delivery and caching)".
+  Sent-mail readback confirms the recipient, subject and body. The request covers
+  server metadata/media requests, Convex storage and alternate delivery URLs,
+  the fixed picker, cache revalidation/purge, attribution, platform keys,
+  licensing and review timing. No approval or ETA has been received; the gate
+  remains false. PR #169 and the status comments on #167/#170 track the hold.
 
 ### Audit UI Repair (2026-10-20)
 
