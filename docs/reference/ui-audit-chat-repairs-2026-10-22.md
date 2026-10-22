@@ -69,9 +69,20 @@ approval. All material visual changes await design-owner review.
 - Pinned-message destinations use CardGroup/Card navigation composition.
 - Removed zero-importer AI `input-message` / `chat-message` adapters and chat's
   no-op Bubble wrappers. No remaining importer was found before deletion.
-- Announcement comments Message/comment composer and shared media ImageViewer
-  adoption are the next coherent follow-up, not covered by the initial chat UI
-  commit. Timestamp formatter consolidation remains a cross-page follow-up.
+- Announcement discussion now uses `AnnouncementComment` composed from shared
+  Message anatomy and PersonTrigger. Delete lives in the contextual action menu.
+  The approved `ChannelMessageComposer variant="comment"` uses a plain-text field
+  with the existing 2,000-character backend limit; formatting/media/poll/GIF
+  tools are absent because comments persist plain text. A failed request keeps
+  both the input and server reason; success clears in place and retains focus.
+- `ImageViewer` moved to `components/media/` and is shared by chat and
+  AnnouncementMedia, retaining paging/zoom/share/open-original behavior. GIF
+  playback controls remain separate from their Open image action.
+- `formatMessageTime` consolidates compact row metadata and full details across
+  chat, action sheets, edited/context tooltips and announcement comments. The
+  narrow grouped gutter intentionally keeps its clock-only format.
+- Parent migrated UserProfileAvatar/AnnouncementAuthor to PersonTrigger and
+  renamed ClubAvatar to canonical ClubPersonAvatar. Those edits are preserved.
 
 ## Verification
 
@@ -87,8 +98,9 @@ it bundles actual chat, composer and primitive source.
 - Backend typecheck passed after backend implementation. Combined checks are
   coordinated by the parent agent.
 - Web lint passed: **0 errors, 19 existing warnings**. Latest web typecheck had
-  only concurrent dashboard MyClubsWidget inferred-union errors; no chat errors.
-  Parent is repairing that independent slice and running final combined checks.
+  only concurrent dashboard MyClubsWidget inferred-union errors initially; the
+  follow-up run reports only unrelated Flex Friday searchParams nullability
+  errors. No chat/comment/media errors remain. Parent coordinates final combined checks.
 - Production build is a parent integration check; not independently repeated.
 - Browser fixture: focus retained after failed send and consecutive sends; server
   rejection text retained; Retry succeeds; ArrowUp editor focuses Markdown source;
@@ -99,6 +111,15 @@ it bundles actual chat, composer and primitive source.
 - Diagnostic captures and fixture source: `/tmp/ia-chat-audit-repairs/`, including
   `failed-send.png`, `loading.png`, `phone-390.png`, `phone-320.png`. These are
   ephemeral diagnostic artifacts, not approved designs.
+- Cross-page actual-component fixture verifies failed multiline comments retain
+  both lines and server reason, retry success clears the same focused textarea,
+  two-image viewer paging + zoom, Escape close + focus return to the image, and
+  390px discussion without horizontal overflow. No console warnings/errors were
+  captured. Additional captures: `comment-failure.png`,
+  `announcement-viewer.png`, `discussion-390.png`. The actual announcement route
+  and backend were not driven; existing add/remove mutations are unchanged.
+- Temporary fixture server and both agent-created browser tabs were stopped
+  after diagnostics.
 
 Material visual changes remain awaiting the design owner. Native device checks,
 six-theme review, and live backend integration are remaining validation gates.

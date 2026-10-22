@@ -117,6 +117,9 @@ type ChannelMessageComposerProps = {
   /** Lets the chat focus the editor, e.g. after choosing Reply. */
   handleRef?: Ref<ChannelMessageComposerHandle>;
   mode?: 'message' | 'edit';
+  /** Comments use the same dock with a plain-text field and no media tools. */
+  variant?: 'chat' | 'comment';
+  maxCharacters?: number;
   onTypingActivity?: (hasText: boolean) => void;
   onCancel?: () => void;
   onEditLast?: () => void;
@@ -308,17 +311,22 @@ export function ChannelMessageComposer({
   initialBodyMarkdown,
   initialBodyRich,
   onSubmit,
-  canAttach = true,
+  canAttach: allowAttachments = true,
   existingAttachments,
-  canCreatePoll = false,
+  canCreatePoll: allowPolls = false,
   onMentionIntent,
   handleRef,
   mode = 'message',
+  variant = 'chat',
+  maxCharacters = MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS,
   onCancel,
   onTypingActivity,
   onEditLast,
   replyTo,
 }: ChannelMessageComposerProps) {
+  const isComment = variant === 'comment';
+  const canAttach = !isComment && allowAttachments;
+  const canCreatePoll = !isComment && allowPolls;
   const initialValue = useMemo(
     () =>
       initialBodyRich ??
@@ -343,13 +351,15 @@ export function ChannelMessageComposer({
     },
     [],
   );
-  const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
+  const isMarkdownSource =
+    !isComment && !initialBodyRich && !!initialBodyMarkdown?.trim();
+  const isSourceInput = isComment || isMarkdownSource;
   const markdownSourceRef = useRef<HTMLTextAreaElement>(null);
   // Plain focus: asking Plate to move the caret first defers the DOM focus
   // to a timer, which iOS no longer treats as part of the tap.
   useEffect(() => {
     if (mode !== 'edit') return;
-    if (isMarkdownSource) {
+    if (isSourceInput) {
       const input = markdownSourceRef.current;
       input?.focus();
       input?.setSelectionRange(input.value.length, input.value.length);
@@ -357,7 +367,7 @@ export function ChannelMessageComposer({
       editor.tf.select(editor.api.end([]));
       editor.tf.focus();
     }
-  }, [editor, isMarkdownSource, mode]);
+  }, [editor, isSourceInput, mode]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [drafts, setDrafts] = useState<DraftFile[]>([]);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
@@ -455,7 +465,7 @@ export function ChannelMessageComposer({
     handleRef,
     () => ({
       focus: () => {
-        if (isMarkdownSource) markdownSourceRef.current?.focus();
+        if (isSourceInput) markdownSourceRef.current?.focus();
         else editor.tf.focus();
       },
       clear: () => {
@@ -464,7 +474,8 @@ export function ChannelMessageComposer({
         const empty = createEmptyClubChannelMessageValue();
         editor.tf.setValue(empty);
         editor.tf.select(editor.api.end([]));
-        editor.tf.focus();
+        if (isSourceInput) markdownSourceRef.current?.focus();
+        else editor.tf.focus();
         setRichValue(empty);
         setPlainText('');
         onTypingActivity?.(false);
@@ -482,7 +493,7 @@ export function ChannelMessageComposer({
         setToolsOpen(false);
       },
     }),
-    [editor, isMarkdownSource, onTypingActivity],
+    [editor, isSourceInput, onTypingActivity],
   );
 
   const mentionables = useMemo<MentionableItem[]>(
@@ -512,20 +523,31 @@ export function ChannelMessageComposer({
   const currentBody = isMarkdownSource ? markdownSource : plainText;
   const canSend =
     !isPending &&
+    currentBody.length <= maxCharacters &&
     (currentBody.trim().length > 0 || attachmentCount > 0 || !!hasPoll);
+  const pendingLabel =
+    mode === 'edit'
+      ? 'Saving changes'
+      : isComment
+        ? 'Posting comment'
+        : 'Sending message';
   const hasComposerTools =
-    mode !== 'edit' && (canAttach || canCreatePoll || !isMarkdownSource);
+    !isComment &&
+    mode !== 'edit' &&
+    (canAttach || canCreatePoll || !isMarkdownSource);
 
   const handleSubmit = () => {
     if (!canSend) return;
 
     onSubmit({
       body: currentBody,
-      bodyMarkdown: isMarkdownSource
-        ? markdownSource.trim()
-        : serializeClubChannelMessageMarkdown(richValue),
+      bodyMarkdown: isComment
+        ? ''
+        : isMarkdownSource
+          ? markdownSource.trim()
+          : serializeClubChannelMessageMarkdown(richValue),
       bodyRich:
-        plainText.trim() && !isMarkdownSource
+        plainText.trim() && !isSourceInput
           ? (richValue as unknown as ClubChannelMessageRichBody)
           : null,
       files,
@@ -569,7 +591,12 @@ export function ChannelMessageComposer({
       event.stopPropagation();
       onCancel();
     }
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.metaKey &&
+      !event.ctrlKey
+    ) {
       event.preventDefault();
       handleSubmit();
     }
@@ -608,7 +635,7 @@ export function ChannelMessageComposer({
             }}
             onDrop={handleDrop}
           >
-            {!isMarkdownSource ? <SelectionToolbar /> : null}
+            {!isSourceInput ? <SelectionToolbar /> : null}
             {replyTo ? (
               <div className="flex min-w-0 items-center gap-2 rounded-t-lg bg-muted/60 px-2 py-1 text-xs text-muted-foreground">
                 <span className="min-w-0 truncate">
@@ -756,14 +783,17 @@ export function ChannelMessageComposer({
             </Popover>
 
             <InputControl className={cn('h-auto min-h-10 overflow-hidden')}>
-              {isMarkdownSource ? (
+              {isSourceInput ? (
                 <InputControlTextarea
                   ref={markdownSourceRef}
-                  aria-label="Markdown message source"
-                  value={markdownSource}
-                  maxLength={MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS}
+                  aria-label={isComment ? 'Comment' : 'Markdown message source'}
+                  value={isComment ? plainText : markdownSource}
+                  readOnly={isComment && isPending}
+                  rows={isComment ? 1 : undefined}
+                  maxLength={maxCharacters}
                   onChange={(event) => {
-                    setMarkdownSource(event.target.value);
+                    if (isComment) setPlainText(event.target.value);
+                    else setMarkdownSource(event.target.value);
                     onTypingActivity?.(!!event.target.value.trim());
                   }}
                   onKeyDown={handleMarkdownSourceKeyDown}
@@ -775,7 +805,8 @@ export function ChannelMessageComposer({
                   enterKeyHint="send"
                   className={cn(
                     'max-h-40 min-h-10 resize-none py-2.5',
-                    'font-mono text-sm pointer-coarse:text-base leading-5',
+                    'text-sm pointer-coarse:text-base leading-5',
+                    isMarkdownSource && 'font-mono',
                   )}
                 />
               ) : (
@@ -905,13 +936,13 @@ export function ChannelMessageComposer({
                 align="inline-end"
                 className="self-end p-1 pl-0 pr-2"
               >
-                <Tooltip content={isPending ? 'Sending…' : submitLabel}>
+                <Tooltip content={isPending ? `${pendingLabel}…` : submitLabel}>
                   <Button
                     type="button"
                     size="icon-sm"
                     variant={canSend ? 'primary' : 'ghost'}
                     className="shrink-0"
-                    aria-label={isPending ? 'Sending message' : submitLabel}
+                    aria-label={isPending ? pendingLabel : submitLabel}
                     disabled={!canSend}
                     loading={isPending}
                     onClick={handleSubmit}

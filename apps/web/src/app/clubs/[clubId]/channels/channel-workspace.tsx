@@ -20,25 +20,9 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation';
-import { format, isSameDay, isSameYear, isToday, isYesterday } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
+import { formatMessageTime } from '@/lib/message-time';
 
-function formatChatTimestamp(value: number | string | Date) {
-  const date = new Date(value);
-  const now = new Date();
-  if (isSameDay(date, now)) return format(date, 'h:mm a');
-  if (isSameYear(date, now)) return format(date, 'MMM d');
-  return format(date, 'MMM d, yyyy');
-}
-
-/** The full send time, for the message action sheet. */
-function formatSheetTimestamp(value: number | string | Date) {
-  const date = new Date(value);
-  if (isToday(date)) return `Today at ${format(date, 'h:mm a')}`;
-  if (isYesterday(date)) return `Yesterday at ${format(date, 'h:mm a')}`;
-  if (isSameYear(date, new Date()))
-    return format(date, "EEE, MMM d 'at' h:mm a");
-  return format(date, "MMM d, yyyy 'at' h:mm a");
-}
 import {
   useAction,
   useMutation,
@@ -121,7 +105,7 @@ import {
   MessageActionSheet,
   type MessageSheetAction,
 } from '@/components/clubs/message-action-sheet';
-import type { ViewerImage } from '@/components/clubs/image-viewer';
+import type { ViewerImage } from '@/components/media/image-viewer';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 import { latestVisibleChatActivity } from '~/apps/shared/chat/activity';
 import { firstUnreadChannelMessageId } from '~/apps/shared/chat/unread-boundary';
@@ -299,7 +283,7 @@ function getAttachmentDescription(attachment: ClubChannelMessageAttachment) {
 // Loaded on first open, so the viewer costs the chat nothing until then.
 const ImageViewer = dynamic(
   () =>
-    import('@/components/clubs/image-viewer').then(
+    import('@/components/media/image-viewer').then(
       (module) => module.ImageViewer,
     ),
   { ssr: false },
@@ -571,7 +555,7 @@ function PinnedMessagesButton({
                         </span>
                         <DeveloperBadge user={message.author} size={13} />
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {formatChatTimestamp(message.createdAt)}
+                          {formatMessageTime(message.createdAt)}
                         </span>
                       </span>
                       <span className="mt-0.5 line-clamp-2 block break-words text-sm leading-5 text-muted-foreground">
@@ -663,11 +647,14 @@ function ChannelSearch({
                     );
                   }}
                 >
-                  <ClubPersonAvatar person={message.author} className="size-7" />
+                  <ClubPersonAvatar
+                    person={message.author}
+                    className="size-7"
+                  />
                   <span className="min-w-0">
                     <span className="block text-xs text-muted-foreground">
                       {fullName(message.author)} ·{' '}
-                      {formatChatTimestamp(message.createdAt)}
+                      {formatMessageTime(message.createdAt)}
                     </span>
                     <span className="line-clamp-2 block whitespace-pre-wrap break-words text-sm">
                       {message.body
@@ -1644,7 +1631,7 @@ function MessageRow({
                       <span className="text-xs text-muted-foreground">
                         {isSending
                           ? 'Sending…'
-                          : formatChatTimestamp(message.createdAt)}
+                          : formatMessageTime(message.createdAt)}
                       </span>
                       {message.isPinned ? (
                         <Tooltip content="Pinned message">
@@ -1658,7 +1645,7 @@ function MessageRow({
                       ) : null}
                       {isEdited ? (
                         <Tooltip
-                          content={`Edited ${formatSheetTimestamp(message.editedAt!)}`}
+                          content={`Edited ${formatMessageTime(message.editedAt!, 'full')}`}
                         >
                           <span className="text-xs text-muted-foreground">
                             (edited)
@@ -1898,7 +1885,7 @@ function MessageRow({
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
           <ContextMenuLabel className="text-xs font-normal text-muted-foreground">
-            {format(new Date(message.createdAt), 'EEE, MMM d · h:mm a')}
+            {formatMessageTime(message.createdAt, 'full')}
           </ContextMenuLabel>
           <ContextMenuSeparator />
           <ContextMenuSub>
@@ -1958,7 +1945,7 @@ function MessageRow({
               />
             ),
             authorName: fullName(message.author),
-            sentAt: formatSheetTimestamp(message.createdAt),
+            sentAt: formatMessageTime(message.createdAt, 'full'),
             text: message.body.trim()
               ? message.body
               : message.poll
