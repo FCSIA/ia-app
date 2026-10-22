@@ -7,6 +7,7 @@ import { flexSessionTypeValidator } from "../validators";
 import { deliverMany, flexFridayAudience } from "../notifications/delivery";
 import { canCreateFlexFriday } from "./permissions";
 import { countFlexSessions } from "./counts";
+import { schoolDaySpan } from "../../lib/schoolTime";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -88,10 +89,10 @@ export const create = mutation({
       flexFridayId: fridayId,
       title: "Flex Friday",
       description: args.notes?.trim(),
-      startAt: date,
-      endAt: date,
+      ...schoolDaySpan(date),
+      allDay: true,
       tags: ["flex-friday"],
-      source: "SCHOOL",
+      source: "FLEX_FRIDAY",
       createdById: user._id,
       createdAt: Date.now(),
     });

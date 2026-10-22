@@ -28,4 +28,8 @@ describe("ICS normalization", () => {
       { startAt: Date.parse("2026-10-22T13:00:00Z"), allDay: false, url: undefined },
     ]);
   });
+
+  it("rejects an oversized import instead of silently dropping later dates", () => {
+    expect(() => parseIcs(feed("DTSTART:20261022T130000Z\r\nDTEND:20261022T140000Z\r\nRRULE:FREQ=DAILY;COUNT=301"), now)).toThrow("more than 300 events");
+  });
 });
