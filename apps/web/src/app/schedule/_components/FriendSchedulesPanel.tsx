@@ -71,7 +71,7 @@ export function FriendSchedulesPanel() {
                   <Spinner />
                 ) : search ? (
                   <InputControlButton
-                    size="icon-xs"
+                    size="icon-compact"
                     aria-label="Clear search"
                     onClick={() => setSearch("")}
                   >

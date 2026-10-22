@@ -45,7 +45,7 @@
   /* Default boundaries follow the local surface, just like interaction layers.
      Themes with an explicit border palette can retain that color below. */
   --color-border: var(--theme-border-color, hsl(var(--foreground) / 0.16));
-  --color-input: hsl(var(--input));
+  --color-input: var(--color-border);
   --color-ring: hsl(var(--ring));
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -140,6 +140,9 @@
 
 @layer base {
   :root {
+    --focus-ring: hsl(var(--ring));
+    --mention: var(--foreground);
+    --mention-surface: var(--accent);
     /* Outer page backdrop — clean near-white */
     --background: 150 10% 98%;
     --foreground: 150 10% 10%;

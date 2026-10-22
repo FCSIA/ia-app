@@ -18,17 +18,17 @@ const searchInputSizeStyles: Record<
   }
 > = {
   sm: {
-    group: "h-8 rounded-lg",
+    group: "",
     icon: "size-3.5",
     input: "text-sm",
   },
   default: {
-    group: "rounded-xl",
+    group: "",
     icon: "size-4",
     input: "",
   },
   lg: {
-    group: "h-11 rounded-xl",
+    group: "",
     icon: "size-4",
     input: "text-base",
   },
@@ -65,6 +65,7 @@ function SearchInput({
     <div className={cn("relative flex items-center", styles.group, className)}>
       <Search className={cn("pointer-events-none absolute left-3 text-muted-foreground", styles.icon)} />
       <Input
+        size={size === "default" ? "md" : size}
         type="text"
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
@@ -74,16 +75,16 @@ function SearchInput({
       {!hideClearButton && value ? (
         <Button
           type="button"
-          size="icon-sm"
+          size={size === "sm" ? "icon-compact" : size === "lg" ? "icon" : "icon-sm"}
           variant="ghost"
-          className="absolute right-1 text-muted-foreground hover:text-foreground"
+          className="absolute right-0 text-muted-foreground hover:text-foreground"
           onClick={() => {
             onValueChange("")
             onClear?.()
           }}
           aria-label={clearLabel}
         >
-          <X className={styles.icon} />
+          <X />
         </Button>
       ) : null}
     </div>
