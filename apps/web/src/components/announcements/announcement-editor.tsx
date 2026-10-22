@@ -18,8 +18,7 @@ import {
   StrikethroughPlugin,
   UnderlinePlugin,
 } from '@platejs/basic-nodes/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownBody } from '@/components/ui/markdown-body';
 import { Tabs, TabItem, TabsList, TabPanel } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -210,7 +209,7 @@ export function AnnouncementEditor({ value, onChange, disabled = false }: Announ
         />
         <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
           <p className="mb-2 text-xs font-medium text-muted-foreground">Preview</p>
-          <div className="typeset max-w-none text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]}>{value || 'Nothing to preview yet.'}</ReactMarkdown></div>
+          <div className="typeset max-w-none text-sm"><MarkdownBody>{value || 'Nothing to preview yet.'}</MarkdownBody></div>
         </div>
       </TabPanel>
     </Tabs>

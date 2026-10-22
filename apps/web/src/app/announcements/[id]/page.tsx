@@ -18,8 +18,7 @@ import { AnnouncementMedia } from '@/components/announcements/announcement-media
 import { Card, CardContent, CardGroup, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownBody } from '@/components/ui/markdown-body';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -210,7 +209,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           <CardContent className="space-y-4 pt-5">
             {announcement.bodyMarkdown ? (
               <div className="typeset max-w-none text-base leading-7 text-foreground">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{announcement.bodyMarkdown}</ReactMarkdown>
+                <MarkdownBody>{announcement.bodyMarkdown}</MarkdownBody>
               </div>
             ) : (
               <div className="whitespace-pre-wrap break-words text-base leading-7 text-foreground">{announcement.body}</div>
