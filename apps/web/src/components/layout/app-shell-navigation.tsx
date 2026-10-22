@@ -52,17 +52,17 @@ import {
 } from "@/components/ui/dropdown";
 import { MenuItem } from "@/components/ui/menu-item";
 
-export type MobileTabId =
-  | "announcements"
-  | "clubs"
-  | "schedule"
-  | "calendar"
-  | "events"
-  | "flex-friday"
-  | "wrapped";
-
-export const MOBILE_TAB_DESTINATION_MIN = 4;
-export const MOBILE_TAB_DESTINATION_MAX = 5;
+import { MobileTabEditor } from "./mobile-tab-editor";
+import { Button } from "@/components/ui/button";
+import {
+  normalizeMobileTabLayout,
+  type MobileTabId,
+} from "./mobile-tab-layout";
+export {
+  MOBILE_TAB_DESTINATION_MIN,
+  MOBILE_TAB_DESTINATION_MAX,
+  type MobileTabId,
+} from "./mobile-tab-layout";
 
 type NavItem = {
   href: string;
@@ -73,12 +73,32 @@ type NavItem = {
 
 const primaryNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/announcements", label: "Announcements", icon: Megaphone, mobileTabId: "announcements" },
+  {
+    href: "/announcements",
+    label: "Announcements",
+    icon: Megaphone,
+    mobileTabId: "announcements",
+  },
   { href: "/clubs", label: "Clubs", icon: UsersRound, mobileTabId: "clubs" },
-  { href: "/schedule", label: "Schedule", icon: ClipboardList, mobileTabId: "schedule" },
+  {
+    href: "/schedule",
+    label: "Schedule",
+    icon: ClipboardList,
+    mobileTabId: "schedule",
+  },
   { href: "/events", label: "Events", icon: Ticket, mobileTabId: "events" },
-  { href: "/calendar", label: "Calendar", icon: CalendarRange, mobileTabId: "calendar" },
-  { href: "/flex-friday", label: "Flex Friday", icon: Presentation, mobileTabId: "flex-friday" },
+  {
+    href: "/calendar",
+    label: "Calendar",
+    icon: CalendarRange,
+    mobileTabId: "calendar",
+  },
+  {
+    href: "/flex-friday",
+    label: "Flex Friday",
+    icon: Presentation,
+    mobileTabId: "flex-friday",
+  },
   { href: "/wrapped", label: "Wrapped", icon: Star, mobileTabId: "wrapped" },
 ];
 
@@ -284,13 +304,14 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
   const overflowCandidates = pinAuxiliaryControls
     ? primary
     : [...primary, ...auxiliaryItems];
-  const capacity = railHeight === null
-    ? overflowCandidates.length
-    : getDesktopNavigationCapacity({
-        railHeight,
-        itemCount: overflowCandidates.length,
-        reserveAuxiliaryControls: pinAuxiliaryControls,
-      });
+  const capacity =
+    railHeight === null
+      ? overflowCandidates.length
+      : getDesktopNavigationCapacity({
+          railHeight,
+          itemCount: overflowCandidates.length,
+          reserveAuxiliaryControls: pinAuxiliaryControls,
+        });
   const hasOverflow = capacity < overflowCandidates.length;
   // The ellipsis occupies one of the available control slots when anything
   // moves into it, so reserve that slot before choosing direct destinations.
@@ -342,11 +363,16 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
                 key={item.href}
                 item={item}
                 active={isActive(props.pathname, item.href)}
-                badge={item.href === "/notifications" ? props.unreadBadge : undefined}
+                badge={
+                  item.href === "/notifications" ? props.unreadBadge : undefined
+                }
               />
             ))
           : null}
-        <NavIcon item={profile} active={isActive(props.pathname, profile.href)} />
+        <NavIcon
+          item={profile}
+          active={isActive(props.pathname, profile.href)}
+        />
       </div>
     </aside>
   );
@@ -384,7 +410,8 @@ function DesktopNavigationOverflow({
                 className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]"
                 strokeWidth={active ? 2.25 : 1.75}
               />
-              {unreadBadge && items.some((item) => item.href === "/notifications") ? (
+              {unreadBadge &&
+              items.some((item) => item.href === "/notifications") ? (
                 <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
                   {unreadBadge}
                 </span>
@@ -402,9 +429,7 @@ function DesktopNavigationOverflow({
             icon={item.icon}
             label={item.label}
             onSelect={() => onNavigate(item.href)}
-            className={cn(
-              isActive(pathname, item.href) && "bg-active",
-            )}
+            className={cn(isActive(pathname, item.href) && "bg-active")}
           />
         ))}
       </DropdownContent>
@@ -420,6 +445,7 @@ function AppShellMobileNavigation({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [editorOpen, setEditorOpen] = useState(false);
   const primary = getNavigationItems(props);
   const directPaths = new Set(
     getMobileTabItems(props)
@@ -429,24 +455,23 @@ function AppShellMobileNavigation({
   const overflowPrimary = primary.filter((item) => !directPaths.has(item.href));
 
   return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      shouldScaleBackground={false}
-    >
-      <DrawerContent
-        className="max-h-[min(82dvh,42rem)] border-sidebar-border bg-sidebar text-sidebar-foreground"
+    <>
+      <Drawer
+        open={open}
+        onOpenChange={onOpenChange}
+        shouldScaleBackground={false}
       >
-        <DrawerHeader className="border-b border-sidebar-border px-4 pb-3 pt-1 text-left">
-          <DrawerTitle className="text-base text-sidebar-foreground">
-            More
-          </DrawerTitle>
-          <DrawerDescription className="text-xs text-sidebar-foreground/65">
-            Events, feedback, account tools, and additional app areas.
-          </DrawerDescription>
-        </DrawerHeader>
-        <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
-          <nav className="flex flex-col gap-1 p-3 pb-2">
+        <DrawerContent className="max-h-[min(82dvh,42rem)] border-sidebar-border bg-sidebar text-sidebar-foreground">
+          <DrawerHeader className="border-b border-sidebar-border px-4 pb-3 pt-1 text-left">
+            <DrawerTitle className="text-base text-sidebar-foreground">
+              More
+            </DrawerTitle>
+            <DrawerDescription className="text-xs text-sidebar-foreground/65">
+              Events, feedback, account tools, and additional app areas.
+            </DrawerDescription>
+          </DrawerHeader>
+          <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
+            <nav className="flex flex-col gap-1 p-3 pb-2">
               {overflowPrimary.map((item) => (
                 <MobileNavLink
                   key={item.href}
@@ -483,39 +508,51 @@ function AppShellMobileNavigation({
                     />
                   ))
                 : null}
-          </nav>
-        </ScrollArea>
-      </DrawerContent>
-    </Drawer>
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => {
+                  onOpenChange(false);
+                  setEditorOpen(true);
+                }}
+              >
+                Edit tab bar
+              </Button>
+            </nav>
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
+      <MobileTabEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        options={getMobileTabEditorItems(props)}
+        savedLayout={props.mobileTabLayout}
+        showSchedule={props.showSchedule}
+      />
+    </>
   );
 }
 
-type MobileTabItem = NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
+type MobileTabItem =
+  NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
 
 function getMobileTabEditorItems(props: AppShellNavigationProps) {
   return getNavigationItems(props).filter(
-    (item): item is NavItem & { mobileTabId: MobileTabId } => item.mobileTabId !== undefined,
+    (item): item is NavItem & { mobileTabId: MobileTabId } =>
+      item.mobileTabId !== undefined,
   );
 }
 
 function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   const availableItems = getMobileTabEditorItems(props);
-  const availableById = new Map(availableItems.map((item) => [item.mobileTabId, item]));
-  const defaults: MobileTabId[] = [
-    "announcements",
-    "clubs",
-    props.showSchedule ? "schedule" : "calendar",
-    "events",
-  ];
-  const savedIds = (props.mobileTabLayout ?? []).filter(
-    (id): id is MobileTabId => availableById.has(id as MobileTabId),
+  const availableById = new Map(
+    availableItems.map((item) => [item.mobileTabId, item]),
   );
-  const selectedIds = [
-    ...savedIds,
-    ...defaults,
-  ].filter(
-    (id, index, ids) => availableById.has(id) && ids.indexOf(id) === index,
-  ).slice(0, MOBILE_TAB_DESTINATION_MAX);
+  const selectedIds = normalizeMobileTabLayout(
+    props.mobileTabLayout,
+    availableItems.map((item) => item.mobileTabId),
+    props.showSchedule,
+  );
 
   return [
     { href: "/dashboard", label: "Home", icon: Home },
@@ -540,20 +577,28 @@ function AppShellMobileTabBar({
   const prewarm = usePrewarmRoute();
   const items = getMobileTabItems(props);
   const directItems = items.filter((item) => item.href !== "#more");
-  const moreActive = !directItems.some((item) => isActive(props.pathname, item.href));
+  const moreActive = !directItems.some((item) =>
+    isActive(props.pathname, item.href),
+  );
 
   return (
     <nav
       ref={tabBarRef}
       aria-label="Primary mobile navigation"
-      className={cn("app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card px-1 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden", CARD_SURFACE_FOREGROUND)}
+      className={cn(
+        "app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card px-1 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden",
+        CARD_SURFACE_FOREGROUND,
+      )}
       style={{
         gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
-        transform: 'translateY(var(--app-mobile-tabbar-viewport-offset, 0px))',
+        transform: "translateY(var(--app-mobile-tabbar-viewport-offset, 0px))",
       }}
     >
       {items.map((item) => {
-        const active = item.href === "#more" ? moreActive : isActive(props.pathname, item.href);
+        const active =
+          item.href === "#more"
+            ? moreActive
+            : isActive(props.pathname, item.href);
         const Icon = item.icon;
         const content = (
           <>
@@ -562,7 +607,11 @@ function AppShellMobileTabBar({
                 layoutId="app-mobile-tab-active"
                 aria-hidden
                 className="absolute inset-x-1 inset-y-1 rounded-2xl bg-active"
-                transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.2, bounce: 0 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { type: "spring", duration: 0.2, bounce: 0 }
+                }
               />
             ) : null}
             <Icon

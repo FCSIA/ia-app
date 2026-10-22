@@ -9,6 +9,11 @@ import { hasRole, startLogout, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { useSeenRelease } from '@/components/devlog/use-seen-release';
+import { MobileTabEditor } from '@/components/layout/mobile-tab-editor';
+import { getMobileTabEditorItems } from '@/components/layout/app-shell-navigation';
+import { computeWrappedAvailability } from '@/lib/wrapped';
+import { Panel } from '@/components/layout/page-frame';
+import { Button } from '@/components/ui/button';
 import {
   AccountSettingsSection,
   AppearanceSection,
@@ -29,6 +34,9 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const showSchedule = Boolean(user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN'));
+  const navigationOptions = getMobileTabEditorItems({ pathname: '/profile', showAdmin: false, showSchedule, showWrapped: computeWrappedAvailability().open });
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -132,6 +140,13 @@ export default function ProfilePage() {
               savingTimeFormat={savingTimeFormat}
               onUse24HourTimeChange={(value) => void handleTimeFormatChange(value)}
             />
+          ) : null}
+          {visibleSection === 'navigation' ? (
+            <Panel title="Navigation">
+              <p className="mb-4 text-sm text-muted-foreground">Choose the destinations in your mobile tab bar.</p>
+              <Button variant="tertiary" onClick={() => setNavigationOpen(true)}>Edit tab bar</Button>
+              <MobileTabEditor open={navigationOpen} onOpenChange={setNavigationOpen} options={navigationOptions} savedLayout={user?.mobileTabLayout} showSchedule={showSchedule} />
+            </Panel>
           ) : null}
           {visibleSection === 'moderation' && canSeeModeration ? (
             <ModerationAlertsSection alerts={moderationAlerts} />
