@@ -64,9 +64,13 @@
   (21 existing warnings), production build, and the worktree-local function push
   pass. Browser checks confirm missing-key errors, disabled Send and preserved
   captions after removal. This follow-up is not pushed or deployed to a shared
-  environment. GIPHY key setup awaits user sign-in in the open browser tab.
-  Tenor no longer accepts new API clients, so Tenor previews are currently
-  blocked; the user was asked whether to replace the picker with GIPHY entries.
+  environment. The user signed in to GIPHY and approved replacing the Tenor
+  picker. The web API application is prepared but unsubmitted, awaiting explicit
+  API Terms acceptance. GIPHY's current integration requirements prohibit server
+  proxying and media caching/storage without prior written approval; the owner
+  was asked to choose direct client delivery or retain storage pending approval.
+  No key was created or configured. Tenor previews remain blocked because its
+  documented ID endpoint cannot verify a rating and new API clients are closed.
 
 ### Audit UI Repair (2026-10-20)
 

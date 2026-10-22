@@ -107,12 +107,23 @@ Capture: `/tmp/ia-gif-review/safety-unverified-desktop.png`. No console errors
 appeared. Successful provider verification is covered with mocked metadata;
 a live key has not yet been configured.
 
-The user authorized API-key setup via Computer. GIPHY's dashboard redirects to
-sign-in, and the tab is left open for the user. Tenor's current quickstart says
-new API clients have not been accepted since January 2026. Its ID endpoint does
-not document content filtering, so Tenor previews and the existing Tenor picker
-are blocked rather than treated as verified. A picker replacement decision is
-pending. The follow-up has not been pushed or deployed to a shared environment.
+The user authorized API-key setup via Computer, signed in, and chose to replace
+the Tenor picker with GIPHY. The web API application is filled in but unsubmitted;
+its API Terms checkbox requires explicit confirmation. No key has been created
+or configured. Tenor's current quickstart says new API clients have not been
+accepted since January 2026. Its ID endpoint does not document content filtering,
+so Tenor previews and the existing Tenor picker remain blocked.
+
+GIPHY's current [integration requirements](https://developers.giphy.com/docs/api/#prohibited-integration-practices)
+require client-side API/media requests and prohibit media caching, rewriting or
+storage without prior written approval. Its [API Terms](https://support.giphy.com/hc/en-us/articles/360028134111-GIPHY-API-Terms-of-Service)
+also restrict building a GIF directory and require provider/source attribution.
+These requirements conflict with the implemented server verification, fixed
+catalog and object-storage delivery. The owner was asked whether to change to
+direct client delivery or retain storage pending written GIPHY approval, and
+whether to accept the API Terms for the prepared beta-key application. The
+rating follow-up remains unpushed and undeployed to shared environments; do not
+enable its GIPHY storage flow without resolving this provider approval.
 
 ### Visual and device review
 

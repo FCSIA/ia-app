@@ -38,6 +38,12 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 
 ## GIF Provider Verification
 
+The rating follow-up is currently held: GIPHY's
+[integration requirements](https://developers.giphy.com/docs/api/#prohibited-integration-practices)
+require direct client-side requests and prior written approval for media
+caching/storage. Resolve that provider approval or change the delivery design
+before enabling the backend flow described below.
+
 Set `GIPHY_API_KEY` in the selected Convex deployment's environment. It is a
 backend-only key; do not add a `NEXT_PUBLIC_` or `EXPO_PUBLIC_` copy. The linked
 GIF downloader calls GIPHY's single-item lookup with `rating=g`, verifies the
