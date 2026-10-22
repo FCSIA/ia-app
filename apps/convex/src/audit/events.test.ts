@@ -85,6 +85,16 @@ async function fixture() {
 }
 
 describe('audit search grammar', () => {
+  test('opens an exact user target safely and only for staff', async () => {
+    const { adminClient, studentClient, t, admin, student } = await fixture();
+    const paginationOpts = { numItems: 20, cursor: null };
+    const exact = await adminClient.query(api.users.admin.list, { userId: admin, roleGroup: 'students', search: 'does not match', paginationOpts });
+    expect(exact.page.map((person) => person._id)).toEqual([admin]);
+    expect(exact.isDone).toBe(true);
+    expect((await adminClient.query(api.users.admin.list, { userId: 'invalid-id', paginationOpts })).page).toEqual([]);
+    expect((await studentClient.query(api.users.admin.list, { userId: student, paginationOpts })).page).toEqual([]);
+    expect((await t.query(api.users.admin.list, { userId: admin, paginationOpts })).page).toEqual([]);
+  });
   test.each([
     ['ANNOUNCEMENT_COMMENT_DELETED', 'Deleted announcement comment'],
     ['CLUB_CHANNEL_MESSAGE_POSTED', 'Posted a message'],

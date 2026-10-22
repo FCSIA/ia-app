@@ -122,7 +122,7 @@ export function auditContextResolver(ctx: QueryCtx) {
     const clubId = typeof meta.clubId === 'string' ? meta.clubId : typeof entity?.clubId === 'string' ? entity.clubId : null;
     const channelId = typeof meta.channelId === 'string' ? meta.channelId : typeof entity?.channelId === 'string' ? entity.channelId : null;
     const href = (targetTable: TableNames | undefined, id: string): string | null => {
-      if (targetTable === 'users') return `/admin?tab=users&user=${id}`;
+      if (targetTable === 'users') return `/admin/users?user=${id}`;
       if (targetTable === 'clubs') return `/clubs/${id}`;
       if (targetTable === 'clubChannels' && clubId) return `/clubs/${clubId}/channels/${id}`;
       if (targetTable === 'clubChannelMessages' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?message=${id}`;
@@ -131,7 +131,7 @@ export function auditContextResolver(ctx: QueryCtx) {
       if (targetTable === 'comments' && typeof (meta.announcementId ?? entity?.announcementId) === 'string') return `/announcements/${meta.announcementId ?? entity?.announcementId}`;
       if (targetTable === 'events') return `/events/${id}`;
       if (targetTable?.startsWith('flex')) return '/flex-friday';
-      if (targetTable === 'moderationReports' || targetTable === 'moderationKeywordRules') return '/admin?tab=moderation';
+      if (targetTable === 'moderationReports' || targetTable === 'moderationKeywordRules') return '/admin/moderation';
       if (targetTable?.startsWith('club') && clubId) return `/clubs/${clubId}`;
       return null;
     };

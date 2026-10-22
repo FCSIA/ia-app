@@ -80,6 +80,8 @@ export const list = query({
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
+    // Exact record target for admin links. Authorization still comes from the session.
+    userId: v.optional(v.string()),
     roleGroup: v.optional(userRoleGroupValidator),
   },
   returns: listUsersResultValidator,
@@ -91,6 +93,12 @@ export const list = query({
         isDone: true,
         continueCursor: "",
       };
+    }
+
+    if (args.userId !== undefined) {
+      const id = ctx.db.normalizeId("users", args.userId);
+      const target = id ? await ctx.db.get(id) : null;
+      return { page: target ? [toAdminUserProfile(target)] : [], isDone: true, continueCursor: "" };
     }
 
     const roleGroup = args.roleGroup ?? "all";
