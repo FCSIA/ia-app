@@ -15,6 +15,7 @@ import {
 import { toZoned } from "@/components/reui/event-calendar/event-calendar-lib"
 import type { CalendarView } from "@/components/reui/event-calendar/event-calendar-types"
 import { addDays, format } from "date-fns"
+import { TZDate } from "@date-fns/tz"
 import { Slot } from "@/components/ui/slot"
 
 import { cn } from "@/lib/utils"
@@ -44,14 +45,14 @@ import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CalendarIcon } from
 function useNavButtonProps(): {
   variant: "ghost" | "tertiary" | "secondary" | "primary"
   size: "sm" | "md"
-  iconSize: "icon-sm" | "icon"
+  iconSize: "icon-compact" | "icon-sm"
   className: string | undefined
 } {
   const viewConfig = useEventCalendarViewConfig()
   return {
     variant: viewConfig.navButtonVariant,
     size: viewConfig.navButtonSize,
-    iconSize: viewConfig.navButtonSize === "sm" ? "icon-sm" : "icon",
+    iconSize: viewConfig.navButtonSize === "sm" ? "icon-compact" : "icon-sm",
     className: viewConfig.classNames?.navButton,
   }
 }
@@ -142,6 +143,7 @@ function EventCalendarNavToday({
     settings.i18n.formats.dayTitle,
     { locale: settings.locale }
   )
+  if (isToday) return null
   return (
     <NavTooltip content={tooltip === undefined ? defaultTooltip : tooltip}>
       <Button
@@ -435,7 +437,7 @@ function EventCalendarDatePicker({
 
   const pick = (next: Date | undefined) => {
     if (!next) return
-    goTo(next)
+    goTo(TZDate.tz(settings.timeZone, next.getFullYear(), next.getMonth(), next.getDate()))
     setOpen(false)
   }
 
@@ -445,10 +447,10 @@ function EventCalendarDatePicker({
         <PopoverTrigger asChild {...props}>
           <Button
             variant={nav.variant}
-            size={nav.iconSize}
+            size={children ? nav.size : nav.iconSize}
             data-slot="event-calendar-date-picker"
             data-mode={resolved}
-            aria-label={settings.i18n.labels.goToDate}
+            aria-label={props["aria-label"] ?? settings.i18n.labels.goToDate}
             className={cn(nav.className, className)}
             asChild={asChild}
           >

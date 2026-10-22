@@ -302,7 +302,7 @@ function EventCalendarMonthView({
           <div
             ref={slotProbeRef}
             aria-hidden
-            className="pointer-events-none invisible absolute h-[var(--ec-month-bar-h,1.75rem)] w-0"
+            className="pointer-events-none invisible absolute h-[var(--ec-month-bar-h,1.5rem)] w-0"
           />
         )}
       </Comp>
@@ -528,12 +528,12 @@ function EventCalendarMonthWeek({
         <div
           data-slot="event-calendar-month-bar-overlay"
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 z-10 grid pt-1.5",
+            "pointer-events-none absolute inset-x-0 top-7 z-10 grid pt-1.5",
             viewConfig.classNames?.monthBarOverlay
           )}
           style={{
             gridTemplateColumns,
-            gridAutoRows: "var(--ec-month-bar-h, 1.75rem)",
+            gridAutoRows: "var(--ec-month-bar-h, 1.5rem)",
           }}
         >
           {visibleBars.map((bar) => {
@@ -554,7 +554,7 @@ function EventCalendarMonthWeek({
                 {/* lane height minus the 2px inter-lane gap */}
                 <EventCalendarEvent
                   segment={bar}
-                  className="h-[calc(var(--ec-month-bar-h,1.75rem)-0.125rem)]"
+                  className="h-[calc(var(--ec-month-bar-h,1.5rem)-0.125rem)]"
                 />
               </div>
             )
@@ -573,7 +573,7 @@ function EventCalendarMonthWeek({
                 data-kind={dragGhost.kind}
                 data-drop-invalid={!dragGhost.valid || undefined}
                 className={cn(
-                  "h-[calc(var(--ec-month-bar-h,1.75rem)-0.125rem)]",
+                  "h-[calc(var(--ec-month-bar-h,1.5rem)-0.125rem)]",
                   dragGhost.kind === "move"
                     ? // faint drop placeholder only: the cursor-attached
                       // carry clone owns the visual during moves
@@ -651,6 +651,7 @@ function EventCalendarMonthCell({
   /** Set on the first cell only: measured to derive the "auto" cap. */
   contentRef?: Ref<HTMLDivElement>
 }) {
+  const instance = useEventCalendar()
   const settings = useEventCalendarSettings()
   const viewConfig = useEventCalendarViewConfig()
   const gestures = useEventCalendarGestures()
@@ -864,7 +865,7 @@ function EventCalendarMonthCell({
       style={
         {
           "--ec-event-color": inlineDrop.color ?? "var(--color-primary)",
-          height: "calc(var(--ec-month-bar-h, 1.75rem) - 0.125rem)",
+          height: "calc(var(--ec-month-bar-h, 1.5rem) - 0.125rem)",
         } as CSSProperties
       }
     />
@@ -891,7 +892,7 @@ function EventCalendarMonthCell({
               // lane height already carries the 2px inter-lane gap; subtract
               // it so spacer + the column's own gap-0.5 = the SAME 2px rhythm
               // between the last bar and the first timed chip
-              height: `calc(${reservedLanes} * var(--ec-month-bar-h, 1.75rem) - 0.125rem)`,
+              height: `calc(${reservedLanes} * var(--ec-month-bar-h, 1.5rem) - 0.125rem)`,
             }}
           />
         )}
@@ -939,10 +940,10 @@ function EventCalendarMonthCell({
           />
         )}
       </div>
-      {/* Day number + add affordance, bottom-right (Notion-style) */}
+      {/* Date navigation and creation share the cell's top row. */}
       <div
         className={cn(
-          "flex items-center justify-end gap-1 px-2 pb-1.5",
+          "order-first flex h-7 shrink-0 items-center justify-between gap-1 px-2",
           viewConfig.classNames?.monthCellFooter
         )}
       >
@@ -967,17 +968,16 @@ function EventCalendarMonthCell({
             <PlusIcon className="size-3.5" aria-hidden="true" />
           </button>
         )}
-        <span
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); instance.api.goTo(day); instance.api.setView("day") }}
+          aria-label={format(toZoned(day, settings.timeZone), "EEEE, MMMM d", { locale: settings.locale })}
           data-slot="event-calendar-month-day-number"
           className={cn(
-            "flex size-5 items-center justify-center rounded-full",
+            "order-first flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
             isOutside && "text-muted-foreground",
-            // the filled circle already marks today; keep the number the same
-            // weight/size as the other days so it does not read as larger
-            // Same font-size as every other day; a lighter weight cancels the
-            // way white digits on the filled circle read bolder/larger than the
-            // dark-on-light numbers around them.
-            isToday && "bg-primary text-primary-foreground font-light",
+            // Keep the numeral readable across light and dark primary colors.
+            isToday && "bg-primary/20 text-foreground font-semibold ring-1 ring-primary",
             viewConfig.classNames?.monthDayNumber
           )}
         >
@@ -986,7 +986,7 @@ function EventCalendarMonthCell({
             settings.i18n.formats.monthCellDay,
             { locale: settings.locale }
           )}
-        </span>
+        </button>
       </div>
     </>
   )
@@ -1029,7 +1029,7 @@ function EventCalendarMonthCell({
         isOff && offClassName,
         isToday &&
           cn(
-            "bg-primary/3 border-b-primary/40 relative border-b-2",
+            "bg-primary/[0.06]",
             viewConfig.todayClassName
           ),
         viewConfig.dayClassName?.(day),
@@ -1150,7 +1150,7 @@ function EventCalendarMoreIndicator({
           dropInto
             ? ({
                 "--ec-event-color": dropInto.color ?? "var(--color-primary)",
-                height: "calc(var(--ec-month-bar-h, 1.75rem) - 0.125rem)",
+                height: "calc(var(--ec-month-bar-h, 1.5rem) - 0.125rem)",
               } as CSSProperties)
             : undefined
         }

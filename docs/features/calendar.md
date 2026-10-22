@@ -17,29 +17,41 @@ overrides, and canonical-period resolution.
 
 - Lists entries within the active view's visible range.
 - Filters by source.
-- Searches title, description, and location on the client for the current range.
-- Lets users create and delete their own personal entries.
+- Lets users create, edit and delete their own personal reminders, including
+  explicit end times and all-day date ranges.
+- Lets students invite accepted friends and manage received invitations.
 - Lets users connect private HTTPS ICS feeds, including Canvas personal calendar
   feeds such as `fultonschools.instructure.com`.
 - Shows published events and Flex Friday rows through linked calendar entries.
 - Uses the ReUI event-calendar engine for month, week, day, and agenda views.
 - Offers month, week, day, and agenda on larger screens; phones use agenda and
-  day views so event content is never compressed into seven narrow columns.
-- Uses the shared date-calendar adapter for the compact Dashboard picker.
+  day and three-day views so event content is never compressed into seven
+  narrow columns.
+- Persists the selected period/view in `?date=YYYY-MM-DD&view=…` and shares
+  event-row anatomy and source colors with Dashboard's seven-day agenda.
+- Opens read-only details with source links for published/imported entries;
+  personal entries expose a separate Edit action.
 
 ## Source Files
 
 - Backend: `apps/convex/src/events/calendar.ts`
 - Web page: `apps/web/src/app/calendar/page.tsx`
 - Event calendar: `apps/web/src/components/reui/event-calendar/`
-- Dashboard picker: `apps/web/src/components/dashboard/widgets/CalendarWidget.tsx`
+- Dashboard agenda: `apps/web/src/components/dashboard/widgets/CalendarWidget.tsx`
 - Create dialog: `apps/web/src/components/calendar/AddCalendarEntryDialog.tsx`
+- Shared form and rows: `apps/web/src/components/calendar/`
 
 ## Convex Surface
 
 - `api.events.calendar.list`
 - `api.events.calendar.create`
+- `api.events.calendar.update`
 - `api.events.calendar.remove`
+- `api.events.calendar.listPendingInvites`
+- `api.events.calendar.listEligibleFriends`
+- `api.events.calendar.inviteFriends`
+- `api.events.calendar.respondToInvite`
+- `api.events.calendar.removeSharedEntry`
 - `api.events.externalCalendars.listMine`
 - `api.events.externalCalendars.createIcs`
 - `api.events.externalCalendars.refreshMine`
@@ -52,18 +64,29 @@ overrides, and canonical-period resolution.
 - optional `eventId`
 - optional `flexFridayId`
 - title, description, location
-- `startAt`, `endAt`
+- `startAt`, optional `endAt` and `allDay`; all-day ends are exclusive
 - `source`: `SCHOOL`, `CLUB`, `FLEX_FRIDAY`, `PERSONAL`, or `DISTRICT`
 - optional `createdById`
 - tags
 
-Personal entries are only returned to the user who created them.
+Personal entries are returned only to their owner and accepted invited friends
+while the friendship remains accepted. Removing a shared reminder declines that
+recipient's acceptance without deleting the owner's entry.
 
 External subscriptions and normalized events are private to their owner. The
 feed URL is not returned to clients after creation. A new connection starts its
 first sync immediately; ICS feeds then refresh every six hours. Imports retain
 events from the previous 31 days through the next year and mark failed
-connections with an error state for retry.
+connections with an error state for retry. DATE-valued and floating ICS times
+use the school timezone (`America/New_York`), and safe event URLs are retained.
+
+Calendar reads use source/owner-scoped start and overlap indexes, a maximum
+92-day range, and explicit failure beyond 1,000 rows per scan. End-index scans
+can hit this limit on future volume even for a short visible range. Feed imports
+fail explicitly beyond 300 in-window events or 20,000 inspected recurrence
+occurrences; they preserve the prior successful import on failure. See the
+[repair ledger](../reference/ui-audit-calendar-repairs-2026-10-22.md) for the
+capacity tradeoff and validation limits.
 
 ## Permissions
 

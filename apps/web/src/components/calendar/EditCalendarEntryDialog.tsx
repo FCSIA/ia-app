@@ -1,10 +1,12 @@
 'use client';
 
-import { displayName } from '~/apps/shared/user-name';
-
-import { useState } from 'react';
-import { useMutation, useQuery } from '@/lib/convex-react';
+import { useEffect, useState } from 'react';
+import { Check, Trash, UserPlus } from 'lucide-react';
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { api } from '~/apps/convex/src/_generated/api';
+import { useMutation, useQuery } from '@/lib/convex-react';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -14,28 +16,43 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Edit3, Clock, MapPin, AlignLeft, Trash, UserPlus } from 'lucide-react';
-import { format } from 'date-fns';
-import { Id } from '~/apps/convex/src/_generated/dataModel';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover';
+import { ReminderForm, reminderPayload, reminderValues } from './reminder-form';
 
 interface EditCalendarEntryDialogProps {
   entry: {
-    _id: Id<"calendarEntries">;
+    _id: Id<'calendarEntries'>;
     title: string;
     description?: string;
     location?: string;
     startAt: number;
     endAt?: number;
+    allDay?: boolean;
     source: string;
-    createdById?: string;
-    inviteId?: Id<'calendarInvites'>;
-    sharedBy?: { firstName: string; lastName: string; preferredName?: string | null };
   };
   trigger?: ((onOpen: () => void) => React.ReactNode) | null;
   open?: boolean;
@@ -50,273 +67,221 @@ export function EditCalendarEntryDialog({
 }: EditCalendarEntryDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
-  const setOpen = (nextOpen: boolean) => {
-    setInternalOpen(nextOpen);
-    onOpenChange?.(nextOpen);
+  const setOpen = (value: boolean) => {
+    setInternalOpen(value);
+    onOpenChange?.(value);
   };
-  const { toast } = useToast();
-
-  const [form, setForm] = useState({
-    title: entry.title,
-    description: entry.description || '',
-    location: entry.location || '',
-    date: format(new Date(entry.startAt), 'yyyy-MM-dd'),
-    time: format(new Date(entry.startAt), 'HH:mm'),
-  });
-
-  const updateEntry = useMutation(api.events.calendar.update);
-  const removeEntry = useMutation(api.events.calendar.remove);
-  const inviteFriends = useMutation(api.events.calendar.inviteFriends);
-  const friends = useQuery(api.events.calendar.listEligibleFriends, open ? {} : 'skip');
+  const [form, setForm] = useState(() => reminderValues(entry));
   const [pending, setPending] = useState(false);
-  const [selectedFriendIds, setSelectedFriendIds] = useState<Id<'users'>[]>([]);
-  const isOwnedPersonal = entry.source === 'PERSONAL' && !entry.inviteId;
+  const [error, setError] = useState<string>();
+  const [selected, setSelected] = useState<Id<'users'>[]>([]);
+  const { toast } = useToast();
+  const user = useCurrentUser();
+  const isStudent =
+    !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const update = useMutation(api.events.calendar.update);
+  const remove = useMutation(api.events.calendar.remove);
+  const invite = useMutation(api.events.calendar.inviteFriends);
+  const friends = useQuery(
+    api.events.calendar.listEligibleFriends,
+    open && isStudent ? {} : 'skip',
+  );
+  useEffect(() => {
+    if (open) {
+      setForm(reminderValues(entry));
+      setError(undefined);
+      setSelected([]);
+    }
+  }, [open, entry]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title || !form.date || !form.time) return;
-
-    const startAt = new Date(`${form.date}T${form.time}:00`).getTime();
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
     setPending(true);
+    setError(undefined);
     try {
-      await updateEntry({
-        entryId: entry._id,
-        title: form.title,
-        description: form.description || undefined,
-        location: form.location || undefined,
-        startAt,
-      });
+      await update({ entryId: entry._id, ...reminderPayload(form) });
       setOpen(false);
-      toast({ title: 'Reminder updated successfully' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed to add reminder',
-        variant: 'destructive',
-      });
+      toast({ title: 'Reminder updated' });
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Could not save the reminder.',
+      );
     } finally {
       setPending(false);
     }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this event?')) return;
+  }
+  async function deleteReminder() {
     setPending(true);
+    setError(undefined);
     try {
-      await removeEntry({ entryId: entry._id });
+      await remove({ entryId: entry._id });
       setOpen(false);
-      toast({ title: 'Event deleted' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed to delete event',
-        variant: 'destructive',
-      });
+      toast({ title: 'Reminder deleted' });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not delete the reminder.',
+      );
     } finally {
       setPending(false);
     }
-  };
-
-  const handleInviteFriends = async () => {
-    if (selectedFriendIds.length === 0) return;
+  }
+  async function sendInvites() {
     setPending(true);
+    setError(undefined);
     try {
-      const result = await inviteFriends({ entryId: entry._id, friendIds: selectedFriendIds });
-      setSelectedFriendIds([]);
-      toast({ title: result.invited === 1 ? 'Invite sent' : `${result.invited} invites sent` });
-    } catch (error) {
+      const result = await invite({ entryId: entry._id, friendIds: selected });
+      setSelected([]);
       toast({
-        title: error instanceof Error ? error.message : 'Failed to send invites',
-        variant: 'destructive',
+        title:
+          result.invited === 1
+            ? 'Invite sent'
+            : `${result.invited} invites sent`,
       });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not send the invitation.',
+      );
     } finally {
       setPending(false);
     }
-  };
-
+  }
   return (
-    <Dialog 
-      open={open} 
-      onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        if (isOpen) {
-          setForm({
-            title: entry.title,
-            description: entry.description || '',
-            location: entry.location || '',
-            date: format(new Date(entry.startAt), 'yyyy-MM-dd'),
-            time: format(new Date(entry.startAt), 'HH:mm'),
-          });
-          setSelectedFriendIds([]);
-        }
-      }}
-    >
-      {trigger === null ? null : trigger ? (
-        trigger(() => setOpen(true))
-      ) : (
-        <div className="cursor-pointer" onDoubleClick={() => setOpen(true)}>
-          {entry.title}
-        </div>
-      )}
-      <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-foreground/10 bg-background/95 backdrop-blur-xl">
+    <Dialog open={open} onOpenChange={setOpen}>
+      {trigger?.(() => setOpen(true))}
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            <Edit3 className="text-primary" size={20} />
-            {isOwnedPersonal ? 'Edit Personal Reminder' : 'View Event'}
-          </DialogTitle>
+          <DialogTitle>Edit reminder</DialogTitle>
           <DialogDescription>
-            {isOwnedPersonal
-              ? 'Update your reminder details or invite accepted friends.'
-              : entry.sharedBy
-                ? `Shared with you by ${displayName(entry.sharedBy)}.`
-                : 'Shared calendar event.'}
+            Update the details of your reminder.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-              Title
-            </Label>
-            <div className="relative">
-              <Input
-                id="title"
-                placeholder="e.g., Assignment due, Study session..."
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
-                readOnly={!isOwnedPersonal}
-                required
-              />
-              <AlignLeft className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="min-w-0 space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-                Date
-              </Label>
-              <DatePicker
-                value={form.date}
-                onChange={(date) => isOwnedPersonal && setForm({ ...form, date })}
-                buttonClassName="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
-              />
-            </div>
-            <div className="min-w-0 space-y-2">
-              <Label htmlFor="time" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-                Time
-              </Label>
-              <div className="relative">
-                <Input
-                  id="time"
-                  type="time"
-                  value={form.time}
-                  onChange={(e) => setForm({ ...form, time: e.target.value })}
-                  className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
-                  readOnly={!isOwnedPersonal}
-                  required
-                />
-                <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-              Location (Optional)
-            </Label>
-            <div className="relative">
-              <Input
-                id="location"
-                placeholder="Where is it happening?"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
-                readOnly={!isOwnedPersonal}
-              />
-              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-              Details (Optional)
-            </Label>
-            <Textarea
-              id="description"
-              placeholder="Any extra notes..."
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="rounded-2xl min-h-[90px] border-foreground/5 bg-foreground/[0.02] resize-none"
-              readOnly={!isOwnedPersonal}
-            />
-          </div>
-
-          {isOwnedPersonal && (
-            <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-3">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <UserPlus className="size-4 text-primary" />
-                Invite friends
-              </div>
-              {friends === undefined ? (
-                <p className="text-sm text-muted-foreground">Loading friends...</p>
-              ) : friends.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Add accepted friends from Schedules to share this reminder.</p>
-              ) : (
-                <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
-                  {friends.map((friend) => {
-                    const checked = selectedFriendIds.includes(friend._id);
-                    return (
-                      <label key={friend._id} className="flex cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(nextChecked) =>
-                            setSelectedFriendIds((current) =>
-                              nextChecked
-                                ? [...current, friend._id]
-                                : current.filter((id) => id !== friend._id),
-                            )
-                          }
-                        />
-                        {displayName(friend)}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-              {selectedFriendIds.length > 0 && (
+        <form onSubmit={save} className="space-y-6">
+          <ReminderForm values={form} onChange={setForm} disabled={pending} />
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
                 <Button
                   type="button"
-                  variant="tertiary"
-                  size="sm"
-                  onClick={handleInviteFriends}
+                  variant="ghost"
+                  leadingIcon={Trash}
                   disabled={pending}
                 >
-                  Send invite{selectedFriendIds.length === 1 ? '' : 's'}
+                  Delete
                 </Button>
-              )}
-            </div>
-          )}
-
-          {isOwnedPersonal && (
-            <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
-              <Button
-                type="button"
-                variant="tertiary"
-                leadingIcon={Trash}
-                onClick={handleDelete}
-                disabled={pending}
-                className="flex-1 rounded-2xl h-12 text-base font-semibold text-destructive hover:bg-destructive/10 border-destructive/30"
-              >
-                Delete
-              </Button>
-              <Button
-                type="submit"
-                disabled={pending}
-                className="flex-[2] rounded-2xl h-12 text-base font-semibold"
-              >
-                {pending ? 'Saving...' : 'Update Reminder'}
-              </Button>
-            </DialogFooter>
-          )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this reminder?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    “{entry.title}” and its invitations will be removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={() => void deleteReminder()}
+                  >
+                    Delete reminder
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            {isStudent ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    leadingIcon={UserPlus}
+                    disabled={pending}
+                  >
+                    Invite friends
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="space-y-3">
+                  <p className="text-sm font-semibold">Invite friends</p>
+                  {friends === undefined ? (
+                    <p className="text-sm text-muted-foreground">
+                      Loading friends…
+                    </p>
+                  ) : friends.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Accept a friend request in Schedules to share reminders.
+                    </p>
+                  ) : (
+                    <Command surface="inherit">
+                      <CommandInput
+                        placeholder="Search friends…"
+                        aria-label="Search friends to invite"
+                      />
+                      <CommandList className="max-h-48">
+                        <CommandEmpty>No friends found.</CommandEmpty>
+                        <CommandGroup>
+                          {friends.map((friend) => (
+                            <CommandItem
+                              key={friend._id}
+                              value={friend._id}
+                              keywords={nameSearchValues(friend)}
+                              disabled={
+                                pending ||
+                                (selected.length >= 20 &&
+                                  !selected.includes(friend._id))
+                              }
+                              onSelect={() =>
+                                setSelected((ids) =>
+                                  ids.includes(friend._id)
+                                    ? ids.filter((id) => id !== friend._id)
+                                    : [...ids, friend._id],
+                                )
+                              }
+                            >
+                              <Check
+                                aria-hidden="true"
+                                className={
+                                  selected.includes(friend._id)
+                                    ? undefined
+                                    : 'opacity-0'
+                                }
+                              />
+                              {displayName(friend)}
+                              {selected.includes(friend._id) ? (
+                                <span className="sr-only">
+                                  , selected for invitation
+                                </span>
+                              ) : null}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  )}
+                  {selected.length ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      loading={pending}
+                      onClick={() => void sendInvites()}
+                    >
+                      Send {selected.length === 1 ? 'invite' : 'invites'}
+                    </Button>
+                  ) : null}
+                </PopoverContent>
+              </Popover>
+            ) : null}
+            <Button type="submit" loading={pending}>
+              Save reminder
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
