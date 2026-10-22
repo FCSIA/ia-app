@@ -1,5 +1,5 @@
 /** Cache states are shared by the web/native composers and message previews. */
-export type StoredGifError = "network" | "unavailable" | "too-large" | "unsupported";
+export type StoredGifError = "network" | "unavailable" | "too-large" | "unsupported" | "blocked" | "unverified";
 export type StoredGif = {
   sourceUrl: string;
   status: "missing" | "loading" | "ready" | "error";
@@ -9,6 +9,8 @@ export type StoredGif = {
 
 export function gifErrorMessage(error: StoredGifError | null) {
   switch (error) {
+    case "blocked": return "This GIF doesn't meet the G-rated content limit. Try another GIF.";
+    case "unverified": return "We couldn't confirm this GIF is G-rated. Try another GIF or retry later.";
     case "too-large": return "This GIF is larger than 10 MB. Try a smaller one.";
     case "unsupported": return "This link can't be previewed. Try another GIF.";
     case "unavailable": return "This GIF is no longer available. Try another link.";

@@ -36,6 +36,28 @@ NEXT_PUBLIC_CONVEX_URL=https://...
 NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 ```
 
+## GIF Provider Verification
+
+Set `GIPHY_API_KEY` in the selected Convex deployment's environment. It is a
+backend-only key; do not add a `NEXT_PUBLIC_` or `EXPO_PUBLIC_` copy. The linked
+GIF downloader calls GIPHY's single-item lookup with `rating=g`, verifies the
+returned ID and rating, and stores only its validated media rendition. Without
+the key, previews fail closed rather than downloading unchecked content.
+
+Use the Convex CLI's stdin or `--from-file` support to keep the value out of
+shell history. Configuring the local anonymous deployment does not configure
+production; production environment changes require explicit authorization.
+
+Tenor's current quickstart says new API clients have not been accepted since
+January 2026. Its ID endpoint does not document a content filter or rating
+field, so adding `contentfilter=high` there is not treated as verification.
+Tenor links and the current Tenor picker entries remain unavailable until a
+verifiable source replaces them. See [chat GIFs](../features/clubs.md#chat-gifs).
+
+Provider references: [GIPHY ID lookup](https://developers.giphy.com/docs/api/#get-gif-by-id-endpoint),
+[Tenor endpoints](https://developers.google.com/tenor/guides/endpoints#posts),
+and [Tenor quickstart](https://developers.google.com/tenor/guides/quickstart).
+
 ## Worktrees And Deployment Selection
 
 `bun run worktree:bootstrap` creates/selects an isolated local Convex backend by

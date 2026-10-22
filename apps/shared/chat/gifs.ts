@@ -83,6 +83,17 @@ export function chatGifLink(value: string): ChatGifLink | null {
   }
 }
 
+/** An item's identity is needed for rating checks and same-item CDN redirects. */
+export function giphyGifId(source: string): string | null {
+  const link = chatGifLink(source);
+  if (!link?.mediaUrl) return null;
+  const url = new URL(link.mediaUrl);
+  if (!/^(?:media\d*|i)\.giphy\.com$/.test(url.hostname)) return null;
+  return url.pathname.match(/^\/media\/(?:v1\.[^/]+\/)?([a-zA-Z0-9]+)\//)?.[1]
+    ?? url.pathname.match(/^\/([a-zA-Z0-9]+)\.gif$/)?.[1]
+    ?? null;
+}
+
 /** Bounded previews of pasted URLs and Markdown links, excluding code examples. */
 export function extractChatGifLinks(text: string): ChatGifLink[] {
   const links = new Map<string, ChatGifLink>();

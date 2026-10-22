@@ -148,6 +148,17 @@ GIPHY and Tenor links, including Markdown links: share links and direct `.gif`
 URLs on their media CDNs (`media*.giphy.com`, `i.giphy.com`, `media*.tenor.com`,
 `c.tenor.com`). GIFs on any other host stay ordinary links; the backend
 downloader is restricted to these providers rather than acting as an open proxy.
+Before storing a linked GIF, the backend requests its GIPHY metadata with
+`rating=g` and requires an explicit `g` rating for the exact item. It downloads
+the returned rendition, with redirects restricted to the same item. Missing
+keys, unavailable or malformed metadata, unknown ratings, and non-G ratings
+block storage with a recoverable preview error. Earlier unchecked cache entries
+are hidden and revalidated. This check covers picker thumbnails as well.
+Tenor links currently fail closed: its documented ID lookup has no rating
+filter, and new API clients are no longer accepted. The existing Tenor picker
+collection is therefore unavailable until a verified replacement is selected.
+Uploaded files continue through their separate file-validation flow; they do
+not have provider ratings.
 Previews are deduplicated and limited to five per message; code examples stay
 text. Web and native composers also offer a searchable, fixed collection of
 nine existing online reaction GIFs (SpongeBob, Pikachu, Homer, Spider-Man,

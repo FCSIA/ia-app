@@ -57,6 +57,16 @@
   No shared or production deployment was changed. Material visuals await owner
   review; a real school laptop/network and native device remain unverified.
   Review details: `docs/reference/chat-gif-storage-review-2026-10-21.md`.
+- Rating follow-up: the backend now requires a verified GIPHY `g` rating for
+  the exact item before storing bytes, including picker posters. Unknown ratings
+  and provider failures fail closed; older unchecked cache entries are hidden
+  and revalidated. All 501 backend tests, backend/web/native typechecks, web lint
+  (21 existing warnings), production build, and the worktree-local function push
+  pass. Browser checks confirm missing-key errors, disabled Send and preserved
+  captions after removal. This follow-up is not pushed or deployed to a shared
+  environment. GIPHY key setup awaits user sign-in in the open browser tab.
+  Tenor no longer accepts new API clients, so Tenor previews are currently
+  blocked; the user was asked whether to replace the picker with GIPHY entries.
 
 ### Audit UI Repair (2026-10-20)
 

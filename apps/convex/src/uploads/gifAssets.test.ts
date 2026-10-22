@@ -7,6 +7,7 @@ import schema from "../schema";
 import type { QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { downloadGif, gifCacheTtl } from "./gifDownload";
+import { GIF_SAFETY_VERSION } from "./gifSafety";
 import { SCHOOL_GIFS } from "../../../shared/chat/school-gifs";
 
 const { limit } = vi.hoisted(() => ({ limit: vi.fn(async () => ({ ok: true })) }));
@@ -21,9 +22,11 @@ vi.mock("../../lib/currentUser", () => ({
   },
 }));
 const modules = import.meta.glob("/src/**/*.*s");
-const URL = "https://c.tenor.com/example/tenor.gif";
-const SHARE = "https://tenor.com/view/example-gif-123";
+const URL = "https://media.giphy.com/media/abc123/giphy.gif";
+const SHARE = "https://giphy.com/gifs/example-abc123";
 const gif = () => new Response("GIF89a", { headers: { "content-type": "image/gif", "cache-control": "public, max-age=3600" } });
+const metadata = (rating = "g") => Response.json({ meta: { status: 200 }, data: { id: "abc123", rating, images: { original: { url: URL } } } });
+const ratedFetch = async (url: string) => url.startsWith("https://api.giphy.com/") ? metadata() : gif();
 
 async function fixture() {
   const t = convexTest(schema, modules);
@@ -36,12 +39,12 @@ async function fixture() {
 }
 
 describe("stored chat GIFs", () => {
-  beforeEach(() => { vi.useFakeTimers(); limit.mockResolvedValue({ ok: true }); });
-  afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("GIPHY_API_KEY", "test-key"); limit.mockResolvedValue({ ok: true }); });
+  afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
   test("shows loading before download, coalesces viewers, then returns object storage to both", async () => {
     const { t, first, second } = await fixture();
-    const request = vi.fn(async () => gif());
+    const request = vi.fn(ratedFetch);
     vi.stubGlobal("fetch", request);
     await first.mutation(api.uploads.gifAssets.request, { url: URL });
     await second.mutation(api.uploads.gifAssets.request, { url: URL });
@@ -53,8 +56,8 @@ describe("stored chat GIFs", () => {
     const [state] = await second.query(api.uploads.gifAssets.list, { urls: [URL] });
     expect(state.status).toBe("ready");
     expect(state.url).toBeTruthy();
-    expect(state.url).not.toContain("tenor.com");
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(state.url).not.toContain("giphy.com");
+    expect(request).toHaveBeenCalledTimes(2);
     await first.mutation(api.uploads.gifAssets.request, { url: URL });
     expect(limit).toHaveBeenCalledTimes(1);
     const stored = await t.run(async (ctx) => {
@@ -65,20 +68,21 @@ describe("stored chat GIFs", () => {
     expect(stored).toBe("GIF89a");
   });
 
-  test("resolves share pages on the backend and stores bytes rather than a provider URL", async () => {
+  test("verifies share links through metadata and stores bytes rather than a provider URL", async () => {
     const { t, first } = await fixture();
-    const fetcher = vi.fn().mockResolvedValueOnce(new Response(`<meta content="${URL}">`, { headers: { "content-type": "text/html" } })).mockResolvedValueOnce(gif());
+    const fetcher = vi.fn(ratedFetch);
     vi.stubGlobal("fetch", fetcher);
     await first.mutation(api.uploads.gifAssets.request, { url: SHARE });
     const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
     await t.action(internal.uploads.gifAssets.download, { id: asset!._id, generation: 1, poster: false });
     expect(await first.query(api.uploads.gifAssets.list, { urls: [SHARE] })).toMatchObject([{ status: "ready" }]);
-    expect(fetcher.mock.calls.map((call) => call[0])).toEqual([SHARE, URL]);
+    expect(fetcher.mock.calls[0][0]).toContain("https://api.giphy.com/v1/gifs/abc123?");
+    expect(fetcher.mock.calls[1][0]).toBe(URL);
   });
 
   test("does not store responses that forbid caching or repeatedly request them", async () => {
     const { t, first } = await fixture();
-    const fetcher = vi.fn(async () => new Response("GIF89a", { headers: {
+    const fetcher = vi.fn(async (url: string) => url.startsWith("https://api.giphy.com/") ? metadata() : new Response("GIF89a", { headers: {
       "content-type": "image/gif", "cache-control": "no-store",
     } }));
     vi.stubGlobal("fetch", fetcher);
@@ -89,7 +93,7 @@ describe("stored chat GIFs", () => {
       { status: "error", error: "unsupported", url: null },
     ]);
     await first.mutation(api.uploads.gifAssets.request, { url: URL });
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
     expect((await t.run((ctx) => ctx.db.get(asset!._id)))?.storageId).toBeUndefined();
   });
 
@@ -99,10 +103,10 @@ describe("stored chat GIFs", () => {
     await first.mutation(api.uploads.gifAssets.request, { url: URL });
     const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
     await t.action(internal.uploads.gifAssets.download, { id: asset!._id, generation: 1, poster: false });
-    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "error", error: "network" }]);
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "error", error: "unverified" }]);
     await first.mutation(api.uploads.gifAssets.request, { url: URL });
     expect((await t.run((ctx) => ctx.db.get(asset!._id)))?.generation).toBe(1);
-    vi.stubGlobal("fetch", vi.fn(async () => gif()));
+    vi.stubGlobal("fetch", vi.fn(ratedFetch));
     await first.mutation(api.uploads.gifAssets.request, { url: URL, retry: true });
     await t.action(internal.uploads.gifAssets.download, { id: asset!._id, generation: 2, poster: false });
     expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "ready", error: null }]);
@@ -117,12 +121,12 @@ describe("stored chat GIFs", () => {
     const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
     await t.mutation(internal.uploads.gifAssets.timeout, { id: asset!._id, generation: 1 });
     const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["GIF89a"], { type: "image/gif" })));
-    await t.mutation(internal.uploads.gifAssets.complete, { id: asset!._id, generation: 1, storageId, ttl: 1000 });
+    await t.mutation(internal.uploads.gifAssets.complete, { id: asset!._id, generation: 1, safetyVersion: GIF_SAFETY_VERSION, storageId, ttl: 1000 });
     expect(await t.run((ctx) => ctx.storage.get(storageId))).toBeNull();
     vi.setSystemTime(Date.now() + 2001);
     await first.mutation(api.uploads.gifAssets.request, { url: URL, retry: true });
     const next = await t.run((ctx) => ctx.storage.store(new Blob(["GIF89a"], { type: "image/gif" })));
-    await t.mutation(internal.uploads.gifAssets.complete, { id: asset!._id, generation: 2, storageId: next, ttl: 1000 });
+    await t.mutation(internal.uploads.gifAssets.complete, { id: asset!._id, generation: 2, safetyVersion: GIF_SAFETY_VERSION, storageId: next, ttl: 1000 });
     await t.mutation(internal.uploads.gifAssets.expire, { id: asset!._id, generation: 2 });
     expect(await t.run((ctx) => ctx.storage.get(next))).toBeNull();
     expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "missing" }]);
@@ -141,32 +145,76 @@ describe("stored chat GIFs", () => {
     await expect(first.mutation(api.uploads.gifAssets.request, { url: URL })).rejects.toThrow("Too many GIF");
   });
 
-  test("permits only catalog thumbnails and verifies the downloaded image", async () => {
+  test("does not exempt catalog thumbnails from rating verification", async () => {
     const { t, first } = await fixture();
-    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-    const fetcher = vi.fn(async (_url: string) => new Response(bytes, { headers: { "content-type": "image/png" } }));
+    const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
     await first.mutation(api.uploads.gifAssets.request, { url: SCHOOL_GIFS[0].url, poster: true });
     const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
     await t.action(internal.uploads.gifAssets.download, { id: asset!._id, generation: 1, poster: true });
-    expect(fetcher.mock.calls[0][0]).toBe(SCHOOL_GIFS[0].poster);
-    expect(await first.query(api.uploads.gifAssets.list, { urls: [SCHOOL_GIFS[0].url], poster: true })).toMatchObject([{ status: "ready" }]);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [SCHOOL_GIFS[0].url], poster: true })).toMatchObject([{ status: "error", error: "unverified", url: null }]);
     // The provider's .png URLs can serve a static GIF with the matching MIME.
     vi.stubGlobal("fetch", vi.fn(async () => gif()));
     const poster = await downloadGif(SCHOOL_GIFS[1].poster, true);
     expect(poster.blob.type).toBe("image/gif");
+  });
+
+  test.each(["pg", "pg-13", "r"])("never downloads or stores a %s-rated GIF", async (rating) => {
+    const { t, first } = await fixture();
+    const fetcher = vi.fn(async () => metadata(rating));
+    vi.stubGlobal("fetch", fetcher);
+    await first.mutation(api.uploads.gifAssets.request, { url: URL });
+    const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
+    await t.action(internal.uploads.gifAssets.download, { id: asset!._id, generation: 1, poster: false });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "error", error: "blocked", url: null }]);
+    expect(await t.run((ctx) => ctx.db.system.query("_storage").collect())).toHaveLength(0);
+  });
+
+  test("hides old cache entries and deletes their unchecked bytes before revalidation", async () => {
+    const { t, first } = await fixture();
+    const old = await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["GIF89a"], { type: "image/gif" }));
+      const id = await ctx.db.insert("chatGifAssets", { source: URL, status: "ready", storageId, generation: 1, updatedAt: 1 });
+      return { id, storageId };
+    });
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "missing", url: null }]);
+    await first.mutation(api.uploads.gifAssets.request, { url: URL });
+    expect(await t.run((ctx) => ctx.storage.get(old.storageId))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.get(old.id))).toMatchObject({ generation: 2, safetyVersion: GIF_SAFETY_VERSION, status: "loading" });
+    vi.stubGlobal("fetch", vi.fn(async () => metadata("r")));
+    await t.action(internal.uploads.gifAssets.download, { id: old.id, generation: 2, poster: false });
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "error", error: "blocked", url: null }]);
+  });
+
+  test("discards a completion checked under an outdated safety policy", async () => {
+    const { t, first } = await fixture();
+    await first.mutation(api.uploads.gifAssets.request, { url: URL });
+    const asset = await t.run((ctx) => ctx.db.query("chatGifAssets").first());
+    const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["GIF89a"], { type: "image/gif" })));
+    await t.mutation(internal.uploads.gifAssets.complete, { id: asset!._id, generation: 1, safetyVersion: 0, storageId, ttl: 1000 });
+    expect(await t.run((ctx) => ctx.storage.get(storageId))).toBeNull();
+    expect(await first.query(api.uploads.gifAssets.list, { urls: [URL] })).toMatchObject([{ status: "loading", url: null }]);
   });
 });
 
 describe("bounded media downloads", () => {
   afterEach(() => vi.unstubAllGlobals());
   test("rejects redirects to arbitrary and local hosts without fetching them", async () => {
-    for (const target of ["https://127.0.0.1/a.gif", "https://example.com/a.gif"]) {
+    for (const target of ["https://127.0.0.1/a.gif", "https://example.com/a.gif", "https://media.giphy.com/media/other/giphy.gif", "https://c.tenor.com/example/tenor.gif"]) {
       const fetcher = vi.fn(async () => new Response(null, { status: 302, headers: { location: target } }));
       vi.stubGlobal("fetch", fetcher);
       await expect(downloadGif(URL)).rejects.toMatchObject({ code: "unsupported" });
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
+  });
+  test("permits a CDN redirect only to another rendition of the same rated item", async () => {
+    const redirected = "https://i.giphy.com/media/abc123/200w.gif";
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: redirected } })).mockResolvedValueOnce(gif());
+    vi.stubGlobal("fetch", fetcher);
+    expect((await downloadGif(URL)).blob.type).toBe("image/gif");
+    expect(fetcher.mock.calls.map((call) => call[0])).toEqual([URL, redirected]);
   });
   test("rejects forged GIFs and declared or streamed oversized responses", async () => {
     for (const response of [

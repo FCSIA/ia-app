@@ -1,4 +1,4 @@
-import { chatGifLink } from "../../../shared/chat/gifs";
+import { chatGifLink, giphyGifId } from "../../../shared/chat/gifs";
 import { SCHOOL_GIFS } from "../../../shared/chat/school-gifs";
 import type { StoredGifError } from "../../../shared/chat/stored-gifs";
 import { assertSafeStoredFile } from "./fileSignatures";
@@ -28,6 +28,7 @@ export async function downloadGif(source: string, poster = false) {
     throw new GifDownloadError("unsupported");
   }
   let url = source;
+  const ratedId = giphyGifId(source);
   const signal = AbortSignal.timeout(8000);
   for (let redirects = 0; redirects <= 2; redirects++) {
     const response = await fetch(url, { redirect: "manual", signal });
@@ -36,7 +37,7 @@ export async function downloadGif(source: string, poster = false) {
       await response.body?.cancel();
       if (!location || poster) throw new GifDownloadError("unavailable");
       const next = chatGifLink(new URL(location, url).toString());
-      if (!next?.mediaUrl) throw new GifDownloadError("unsupported");
+      if (!next?.mediaUrl || (ratedId && giphyGifId(next.mediaUrl) !== ratedId)) throw new GifDownloadError("unsupported");
       url = next.mediaUrl;
       continue;
     }

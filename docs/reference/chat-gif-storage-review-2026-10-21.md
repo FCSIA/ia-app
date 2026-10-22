@@ -88,6 +88,34 @@ The final shape captures are `rounded-ready-desktop.png`,
 
 ## Human review remaining
 
+### Rating follow-up
+
+The backend now verifies GIPHY metadata with `rating=g`, requires an explicit
+`g` rating and exact item ID, then downloads the returned media rendition.
+Cross-item CDN redirects, missing metadata, provider failures and missing keys
+fail closed. This applies to catalog posters too. A safety version prevents
+unchecked cache entries or outdated in-flight completions from becoming ready.
+Unchecked bytes are deleted when their entry is requested for revalidation.
+Uploaded files use their separate validation flow and are not provider-rated.
+
+All 501 backend tests across 89 files pass, including 60 focused GIF cases.
+Backend/web/native typechecks, web lint (21 existing warnings), the production
+build and the isolated local function push pass. Browser diagnostics confirm
+that old unchecked timeline GIFs disappear, a missing key produces the safety
+verification error, Send stays disabled, and Remove preserves the caption.
+Capture: `/tmp/ia-gif-review/safety-unverified-desktop.png`. No console errors
+appeared. Successful provider verification is covered with mocked metadata;
+a live key has not yet been configured.
+
+The user authorized API-key setup via Computer. GIPHY's dashboard redirects to
+sign-in, and the tab is left open for the user. Tenor's current quickstart says
+new API clients have not been accepted since January 2026. Its ID endpoint does
+not document content filtering, so Tenor previews and the existing Tenor picker
+are blocked rather than treated as verified. A picker replacement decision is
+pending. The follow-up has not been pushed or deployed to a shared environment.
+
+### Visual and device review
+
 Material visuals are ready for owner review. Inspect processing, ready, error,
 retry, keyboard focus, removal, disabled Send, narrow layout, picker open/selected
 states, light/alternate themes and reduced motion. Browser diagnostics used the
