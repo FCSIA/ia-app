@@ -17,6 +17,7 @@
     --typeset-size: 0.875rem;
     --typeset-leading: 1.6;
     --typeset-flow: 0.75em;
+    --typeset-list-item-flow: 0.125em;
   }
 }
 
@@ -200,7 +201,7 @@
       padding-inline-start: 1.5em;
     }
     &:where(li) {
-      margin-block-start: 0.5em;
+      margin-block-start: var(--typeset-list-item-flow, 0.5em);
       padding-inline-start: 0.4em;
     }
     &:where(li > p, li > ul, li > ol) {

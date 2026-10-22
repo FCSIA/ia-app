@@ -341,10 +341,9 @@ export function WhiteboardList({
 
   return (
     <ScrollArea className="size-full">
-      <div ref={ref} className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-3 sm:p-4">
+      <div ref={ref} className="flex w-full flex-col gap-4 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-foreground">Whiteboards</h2>
             {atLimit ? (
               <p className="text-xs text-muted-foreground">
                 {listing.activeLimit} board limit reached. Archive one to add another.

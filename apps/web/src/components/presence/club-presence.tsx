@@ -49,7 +49,7 @@ export function PresenceBadge({ status, className }: { status: PresenceStatus; c
       aria-label={presenceLabels[status]}
       title={presenceLabels[status]}
       className={cn(
-        'absolute bottom-0 right-0 flex size-2.5 items-center justify-center rounded-full ring-2 ring-background',
+        'absolute bottom-0 right-0 flex size-2.5 items-center justify-center rounded-full ring-2 ring-card',
         status === 'online' ? 'bg-emerald-500' : 'bg-red-500',
         className,
       )}

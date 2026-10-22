@@ -11,6 +11,7 @@ import {
   useReadOnly,
   useSelected,
 } from 'platejs/react';
+import { Avatar, AvatarFallback, AvatarImage } from './avatar';
 import { cn } from '@/lib/utils';
 import { useMounted } from '@/hooks/use-mounted';
 import {
@@ -27,6 +28,7 @@ export type MentionableItem = {
   text: string;
   label?: string;
   detail?: string;
+  avatarUrl?: string | null;
   keywords?: string[];
   kind?: string;
 };
@@ -41,14 +43,16 @@ export function MentionablesProvider({
   children: React.ReactNode;
 }) {
   return (
-    <MentionablesContext.Provider value={items}>{children}</MentionablesContext.Provider>
+    <MentionablesContext.Provider value={items}>
+      {children}
+    </MentionablesContext.Provider>
   );
 }
 
 export function MentionElement(
   props: PlateElementProps<TMentionElement> & {
     prefix?: string;
-  }
+  },
 ) {
   const { prefix = '@' } = props;
   const element = props.element;
@@ -95,7 +99,7 @@ export function MentionElement(
 const onSelectItem = getMentionOnSelectItem();
 
 export function MentionInputElement(
-  props: PlateElementProps<TComboboxInputElement>
+  props: PlateElementProps<TComboboxInputElement>,
 ) {
   const { editor, element } = props;
   const [search, setSearch] = React.useState('');
@@ -104,7 +108,13 @@ export function MentionInputElement(
     const query = search.trim().toLowerCase();
     const matches = query
       ? items.filter((item) =>
-          [item.key, item.text, item.label, item.detail, ...(item.keywords ?? [])]
+          [
+            item.key,
+            item.text,
+            item.label,
+            item.detail,
+            ...(item.keywords ?? []),
+          ]
             .filter(Boolean)
             .some((value) => value!.toLowerCase().includes(query)),
         )
@@ -128,28 +138,63 @@ export function MentionInputElement(
         <InlineComboboxContent
           className={cn(
             'my-2 max-h-60 w-56',
-            'rounded-xl border border-border bg-popover p-1 shadow-lg',
+            'rounded-xl border-0 bg-surface-3 p-1 shadow-surface-3',
           )}
         >
           <InlineComboboxEmpty className="px-2 py-1.5 text-sm text-muted-foreground">
             No matches found.
           </InlineComboboxEmpty>
 
-          <InlineComboboxGroup>
-            {visibleItems.map((item) => (
-              <InlineComboboxItem
-                key={item.key}
-                value={item.text}
-                label={item.label}
-                keywords={item.keywords}
-                onClick={() => onSelectItem(editor, item, search)}
-              >
-                <span className="min-w-0 flex-1 truncate font-medium">
-                  {item.label ?? item.text}
-                </span>
-              </InlineComboboxItem>
-            ))}
-          </InlineComboboxGroup>
+          {['person', 'group'].map((section) => {
+            const entries = visibleItems.filter((item) =>
+              section === 'person'
+                ? item.kind === 'person'
+                : item.kind !== 'person',
+            );
+            if (!entries.length) return null;
+            return (
+              <InlineComboboxGroup key={section}>
+                {visibleItems.some((item) => item.kind === 'person') &&
+                visibleItems.some((item) => item.kind !== 'person') ? (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">
+                    {section === 'person' ? 'People' : 'Groups'}
+                  </p>
+                ) : null}
+                {entries.map((item) => (
+                  <InlineComboboxItem
+                    key={item.key}
+                    value={item.text}
+                    label={item.label}
+                    keywords={item.keywords}
+                    onClick={() => onSelectItem(editor, item, search)}
+                  >
+                    {item.kind === 'person' ? (
+                      <Avatar className="size-5">
+                        <AvatarImage src={item.avatarUrl ?? undefined} />
+                        <AvatarFallback className="text-[9px]">
+                          {(item.label ?? item.text)
+                            .split(' ')
+                            .map((name) => name[0])
+                            .slice(0, 2)
+                            .join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : null}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">
+                        {item.label ?? item.text}
+                      </span>
+                      {item.detail ? (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {item.detail}
+                        </span>
+                      ) : null}
+                    </span>
+                  </InlineComboboxItem>
+                ))}
+              </InlineComboboxGroup>
+            );
+          })}
         </InlineComboboxContent>
       </InlineCombobox>
 

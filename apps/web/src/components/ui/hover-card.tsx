@@ -5,7 +5,7 @@ import * as HoverCardPrimitive from "@radix-ui/react-hover-card"
 
 import { cn } from "@/lib/utils"
 import { Elevated } from "@/lib/elevated"
-import { useShape } from "@/lib/shape-context"
+import { popupShape as shape } from "@/components/ui/popup-shape"
 import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes"
 
 const HoverCard = HoverCardPrimitive.Root
@@ -16,7 +16,6 @@ const HoverCardContent = React.forwardRef<
   React.ElementRef<typeof HoverCardPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Content>
 >(({ className, children, align = "center", sideOffset = 4, ...props }, ref) => {
-  const shape = useShape()
   return (
     <HoverCardPrimitive.Portal>
       <HoverCardPrimitive.Content

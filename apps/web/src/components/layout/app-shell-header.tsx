@@ -81,7 +81,7 @@ function ChannelSearch({
   onToggleScope: () => void;
 }) {
   return (
-    <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-[#6B97FF] lg:flex">
+    <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-ring lg:flex">
       <label className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
         <Search className="size-4 shrink-0" />
         <span className="sr-only">Search #{channelSearch.channelName}</span>

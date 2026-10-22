@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test';
 import rateLimiter from '@convex-dev/rate-limiter/test';
+import presenceTest from '@convex-dev/presence/test';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { api } from '../_generated/api';
 import schema from '../schema';
@@ -26,6 +27,7 @@ async function fixture() {
   vi.useFakeTimers();
   const t = convexTest(schema, modules);
   rateLimiter.register(t);
+  presenceTest.register(t);
   const ids = await t.run(async (ctx) => {
     const makeUser = (uniqueId: string) =>
       ctx.db.insert('users', {
@@ -103,6 +105,70 @@ async function fixture() {
 }
 
 describe('chat audit repairs', () => {
+  test('typing is scoped to readable channels and only post-capable people can publish', async () => {
+    const {
+      t,
+      memberId,
+      otherId,
+      outsiderId,
+      clubId,
+      channelId,
+      privateChannelId,
+    } = await fixture();
+    const member = t.withIdentity({ subject: memberId });
+    const other = t.withIdentity({ subject: otherId });
+    const outsider = t.withIdentity({ subject: outsiderId });
+    const token = await member.mutation(api.clubs.channels.typingHeartbeat, {
+      clubId,
+      channelId,
+      sessionId: 'typing-main',
+    });
+    expect(
+      await member.query(api.clubs.channels.typingUsers, { clubId, channelId }),
+    ).toEqual([]);
+    expect(
+      await other.query(api.clubs.channels.typingUsers, { clubId, channelId }),
+    ).toEqual([{ _id: memberId, name: 'UNREAD-MEMBER Test' }]);
+    expect(
+      await outsider.query(api.clubs.channels.typingUsers, {
+        clubId,
+        channelId,
+      }),
+    ).toEqual([]);
+    expect(
+      await other.query(api.clubs.channels.typingUsers, {
+        clubId,
+        channelId: privateChannelId,
+      }),
+    ).toEqual([]);
+    await expect(
+      outsider.mutation(api.clubs.channels.typingHeartbeat, {
+        clubId,
+        channelId,
+        sessionId: 'outsider',
+      }),
+    ).rejects.toThrow('Cannot post');
+    await expect(
+      member.mutation(api.clubs.channels.typingHeartbeat, {
+        clubId,
+        channelId: privateChannelId,
+        sessionId: 'private',
+      }),
+    ).rejects.toThrow('Cannot post');
+    await expect(
+      member.mutation(api.clubs.channels.typingHeartbeat, {
+        clubId,
+        channelId,
+        sessionId: '',
+      }),
+    ).rejects.toThrow('Invalid typing session');
+    await member.mutation(api.presence.status.disconnect, token);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(
+      await other.query(api.clubs.channels.typingUsers, { clubId, channelId }),
+    ).toEqual([]);
+  });
+
   test('pins outside the newest page are returned independently and respect channel access', async () => {
     const { t, memberId, outsiderId, clubId, channelId, privateChannelId } =
       await fixture();
@@ -139,6 +205,24 @@ describe('chat audit repairs', () => {
       channelId,
     });
     expect(pins.messages.map((message) => message._id)).toEqual([pinnedId]);
+    expect(
+      (
+        await member.query(api.clubs.channels.searchMessages, {
+          clubId,
+          channelId,
+          search: 'Old pinned plan',
+        })
+      ).map((message) => message._id),
+    ).toEqual([pinnedId]);
+    expect(
+      await t
+        .withIdentity({ subject: outsiderId })
+        .query(api.clubs.channels.searchMessages, {
+          clubId,
+          channelId,
+          search: 'Old pinned plan',
+        }),
+    ).toEqual([]);
     expect(
       await t
         .withIdentity({ subject: outsiderId })

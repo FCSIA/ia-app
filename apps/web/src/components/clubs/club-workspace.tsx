@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   Home,
   Menu,
-  Hash,
   Plus,
   Settings,
   Trash2,
@@ -31,6 +30,7 @@ import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
 import { AppShell } from "@/components/layout/AppShell";
 import type { ChannelSearchControl } from "@/components/layout/AppShell";
 import { FLUSH_MAIN_CLASS } from "@/components/layout/app-main";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   DropdownContent,
@@ -70,12 +70,6 @@ import type {
   ClubWorkspaceNavigation,
 } from "@/components/clubs/types";
 
-function resolveMediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith("http")) return url;
-  return url;
-}
-
 function ClubPickerItem({
   club,
   active,
@@ -97,7 +91,7 @@ function ClubPickerItem({
       {club.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={resolveMediaUrl(club.logoUrl)}
+          src={club.logoUrl ?? undefined}
           alt=""
           className="size-full bg-background object-cover"
         />
@@ -126,13 +120,20 @@ function ClubIdentity({
   club?: ClubWorkspaceNavigation["club"];
   showPickerIndicator?: boolean;
 }) {
+  if (!club)
+    return (
+      <>
+        <Skeleton className="size-7 rounded-md" />
+        <Skeleton className="h-4 w-28" />
+      </>
+    );
   return (
     <>
       <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
         {club?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={resolveMediaUrl(club.logoUrl)}
+            src={club.logoUrl ?? undefined}
             alt={club.name}
             className="size-full bg-background object-cover"
           />
@@ -253,8 +254,7 @@ export function ClubWorkspace({
     () =>
       (navigation?.channels ?? []).map((channel) => ({
         ...channel,
-        hasUnreadMessages:
-          activityByChannelId.get(channel._id) ?? false,
+        hasUnreadMessages: activityByChannelId.get(channel._id) ?? false,
       })),
     [activityByChannelId, navigation?.channels],
   );
@@ -305,13 +305,27 @@ export function ClubWorkspace({
   const headerSlot = (
     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Button asChild type="button" variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Back to clubs">
+        <Button
+          asChild
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="hidden md:inline-flex"
+          aria-label="Back to clubs"
+        >
           <Link href="/clubs">
             <ArrowLeft />
           </Link>
         </Button>
         {isNavigationPage ? (
-          <Button asChild type="button" variant="ghost" size="icon-lg" className="md:hidden" aria-label="Back to clubs">
+          <Button
+            asChild
+            type="button"
+            variant="ghost"
+            size="icon-lg"
+            className="md:hidden"
+            aria-label="Back to clubs"
+          >
             <Link href="/clubs">
               <ArrowLeft />
             </Link>
@@ -322,7 +336,11 @@ export function ClubWorkspace({
             variant="ghost"
             size="icon-lg"
             className="md:hidden"
-            aria-label={mobileNavigationOpen ? "Close club navigation" : "Open club navigation"}
+            aria-label={
+              mobileNavigationOpen
+                ? "Close club navigation"
+                : "Open club navigation"
+            }
             aria-expanded={mobileNavigationOpen}
             onClick={() => settleMobileNavigation(!mobileNavigationOpen)}
           >
@@ -332,7 +350,7 @@ export function ClubWorkspace({
         <div className="min-w-0 flex-1">
           {title ?? (
             <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-              {club?.name ?? "Club"}
+              {club?.name ?? <Skeleton className="h-5 w-28" />}
             </h1>
           )}
         </div>
@@ -413,7 +431,7 @@ export function ClubWorkspace({
             maxSize="45%"
             style={{ overflow: "hidden" }}
           >
-            <aside className="h-full min-h-0 overflow-hidden border-l border-border bg-card channel-thread-surface">
+            <aside className="h-full min-h-0 overflow-hidden border-l border-border bg-surface-1 channel-thread-surface">
               {rightPane}
             </aside>
           </ResizablePanel>
@@ -438,10 +456,12 @@ export function ClubWorkspace({
             </ScrollArea>
           )}
           {rightPane ? (
-            <aside className={cn(
-              "hidden w-80 shrink-0 overflow-hidden border-l border-border bg-card xl:block",
-              resizableRightPane && "channel-thread-surface",
-            )}>
+            <aside
+              className={cn(
+                "hidden w-80 shrink-0 overflow-hidden border-l border-border bg-surface-1 xl:block",
+                resizableRightPane && "channel-thread-surface",
+              )}
+            >
               {rightPane}
             </aside>
           ) : null}
@@ -509,7 +529,9 @@ export function ClubWorkspace({
           className={cn(
             "fixed inset-x-0 bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] top-[calc(4rem+env(safe-area-inset-top))] z-30 bg-card md:hidden",
             CARD_SURFACE_FOREGROUND,
-            mobileNavigationOpen ? "pointer-events-auto" : "pointer-events-none",
+            mobileNavigationOpen
+              ? "pointer-events-auto"
+              : "pointer-events-none",
           )}
           initial={false}
           style={{ x: mobileNavigationX }}
@@ -582,7 +604,7 @@ export function ClubWorkspace({
               maxSize="32%"
               style={{ overflow: "hidden" }}
             >
-              <aside className="h-full min-h-0 border-r border-border bg-card">
+              <aside className="h-full min-h-0 border-r border-border bg-surface-1">
                 {desktopNavigation}
               </aside>
             </ResizablePanel>
@@ -598,7 +620,7 @@ export function ClubWorkspace({
           </ResizablePanelGroup>
         ) : (
           <>
-            <aside className="hidden w-60 shrink-0 border-r border-border bg-card md:block">
+            <aside className="hidden w-60 shrink-0 border-r border-border bg-surface-1 md:block">
               {desktopNavigation}
             </aside>
             {workspaceContent}
@@ -654,14 +676,17 @@ function MobileClubNavigation(props: ClubNavigationPanelProps) {
     for (const query of displayQueries) query.addEventListener("change", sync);
     return () => {
       mobileQuery.removeEventListener("change", sync);
-      for (const query of displayQueries) query.removeEventListener("change", sync);
+      for (const query of displayQueries)
+        query.removeEventListener("change", sync);
     };
   }, []);
 
   if (!isMobilePwa) return <ClubNavigationPanel {...props} />;
 
   return (
-    <div className={cn("flex size-full min-h-0 bg-card", CARD_SURFACE_FOREGROUND)}>
+    <div
+      className={cn("flex size-full min-h-0 bg-card", CARD_SURFACE_FOREGROUND)}
+    >
       <ClubRail
         clubId={props.clubId}
         myClubs={props.myClubs}
@@ -708,7 +733,7 @@ function ClubRail({
                 {entry.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={resolveMediaUrl(entry.logoUrl)}
+                    src={entry.logoUrl ?? undefined}
                     alt=""
                     className="size-full object-cover"
                   />
@@ -849,7 +874,9 @@ function ClubNavigationPanel({
               />
               <DropdownContent
                 align="start"
-                checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
+                checkedIndex={
+                  activeClubIndex >= 0 ? activeClubIndex : undefined
+                }
                 className="w-96 max-w-[calc(100vw-2rem)]"
               >
                 {myClubs.length > 0 ? (
@@ -904,7 +931,7 @@ function ClubNavigationPanel({
                   className={cn(
                     "gap-2 rounded-md px-2 text-sm font-medium",
                     rowClassName,
-                    active ? "text-foreground" : "text-foreground/70",
+                    active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -918,7 +945,7 @@ function ClubNavigationPanel({
 
           <section aria-labelledby={`channels-${density}`}>
             <div className="flex h-7 items-center justify-between pl-2 pr-1">
-              <div className="flex items-center gap-1 text-foreground/70">
+              <div className="flex items-center gap-1 text-muted-foreground">
                 <h2
                   id={`channels-${density}`}
                   className="text-[11px] font-bold uppercase tracking-wide"
@@ -931,7 +958,13 @@ function ClubNavigationPanel({
               ) : null}
             </div>
 
-            {channels.length > 0 ? (
+            {!club ? (
+              <div className="space-y-2 p-2">
+                {[0, 1, 2].map((index) => (
+                  <Skeleton key={index} className="h-7 w-full" />
+                ))}
+              </div>
+            ) : channels.length > 0 ? (
               <ChannelRows
                 clubId={clubId}
                 channels={channels.filter((channel) => !channel.ownerUnitId)}
@@ -981,7 +1014,7 @@ function ClubNavigationPanel({
         <Link
           href="/clubs"
           onClick={onNavigate}
-          className="flex min-h-11 shrink-0 items-center gap-2 border-t border-border/70 px-4 text-xs font-medium text-foreground/75 hover:bg-hover hover:text-foreground"
+          className="flex min-h-11 shrink-0 items-center gap-2 border-t border-border/70 px-4 text-xs font-medium text-muted-foreground hover:bg-hover hover:text-foreground"
         >
           <Compass className="size-4" />
           Browse clubs
@@ -1077,10 +1110,6 @@ function ChannelRow({
     density === "mobile"
       ? "flex"
       : "hidden group-hover/channel:flex group-focus-within/channel:flex";
-  const visibilityClassName =
-    density === "mobile"
-      ? "inline-flex"
-      : "hidden group-hover/channel:flex group-focus-within/channel:flex";
   return (
     <Card
       index={index}
@@ -1115,7 +1144,8 @@ function ChannelRow({
             </Button>
           </CollapsibleTrigger>
         ) : (
-          <Hash
+          <ClubChannelVisibilityIcon
+            visibility={channel.visibility}
             aria-hidden="true"
             className="size-4 shrink-0 -translate-x-1 text-muted-foreground"
           />
@@ -1125,25 +1155,10 @@ function ChannelRow({
         {channel.name}
       </span>
       <div className="relative z-30 flex shrink-0 items-center gap-0.5">
-        {channel.visibility !== "PUBLIC" ? (
-          <Button
-            asChild
-            variant="ghost"
-            size="icon-sm"
-            className={cn(
-              visibilityClassName,
-              active
-                ? "text-foreground/60"
-                : "pointer-events-none translate-x-1 text-muted-foreground",
-            )}
-          >
-            <span aria-hidden="true">
-              <ClubChannelVisibilityIcon visibility={channel.visibility} />
-            </span>
-          </Button>
-        ) : null}
         {canEditChannels || canDeleteChannels ? (
-          <div className={cn("items-center gap-0.5", secondaryControlClassName)}>
+          <div
+            className={cn("items-center gap-0.5", secondaryControlClassName)}
+          >
             <ChannelActionsTrigger
               clubId={clubId}
               channel={channel}
@@ -1244,9 +1259,15 @@ function UnitChannelTree({
                 </button>
               </CollapsibleTrigger>
             ) : (
-              <span className="flex min-w-0 flex-1 items-center gap-1" aria-label={`${unit.name}, no access`}>
+              <span
+                className="flex min-w-0 flex-1 items-center gap-1"
+                aria-label={`${unit.name}, no access`}
+              >
                 <span className="truncate">{unit.name}</span>
-                <ClubChannelVisibilityIcon visibility="PRIVATE" className="size-3" />
+                <ClubChannelVisibilityIcon
+                  visibility="PRIVATE"
+                  className="size-3"
+                />
               </span>
             )}
           </div>
@@ -1261,19 +1282,26 @@ function UnitChannelTree({
             >
               <span className="flex size-6 shrink-0 items-center justify-center">
                 <ChevronRight
-                  className={cn("size-3.5 -translate-x-1", expanded && "rotate-90")}
+                  className={cn(
+                    "size-3.5 -translate-x-1",
+                    expanded && "rotate-90",
+                  )}
                 />
               </span>
-              <span className="min-w-0 flex-1 -translate-x-1.5 truncate">{unit.name}</span>
+              <span className="min-w-0 flex-1 -translate-x-1.5 truncate">
+                {unit.name}
+              </span>
             </button>
           </CollapsibleTrigger>
         ) : (
           <div
-            className={cn(unitRowClassName, "text-muted-foreground/70")}
+            className={cn(unitRowClassName, "text-muted-foreground")}
             aria-label={`${unit.name}, no access`}
           >
             <span aria-hidden="true" className="size-6 shrink-0" />
-            <span className="min-w-0 flex-1 -translate-x-1.5 truncate">{unit.name}</span>
+            <span className="min-w-0 flex-1 -translate-x-1.5 truncate">
+              {unit.name}
+            </span>
             <span
               aria-hidden="true"
               className="inline-flex size-8 shrink-0 translate-x-1 items-center justify-center"

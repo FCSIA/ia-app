@@ -371,6 +371,7 @@ interface DropdownContentProps {
   side?: RadixContentProps["side"];
   align?: RadixContentProps["align"];
   sideOffset?: number;
+  onCloseAutoFocus?: RadixContentProps["onCloseAutoFocus"];
 }
 
 const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
@@ -382,6 +383,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       side = "bottom",
       align = "start",
       sideOffset = 6,
+      onCloseAutoFocus,
     },
     ref
   ) => {
@@ -498,6 +500,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           side={side}
           align={align}
           sideOffset={sideOffset}
+          onCloseAutoFocus={onCloseAutoFocus}
         >
           <motion.div
             className="z-50 outline-none"
