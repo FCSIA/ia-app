@@ -8,7 +8,7 @@ import { useMutation, useQuery } from "@/lib/convex-react";
 import { ArrowRight, Check, Shield, UsersRound, X } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { AppShell } from "@/components/layout/AppShell";
-import { ClubListRow, ClubMark } from "@/app/clubs/_components/club-list-row";
+import { ClubListRow, ClubMark } from "@/components/clubs/club-list-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardGroup } from "@/components/ui/card";
@@ -203,7 +203,7 @@ export default function ClubsLandingPage() {
               ))}
             </CardGroup>
           ) : (
-            <Empty className="border-0 py-8">
+            <Empty size="inline">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <UsersRound />

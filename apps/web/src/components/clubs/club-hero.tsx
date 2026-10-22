@@ -34,12 +34,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
-function resolveMediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith("http")) return url;
-  return url;
-}
-
 export function ClubHero({
   club,
   canEdit,
@@ -174,8 +168,8 @@ export function ClubHero({
     });
   };
 
-  const bannerUrl = resolveMediaUrl(club.bannerUrl);
-  const logoUrl = resolveMediaUrl(club.logoUrl);
+  const bannerUrl = club.bannerUrl;
+  const logoUrl = club.logoUrl;
   const accent = club.accentColor || undefined;
   const clubInitial = club.name.trim().charAt(0).toUpperCase() || "C";
   const cropDialog = (
@@ -329,7 +323,7 @@ export function ClubHero({
                       style={
                         form.bannerUrl
                           ? {
-                              backgroundImage: `url(${resolveMediaUrl(form.bannerUrl)})`,
+                              backgroundImage: `url(${form.bannerUrl})`,
                             }
                           : undefined
                       }
@@ -372,7 +366,7 @@ export function ClubHero({
                         className="size-16 rounded-md"
                         fallback={clubInitial}
                         fallbackClassName="rounded-md bg-muted text-muted-foreground"
-                        imageUrl={resolveMediaUrl(form.logoUrl)}
+                        imageUrl={form.logoUrl || undefined}
                         loading={uploadingLogo}
                         onRemove={() =>
                           void clearClubImage({

@@ -394,7 +394,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                       ) : null}
                     </div>
                   </div>
-                  <p className="max-w-3xl text-[15px] leading-6 text-foreground/70">
+                  <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">
                     {club.overview || club.description || "No club description yet."}
                   </p>
                 </div>
@@ -483,7 +483,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               </div>
             ) : (
               <div className="text-center py-6">
-                <Users className="mx-auto size-8 text-muted-foreground/30 mb-2" />
+                <Users className="mx-auto size-8 text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
               </div>
             )}
@@ -763,7 +763,7 @@ export default function ClubOverviewPage() {
                   ))}
                 </div>
               ) : (
-                <Empty className="rounded-lg border bg-muted/20 py-12">
+                <Empty frame="panel">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       {deferredSearch ? <Search /> : <MessageSquareText />}

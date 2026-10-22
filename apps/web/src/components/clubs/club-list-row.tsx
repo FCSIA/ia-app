@@ -17,8 +17,12 @@ export function ClubListRow({
   joined = false,
   badge,
   index,
+  density = "default",
+  meta,
 }: {
   club: ClubSummary;
+  density?: "default" | "compact";
+  meta?: ReactNode;
   joined?: boolean;
   badge?: ReactNode;
   /** Forwarded by CardGroup so the rendered Card can register its geometry. */
@@ -31,9 +35,9 @@ export function ClubListRow({
       index={index}
       href={clubEntryHref(club._id)}
       label={`Open ${club.name}`}
-      className="group min-h-[4.5rem] gap-3 rounded-none border-0 bg-transparent px-3 py-2.5"
+      className={cn("group gap-3 px-3 py-2.5", density === "compact" ? "min-h-12 px-4" : "min-h-[4.5rem]")}
     >
-      <ClubMark club={club} size="md" />
+      <ClubMark club={club} size={density === "compact" ? "sm" : "md"} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate text-sm font-semibold text-foreground">
@@ -44,11 +48,11 @@ export function ClubListRow({
             <Badge className="h-5 shrink-0 px-1.5 text-[10px]">Joined</Badge>
           ) : null}
         </div>
-        <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80">
-          {club.description || "No description yet."}
+        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+          {meta ?? (density === "compact" ? `${club._count?.members ?? 0} members` : club.description || "No description yet.")}
         </p>
       </div>
-      <div className="hidden shrink-0 items-center gap-3 pr-2 text-[11px] font-medium tabular-nums text-foreground/80 sm:flex">
+      <div className={cn("hidden shrink-0 items-center gap-3 pr-2 text-xs tabular-nums text-muted-foreground", density !== "compact" && "sm:flex")}>
         <span
           className={cn(
             "inline-flex items-center gap-1",
