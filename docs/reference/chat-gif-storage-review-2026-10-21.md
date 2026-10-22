@@ -134,11 +134,21 @@ remain pending approval. No shared deployment was changed.
 
 ### Written approval request — October 22, 2026
 
-With the owner's explicit authorization, the approval request was sent via Gmail
-to `developers@giphy.com` at 11:22 UTC, subject "Written integration approval
-request: Innovation Academy Chat (server-side delivery and caching)". Sent-mail
-readback confirms the recipient, subject and complete body. The request identifies
-the Innovation Academy Chat beta application without including its API key,
+With the owner's explicit authorization, the approval request was first attempted
+via Gmail to `developers@giphy.com` at 11:22 UTC, subject "Written integration
+approval request: Innovation Academy Chat (server-side delivery and caching)".
+A delivery failure received immediately afterward says the Google Group may not
+exist or may not permit posting. This attempt did not reach a confirmed support
+intake; Gmail's Sent label alone was not delivery confirmation.
+
+After the owner requested an inbox check, the complete request was resent to
+`support@giphy.com` at 13:04 UTC with the same subject and an explanation of the
+bounce. This address is published on GIPHY's official
+[account help page](https://giphy.com/howtogiphy/your-giphy-account).
+The message asks support to route it to API partnerships/licensing and confirm
+receipt. Sent-mail readback confirms the new recipient and subject; delivery,
+ticket creation and review are not yet confirmed. The request identifies the
+Innovation Academy Chat beta application without including its API key,
 student information or credentials.
 
 The request asks for written permission for server-side metadata verification,
