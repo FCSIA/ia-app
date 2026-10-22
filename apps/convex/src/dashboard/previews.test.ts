@@ -124,4 +124,43 @@ describe('dashboard previews', () => {
     const stranger = await t.withIdentity({ subject: other }).query(api.dashboard.flexFriday.snapshot, { from: now });
     expect(stranger?.workshops).toEqual([]);
   });
+
+  it('keeps a channel unread when a newer message has been deleted', async () => {
+    const { t, now, student, teacher, club } = await fixture();
+    await t.run(async (ctx) => {
+      await ctx.db.insert('clubMembers', { clubId: club, userId: student, role: 'MEMBER', joinedAt: now });
+      const channelId = await ctx.db.insert('clubChannels', { clubId: club, name: 'News', visibility: 'PUBLIC', createdById: teacher, createdAt: now, updatedAt: now });
+      await ctx.db.insert('clubChannelReadReceipts', { clubId: club, channelId, userId: student, lastReadAt: now - 30 });
+      await ctx.db.insert('clubChannelMessages', { channelId, authorId: teacher, body: 'Unread', isPinned: false, createdAt: now - 20, updatedAt: now - 20 });
+      await ctx.db.insert('clubChannelMessages', { channelId, authorId: teacher, body: 'Deleted', isPinned: false, createdAt: now - 10, updatedAt: now, deletedAt: now });
+    });
+    const preview = await t.withIdentity({ subject: student }).query(api.clubs.management.getMyClubs, { includeActivity: true });
+    expect(preview.clubs[0]?.unreadChannels).toBe(1);
+    expect(preview.clubs[0]?.unreadHasMore).toBe(false);
+  });
+
+  it('marks a capped unread scan as uncertain rather than claiming no unread channels', async () => {
+    const { t, now, student, teacher, club } = await fixture();
+    const { channelId, receiptId } = await t.run(async (ctx) => {
+      await ctx.db.insert('clubMembers', { clubId: club, userId: student, role: 'MEMBER', joinedAt: now });
+      const channelId = await ctx.db.insert('clubChannels', { clubId: club, name: 'News', visibility: 'PUBLIC', createdById: teacher, createdAt: now, updatedAt: now });
+      const receiptId = await ctx.db.insert('clubChannelReadReceipts', { clubId: club, channelId, userId: student, lastReadAt: now - 30 });
+      await ctx.db.insert('clubChannelMessages', { channelId, authorId: teacher, body: 'Unread', isPinned: false, createdAt: now - 20, updatedAt: now - 20 });
+      for (let index = 0; index < 20; index += 1) {
+        await ctx.db.insert('clubChannelMessages', { channelId, authorId: teacher, body: 'Deleted', isPinned: false, createdAt: now - 19 + index, updatedAt: now, deletedAt: now });
+      }
+      return { channelId, receiptId };
+    });
+    const client = t.withIdentity({ subject: student });
+    const capped = await client.query(api.clubs.management.getMyClubs, { includeActivity: true });
+    expect(capped.clubs[0]?.unreadChannels).toBe(0);
+    expect(capped.clubs[0]?.unreadHasMore).toBe(true);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(receiptId, { lastReadAt: now });
+      await ctx.db.insert('clubChannelMessages', { channelId, authorId: student, body: 'Own post', isPinned: false, createdAt: now + 1, updatedAt: now + 1 });
+    });
+    const read = await client.query(api.clubs.management.getMyClubs, { includeActivity: true });
+    expect(read.clubs[0]?.unreadChannels).toBe(0);
+    expect(read.clubs[0]?.unreadHasMore).toBe(false);
+  });
 });

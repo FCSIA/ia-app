@@ -964,13 +964,17 @@ export const getMyClubs = query({
       const channels = candidates.slice(0, 50);
       const access = await getChannelAccessForChannels(ctx, channels, context, user._id);
       const unread = await Promise.all(channels.filter((channel) => access.get(channel._id)?.canView).map(async (channel) => {
-        const [message, receipt] = await Promise.all([
-          ctx.db.query("clubChannelMessages").withIndex("by_channelId_and_createdAt", (q) => q.eq("channelId", channel._id)).order("desc").first(),
-          ctx.db.query("clubChannelReadReceipts").withIndex("by_userId_and_channelId", (q) => q.eq("userId", user._id).eq("channelId", channel._id)).first(),
-        ]);
-        return !!message && !message.deletedAt && message.authorId !== user._id && message.createdAt > (receipt?.lastReadAt ?? 0);
+        const receipt = await ctx.db.query("clubChannelReadReceipts")
+          .withIndex("by_userId_and_channelId", (q) => q.eq("userId", user._id).eq("channelId", channel._id)).first();
+        // A deleted newest post must not hide an older unread message. Scan only
+        // beyond the read boundary, and report uncertainty if the cap is reached.
+        const messages = await ctx.db.query("clubChannelMessages")
+          .withIndex("by_channelId_and_createdAt", (q) => q.eq("channelId", channel._id).gt("createdAt", receipt?.lastReadAt ?? 0))
+          .order("desc").take(21);
+        const hasUnread = messages.slice(0, 20).some((message) => !message.deletedAt && message.authorId !== user._id);
+        return { hasUnread, hasMore: !hasUnread && messages.length > 20 };
       }));
-      return { ...summary, unreadChannels: unread.filter(Boolean).length, unreadHasMore: candidates.length > 50 };
+      return { ...summary, unreadChannels: unread.filter((channel) => channel.hasUnread).length, unreadHasMore: candidates.length > 50 || unread.some((channel) => channel.hasMore) };
     }));
     return { memberOf, sponsoring, clubs };
   },
