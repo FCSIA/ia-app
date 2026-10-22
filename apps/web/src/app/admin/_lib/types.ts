@@ -1,3 +1,5 @@
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+
 export type StudentImportResult = {
   created: number;
   skipped: number;
@@ -23,7 +25,7 @@ export type AuditActorScope = 'ALL' | 'USER' | 'SYSTEM';
 
 export type AuditEventRecord = {
   actorId?: string | null;
-  context?: { title: string; subtitle: string | null; references: Array<{ id: string; label: string; name: string }> } | null;
+  context?: { title: string; subtitle: string | null; references: Array<{ id: string; label: string; name: string }>; links?: Array<{ id: string; label: string; name: string; href: string | null }> } | null;
   id: string;
   action: string;
   entityType: string;
@@ -31,7 +33,7 @@ export type AuditEventRecord = {
   createdAt: string;
   meta?: Record<string, unknown> | null;
   actor?: {
-    id: string;
+    id: Id<'users'>;
     firstName: string;
     lastName: string;
     preferredName?: string | null;

@@ -28,13 +28,14 @@ type DisplayedUsersPageState = {
   page: UsersPage | undefined;
 };
 
-export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
+export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initialUserId = '') {
   const user = useCurrentUser();
   const { toast } = useToast();
 
-  const [search, setSearch] = useState(() => initialSearch);
+  const [search, setSearch] = useState(() => initialUserId || initialSearch);
   const deferredSearch = useDeferredValue(search);
-  const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
+  const exactUserId = initialUserId && deferredSearch === initialUserId ? initialUserId : undefined;
+  const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>(initialUserId ? 'all' : 'students');
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [previousCursors, setPreviousCursors] = useState<(string | null)[]>([]);
@@ -61,6 +62,7 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
     activeTab === 'users'
       ? {
           search: deferredSearch || undefined,
+          userId: exactUserId,
           roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup,
           paginationOpts: {
             numItems: USERS_PAGE_SIZE,
@@ -101,7 +103,7 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
   // Actual total count for the selected role group (shown in the header badge).
   const totalCount = useQuery(
     api.users.admin.count,
-    activeTab === 'users'
+    activeTab === 'users' && !exactUserId
       ? { roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup }
       : 'skip',
   );
@@ -158,12 +160,13 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
     },
     userRoleGroup,
     setUserRoleGroup: (value: AdminUserRoleGroup) => {
+      if (exactUserId) setSearch('');
       setUserRoleGroup(value);
       setCurrentCursor(null);
       setPreviousCursors([]);
     },
     users: displayedPage?.page ?? [],
-    totalCount: totalCount ?? undefined,
+    totalCount: exactUserId ? usersPage?.page.length : totalCount ?? undefined,
     status,
     canLoadPrevious: previousCursors.length > 0,
     pageIndex: previousCursors.length,

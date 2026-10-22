@@ -388,9 +388,9 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         </CheckboxPrimitive.Root>
 
         {/* Label */}
-        <span className="inline-grid text-[13px]">
+        <span className="inline-grid min-w-0 text-[13px]">
           <span
-            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
+            className="col-start-1 row-start-1 truncate invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -398,7 +398,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
+              "col-start-1 row-start-1 truncate transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               checked || isActive
                 ? "text-foreground"
                 : "text-muted-foreground"

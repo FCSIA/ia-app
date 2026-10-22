@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { PersonTrigger } from '@/components/users/person-trigger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Accordion,
@@ -23,9 +24,9 @@ import type { AuditEventDetail } from '../../_lib/types';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   auditActionLabel,
-  auditRecordLabel,
-  auditLabel,
+  auditMetaFields,
   auditPersonName,
+  auditRecordTitle,
 } from '~/apps/shared/audit';
 import { WhiteboardAuditSnapshot } from './whiteboard-audit-snapshot';
 
@@ -58,14 +59,17 @@ type Props = {
   onSelectedEventIdChange: (id: string | null) => void;
   eventDetail?: AuditEventDetail;
   isDetailLoading: boolean;
+  onFilterPerson: (id: string, name: string) => void;
 };
 export function AuditDetailSheet({
   selectedEventId,
   onSelectedEventIdChange,
   eventDetail,
   isDetailLoading,
+  onFilterPerson,
 }: Props) {
   const snapshot = eventDetail ? whiteboardSnapshotTarget(eventDetail) : null;
+  const recordedFields = eventDetail ? auditMetaFields(eventDetail) : [];
   const openerRef = useRef<HTMLElement | null>(null);
   return (
     <Sheet
@@ -87,7 +91,7 @@ export function AuditDetailSheet({
         }}
       >
         <SheetHeader className="shrink-0">
-          <SheetTitle>Activity details</SheetTitle>
+          <SheetTitle>{eventDetail ? auditActionLabel(eventDetail.action) : 'Activity details'}</SheetTitle>
           <SheetDescription className="sr-only">
             Recorded activity, related records, and original data.
           </SheetDescription>
@@ -98,15 +102,8 @@ export function AuditDetailSheet({
               <AdminNotice message="Loading activity details…" />
             ) : eventDetail ? (
               <>
+                <p className="text-lg font-medium">{auditRecordTitle(eventDetail)}</p>
                 <dl className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">
-                      What happened
-                    </dt>
-                    <dd className="mt-1 font-semibold">
-                      {auditActionLabel(eventDetail.action)}
-                    </dd>
-                  </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">
                       When (your local time)
@@ -117,36 +114,21 @@ export function AuditDetailSheet({
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">Person</dt>
-                    <dd className="mt-1">{auditPersonName(eventDetail)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">
-                      Related record
-                    </dt>
-                    <dd className="mt-1">
-                      {eventDetail.context?.title ??
-                        auditRecordLabel(eventDetail.entityType)}
-                      {eventDetail.context?.title &&
-                      eventDetail.context.title !== auditRecordLabel(eventDetail.entityType) ? (
-                        <span className="block text-xs text-muted-foreground">
-                          {auditRecordLabel(eventDetail.entityType)}
-                        </span>
-                      ) : null}
-                    </dd>
+                    <dd className="mt-1">{eventDetail.actor ? <PersonTrigger person={{ ...eventDetail.actor, _id: eventDetail.actor.id, preferredName: eventDetail.actor.preferredName ?? undefined }} usersHref={`/admin/users?user=${encodeURIComponent(eventDetail.actor.id)}`} actions={<Button type="button" variant="ghost" size="sm" onClick={() => onFilterPerson(eventDetail.actor!.id, auditPersonName(eventDetail))}>Filter by this person</Button>} /> : auditPersonName(eventDetail)}</dd>
                   </div>
                 </dl>
-                {eventDetail.context?.references.length ? (
+                {eventDetail.context?.links?.length ? (
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">
-                      Related people and places (current names)
+                      Related records
                     </p>
                     <dl className="grid gap-3 sm:grid-cols-2">
-                      {eventDetail.context.references.map((ref) => (
+                      {eventDetail.context.links.map((ref) => (
                         <div key={`${ref.label}:${ref.id}`}>
                           <dt className="text-xs text-muted-foreground">
                             {ref.label}
                           </dt>
-                          <dd>{ref.name}</dd>
+                          <dd>{ref.href ? <Link href={ref.href} className="text-foreground underline underline-offset-4">{ref.name}</Link> : <>{ref.name}<span className="block text-xs text-muted-foreground">Record unavailable</span></>}</dd>
                         </div>
                       ))}
                     </dl>
@@ -160,7 +142,7 @@ export function AuditDetailSheet({
                     <p className="text-sm text-muted-foreground">
                       {eventDetail.entityPreview.subtitle}
                     </p>
-                    {eventDetail.entityPreview.href ? (
+                    {eventDetail.entityPreview.href && !eventDetail.context?.links?.length ? (
                       <Button asChild variant="tertiary">
                         <Link href={eventDetail.entityPreview.href}>
                           {eventDetail.entityPreview.hrefLabel || 'Open record'}
@@ -173,7 +155,7 @@ export function AuditDetailSheet({
                       </p>
                     ) : null}
                     <dl className="grid grid-cols-2 gap-3">
-                      {eventDetail.entityPreview.fields?.map((field) => (
+                      {eventDetail.entityPreview.fields?.filter((field) => !/\bID\b/i.test(field.label) && !['0', 'No', 'None', 'null', 'false', ''].includes(field.value)).map((field) => (
                         <div key={field.label}>
                           <dt className="text-xs text-muted-foreground">
                             {field.label}
@@ -190,36 +172,16 @@ export function AuditDetailSheet({
                     atSeq={snapshot.atSeq}
                   />
                 ) : null}
-                <section className="space-y-3">
-                  <h3 className="font-semibold">Recorded information</h3>
-                  {eventDetail.meta &&
-                  typeof eventDetail.meta === 'object' &&
-                  !Array.isArray(eventDetail.meta) &&
-                  Object.keys(eventDetail.meta).length > 0 ? (
-                    <dl className="space-y-3">
-                      {Object.entries(eventDetail.meta).map(([key, value]) => (
-                        <div key={key}>
-                          <dt className="text-xs text-muted-foreground">
-                            {auditLabel(key)}
-                          </dt>
-                          <dd className="whitespace-pre-wrap text-sm">
-                            {displayValue(value, eventDetail)}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {eventDetail.meta == null ||
-                      (typeof eventDetail.meta === 'object' && Object.keys(eventDetail.meta).length === 0)
-                        ? 'No additional information was recorded.'
-                        : JSON.stringify(eventDetail.meta, null, 2)}
-                    </p>
-                  )}
-                </section>
+                {recordedFields.length ? <section className="space-y-3">
+                  <h3 className="font-semibold">{eventDetail.action === 'CLUB_CHANNEL_MESSAGE_UPDATED' ? 'Changes' : 'Recorded information'}</h3>
+                  <dl className="space-y-3">{recordedFields.map((field) => <div key={field.key}>
+                    <dt className="text-xs text-muted-foreground">{field.label}</dt>
+                    <dd className="whitespace-pre-wrap text-sm">{displayValue(field.value, eventDetail)}</dd>
+                  </div>)}</dl>
+                </section> : null}
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="original">
-                    <AccordionTrigger>Original data and IDs</AccordionTrigger>
+                    <AccordionTrigger>Technical details</AccordionTrigger>
                     <AccordionContent>
                       <p className="mb-3 text-xs text-muted-foreground">
                         Complete action codes, IDs, timestamps, and saved
