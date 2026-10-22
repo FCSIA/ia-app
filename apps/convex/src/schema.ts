@@ -153,11 +153,17 @@ export const schema = defineSchema({
     .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
     .index("by_category_and_createdAt", ["category", "createdAt"])
     .index("by_action_and_createdAt", ["action", "createdAt"])
+    .index("by_entityType_and_createdAt", ["entityType", "createdAt"])
     .index("by_entityType_and_entityId_and_createdAt", [
       "entityType",
       "entityId",
       "createdAt",
     ]),
+
+  auditIndexState: defineTable({
+    key: v.string(),
+    ready: v.boolean(),
+  }).index("by_key", ["key"]),
 
   loginFailures: defineTable({
     accountKey: v.string(),
@@ -596,6 +602,8 @@ export const schema = defineSchema({
     .index("by_clubId_and_createdAt", ["clubId", "createdAt"])
     .index("by_clubId", ["clubId"])
     .index("by_status", ["status"])
+    .index("by_authorId_and_status", ["authorId", "status"])
+    .index("by_clubId_and_status", ["clubId", "status"])
     .index("by_status_and_createdAt", ["status", "createdAt"]),
 
   comments: defineTable({
@@ -1066,6 +1074,7 @@ export const schema = defineSchema({
       "pinnedAt",
     ])
     .index("by_authorId_and_createdAt", ["authorId", "createdAt"])
+    .index("by_authorId_and_clientGeneratedId", ["authorId", "clientGeneratedId"])
     .index("by_authorId_and_channelId_and_createdAt", [
       "authorId",
       "channelId",
@@ -1256,6 +1265,7 @@ export const schema = defineSchema({
     .index("by_sponsorId_and_status", ["sponsorId", "status"]),
 
   calendarEntries: defineTable({
+    allDay: v.optional(v.boolean()),
     eventId: v.optional(v.id("events")),
     flexFridayId: v.optional(v.id("flexFridays")),
     title: v.string(),

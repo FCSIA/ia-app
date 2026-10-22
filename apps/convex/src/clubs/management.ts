@@ -952,7 +952,7 @@ export const getMyClubs = query({
       if (!unique.has(club._id) || roleRank(club.role) > roleRank(unique.get(club._id)!.role)) unique.set(club._id, club);
     }
     for (const club of sponsoring) unique.set(club._id, club);
-    const clubs = await Promise.all([...unique.values()].map(async (summary, index) => {
+    const clubs: Array<(typeof memberOf)[number] & { unreadChannels?: number; unreadHasMore?: boolean }> = await Promise.all([...unique.values()].map(async (summary, index) => {
       // Only the three dashboard rows need activity. Bound the channel scan and
       // apply the same access policy as the workspace before reading messages.
       if (!args.includeActivity || index >= 3) return summary;
