@@ -550,7 +550,10 @@ function PinnedMessagesButton({
                     className="gap-3 px-3 py-3"
                     onClick={() => jumpToMessage(message._id)}
                   >
-                    <Pin className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <ClubPersonAvatar
+                      person={message.author}
+                      className="size-7 shrink-0"
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
                         <span className="truncate text-sm font-semibold">
@@ -561,7 +564,7 @@ function PinnedMessagesButton({
                           {formatMessageTime(message.createdAt)}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 block break-words text-sm leading-5 text-muted-foreground">
+                      <span className="mt-0.5 line-clamp-2 break-words text-sm leading-5 text-muted-foreground">
                         {preview}
                       </span>
                     </span>
@@ -611,7 +614,11 @@ function ChannelSearch({
           </Button>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)] p-2">
+      {/* Opens toward the conversation: the trigger now follows the channel name. */}
+      <PopoverContent
+        align="start"
+        className="w-96 max-w-[calc(100vw-2rem)] p-2"
+      >
         <Input
           aria-label={`Search messages in #${channelName}`}
           placeholder={`Search #${channelName}`}
@@ -620,7 +627,7 @@ function ChannelSearch({
           autoFocus
         />
         <div className="max-h-80 overflow-y-auto pt-2" aria-live="polite">
-          {query.length < 2 ? (
+          {query.length === 0 ? null : query.length < 2 ? (
             <p className="p-2 text-sm text-muted-foreground">
               Type at least two characters.
             </p>
@@ -634,7 +641,8 @@ function ChannelSearch({
             <>
               <p className="px-2 pb-1 text-xs text-muted-foreground">
                 {results.length}
-                {results.length === 30 ? '+' : ''} results
+                {results.length === 30 ? '+' : ''}{' '}
+                {results.length === 1 ? 'result' : 'results'}
               </p>
               {results.map((message) => (
                 <button
@@ -659,7 +667,9 @@ function ChannelSearch({
                       {fullName(message.author)} ·{' '}
                       {formatMessageTime(message.createdAt)}
                     </span>
-                    <span className="line-clamp-2 block whitespace-pre-wrap break-words text-sm">
+                    {/* Inside typeset so <mark> uses the shared highlight,
+                        not the browser's yellow-on-black default. */}
+                    <span className="typeset typeset-chat line-clamp-2 whitespace-pre-wrap break-words">
                       {message.body
                         .split(
                           new RegExp(
