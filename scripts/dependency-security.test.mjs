@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { generateKeyPairSync } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
@@ -93,4 +94,16 @@ test("braces retains ordinary glob expansion and escapeInvalid output", () => {
   for (const pattern of ["{{a}}", "{a,{b}}", "{{x}y}", "{a,{b,{c}}}", "{}{a}"]) {
     assert.equal(braces.stringify(pattern, { escapeInvalid: true }), pattern);
   }
+});
+
+
+test("OSV sandbox exceptions apply only to the Vercel CLI package identity", () => {
+  const lock = JSON.parse(readFileSync(new URL("../bun.lock", import.meta.url), "utf8").replace(/,\s*([}\]])/g, "$1"));
+  const instances = Object.values(lock.packages).filter(([id]) => id.startsWith("sandbox@"));
+  assert.ok(instances.length > 0);
+  for (const [id] of instances) assert.equal(id, "sandbox@4.4.0");
+  const cli = JSON.parse(readFileSync(new URL("../node_modules/sandbox/package.json", import.meta.url), "utf8"));
+  assert.equal(cli.version, "4.4.0");
+  assert.equal(cli.repository.url, "https://github.com/vercel/sandbox.git");
+  assert.equal(cli.repository.directory, "packages/sandbox");
 });

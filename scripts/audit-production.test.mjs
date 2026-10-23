@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { buildProductionInventory } from "./audit-production.mjs";
+import { buildProductionInventory, buildFullInventory } from "./audit-production.mjs";
 
 test("production inventory follows workspace dependencies, not dev tooling", async () => {
   const inventory = await buildProductionInventory(
@@ -14,7 +14,7 @@ test("production inventory follows workspace dependencies, not dev tooling", asy
     ]),
   );
 
-  assert.equal(packages.get("next"), "16.3.8");
+  assert.equal(packages.get("next"), "16.4.3");
   assert.equal(packages.get("convex"), "1.46.0");
   assert.equal(packages.has("deepmerge-ts"), false);
   assert.equal(packages.has("flatted"), false);
@@ -151,4 +151,19 @@ test("production inventory fails closed for unsupported or unresolved lockfile d
       ),
     /unsupported lockfileVersion/,
   );
+});
+
+
+test("full inventory includes development packages and all resolved instances", async () => {
+  const text = await readFile(new URL("../bun.lock", import.meta.url), "utf8");
+  const inventory = buildFullInventory(text);
+  const packages = inventory.results[0].packages;
+  assert.ok(packages.some(({ package: pkg }) => pkg.name === "vercel"));
+  assert.ok(packages.some(({ package: pkg }) => pkg.name === "vitest"));
+  assert.ok(packages.some(({ package: pkg }) => pkg.name === "next"));
+  assert.ok(packages.filter(({ package: pkg }) => pkg.name === "path-to-regexp").length >= 2);
+  assert.ok(packages.every(({ package: pkg }) => !pkg.version.startsWith("workspace:")));
+  const fixture = { lockfileVersion: 3, workspaces: {}, packages: { app: ["app@1.0.0", "", {}, ""] } };
+  assert.deepEqual(buildFullInventory(JSON.stringify(fixture)).results[0].packages[0].package,
+    { name: "app", version: "1.0.0", ecosystem: "npm" });
 });
