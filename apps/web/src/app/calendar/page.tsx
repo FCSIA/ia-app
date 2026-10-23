@@ -459,6 +459,9 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
         <CalendarSchoolDayBands {...props} />
       )}
       renderNoEvents={() => empty}
+      // On wide screens the Day rail lists all-day items, so the lane would
+      // only repeat them.
+      classNames={{ allDaySection: view === 'day' ? 'xl:hidden' : undefined }}
     >
       <AppShell
         headerSlot={<PeriodHeader isMobile={isMobile} view={view} />}
@@ -635,6 +638,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                     day={date}
                     entries={displayed.filter(
                       (entry) =>
+                        entry.allDay === true &&
                         sources.includes(entry.source) &&
                         format(calendarDate(entry.startAt), 'yyyy-MM-dd') <=
                           format(calendarDate(date), 'yyyy-MM-dd') &&

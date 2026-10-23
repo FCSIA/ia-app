@@ -72,12 +72,13 @@ export function CalendarDaySummary<
 }) {
   return (
     <aside
-      aria-label="Day summary"
-      className="hidden w-72 shrink-0 space-y-4 overflow-y-auto border-l p-4 xl:block"
+      aria-label={`All day, ${format(calendarDate(day), 'EEEE, MMMM d')}`}
+      className="hidden w-80 shrink-0 space-y-4 overflow-y-auto border-l p-4 xl:block"
     >
-      <h2 className="font-semibold">
-        {format(calendarDate(day), 'EEEE, MMMM d')}
-      </h2>
+      {/* The rail owns the day's all-day and due items on wide screens (the
+          time grid hides its all-day lane there); timed items stay on the
+          grid. No heading: the period title names the day and every row
+          already reads "All day". */}
       {entries.length ? (
         <div className="space-y-2">
           {entries.map((entry) => (
@@ -97,7 +98,7 @@ export function CalendarDaySummary<
           ))}
         </div>
       ) : (
-        <Empty size="inline">No events planned.</Empty>
+        <Empty size="inline">No all-day events.</Empty>
       )}
       <Button variant="tertiary" size="sm" onClick={onCreate}>
         Add a reminder
