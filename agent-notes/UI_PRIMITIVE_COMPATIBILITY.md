@@ -95,6 +95,13 @@ Calendar day targets also use the adapter's `--cell-size` in touch mode. Fluid's
 generic 44px icon-button expansion would otherwise force a seven-column date
 grid beyond a narrow widget or date-picker popup.
 
+`DatePicker` and `DateTimePicker` own their trigger label: it sits in a
+`min-w-0 truncate` span because the Fluid `Button` centres its content, so an
+unwrapped label wider than a narrow trigger clipped at both ends.
+`DateTimePicker` shows the compact `MMM d, yyyy · h:mm a` value. Both pass
+`required` to the day grid unless `allowClear` is set: re-clicking the chosen
+day must not silently empty a required value; clearing is the X control's job.
+
 ## Counterexample: actual compounded spacing
 
 Not every oversized primitive is a contract mismatch. The chat mention menu

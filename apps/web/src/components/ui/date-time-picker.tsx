@@ -68,7 +68,13 @@ export function DateTimePicker({
               buttonClassName,
             )}
           >
-            {selectedDateTime ? format(selectedDateTime, 'PPP · p') : placeholder}
+            {/* The label owns truncation (Button centres its content), and the
+                compact date keeps the time visible in narrow form columns. */}
+            <span className="min-w-0 truncate">
+              {selectedDateTime
+                ? format(selectedDateTime, 'MMM d, yyyy · h:mm a')
+                : placeholder}
+            </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -76,7 +82,9 @@ export function DateTimePicker({
             mode="single"
             defaultMonth={selectedDate}
             selected={selectedDate}
-            onSelect={(date) => {
+            // Re-clicking the chosen day must not clear a required value.
+            required={!allowClear}
+            onSelect={(date: Date | undefined) => {
               if (!date) {
                 onChange('');
                 return;

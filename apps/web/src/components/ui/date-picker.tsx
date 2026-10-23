@@ -56,7 +56,11 @@ export function DatePicker({
               buttonClassName,
             )}
           >
-            {selectedDate ? format(selectedDate, 'PPP') : placeholder}
+            {/* The label owns truncation: Button centres its content, so an
+                unwrapped label wider than the trigger clips at both ends. */}
+            <span className="min-w-0 truncate">
+              {selectedDate ? format(selectedDate, 'PPP') : placeholder}
+            </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -64,7 +68,10 @@ export function DatePicker({
             mode="single"
             defaultMonth={selectedDate}
             selected={selectedDate}
-            onSelect={(date) => {
+            // Without a clear control, re-clicking the chosen day must not
+            // silently empty the field; clearing is the X button's job.
+            required={!allowClear}
+            onSelect={(date: Date | undefined) => {
               onChange(date ? format(date, 'yyyy-MM-dd') : '');
               if (date) setOpen(false);
             }}
