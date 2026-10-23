@@ -155,7 +155,7 @@ export function EditCalendarEntryDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit reminder</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             Update the details of your reminder.
           </DialogDescription>
         </DialogHeader>

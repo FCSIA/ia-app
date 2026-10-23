@@ -93,7 +93,7 @@ export function AddCalendarEntryDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New reminder</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             Add a private reminder to your calendar.
           </DialogDescription>
         </DialogHeader>

@@ -1,7 +1,13 @@
 'use client';
 
 import { useId, type ReactNode } from 'react';
-import { addDays, format, startOfDay } from 'date-fns';
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  parseISO,
+  startOfDay,
+} from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -86,6 +92,31 @@ export function ReminderForm({
     key: K,
     value: ReminderValues[K],
   ) => onChange({ ...values, [key]: value });
+  // Moving the start keeps the reminder's length, so a later start never
+  // leaves the end behind it (the save would fail "end after the start").
+  const changeStart = (start: string) => {
+    if (values.allDay) {
+      const days = differenceInCalendarDays(
+        parseISO(values.end.slice(0, 10)),
+        parseISO(values.start.slice(0, 10)),
+      );
+      const end = addDays(parseISO(start.slice(0, 10)), Math.max(0, days));
+      onChange({ ...values, start, end: `${format(end, 'yyyy-MM-dd')}T00:00` });
+      return;
+    }
+    const before = calendarInputDate(values.start).getTime();
+    const after = calendarInputDate(start).getTime();
+    const length = calendarInputDate(values.end).getTime() - before;
+    if (!Number.isFinite(before) || !Number.isFinite(after) || !(length > 0)) {
+      set('start', start);
+      return;
+    }
+    onChange({
+      ...values,
+      start,
+      end: format(calendarDate(after + length), "yyyy-MM-dd'T'HH:mm"),
+    });
+  };
   const changeAllDay = (allDay: boolean) => {
     const start = calendarInputDate(values.start);
     const end = calendarInputDate(values.end);
@@ -112,20 +143,22 @@ export function ReminderForm({
         onCheckedChange={changeAllDay}
         disabled={disabled}
       />
-      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+      {/* One column: two date-and-time triggers side by side cannot show a
+          full date and time inside a dialog-width form. */}
+      <div className="grid min-w-0 gap-4">
         <Field aria-labelledby={`${id}-start`}>
           <FieldLabel id={`${id}-start`}>Starts</FieldLabel>
           {values.allDay ? (
             <DatePicker
               value={values.start.slice(0, 10)}
               disabled={disabled}
-              onChange={(date) => set('start', `${date}T00:00`)}
+              onChange={(date) => changeStart(`${date}T00:00`)}
             />
           ) : (
             <DateTimePicker
               value={values.start}
               disabled={disabled}
-              onChange={(value) => set('start', value)}
+              onChange={changeStart}
             />
           )}
         </Field>
