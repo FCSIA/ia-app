@@ -45,6 +45,7 @@ import {
   Flag,
   Search,
   ArrowDown,
+  CircleAlert,
   X,
 } from 'lucide-react';
 import {
@@ -815,6 +816,100 @@ function PollCard({
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * An unsent message keeps its place and anatomy in the conversation: same
+ * gutter, same text column, muted body, and the reason with Retry beside it.
+ */
+function FailedSendRow({
+  author,
+  grouped,
+  payload,
+  reason,
+  retrying,
+  onRetry,
+  onDiscard,
+}: {
+  author: Parameters<typeof ClubPersonAvatar>[0]['person'];
+  grouped: boolean;
+  payload: Pick<
+    ComposerSubmitArgs,
+    'body' | 'bodyMarkdown' | 'bodyRich' | 'files' | 'pollQuestion'
+  >;
+  reason: string;
+  retrying: boolean;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <Message grouped={grouped} className="gap-3 rounded-md px-3">
+      <MessageAvatar>
+        {grouped ? null : (
+          <ClubPersonAvatar
+            person={author}
+            className="size-9"
+            fallbackClassName="text-[11px]"
+          />
+        )}
+      </MessageAvatar>
+      <MessageContent className="gap-0">
+        {grouped ? null : (
+          <MessageHeader className="gap-2 px-0 text-[13px]">
+            <span className="truncate font-semibold text-foreground">
+              {fullName(author)}
+            </span>
+          </MessageHeader>
+        )}
+        <div className={cn('min-w-0 max-w-[75ch]', !grouped && 'mt-1')}>
+          {payload.body ? (
+            <MentionBody
+              body={payload.body}
+              bodyMarkdown={payload.bodyMarkdown}
+              bodyRich={payload.bodyRich}
+              className="text-muted-foreground"
+            />
+          ) : payload.pollQuestion ? (
+            <p className="text-sm text-muted-foreground">
+              {payload.pollQuestion}
+            </p>
+          ) : null}
+          {payload.files.map((file, index) => (
+            <p key={index} className="text-xs text-muted-foreground">
+              {file.name}
+            </p>
+          ))}
+        </div>
+        <div
+          role="alert"
+          className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-destructive"
+        >
+          <span className="flex min-w-0 items-start gap-1">
+            <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            <span>Couldn’t send · {reason}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={retrying}
+              onClick={onRetry}
+            >
+              Retry
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={retrying}
+              onClick={onDiscard}
+            >
+              Discard
+            </Button>
+          </span>
+        </div>
+      </MessageContent>
+    </Message>
   );
 }
 
@@ -2530,54 +2625,54 @@ export function ChannelWorkspace() {
     }
   };
 
-  const renderFailedSends = (parentMessageId?: string) =>
-    failedSends
-      .filter(
-        (item) =>
-          item.channelId === channelId &&
-          item.payload.parentMessageId === parentMessageId,
-      )
-      .map((item) => (
-        <div
-          key={item.identity.clientGeneratedId}
-          className="mx-3 my-2 rounded-lg border border-destructive/40 p-3"
-          role="status"
-        >
-          <p className="whitespace-pre-wrap break-words text-sm">
-            {item.payload.body || item.payload.pollQuestion}
-          </p>
-          {item.payload.files.map((file, index) => (
-            <p key={index} className="text-xs text-muted-foreground">
-              {file.name}
-            </p>
-          ))}
-          <p className="mt-1 text-xs text-destructive">
-            Couldn’t send · {item.reason}
-          </p>
-          <div className="mt-1 flex gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              loading={item.retrying}
-              onClick={() => void submitMessage(item.payload, item.identity)}
-            >
-              Retry
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={item.retrying}
-              onClick={() =>
-                setFailedSends((current) =>
-                  current.filter((entry) => entry !== item),
-                )
-              }
-            >
-              Delete
-            </Button>
-          </div>
-        </div>
-      ));
+  const renderFailedSends = (parentMessageId?: string) => {
+    if (!user) return null;
+    const items = failedSends.filter(
+      (item) =>
+        item.channelId === channelId &&
+        item.payload.parentMessageId === parentMessageId,
+    );
+    if (items.length === 0) return null;
+    // The first unsent row joins the viewer's run when the conversation
+    // already ends with the viewer's own recent message.
+    const delivered = parentMessageId ? threadReplies : timelineMessages;
+    const last = delivered[delivered.length - 1];
+    const joinsRun =
+      !!last &&
+      last.authorId === user._id &&
+      !last.isDeleted &&
+      Date.now() - new Date(last.createdAt).getTime() <=
+        MESSAGE_GROUP_WINDOW_MS;
+    // Retry and Discard unmount their own buttons; keep typing where it was.
+    const refocusComposer = () =>
+      (parentMessageId ? replyComposerRef : rootComposerRef).current?.focus();
+    const author = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      preferredName: user.preferredName,
+      avatarUrl: user.avatarUrl ?? null,
+    };
+    return items.map((item, index) => (
+      <FailedSendRow
+        key={item.identity.clientGeneratedId}
+        author={author}
+        grouped={index > 0 || joinsRun}
+        payload={item.payload}
+        reason={item.reason}
+        retrying={item.retrying}
+        onRetry={() => {
+          refocusComposer();
+          void submitMessage(item.payload, item.identity);
+        }}
+        onDiscard={() => {
+          refocusComposer();
+          setFailedSends((current) =>
+            current.filter((entry) => entry !== item),
+          );
+        }}
+      />
+    ));
+  };
 
   const channel = conversationContext?.channel;
   const canPinMessages = conversationContext?.canPinMessages ?? false;
