@@ -7,7 +7,6 @@ import { CalendarDays, ChevronRight, FileText, Megaphone, MessagesSquare, Shield
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PersonTrigger } from '@/components/users/person-trigger';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableGroupRow, TableHead, TableHeadFilter, TableHeader, TableRow } from '@/components/ui/table';
 import { AdminNotice } from '../admin-ui';
@@ -16,12 +15,37 @@ import type { AuditEventRecord } from '../../_lib/types';
 import type { useAdminAudit } from '../../_hooks/use-admin-audit';
 import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditCategory, auditPersonName, auditRecordTitle } from '~/apps/shared/audit';
 import { AuditColumnFilter, type AuditFilterColumn } from './audit-filters';
+import { AuditPerson } from './audit-person';
 
 type AuditState = ReturnType<typeof useAdminAudit>;
 const icons = { 'people-access': Users, 'clubs-chat': MessagesSquare, announcements: Megaphone, moderation: Shield, schedules: FileText, 'flex-events': CalendarDays };
 function DayLabel({ date }: { date: Date }) { return <>{isToday(date) ? 'Today' : isYesterday(date) ? 'Yesterday' : format(date, 'EEEE, MMM d, yyyy')}</>; }
-function Person({ event, audit }: { event: AuditEventRecord; audit: AuditState }) {
-  return event.actor ? <PersonTrigger person={{ ...event.actor, _id: event.actor.id, preferredName: event.actor.preferredName ?? undefined }} usersHref={`/admin/users?user=${encodeURIComponent(event.actor.id)}`} actions={<Button type="button" size="sm" variant="ghost" onClick={() => audit.setAuditActorId(event.actor!.id, auditPersonName(event))}>Filter by this person</Button>} /> : <span className="truncate text-muted-foreground">{auditPersonName(event)}</span>;
+/** Where a record lives (club, then channel, workshop, …); people are not places. */
+const PLACE_LABELS = new Set(['Club', 'Channel', 'Workshop', 'Session', 'Board', 'Announcement', 'Event', 'Unit', 'Group', 'Template', 'Course']);
+function auditPlaces(event: AuditEventRecord) {
+  return (event.context?.links ?? []).filter((link) => link.id !== event.entityId && PLACE_LABELS.has(link.label)).slice(0, 2);
+}
+function RecordCell({ event }: { event: AuditEventRecord }) {
+  const title = auditRecordTitle(event);
+  const href = event.context?.links?.find((link) => link.id === event.entityId)?.href;
+  if (href) return <Link className="block truncate text-foreground hover:underline focus-visible:underline" href={href} title={title}>{title}</Link>;
+  if (!event.context?.deleted) return <span className="block truncate text-foreground" title={title}>{title}</span>;
+  // The action already says so for deletions; elsewhere the state needs words, not only a muted color.
+  const stated = /^(Deleted|Removed)\b/.test(auditActionLabel(event.action));
+  return <span className="flex min-w-0 gap-1 text-muted-foreground" title={`${title} (deleted)`}><span className="truncate">{title}</span>{stated ? null : <span className="shrink-0">(deleted)</span>}</span>;
+}
+function WhereCell({ event }: { event: AuditEventRecord }) {
+  const places = auditPlaces(event);
+  if (!places.length) return <span className="block truncate">{event.context?.subtitle || '—'}</span>;
+  // The innermost place (the channel) is the most specific, so the club truncates first.
+  return <span className="flex min-w-0 items-center gap-1">{places.map((place, index) => {
+    const name = place.label === 'Channel' ? `#${place.name}` : place.name;
+    const fit = index && index === places.length - 1 ? 'max-w-full shrink-0 truncate' : 'min-w-0 truncate';
+    return <Fragment key={`${place.label}:${place.id}`}>
+      {index ? <span aria-hidden="true">·</span> : null}
+      {place.href ? <Link href={place.href} className={`${fit} hover:underline focus-visible:underline`} title={`${place.label}: ${place.name}`}>{name}</Link> : <span className={fit}>{name}</span>}
+    </Fragment>;
+  })}</span>;
 }
 function Action({ event }: { event: AuditEventRecord }) {
   const category = auditCategory(event.entityType, event.action);
@@ -41,9 +65,6 @@ export function AuditTable({ audit }: { audit: AuditState }) {
         {audit.isAuditLoading ? Array.from({ length: 8 }, (_, index) => <TableRow key={index}><TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell></TableRow>) : events.length ? events.map((event, index) => {
           const date = new Date(event.createdAt);
           const newDay = index === 0 || format(date, 'yyyy-MM-dd') !== format(new Date(events[index - 1]!.createdAt), 'yyyy-MM-dd');
-          const primary = event.context?.links?.find((link) => link.id === event.entityId);
-          const where = event.context?.links?.find((link) => link.id !== event.entityId && link.href && !/person|user|actor/i.test(link.label));
-          const title = auditRecordTitle(event);
           return <Fragment key={event.id}>
             {newDay ? <TableGroupRow colSpan={6}><DayLabel date={date} /></TableGroupRow> : null}
             <TableRow index={index} interactive selected={audit.selectedAuditEventId === event.id} onClick={(click) => {
@@ -52,10 +73,10 @@ export function AuditTable({ audit }: { audit: AuditState }) {
               audit.setSelectedAuditEventId(event.id);
             }}>
               <TableCell><time className="tabular-nums" dateTime={event.createdAt} title={format(date, 'PPpp')}>{format(date, 'h:mm a')}</time></TableCell>
-              <TableCell><Person event={event} audit={audit} /></TableCell>
+              <TableCell><AuditPerson event={event} onFilter={audit.setAuditActorId} /></TableCell>
               <TableCell><Action event={event} /></TableCell>
-              <TableCell>{primary?.href ? <Link className="block truncate text-foreground hover:underline focus-visible:underline" href={primary.href} title={title}>{title}</Link> : <span className="block truncate text-foreground" title={title}>{title}</span>}</TableCell>
-              <TableCell className="hidden xl:table-cell">{where?.href ? <Link href={where.href} className="block truncate hover:underline" title={where.name}>{where.name}</Link> : <span className="block truncate">{event.context?.subtitle || '—'}</span>}</TableCell>
+              <TableCell><RecordCell event={event} /></TableCell>
+              <TableCell className="hidden xl:table-cell"><WhereCell event={event} /></TableCell>
               <TableCell><Button type="button" variant="ghost" size="icon-compact" aria-label={`Details: ${auditActionLabel(event.action)} by ${auditPersonName(event)}`} onClick={() => audit.setSelectedAuditEventId(event.id)}><ChevronRight /></Button></TableCell>
             </TableRow>
           </Fragment>;

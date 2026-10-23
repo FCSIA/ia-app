@@ -56,6 +56,6 @@ export function AuditTab() {
       <p className="text-xs tabular-nums text-muted-foreground lg:hidden" role="status">{count}</p>
       <AuditTable audit={audit} />
     </section>
-    <AuditDetailSheet selectedEventId={audit.selectedAuditEventId} onSelectedEventIdChange={audit.setSelectedAuditEventId} eventDetail={audit.auditEventDetail} isDetailLoading={audit.isAuditDetailLoading} onFilterPerson={audit.setAuditActorId} />
+    <AuditDetailSheet selectedEventId={audit.selectedAuditEventId} onSelectedEventIdChange={audit.setSelectedAuditEventId} eventDetail={audit.auditEventDetail} isDetailLoading={audit.isAuditDetailLoading} onFilterPerson={(id, name) => { audit.setSelectedAuditEventId(null); audit.setAuditActorId(id, name); }} />
   </>;
 }

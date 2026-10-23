@@ -421,6 +421,28 @@ describe('audit index integrity', () => {
       expect.objectContaining({ id: 'removed-message', href: null }),
     ]));
   });
+  test('names a reaction by its message and marks removed records deleted, not bulk rows', async () => {
+    const f = await fixture();
+    const ids = await f.t.run(async (ctx) => {
+      const channel = await ctx.db.insert('clubChannels', { clubId: f.club, name: 'general', visibility: 'PUBLIC', createdById: f.admin, createdAt: 0, updatedAt: 0 });
+      const message = await ctx.db.insert('clubChannelMessages', { channelId: channel, authorId: f.student, body: '  Bring safety goggles on Friday  ', isPinned: false, createdAt: 0, updatedAt: 0 });
+      const removed = await ctx.db.insert('clubChannelMessages', { channelId: channel, authorId: f.student, body: 'Removed text', isPinned: false, deletedAt: 5, createdAt: 0, updatedAt: 5 });
+      const react = (entityId: string) => logAuditEvent(ctx, { actorId: f.student, action: 'CLUB_CHANNEL_MESSAGE_REACTION_ADDED', entityType: 'ClubChannelMessage', entityId, meta: { clubId: f.club, channelId: channel, emoji: 'LIKE' } });
+      return {
+        channel, message,
+        live: await react(message),
+        removed: await react(removed),
+        bulk: await logAuditEvent(ctx, { actorId: f.admin, action: 'USER_CSV_BULK_UPDATED', entityType: 'User', entityId: 'bulk', meta: { updated: 2 } }),
+      };
+    });
+    const live = await f.adminClient.query(api.audit.events.get, { auditEventId: ids.live });
+    expect(live?.context).toMatchObject({ title: 'Bring safety goggles on Friday', deleted: false });
+    expect(live?.context.links[0]).toMatchObject({ label: 'Record', href: `/clubs/${f.club}/channels/${ids.channel}?message=${ids.message}` });
+    const removed = await f.adminClient.query(api.audit.events.get, { auditEventId: ids.removed });
+    expect(removed?.context).toMatchObject({ title: 'Message', deleted: true });
+    expect(removed?.context.links[0]?.href).toBeNull();
+    expect((await f.adminClient.query(api.audit.events.get, { auditEventId: ids.bulk }))?.context.deleted).toBe(false);
+  });
   test('application writers cannot bypass audit provenance and counts', () => {
     const sources = import.meta.glob('../**/*.ts', { eager: true, query: '?raw', import: 'default' });
     const bypasses = Object.entries(sources).filter(([path, source]) => !path.endsWith('.test.ts') && path !== './_lib.ts' && /\.insert\(\s*['"]auditEvents['"]/.test(String(source))).map(([path]) => path);

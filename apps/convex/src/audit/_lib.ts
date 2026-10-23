@@ -33,6 +33,8 @@ export const auditEventValidator = v.object({
     references: v.array(
       v.object({ id: v.string(), label: v.string(), name: v.string() }),
     ),
+    /** The event's own record no longer exists (or was soft-deleted). */
+    deleted: v.boolean(),
   }),
 });
 

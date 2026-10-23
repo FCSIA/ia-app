@@ -69,6 +69,14 @@ function recordName(value: Record<string, unknown>): string | null {
   }
   return null;
 }
+/** Messages and comments are named by their text, as their own events record it. */
+const TEXT_RECORD_TABLES = new Set<TableNames>(['clubChannelMessages', 'comments']);
+const TEXT_RECORD_PREVIEW_CHARACTERS = 240;
+function recordText(table: TableNames, value: Record<string, unknown>): string | null {
+  return TEXT_RECORD_TABLES.has(table) && typeof value.body === 'string' && value.body.trim()
+    ? value.body.trim().slice(0, TEXT_RECORD_PREVIEW_CHARACTERS)
+    : null;
+}
 /** Per-page memoization keeps repeated people, clubs, and channels to one read. */
 export function auditContextResolver(ctx: QueryCtx) {
   const reads = new Map<string, Promise<Record<string, unknown> | null>>();
@@ -92,10 +100,16 @@ export function auditContextResolver(ctx: QueryCtx) {
     const table = ENTITY_TABLES[type];
     const entity =
       table && event.entityId ? await read(table, event.entityId) : null;
-    // Historical labels take precedence; current names fill in missing context.
+    // A soft-deleted message keeps its row but is no longer a destination.
+    // Only a real record ID can be deleted (bulk rows record e.g. "bulk").
+    const live = !!entity && !entity.deletedAt;
+    const deleted = !live && !!table && !!event.entityId && ctx.db.normalizeId(table, event.entityId) !== null;
+    // Historical labels take precedence; current names fill in missing context
+    // (e.g. a reaction names the message it was added to).
     const title =
       recordName(meta) ??
       (entity ? recordName(entity) : null) ??
+      (live && table && entity ? recordText(table, entity) : null) ??
       auditRecordLabel(event.entityType);
     const references = (
       await Promise.all(
@@ -136,9 +150,9 @@ export function auditContextResolver(ctx: QueryCtx) {
       return null;
     };
     const links = [
-      ...(event.entityId ? [{ id: event.entityId, label: 'Record', name: title, href: entity ? href(table, event.entityId) : null }] : []),
+      ...(event.entityId ? [{ id: event.entityId, label: 'Record', name: title, href: live ? href(table, event.entityId) : null }] : []),
       ...references.map((ref) => ({ ...ref, href: href(REFERENCE_TABLES[Object.keys(REFERENCE_TABLES).find((key) => auditLabel(key.replace(/Id$/, '')) === ref.label) ?? ''], ref.id) })),
     ];
-    return { title, subtitle, references, links };
+    return { title, subtitle, references, links, deleted };
   };
 }

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { PersonTrigger } from '@/components/users/person-trigger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Accordion,
@@ -25,9 +24,9 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   auditActionLabel,
   auditMetaFields,
-  auditPersonName,
   auditRecordTitle,
 } from '~/apps/shared/audit';
+import { AuditPerson } from './audit-person';
 import { WhiteboardAuditSnapshot } from './whiteboard-audit-snapshot';
 
 function whiteboardSnapshotTarget(event: AuditEventDetail) {
@@ -114,7 +113,7 @@ export function AuditDetailSheet({
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">Person</dt>
-                    <dd className="mt-1">{eventDetail.actor ? <PersonTrigger person={{ ...eventDetail.actor, _id: eventDetail.actor.id, preferredName: eventDetail.actor.preferredName ?? undefined }} usersHref={`/admin/users?user=${encodeURIComponent(eventDetail.actor.id)}`} actions={<Button type="button" variant="ghost" size="sm" onClick={() => onFilterPerson(eventDetail.actor!.id, auditPersonName(eventDetail))}>Filter by this person</Button>} /> : auditPersonName(eventDetail)}</dd>
+                    <dd className="mt-1"><AuditPerson event={eventDetail} onFilter={onFilterPerson} /></dd>
                   </div>
                 </dl>
                 {eventDetail.context?.links?.length ? (
