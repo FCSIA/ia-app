@@ -11,10 +11,15 @@ export const DashboardWidgetEmptyContext = createContext<
   ((empty: boolean) => void) | null
 >(null);
 
-/** Reports whether the widget currently has nothing to show; loading counts as empty. */
-export function useDashboardWidgetEmpty(empty: boolean) {
+/**
+ * Reports whether the widget has nothing to show. Pass `undefined` while its
+ * data is loading: the slot keeps the visibility it remembered from the last
+ * settled visit, so a queue that had work reserves its space and one that was
+ * empty never flashes a skeleton.
+ */
+export function useDashboardWidgetEmpty(empty: boolean | undefined) {
   const report = useContext(DashboardWidgetEmptyContext);
   useEffect(() => {
-    report?.(empty);
+    if (empty !== undefined) report?.(empty);
   }, [empty, report]);
 }

@@ -27,6 +27,7 @@ export function FlexFridaySnapshotWidget() {
       title="Flex Friday"
       href="/flex-friday"
       loading={data === undefined}
+      loadingRows={1}
       flush
     >
       {data?.workshops.length ? (

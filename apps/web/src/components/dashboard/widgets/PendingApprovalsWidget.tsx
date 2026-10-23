@@ -55,7 +55,9 @@ export function PendingApprovalsWidget() {
   const [pending, setPending] = useState<string | null>(null);
   const { toast } = useToast();
   useDashboardWidgetEmpty(
-    data === undefined || (data.items.length === 0 && !data.hasMore),
+    data === undefined
+      ? undefined
+      : data.items.length === 0 && !data.hasMore,
   );
   const act = async (item: NonNullable<typeof data>["items"][number]) => {
     setPending(item.id);
@@ -89,6 +91,7 @@ export function PendingApprovalsWidget() {
       title="Needs you"
       count={data ? `${data.total}${data.hasMore ? "+" : ""}` : undefined}
       loading={!data}
+      loadingRows={1}
       flush
     >
       {data?.items.length ? (

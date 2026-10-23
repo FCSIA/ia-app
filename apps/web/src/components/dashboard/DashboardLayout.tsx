@@ -48,6 +48,7 @@ import {
   PageFrame,
   Panel,
   PanelHeaderDragContext,
+  PanelReservedHeightContext,
 } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { ToastAction } from "@/components/ui/toast";
@@ -101,8 +102,42 @@ const loadMotionFeatures = () =>
   import("./dashboard-motion").then((module) => module.default);
 
 const STORAGE_PREFIX = "ia_dashboard_layout_";
+const HEIGHTS_PREFIX = "ia_dashboard_heights_";
 
 const HEIGHT_EPSILON = 8;
+
+/** Last settled widget heights per column count ("1" phone, "2" desktop). */
+type HeightCache = Record<string, Record<string, number>>;
+
+function loadHeights(userId: string): HeightCache {
+  try {
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem(`${HEIGHTS_PREFIX}${userId}`) ?? "{}",
+    );
+    if (!parsed || typeof parsed !== "object") return {};
+    const cache: HeightCache = {};
+    for (const [columns, heights] of Object.entries(parsed)) {
+      if (!heights || typeof heights !== "object") continue;
+      cache[columns] = Object.fromEntries(
+        Object.entries(heights).filter(
+          (entry): entry is [string, number] =>
+            typeof entry[1] === "number" && Number.isFinite(entry[1]),
+        ),
+      );
+    }
+    return cache;
+  } catch {
+    return {};
+  }
+}
+
+function saveHeights(userId: string, cache: HeightCache) {
+  try {
+    localStorage.setItem(`${HEIGHTS_PREFIX}${userId}`, JSON.stringify(cache));
+  } catch {
+    // Reserving space is an optimization; without storage panels simply settle.
+  }
+}
 
 class WidgetErrorBoundary extends ReactComponent<
   { title: string; children: ReactNode },
@@ -229,21 +264,38 @@ function SortableWidget({
   widget,
   editing,
   hideWhenEmpty = false,
+  reservedHeight,
   onRemove,
   onMeasure,
+  onSettled,
 }: {
   id: string;
   widget: WidgetDefinition;
   editing: boolean;
   /** Take no space outside edit mode until the widget reports content. */
   hideWhenEmpty?: boolean;
+  /** Height this widget settled at on the last visit; held while it loads. */
+  reservedHeight?: number;
   onRemove: (id: string) => void;
   onMeasure?: (id: string, height: number) => void;
+  /** Receives the widget's height once its panel has finished loading. */
+  onSettled?: (id: string, height: number) => void;
 }) {
   const reducedMotion = useReducedMotion();
-  // Start hidden so a queue that turns out empty never flashes a skeleton.
-  const [empty, setEmpty] = useState(hideWhenEmpty);
+  // A queue that was empty last time starts hidden, so it never flashes a
+  // skeleton; one that had work keeps its remembered space while it loads.
+  const [empty, setEmpty] = useState(
+    hideWhenEmpty && !(reservedHeight && reservedHeight > 0),
+  );
   const hidden = hideWhenEmpty && empty && !editing;
+  const reportEmpty = useCallback(
+    (value: boolean) => {
+      setEmpty(value);
+      // Hidden slots measure 0 without a resize event; remember the emptiness.
+      if (value && !editing) onSettled?.(id, 0);
+    },
+    [editing, id, onSettled],
+  );
   const {
     attributes,
     listeners,
@@ -268,16 +320,31 @@ function SortableWidget({
 
   useEffect(() => {
     const node = nodeRef.current;
-    if (!node || !onMeasure) return;
+    if (!node || (!onMeasure && !onSettled)) return;
+    const measure = () => {
+      const height = node.getBoundingClientRect().height;
+      onMeasure?.(id, height);
+      // Skeletons and edit-mode placeholders are not a settled height.
+      if (!editing && !node.querySelector('[aria-busy="true"]'))
+        onSettled?.(id, height);
+    };
     // Measure right away rather than waiting on the first observer callback.
-    onMeasure(id, node.getBoundingClientRect().height);
+    measure();
     if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      onMeasure(id, node.getBoundingClientRect().height);
-    });
+    const observer = new ResizeObserver(measure);
     observer.observe(node);
-    return () => observer.disconnect();
-  }, [id, onMeasure]);
+    // A skeleton that already matched the content settles without resizing.
+    const busy = new MutationObserver(measure);
+    busy.observe(node, {
+      attributes: true,
+      attributeFilter: ["aria-busy"],
+      subtree: true,
+    });
+    return () => {
+      observer.disconnect();
+      busy.disconnect();
+    };
+  }, [id, editing, onMeasure, onSettled]);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -343,11 +410,13 @@ function SortableWidget({
             }
           >
             <DashboardWidgetEmptyContext.Provider
-              value={hideWhenEmpty ? setEmpty : null}
+              value={hideWhenEmpty ? reportEmpty : null}
             >
-              <WidgetErrorBoundary title={widget.label}>
-                <Component />
-              </WidgetErrorBoundary>
+              <PanelReservedHeightContext.Provider value={reservedHeight}>
+                <WidgetErrorBoundary title={widget.label}>
+                  <Component />
+                </WidgetErrorBoundary>
+              </PanelReservedHeightContext.Provider>
             </DashboardWidgetEmptyContext.Provider>
           </PanelHeaderDragContext.Provider>
         </div>
@@ -396,7 +465,12 @@ export function DashboardLayout({
   const undoToast = useRef<(() => void) | null>(null);
   const loadedPreference = useRef<string | null>(null);
   const loadedUser = useRef<string | null>(null);
+  // Settled heights from the last visit, read once per user so the space each
+  // widget reserves while loading never changes underneath it.
+  const [heightCache, setHeightCache] = useState<HeightCache>({});
+  const heightCacheRef = useRef<HeightCache>({});
   const layout = arrangement?.layout;
+  const userId = user?._id;
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -436,6 +510,18 @@ export function DashboardLayout({
         : { ...prev, [id]: height },
     );
   }, []);
+  const handleSettled = useCallback(
+    (id: string, height: number) => {
+      if (!userId) return;
+      const bucket = (heightCacheRef.current[String(columnCount)] ??= {});
+      const rounded = Math.round(height);
+      if (bucket[id] === rounded) return;
+      bucket[id] = rounded;
+      saveHeights(userId, heightCacheRef.current);
+    },
+    [userId, columnCount],
+  );
+  const reservedHeights = heightCache[String(columnCount)] ?? {};
 
   const preferenceKey = JSON.stringify([
     user?._id,
@@ -450,6 +536,11 @@ export function DashboardLayout({
       loadedPreference.current === preferenceKey
     )
       return;
+    if (loadedUser.current !== user._id) {
+      // Separate copies: recording new heights must not mutate this visit's reservations.
+      heightCacheRef.current = loadHeights(user._id);
+      setHeightCache(loadHeights(user._id));
+    }
     const local = loadLayout(user._id);
     const saved = user.dashboardLayout.length
       ? { layout: user.dashboardLayout, columns: user.dashboardColumns }
@@ -893,7 +984,9 @@ export function DashboardLayout({
                           widget={widget}
                           editing={editing && !isSaving}
                           hideWhenEmpty={widget.hideWhenEmpty?.(user?.roles)}
+                          reservedHeight={reservedHeights[id]}
                           onRemove={handleRemove}
+                          onSettled={handleSettled}
                         />
                       );
                     })}
@@ -920,8 +1013,10 @@ export function DashboardLayout({
                                   hideWhenEmpty={widget.hideWhenEmpty?.(
                                     user?.roles,
                                   )}
+                                  reservedHeight={reservedHeights[id]}
                                   onRemove={handleRemove}
                                   onMeasure={handleMeasure}
+                                  onSettled={handleSettled}
                                 />
                               );
                             })}

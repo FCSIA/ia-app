@@ -20,6 +20,15 @@ export const PanelHeaderDragContext = createContext<
   HTMLAttributes<HTMLDivElement> | undefined
 >(undefined);
 
+/**
+ * A layout that remembers a panel's settled height can reserve it here. While
+ * the panel is loading it holds exactly that height (its skeleton clips inside
+ * the frame), so content below does not move when the data arrives.
+ */
+export const PanelReservedHeightContext = createContext<number | undefined>(
+  undefined,
+);
+
 type PageFrameProps = {
   children: ReactNode;
   className?: string;
@@ -163,6 +172,8 @@ export function Panel({
 }: PanelProps) {
   const shape = useShape();
   const dragProps = useContext(PanelHeaderDragContext);
+  const reservedHeight = useContext(PanelReservedHeightContext);
+  const heldHeight = loading && reservedHeight ? reservedHeight : undefined;
   return (
     <section
       className={cn(
@@ -171,8 +182,10 @@ export function Panel({
         tone === "accent"
           ? "border-transparent bg-accent"
           : cn("bg-card", CARD_SURFACE_FOREGROUND),
+        heldHeight && "overflow-hidden",
         className,
       )}
+      style={heldHeight ? { height: heldHeight } : undefined}
       aria-busy={loading || undefined}
     >
       {title || description || action || actions ? (
@@ -235,10 +248,14 @@ export function Panel({
       >
         {loading ? (
           <div role="status" aria-label="Loading" className="flex flex-col">
+            {/* Rows match an inline Card row: 60px tall, text at the row inset. */}
             {Array.from({ length: loadingRows }, (_, index) => (
               <div
                 key={index}
-                className="flex h-14 flex-col justify-center gap-2"
+                className={cn(
+                  "flex h-15 flex-col justify-center gap-2",
+                  flush && "px-4",
+                )}
               >
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />

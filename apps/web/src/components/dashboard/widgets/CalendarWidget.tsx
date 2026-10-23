@@ -42,7 +42,14 @@ export function CalendarWidget() {
     ),
   ];
   return (
-    <Panel title="Coming up" href="/calendar" loading={!data} flush>
+    // The Canvas footer depends on `feeds`; wait for both so it can't pop in late.
+    <Panel
+      title="Coming up"
+      href="/calendar"
+      loading={!data || feeds === undefined}
+      loadingRows={2}
+      flush
+    >
       {rows?.length ? (
         <div className="space-y-3">
           {dates.map((date) => (
