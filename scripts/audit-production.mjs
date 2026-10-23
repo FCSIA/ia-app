@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 import { readFile, writeFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
 const lockfilePath = new URL("../bun.lock", import.meta.url);
-const supportedLockfileVersion = 1;
+const supportedLockfileVersions = [1, 3];
 
 function fail(message) {
   throw new Error(`Production audit inventory: ${message}`);
@@ -18,9 +19,9 @@ function parseLockfile(text) {
     fail(`cannot parse bun.lock (${error.message})`);
   }
 
-  if (lockfile.lockfileVersion !== supportedLockfileVersion) {
+  if (!supportedLockfileVersions.includes(lockfile.lockfileVersion)) {
     fail(
-      `unsupported lockfileVersion ${lockfile.lockfileVersion}; expected ${supportedLockfileVersion}`,
+      `unsupported lockfileVersion ${lockfile.lockfileVersion}; expected ${supportedLockfileVersions.join(" or ")}`,
     );
   }
   if (!lockfile.workspaces || typeof lockfile.workspaces !== "object") {
@@ -235,22 +236,38 @@ export async function buildProductionInventory(lockfileText) {
   return { results: [{ source: { path: "bun.lock" }, packages }] };
 }
 
+export function buildFullInventory(lockfileText) {
+  const entries = packageEntries(parseLockfile(lockfileText));
+  return {
+    results: [{
+      source: { path: "bun.lock" },
+      packages: entries.map(({ key, name, version }) => ({
+        package: { name, version, ecosystem: "npm" },
+        groups: [{ ids: [key] }],
+      })),
+    }],
+  };
+}
+
 async function main() {
   const outputIndex = process.argv.indexOf("--output");
   const output = outputIndex >= 0 ? process.argv[outputIndex + 1] : undefined;
   if (!output) {
     throw new Error(
-      "Usage: node scripts/audit-production.mjs --output <file>",
+      "Usage: node scripts/audit-production.mjs [--all] --output <file>",
     );
   }
 
-  const inventory = await buildProductionInventory(
-    await readFile(lockfilePath, "utf8"),
-  );
+  const buildInventory = process.argv.includes("--all")
+    ? buildFullInventory
+    : buildProductionInventory;
+  const inventory = await buildInventory(await readFile(lockfilePath, "utf8"));
   await writeFile(output, `${JSON.stringify(inventory, null, 2)}\n`);
   console.log(
-    `Wrote ${inventory.results[0].packages.length} production packages to ${output}`,
+    `Wrote ${inventory.results[0].packages.length} packages to ${output}`,
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

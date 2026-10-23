@@ -11,7 +11,7 @@ longer part of the active local setup.
 
 ## Prerequisites
 
-- **Node.js**: v24 (or v20.19+)
+- **Node.js**: v24.22.1 or a newer v24 security release (see `.node-version`)
 - **Bun**: the Nix shell provides the version recorded by `packageManager` in
   `package.json`, matching CI. Without Nix, install that version separately.
 
@@ -26,7 +26,9 @@ direnv allow
 
 Use `direnv reload` after changing the shell configuration, or `nix develop`
 without direnv. When upgrading `packageManager`, update the corresponding Bun
-release hashes in `flake.nix` as well.
+release hashes in `flake.nix` as well. Node upgrades must update `.node-version`,
+the Node release hashes in `flake.nix`, and the supported range in `package.json`.
+CI reads `.node-version`.
 
 ## First Run
 

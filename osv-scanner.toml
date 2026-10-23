@@ -7,3 +7,13 @@ reason = "node-forge 1.4.0 is patched via patches/node-forge@1.4.0.patch with th
 id = "GHSA-vfj7-8cjw-p6xm"
 ignoreUntil = 2026-11-01
 reason = "braces 3.0.3 is source-patched via patches/braces@3.0.3.patch with the five lib depth/parent-cycle guards from upstream proposal https://github.com/micromatch/braces/pull/72 (including its corrected stringify parent handling). There is no newer published release as of 2026-10-15. scripts/dependency-security.test.mjs verifies deep string/AST rejection, untrusted maxDepth caps, parent cycles, and ordinary expansion/escaping before scanning. This exception covers the patched version identifier only; remove it when a fixed release or replacement is adopted."
+
+[[IgnoredVulns]]
+id = "GHSA-fm4j-4xhm-xpwx"
+ignoreUntil = 2026-11-01
+reason = "Package-name reuse false positive: sandbox 4.4.0 is the Vercel Sandbox CLI (https://github.com/vercel/sandbox/tree/main/packages/sandbox), not the abandoned gf3/sandbox JavaScript isolation library in this 2020 advisory. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. scripts/dependency-security.test.mjs checks every locked sandbox instance and the installed package provenance. Recheck the database correction before expiry."
+
+[[IgnoredVulns]]
+id = "GHSA-gc25-3vc5-2jf9"
+ignoreUntil = 2026-11-01
+reason = "Package-name reuse false positive for Vercel Sandbox CLI 4.4.0, not gf3/sandbox. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. See GHSA-fm4j-4xhm-xpwx above; the dependency-security regression checks all locked versions and installed provenance. Recheck the database correction before expiry."
