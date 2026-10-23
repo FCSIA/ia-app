@@ -2,45 +2,57 @@ import { describe, expect, it } from "vitest";
 import {
   getDefaultDashboardColumns,
   getDefaultDashboardLayout,
+  isDashboardReviewer,
   normalizeDashboardColumns,
   normalizeDashboardLayout,
 } from "./dashboardLayout";
 
 describe("authored dashboard defaults", () => {
-  it("puts unread news first for students, with the agenda in the right column", () => {
-    expect(getDefaultDashboardLayout(["STUDENT"])).toEqual([
-      "welcome",
-      "announcements",
-      "calendar",
-      "my-clubs",
-    ]);
-    expect(getDefaultDashboardColumns(["STUDENT"])).toEqual([
-      ["announcements", "my-clubs"],
-      ["calendar"],
-    ]);
-  });
-
-  it("prioritizes review work for staff without retired defaults", () => {
+  it("starts every role with the work queue, then unread news", () => {
     for (const role of [
+      "STUDENT",
+      "STUDENT_LEADER",
+      "STUDENT_ADMIN",
       "TEACHER",
       "SPONSOR",
       "ADMIN",
       "SUPPORT_STAFF",
-      "STUDENT_ADMIN",
     ]) {
-      expect(getDefaultDashboardLayout([role]).slice(1, 4)).toEqual([
+      expect(getDefaultDashboardLayout([role])).toEqual([
+        "welcome",
         "pending-approvals",
         "announcements",
         "calendar",
-      ]);
-      expect(getDefaultDashboardColumns([role])).toEqual([
-        ["pending-approvals", "announcements", "my-clubs"],
-        ["calendar"],
+        "my-clubs",
       ]);
     }
     expect(getDefaultDashboardLayout(["SUPER_ADMIN"])).not.toContain(
       "my-clubs",
     );
+  });
+
+  it("balances work and news against time and clubs", () => {
+    expect(getDefaultDashboardColumns(["STUDENT"])).toEqual([
+      ["pending-approvals", "announcements"],
+      ["calendar", "my-clubs"],
+    ]);
+    expect(getDefaultDashboardColumns(["SUPER_ADMIN"])).toEqual([
+      ["pending-approvals", "announcements"],
+      ["calendar"],
+    ]);
+  });
+
+  it("keeps an empty queue visible only for roles that approve work", () => {
+    for (const role of [
+      "TEACHER",
+      "SPONSOR",
+      "ADMIN",
+      "SUPER_ADMIN",
+      "SUPPORT_STAFF",
+    ])
+      expect(isDashboardReviewer([role])).toBe(true);
+    for (const role of ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"])
+      expect(isDashboardReviewer([role])).toBe(false);
   });
 });
 

@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { useToast } from "@/hooks/use-toast";
+import { useDashboardWidgetEmpty } from "../widget-visibility";
 
 const labels = {
   announcement: "Announcement approval",
@@ -53,6 +54,9 @@ export function PendingApprovalsWidget() {
   const accept = useMutation(api.events.calendar.respondToInvite);
   const [pending, setPending] = useState<string | null>(null);
   const { toast } = useToast();
+  useDashboardWidgetEmpty(
+    data === undefined || (data.items.length === 0 && !data.hasMore),
+  );
   const act = async (item: NonNullable<typeof data>["items"][number]) => {
     setPending(item.id);
     const id = item.id.slice(item.id.indexOf(":") + 1);

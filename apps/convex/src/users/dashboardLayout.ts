@@ -57,34 +57,48 @@ export function normalizeDashboardColumns(
   return result;
 }
 
-/** Authored role defaults are shared with clients; no measurement or re-packing. */
+const dashboardReviewerRoles = new Set([
+  "SPONSOR",
+  "TEACHER",
+  "ADMIN",
+  "SUPER_ADMIN",
+  "SUPPORT_STAFF",
+]);
+
+/** Roles that approve other people's work keep their queue visible when empty. */
+export function isDashboardReviewer(roles: readonly string[] = []): boolean {
+  return roles.some((role) => dashboardReviewerRoles.has(role));
+}
+
+/**
+ * Authored role defaults are shared with clients; no measurement or re-packing.
+ * Every role starts with the work queue. Reviewers always see it; everyone else
+ * sees it only while a sent-back post or an invitation is waiting.
+ */
 export function getDefaultDashboardLayout(
   roles: readonly string[] = [],
 ): string[] {
-  const staff = roles.some((role) =>
-    [
-      "SPONSOR",
-      "TEACHER",
-      "ADMIN",
-      "SUPER_ADMIN",
-      "SUPPORT_STAFF",
-      "STUDENT_ADMIN",
-    ].includes(role),
-  );
-  const ids = staff
-    ? ["welcome", "pending-approvals", "announcements", "calendar", "my-clubs"]
-    : ["welcome", "announcements", "calendar", "my-clubs"];
+  const ids = [
+    "welcome",
+    "pending-approvals",
+    "announcements",
+    "calendar",
+    "my-clubs",
+  ];
   return roles.includes("SUPER_ADMIN")
     ? ids.filter((id) => id !== "my-clubs")
     : ids;
 }
 
+const defaultRightColumn = new Set(["calendar", "my-clubs"]);
+
+/** Work and news on the left, time and clubs on the right, so neither column runs empty. */
 export function getDefaultDashboardColumns(
   roles: readonly string[] = [],
 ): string[][] {
   const ids = getDefaultDashboardLayout(roles).filter((id) => id !== "welcome");
   return [
-    ids.filter((id) => id !== "calendar"),
-    ids.filter((id) => id === "calendar"),
+    ids.filter((id) => !defaultRightColumn.has(id)),
+    ids.filter((id) => defaultRightColumn.has(id)),
   ];
 }

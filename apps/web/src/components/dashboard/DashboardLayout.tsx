@@ -95,6 +95,7 @@ import {
   withMobileOrder,
   type DashboardArrangement,
 } from "./column-layout";
+import { DashboardWidgetEmptyContext } from "./widget-visibility";
 
 const loadMotionFeatures = () =>
   import("./dashboard-motion").then((module) => module.default);
@@ -227,16 +228,22 @@ function SortableWidget({
   id,
   widget,
   editing,
+  hideWhenEmpty = false,
   onRemove,
   onMeasure,
 }: {
   id: string;
   widget: WidgetDefinition;
   editing: boolean;
+  /** Take no space outside edit mode until the widget reports content. */
+  hideWhenEmpty?: boolean;
   onRemove: (id: string) => void;
   onMeasure?: (id: string, height: number) => void;
 }) {
   const reducedMotion = useReducedMotion();
+  // Start hidden so a queue that turns out empty never flashes a skeleton.
+  const [empty, setEmpty] = useState(hideWhenEmpty);
+  const hidden = hideWhenEmpty && empty && !editing;
   const {
     attributes,
     listeners,
@@ -284,6 +291,8 @@ function SortableWidget({
       layout="position"
       layoutId={`dashboard-widget-${id}`}
       transition={{ layout: { duration: reducedMotion ? 0 : 0.22 } }}
+      // display:none also drops the slot from its column's flex gap.
+      className={hidden ? "hidden" : undefined}
     >
       <div
         ref={setRefs}
@@ -333,9 +342,13 @@ function SortableWidget({
                 : undefined
             }
           >
-            <WidgetErrorBoundary title={widget.label}>
-              <Component />
-            </WidgetErrorBoundary>
+            <DashboardWidgetEmptyContext.Provider
+              value={hideWhenEmpty ? setEmpty : null}
+            >
+              <WidgetErrorBoundary title={widget.label}>
+                <Component />
+              </WidgetErrorBoundary>
+            </DashboardWidgetEmptyContext.Provider>
           </PanelHeaderDragContext.Provider>
         </div>
       </div>
@@ -879,6 +892,7 @@ export function DashboardLayout({
                           id={id}
                           widget={widget}
                           editing={editing && !isSaving}
+                          hideWhenEmpty={widget.hideWhenEmpty?.(user?.roles)}
                           onRemove={handleRemove}
                         />
                       );
@@ -903,6 +917,9 @@ export function DashboardLayout({
                                   id={id}
                                   widget={widget}
                                   editing={editing && !isSaving}
+                                  hideWhenEmpty={widget.hideWhenEmpty?.(
+                                    user?.roles,
+                                  )}
                                   onRemove={handleRemove}
                                   onMeasure={handleMeasure}
                                 />

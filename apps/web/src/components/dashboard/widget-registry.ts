@@ -11,6 +11,7 @@ import {
 import {
   getDefaultDashboardLayout,
   getDefaultDashboardColumns,
+  isDashboardReviewer,
 } from '~/apps/convex/src/users/dashboardLayout';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
@@ -36,6 +37,11 @@ export type WidgetDefinition = {
   excludedRoles?: AppRole[];
   /** If set, widget cannot be removed or rearranged. */
   isFixed?: boolean;
+  /**
+   * If it returns true for the viewer's roles, the widget takes no space outside
+   * edit mode until it reports content (see `useDashboardWidgetEmpty`).
+   */
+  hideWhenEmpty?: (roles: AppRole[] | undefined) => boolean;
 };
 
 export const WIDGETS: Record<string, WidgetDefinition> = {
@@ -73,6 +79,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     description: 'Approvals, invitations, and changes awaiting you.',
     size: 'half',
     Component: PendingApprovalsWidget,
+    hideWhenEmpty: (roles) => !isDashboardReviewer(roles),
   },
 
   'flex-friday': {
