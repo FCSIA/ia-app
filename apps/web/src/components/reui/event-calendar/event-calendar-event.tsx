@@ -486,7 +486,10 @@ function EventCalendarEvent<TData = unknown>({
       className={cn(
         "group/ec-event text-foreground relative flex w-full min-w-0 cursor-pointer touch-none items-center overflow-hidden text-start select-none",
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
-        "data-past:opacity-55",
+        // Past entries recede through text and tint, never transparency:
+        // a see-through chip lets grid lines and schedule bands print
+        // through its title.
+        "data-past:text-muted-foreground",
         preview && "pointer-events-none",
         view === "agenda"
           ? // plain list row: color lives in the dot badge, not a tinted pill;
@@ -495,13 +498,17 @@ function EventCalendarEvent<TData = unknown>({
           : cn(
               // @container removes intrinsic sizing; only grid chips are containers
               // py-1: room above/below inline badges (attendee pill etc.)
-              "@container gap-1.5 rounded-sm px-1.5 py-0.5 leading-normal",
-              // soft tint + inset ring, not an accent border: legible on both themes
-              "bg-[color-mix(in_oklab,var(--ec-event-color)_20%,hsl(var(--card)))] hover:bg-[color-mix(in_oklab,var(--ec-event-color)_30%,hsl(var(--card)))]",
+              "@container gap-1.5 rounded-sm px-1.5 py-0.5",
+              // Month chips use one 16px text line so a cell fits three rows.
+              view === "month" ? "leading-4" : "leading-normal",
+              // Opaque source tint mixed into the card surface, plus an inset
+              // ring: legible on both themes and above any grid texture.
+              "[--ec-event-mix:20%] hover:[--ec-event-mix:30%] data-selected:[--ec-event-mix:30%] data-past:[--ec-event-mix:8%]",
+              "bg-[color-mix(in_oklab,var(--ec-event-color)_var(--ec-event-mix),hsl(var(--card)))]",
               "inset-ring inset-ring-(--ec-event-color)/15",
               "transition-[background-color,box-shadow] duration-150",
               "data-dragging:opacity-40",
-              "data-selected:bg-[color-mix(in_oklab,var(--ec-event-color)_30%,hsl(var(--card)))] data-selected:inset-ring-(--ec-event-color)/40",
+              "data-selected:inset-ring-(--ec-event-color)/40",
               segment.continuesBefore && "rounded-s-none",
               segment.continuesAfter && "rounded-e-none"
             ),

@@ -302,7 +302,7 @@ function EventCalendarMonthView({
           <div
             ref={slotProbeRef}
             aria-hidden
-            className="pointer-events-none invisible absolute h-[var(--ec-month-bar-h,1.5rem)] w-0"
+            className="pointer-events-none invisible absolute h-[var(--ec-month-bar-h,1.375rem)] w-0"
           />
         )}
       </Comp>
@@ -533,7 +533,7 @@ function EventCalendarMonthWeek({
           )}
           style={{
             gridTemplateColumns,
-            gridAutoRows: "var(--ec-month-bar-h, 1.5rem)",
+            gridAutoRows: "var(--ec-month-bar-h, 1.375rem)",
           }}
         >
           {visibleBars.map((bar) => {
@@ -554,7 +554,7 @@ function EventCalendarMonthWeek({
                 {/* lane height minus the 2px inter-lane gap */}
                 <EventCalendarEvent
                   segment={bar}
-                  className="h-[calc(var(--ec-month-bar-h,1.5rem)-0.125rem)]"
+                  className="h-[calc(var(--ec-month-bar-h,1.375rem)-0.125rem)]"
                 />
               </div>
             )
@@ -573,7 +573,7 @@ function EventCalendarMonthWeek({
                 data-kind={dragGhost.kind}
                 data-drop-invalid={!dragGhost.valid || undefined}
                 className={cn(
-                  "h-[calc(var(--ec-month-bar-h,1.5rem)-0.125rem)]",
+                  "h-[calc(var(--ec-month-bar-h,1.375rem)-0.125rem)]",
                   dragGhost.kind === "move"
                     ? // faint drop placeholder only: the cursor-attached
                       // carry clone owns the visual during moves
@@ -865,7 +865,7 @@ function EventCalendarMonthCell({
       style={
         {
           "--ec-event-color": inlineDrop.color ?? "var(--color-primary)",
-          height: "calc(var(--ec-month-bar-h, 1.5rem) - 0.125rem)",
+          height: "calc(var(--ec-month-bar-h, 1.375rem) - 0.125rem)",
         } as CSSProperties
       }
     />
@@ -892,7 +892,7 @@ function EventCalendarMonthCell({
               // lane height already carries the 2px inter-lane gap; subtract
               // it so spacer + the column's own gap-0.5 = the SAME 2px rhythm
               // between the last bar and the first timed chip
-              height: `calc(${reservedLanes} * var(--ec-month-bar-h, 1.5rem) - 0.125rem)`,
+              height: `calc(${reservedLanes} * var(--ec-month-bar-h, 1.375rem) - 0.125rem)`,
             }}
           />
         )}
@@ -1150,7 +1150,7 @@ function EventCalendarMoreIndicator({
           dropInto
             ? ({
                 "--ec-event-color": dropInto.color ?? "var(--color-primary)",
-                height: "calc(var(--ec-month-bar-h, 1.5rem) - 0.125rem)",
+                height: "calc(var(--ec-month-bar-h, 1.375rem) - 0.125rem)",
               } as CSSProperties)
             : undefined
         }
