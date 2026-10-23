@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "predev": "node ../../scripts/ensure-port.mjs 3000 && node ../../scripts/copy-excalidraw-assets.mjs",
-    "prebuild": "node ../../scripts/copy-excalidraw-assets.mjs",
+    "predev": "node ../../scripts/ensure-port.mjs 3000 && node ../../scripts/copy-excalidraw-assets.mjs && node ../../scripts/copy-schedule-ocr-assets.mjs",
+    "prebuild": "node ../../scripts/copy-excalidraw-assets.mjs && node ../../scripts/copy-schedule-ocr-assets.mjs",
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",

@@ -181,21 +181,21 @@ function extractLines(annotation: unknown): OcrLine[] {
             : null;
         if (!Array.isArray(words)) continue;
         const text = words
-          .flatMap((word) => {
+          .map((word) => {
             const symbols =
               word && typeof word === "object"
                 ? (word as { symbols?: unknown }).symbols
                 : null;
-            if (!Array.isArray(symbols)) return [];
+            if (!Array.isArray(symbols)) return "";
             return symbols.flatMap((symbol) =>
               symbol &&
               typeof symbol === "object" &&
               typeof (symbol as { text?: unknown }).text === "string"
                 ? [(symbol as { text: string }).text]
                 : [],
-            );
+            ).join("");
           })
-          .join("")
+          .join(" ")
           .trim();
         if (!text) continue;
         const confidence =

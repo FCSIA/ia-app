@@ -108,7 +108,7 @@ export const config = {
     // including stale clients making API requests.
     {
       source:
-        '/((?!_next/static|_next/image|favicon.ico|favicon-dark.ico|icons|sw.js).*)',
+        '/((?!_next/static|_next/image|favicon.ico|favicon-dark.ico|icons|schedule-ocr-assets|sw.js).*)',
       has: [
         {
           type: 'header',
@@ -125,10 +125,11 @@ export const config = {
      * - favicon.ico (favicon file)
      * - icons (PWA icons)
      * - manifest.json (PWA manifest)
+     * - schedule-ocr-assets (generated, public OCR runtime)
      * - sw.js (Service worker)
      */
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)',
+      source: '/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json|schedule-ocr-assets|sw.js).*)',
       // Router prefetches do not need a second server-side redirect decision.
       // The destination's Convex functions remain the authorization boundary.
       missing: [

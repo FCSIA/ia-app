@@ -382,6 +382,12 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   };
 
   const applyImportedSchedule = (rows: ImportedScheduleRow[]) => {
+    const importedPeriods = new Set(rows.map((row) => row.periodNumber));
+    if (importedPeriods.has(5) && !importedPeriods.has(4)) {
+      setScheduleDraft((current) => ({ ...current, lunchPeriod: "PERIOD_4" }));
+    } else if (importedPeriods.has(4) && !importedPeriods.has(5)) {
+      setScheduleDraft((current) => ({ ...current, lunchPeriod: "PERIOD_5" }));
+    }
     setScheduleEntries(() => {
       let next: StudentScheduleDraftEntry[] = [];
       for (const row of rows) {
