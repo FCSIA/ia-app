@@ -2998,15 +2998,88 @@ export function ChannelWorkspace() {
     if (threadId) setSelectedThreadId(threadId as Id<'clubChannelMessages'>);
   };
 
+  // The channel's own controls follow its name, so they keep one edge with
+  // the title instead of drifting against the global search (their old
+  // position moved with the width of the account name).
   const title: ReactNode = (
-    <div className="flex min-w-0 items-center gap-2">
-      <ClubChannelVisibilityIcon
-        visibility={channel.visibility}
-        className="text-muted-foreground"
-      />
-      <h1 className="truncate text-base font-semibold text-foreground">
-        {channel.name}
-      </h1>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <ClubChannelVisibilityIcon
+          visibility={channel.visibility}
+          className="shrink-0 text-muted-foreground"
+        />
+        <h1 className="truncate text-base font-semibold text-foreground">
+          {channel.name}
+        </h1>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <div className="hidden items-center gap-1 sm:flex">
+          {whiteboardsEnabled ? (
+            <TabsSubtle
+              selectedIndex={showWhiteboard ? 1 : 0}
+              onSelect={(index) =>
+                setChannelView(index === 1 ? 'whiteboard' : 'chat')
+              }
+            >
+              <TabsSubtleItem index={0} label="Chat" />
+              <TabsSubtleItem index={1} label="Whiteboards" />
+            </TabsSubtle>
+          ) : null}
+          <ChannelNotificationSettings
+            clubId={clubId}
+            channelId={channelId}
+            channelName={channel.name}
+          />
+          <PinnedMessagesButton
+            messages={pinnedMessages}
+            hasMore={pinnedResult?.hasMore}
+            onJump={jumpToMessage}
+          />
+        </div>
+        <ChannelSearch
+          clubId={clubId}
+          channelId={channelId}
+          channelName={channel.name}
+          onJump={jumpToMessage}
+        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              className="sm:hidden"
+              variant="ghost"
+              size="icon-sm"
+              badge={pinnedMessages.length ? '·' : undefined}
+              aria-label="Channel options"
+            >
+              <MoreHorizontal />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-3">
+            <div className="flex items-center gap-2">
+              <ChannelNotificationSettings
+                clubId={clubId}
+                channelId={channelId}
+                channelName={channel.name}
+              />
+              <PinnedMessagesButton
+                messages={pinnedMessages}
+                hasMore={pinnedResult?.hasMore}
+                onJump={jumpToMessage}
+              />
+              {whiteboardsEnabled ? (
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    setChannelView(showWhiteboard ? 'chat' : 'whiteboard')
+                  }
+                >
+                  {showWhiteboard ? 'Chat' : 'Whiteboards'}
+                </Button>
+              ) : null}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 
@@ -3123,76 +3196,6 @@ export function ChannelWorkspace() {
             CARD_SURFACE_FOREGROUND,
           )}
           scrollOwner="content"
-          actions={
-            <div className="flex items-center gap-1">
-              <ChannelSearch
-                clubId={clubId}
-                channelId={channelId}
-                channelName={channel.name}
-                onJump={jumpToMessage}
-              />
-              <div className="hidden items-center gap-1 sm:flex">
-                {whiteboardsEnabled ? (
-                  <TabsSubtle
-                    selectedIndex={showWhiteboard ? 1 : 0}
-                    onSelect={(index) =>
-                      setChannelView(index === 1 ? 'whiteboard' : 'chat')
-                    }
-                  >
-                    <TabsSubtleItem index={0} label="Chat" />
-                    <TabsSubtleItem index={1} label="Whiteboards" />
-                  </TabsSubtle>
-                ) : null}
-                <ChannelNotificationSettings
-                  clubId={clubId}
-                  channelId={channelId}
-                  channelName={channel.name}
-                />
-                <PinnedMessagesButton
-                  messages={pinnedMessages}
-                  hasMore={pinnedResult?.hasMore}
-                  onJump={jumpToMessage}
-                />
-              </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    className="sm:hidden"
-                    variant="ghost"
-                    size="icon-sm"
-                    badge={pinnedMessages.length ? '·' : undefined}
-                    aria-label="Channel options"
-                  >
-                    <MoreHorizontal />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-64 p-3">
-                  <div className="flex items-center gap-2">
-                    <ChannelNotificationSettings
-                      clubId={clubId}
-                      channelId={channelId}
-                      channelName={channel.name}
-                    />
-                    <PinnedMessagesButton
-                      messages={pinnedMessages}
-                      hasMore={pinnedResult?.hasMore}
-                      onJump={jumpToMessage}
-                    />
-                    {whiteboardsEnabled ? (
-                      <Button
-                        variant="ghost"
-                        onClick={() =>
-                          setChannelView(showWhiteboard ? 'chat' : 'whiteboard')
-                        }
-                      >
-                        {showWhiteboard ? 'Chat' : 'Whiteboards'}
-                      </Button>
-                    ) : null}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          }
         >
           <MessageScrollerProvider
             autoScroll
