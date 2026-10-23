@@ -27,6 +27,10 @@ import {
   STAGED_ANNOUNCEMENT_IMAGE_TTL_MS,
   validateAnnouncementImageMetadata,
 } from "./announcementImages";
+import {
+  STAGED_VOLUNTEER_PROOF_TTL_MS,
+  validateVolunteerProofMetadata,
+} from "./volunteerProofs";
 
 export { validateChatAttachmentMetadata } from "./chatAttachments";
 
@@ -160,7 +164,7 @@ export async function fetchTenorGifPage(value: string): Promise<Response | strin
   return null;
 }
 
-async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE" | "FEEDBACK_IMAGE" | "ANNOUNCEMENT_IMAGE"; fallbackMimeType?: string }) {
+async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE" | "FEEDBACK_IMAGE" | "ANNOUNCEMENT_IMAGE" | "VOLUNTEER_PROOF"; fallbackMimeType?: string }) {
   const prepared = await ctx.runMutation(
     internal.uploads.uploadIntents.prepareUploadValidation,
     {
@@ -452,6 +456,56 @@ export const finalizeAnnouncementImage = action({
   handler: async (ctx, args): Promise<{ imageUploadId: Id<"announcementImageUploads"> }> => {
     await validateStoredUpload(ctx, { ...args, purpose: "ANNOUNCEMENT_IMAGE" });
     return ctx.runMutation(internal.uploads.files.finalizeAnnouncementImageMutation, args);
+  },
+});
+
+export const finalizeVolunteerProofMutation = internalMutation({
+  args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage") },
+  returns: v.object({ proofUploadId: v.id("volunteerProofUploads") }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await claimUploadIntent(ctx, { ...args, uploaderId: user._id, purpose: "VOLUNTEER_PROOF" });
+    const existing = await ctx.db.query("volunteerProofUploads")
+      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId)).unique();
+    if (existing) {
+      if (existing.uploaderId !== user._id) throw new ConvexError("Proof image not found");
+      return { proofUploadId: existing._id };
+    }
+    try {
+      const metadata = await getUploadedMetadata(ctx, args.storageId);
+      const validated = validateVolunteerProofMetadata(metadata);
+      await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: validated.size });
+      const proofUploadId = await ctx.db.insert("volunteerProofUploads", {
+        uploaderId: user._id,
+        storageId: args.storageId,
+        ...validated,
+        createdAt: Date.now(),
+      });
+      await ctx.scheduler.runAfter(
+        STAGED_VOLUNTEER_PROOF_TTL_MS,
+        internal.uploads.volunteerProofs.cleanupStagedVolunteerProof,
+        { proofUploadId },
+      );
+      return { proofUploadId };
+    } catch (error) {
+      await deleteRejectedUpload(ctx, args.storageId);
+      throw error;
+    }
+  },
+});
+
+export const finalizeVolunteerProof = action({
+  args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage") },
+  returns: v.object({ proofUploadId: v.id("volunteerProofUploads") }),
+  handler: async (ctx, args): Promise<{ proofUploadId: Id<"volunteerProofUploads"> }> => {
+    try {
+      const prepared = await validateStoredUpload(ctx, { ...args, purpose: "VOLUNTEER_PROOF" });
+      validateVolunteerProofMetadata(prepared);
+      return await ctx.runMutation(internal.uploads.files.finalizeVolunteerProofMutation, args);
+    } catch (error) {
+      await ctx.runMutation(internal.uploads.uploadIntents.discardRejectedUpload, args).catch(() => {});
+      throw error;
+    }
   },
 });
 

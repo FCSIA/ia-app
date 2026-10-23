@@ -12,6 +12,7 @@ export const uploadPurposeValidator = v.union(
   v.literal("FEEDBACK_IMAGE"),
   v.literal("ANNOUNCEMENT_IMAGE"),
   v.literal("SCHEDULE_OCR"),
+  v.literal("VOLUNTEER_PROOF"),
 );
 
 export type UploadPurpose =
@@ -20,7 +21,8 @@ export type UploadPurpose =
   | "USER_IMAGE"
   | "FEEDBACK_IMAGE"
   | "ANNOUNCEMENT_IMAGE"
-  | "SCHEDULE_OCR";
+  | "SCHEDULE_OCR"
+  | "VOLUNTEER_PROOF";
 
 type UploadIntentClaimInput = {
   intent: {

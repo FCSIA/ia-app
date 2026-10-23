@@ -63,6 +63,15 @@ code after the app confirms the viewer is already a club member.
   mention/tag metadata.
 - Gives every channel collaborative [whiteboards](whiteboards.md) that all
   channel readers can use.
+- Lets club settings managers enable a volunteer-hours tracker per club. When
+  enabled, members can submit dated service hours with a required proof photo,
+  view their own submission history, and see approved versus pending totals.
+  A separate role permission grants review of other members' pending entries;
+  sponsors and admins also have that permission. Reviewers can approve or
+  decline with a reason, but cannot review their own hours. Only approved
+  entries count toward approved hours. Disabling the tracker hides it without
+  deleting existing records; permanent club deletion removes the records and
+  proof files.
 
 ## Source Files
 
@@ -117,6 +126,8 @@ invites or adds people.
 - `api.clubs.tags.*`
 - `api.clubs.peopleGroups.*`
 - `api.clubs.hierarchy.*`
+- `api.clubs.management.setVolunteerTrackingEnabled`
+- `api.clubs.volunteering.*`
 
 ## Data Model
 
@@ -128,6 +139,7 @@ Core tables:
 - `clubChannels`, `clubChannelMemberships`
 - `clubTags`, `clubTagMembers`
 - `clubPeopleGroups`, `clubPeopleGroupRules`
+- `clubVolunteerLogs`, `clubVolunteerTotals`, `volunteerProofUploads`
 - `clubChannelMessages` plus attachments, reactions, poll votes, and mentions
 
 Channel messages keep `body` as a searchable plain-text projection. New rich
