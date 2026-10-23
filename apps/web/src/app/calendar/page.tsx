@@ -411,6 +411,8 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       view={view}
       date={date}
       timeZone={CALENDAR_TIME_ZONE}
+      // Weekends are non-school days; ReUI's off-day surface recedes them.
+      offDays={{ className: 'bg-muted/40' }}
       dayCount={3}
       dayCountPresets={[3]}
       onViewChange={(next) => navigate(next, date)}

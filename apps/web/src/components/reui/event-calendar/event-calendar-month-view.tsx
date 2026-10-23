@@ -222,7 +222,9 @@ function EventCalendarMonthView({
           data-slot="event-calendar-month-header"
           // @container scopes the narrow-label breakpoint to the header row
           className={cn(
-            "@container grid border-b",
+            // frame surface: the weekday row belongs to the chrome, not the
+            // canvas (matches the time-grid day-header row)
+            "@container grid border-b bg-muted/60",
             viewConfig.classNames?.monthHeader
           )}
           style={{ gridTemplateColumns }}
@@ -1027,6 +1029,8 @@ function EventCalendarMonthCell({
         !isLast && "border-e",
         isOutside && !settings.showOutsideDays && "invisible",
         isOff && offClassName,
+        // days outside the shown month recede behind the month's own days
+        isOutside && settings.showOutsideDays && "bg-muted/60",
         isToday &&
           cn(
             "bg-primary/[0.06]",

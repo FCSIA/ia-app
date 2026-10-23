@@ -286,7 +286,7 @@ function EventCalendarTimeGrid({
         {/* Day-header row (sticky below the nav in page scroll mode) */}
         {view !== "day" && <div
           className={cn(
-            "flex border-b bg-muted/40 pe-(--ec-scrollbar-w,0px)",
+            "flex border-b bg-muted/60 pe-(--ec-scrollbar-w,0px)",
             !contained &&
               "bg-background sticky top-(--ec-sticky-offset,0px) z-20",
             viewConfig.classNames?.timeGridHeader
@@ -1086,8 +1086,11 @@ function EventCalendarDayColumn({
       className={cn(
         "relative min-w-0 border-e last:border-e-0",
         isOff && offClassName,
-        // Match the month cell's subtle today surface.
-        isToday && cn("bg-primary/[0.06]", viewConfig.todayClassName),
+        // Match the month cell's subtle today surface where it distinguishes
+        // today from neighbouring columns; a single Day view has none, so
+        // tinting its whole canvas would only discolour it.
+        isToday &&
+          cn(view !== "day" && "bg-primary/[0.06]", viewConfig.todayClassName),
         viewConfig.dayClassName?.(day),
         viewConfig.classNames?.dayColumn
       )}
