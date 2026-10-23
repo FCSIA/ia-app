@@ -387,9 +387,9 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       ? active.entry
       : null;
   const detail = active && !editing ? active.entry : null;
-  const empty = (
-    <Empty size="inline">
-      <p>No events in this range.</p>
+  const emptyContent = (
+    <>
+      <p>Nothing scheduled.</p>
       <div className="flex gap-2">
         <Button
           variant="tertiary"
@@ -402,8 +402,9 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
           Connect a calendar
         </Button>
       </div>
-    </Empty>
+    </>
   );
+  const empty = <Empty size="inline">{emptyContent}</Empty>;
 
   return (
     <EventCalendar<CalendarEntry>
@@ -609,12 +610,24 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                 value={item}
                 className="flex min-h-0 flex-1 data-[state=inactive]:hidden"
               >
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                  {entries !== undefined && events.length === 0 ? (
-                    empty
-                  ) : (
-                    <EventCalendarContent />
-                  )}
+                <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+                  {/* An empty range is still a calendar: keep the dates, slots
+                      and school bands, and float the hint above them. The
+                      agenda renders the same hint through renderNoEvents. */}
+                  <EventCalendarContent />
+                  {item !== 'agenda' &&
+                  entries !== undefined &&
+                  events.length === 0 ? (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                      <Empty
+                        size="inline"
+                        frame="panel"
+                        className="pointer-events-auto flex-none px-6"
+                      >
+                        {emptyContent}
+                      </Empty>
+                    </div>
+                  ) : null}
                 </div>
                 {item === 'day' ? (
                   <CalendarDaySummary
