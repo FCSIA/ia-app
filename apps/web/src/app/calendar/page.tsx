@@ -160,13 +160,12 @@ function CalendarInvites() {
       <PopoverTrigger asChild>
         <Button
           variant="tertiary"
-          size="sm"
-          leadingIcon={Mail}
+          size={isMobile ? 'icon-sm' : 'md'}
+          leadingIcon={isMobile ? undefined : Mail}
+          badge={invites.length || undefined}
           aria-label={`Calendar invites, ${invites.length} pending`}
         >
-          {isMobile
-            ? invites.length || null
-            : `Invites${invites.length ? ` (${invites.length})` : ''}`}
+          {isMobile ? <Mail /> : 'Invites'}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 space-y-4">
@@ -233,7 +232,7 @@ function PeriodHeader({
           className="max-w-full"
           aria-label={`Go to date, ${title}`}
         >
-          <span className="truncate font-semibold">
+          <span className="truncate text-lg font-semibold tracking-tight text-foreground">
             {isMobile ? compactTitle : title}
           </span>
           <ChevronDown aria-hidden="true" />
@@ -526,7 +525,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                   <PopoverTrigger asChild>
                     <Button
                       variant="tertiary"
-                      size={isMobile ? 'icon-compact' : 'sm'}
+                      size={isMobile ? 'icon-sm' : 'md'}
                       leadingIcon={isMobile ? undefined : SlidersHorizontal}
                       aria-label={`Calendar sources, ${sources.length} visible`}
                     >
@@ -565,7 +564,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                 </InviteBoundary>
                 <AddCalendarEntryDialog
                   trigger={
-                    <Button size="sm" leadingIcon={Plus}>
+                    <Button size="md" leadingIcon={Plus}>
                       Reminder
                     </Button>
                   }
@@ -574,7 +573,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      size="icon-compact"
+                      size="icon-sm"
                       aria-label="Calendar options"
                     >
                       <MoreHorizontal />
