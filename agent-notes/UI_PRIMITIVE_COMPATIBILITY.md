@@ -102,6 +102,18 @@ unwrapped label wider than a narrow trigger clipped at both ends.
 `required` to the day grid unless `allowClear` is set: re-clicking the chosen
 day must not silently empty a required value; clearing is the X control's job.
 
+## Concrete failure: `Toggle` inside `Tooltip`
+
+`Tooltip` renders Radix `Trigger asChild`, which passes its own `data-state`
+(`closed`, `delayed-open`, `instant-open`) to the child. Radix `Toggle` spreads
+incoming props after its own attributes, so the tooltip's value replaced
+`data-state="on"` and every `data-[state=on]:` style silently stopped matching:
+the viewer's chat reactions and the announcement editor's B/I/U looked unpressed
+while `aria-pressed="true"`. The Toggle adapter therefore styles pressed state
+from `aria-pressed` as well as `data-state` (single-select `ToggleGroup` items
+expose `aria-checked`, so they still need `data-state`). Callers that restyle a
+pressed Toggle must use `aria-pressed:` variants, as `ReactionToggle` does.
+
 ## Counterexample: actual compounded spacing
 
 Not every oversized primitive is a contract mismatch. The chat mention menu

@@ -72,8 +72,10 @@ import {
   DropdownSeparator,
 } from '@/components/ui/dropdown';
 import { MenuItem } from '@/components/ui/menu-item';
-import { Toggle } from '@/components/ui/toggle';
-import { ReactionPicker } from '@/components/clubs/reaction-picker';
+import {
+  ReactionPicker,
+  ReactionToggle,
+} from '@/components/clubs/reaction-picker';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -816,6 +818,32 @@ function PollCard({
   );
 }
 
+/** "You, Mary Jones and 2 others reacted with 👍" — the viewer is always "You". */
+function describeReactors({
+  count,
+  label,
+  viewerReacted,
+  names,
+}: {
+  count: number;
+  label: string;
+  viewerReacted: boolean;
+  names: string[];
+}) {
+  const shown = [...(viewerReacted ? ['You'] : []), ...names].slice(0, 3);
+  if (shown.length === 0)
+    return `${count} ${count === 1 ? 'person' : 'people'} reacted with ${label}`;
+  const remaining = Math.max(0, count - shown.length);
+  const parts = remaining
+    ? [...shown, `${remaining} ${remaining === 1 ? 'other' : 'others'}`]
+    : shown;
+  const list =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  return `${list} reacted with ${label}`;
+}
+
 function ReactionButton({
   clubId,
   channelId,
@@ -824,6 +852,7 @@ function ReactionButton({
   onToggleReaction,
   isReactionPending,
   openDetailsOnPress,
+  currentUserId,
 }: {
   clubId: Id<'clubs'>;
   channelId: Id<'clubChannels'>;
@@ -832,6 +861,7 @@ function ReactionButton({
   onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   isReactionPending: boolean;
   openDetailsOnPress: boolean;
+  currentUserId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -865,17 +895,20 @@ function ReactionButton({
     { initialNumItems: 25 },
   );
   const label = REACTION_LABELS[reaction.emoji] ?? reaction.emoji;
-  const names = reactors.slice(0, 3).map(fullName).join(', ');
-  const others = Math.max(0, reaction.count - Math.min(reactors.length, 3));
-  const description = names
-    ? `${names}${others ? ` and ${others} others` : ''} reacted with ${label}`
-    : `${reaction.count} ${reaction.count === 1 ? 'person' : 'people'} reacted with ${label}`;
+  const description = describeReactors({
+    count: reaction.count,
+    label,
+    viewerReacted: reaction.reactedByCurrentUser,
+    names: reactors
+      .filter((person) => person._id !== currentUserId)
+      .map(fullName),
+  });
   const chip = (
-    <Toggle
+    <ReactionToggle
+      kind="chip"
       pressed={reaction.reactedByCurrentUser}
       disabled={isReactionPending}
       aria-label={`${label}, ${reaction.count} reactions${reaction.reactedByCurrentUser ? ', you reacted' : ''}`}
-      className="h-7 min-w-8 gap-1 rounded-full bg-muted/50 px-2 text-xs data-[state=on]:bg-primary/15 data-[state=on]:ring-1 data-[state=on]:ring-primary/50 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
@@ -922,7 +955,7 @@ function ReactionButton({
     >
       <span>{label}</span>
       <span className="tabular-nums">{reaction.count}</span>
-    </Toggle>
+    </ReactionToggle>
   );
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -931,7 +964,10 @@ function ReactionButton({
           className="inline-flex"
           onClick={(event) => event.preventDefault()}
         >
-          <Tooltip content={description}>{chip}</Tooltip>
+          {/* Beside the chip, not above it: above covers the message's last line. */}
+          <Tooltip content={description} side="right">
+            {chip}
+          </Tooltip>
         </span>
       </PopoverTrigger>
       <PopoverContent
@@ -1696,6 +1732,7 @@ function MessageRow({
                               onToggleReaction={onToggleReaction}
                               isReactionPending={isReactionPending}
                               openDetailsOnPress={openReactionDetailsOnPress}
+                              currentUserId={currentUserId}
                             />
                           ))}
                         </div>
