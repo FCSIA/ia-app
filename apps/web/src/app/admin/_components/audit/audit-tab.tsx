@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { CircleHelp, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchToolbarRow } from '@/components/ui/search';
@@ -12,14 +13,25 @@ import { AuditTable } from './audit-table';
 import { AuditSearch } from './audit-search';
 
 const columns: AuditFilterColumn[] = ['When', 'Person', 'Action', 'Record'];
+
+/** Shown rows against the exact total when one is known; otherwise a lower bound until history is exhausted. */
+function auditCountLabel(audit: ReturnType<typeof useAdminAudit>) {
+  if (audit.isAuditLoading) return '—';
+  const shown = audit.auditEvents.length;
+  const total = audit.auditCounts?.exact ? audit.auditCounts.total : null;
+  const unit = (n: number) => audit.hasActiveAuditFilters ? (n === 1 ? 'match' : 'matches') : (n === 1 ? 'event' : 'events');
+  if (total != null) return shown >= total ? `${total.toLocaleString()} ${unit(total)}` : `${shown.toLocaleString()} / ${total.toLocaleString()} ${unit(total)}`;
+  return audit.auditStatus === 'Exhausted' ? `${shown.toLocaleString()} ${unit(shown)}` : `${shown.toLocaleString()}+ ${unit(shown)}`;
+}
+
 export function AuditTab() {
   const audit = useAdminAudit('audit');
   const total = audit.auditCounts?.total;
-  const count = audit.isStale || audit.isAuditLoading ? 'Updating…' : total == null
-    ? `${audit.auditEvents.length} loaded`
-    : audit.auditCounts?.exact
-      ? `${audit.auditEvents.length} / ${total.toLocaleString()} events`
-      : `${audit.auditEvents.length} matches · ${total.toLocaleString()} events in range`;
+  const liveCount = auditCountLabel(audit);
+  // A refresh keeps the previous rows on screen, so it keeps their count too.
+  const [settledCount, setSettledCount] = useState(liveCount);
+  useEffect(() => { if (!audit.isStale) setSettledCount(liveCount); }, [audit.isStale, liveCount]);
+  const count = audit.isStale ? settledCount : liveCount;
   return <>
     <section aria-label="Audit activity" className="flex min-w-0 flex-col gap-3">
       <SearchToolbarRow className="flex-row items-center gap-2">

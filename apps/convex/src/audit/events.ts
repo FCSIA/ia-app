@@ -1,7 +1,7 @@
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { AUDIT_ACTIONS, AUDIT_CATEGORIES, AUDIT_ENTITY_TYPES, auditEntityKey, auditCategory, isFlexAudit, type AuditCategory } from "../../../shared/audit";
-import { auditByActor, auditByCategory } from "./_aggregates";
+import { auditByActor, auditByCategory, auditIndexReady } from "./_aggregates";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { query, type QueryCtx } from "../_generated/server";
@@ -220,8 +220,7 @@ export const counts = query({
   handler: async (ctx, args) => {
     const viewer = await getMaybeCurrentAppUser(ctx);
     if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) return { total: null, exact: false, byCategory: [] };
-    const ready = (await ctx.db.query("auditIndexState").withIndex("by_key", (q) => q.eq("key", "v1")).unique())?.ready;
-    if (!ready) return { total: null, exact: false, byCategory: [] };
+    if (!(await auditIndexReady(ctx))) return { total: null, exact: false, byCategory: [] };
     const byCategory = await Promise.all((Object.keys(AUDIT_CATEGORIES) as AuditCategory[]).map(async (category) => ({
       category,
       count: args.actorId

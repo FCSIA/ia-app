@@ -382,6 +382,37 @@ describe('audit index integrity', () => {
     expect(filtered.page.every((event) => event.actorId === f.admin)).toBe(true);
     expect((await f.studentClient.query(api.audit.events.counts, {})).total).toBeNull();
   });
+  test('counts a history written only by the logger exactly, without a backfill', async () => {
+    const t = convexTest(schema, modules);
+    const admin = await t.run((ctx) => ctx.db.insert('users', {
+      uniqueId: 'ADMIN', firstName: 'Eniola', lastName: 'Famakinwa', roles: ['ADMIN'], isStudent: false, isTeacherStaff: false,
+      isStudentAdmin: false, isOtherRole: false, isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: '', createdAt: 0, updatedAt: 0,
+    }));
+    const adminClient = t.withIdentity({ subject: admin });
+    expect(await adminClient.query(api.audit.events.counts, {})).toMatchObject({ total: 0, exact: true });
+    await t.run(async (ctx) => {
+      await logAuditEvent(ctx, { actorId: admin, action: 'CLUB_CHANNEL_CREATED', entityType: 'ClubChannel', meta: { title: 'A channel' } });
+      await logAuditEvent(ctx, { actorId: 'system', action: 'KEYWORD_ADDED', entityType: 'KeywordRule', meta: { keyword: 'example' } });
+    });
+    expect(await adminClient.query(api.audit.events.counts, {})).toMatchObject({ total: 2, exact: true });
+    expect(await adminClient.query(api.audit.events.counts, { actorId: admin })).toMatchObject({ total: 1, exact: true });
+  });
+  test('keeps totals unavailable while a backfill is part-way through history', async () => {
+    vi.useFakeTimers();
+    try {
+      const f = await fixture();
+      await f.t.run(async (ctx) => {
+        for (let i = 0; i < 100; i++) await ctx.db.insert('auditEvents', { action: 'FLEX_WORKSHOP_CREATED', entityType: 'FlexWorkshop', createdAt: 100 + i });
+      });
+      // The first batch backfills the oldest 100 rows and schedules the rest.
+      await f.t.mutation(internal.audit.migrations.backfill, {});
+      expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBeNull();
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBe(107);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   test('server context exposes live record routes without linking deleted records', async () => {
     const f = await fixture();
     const detail = await f.adminClient.query(api.audit.events.get, { auditEventId: f.oldest });

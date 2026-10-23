@@ -9,6 +9,11 @@ export const backfill = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.null(),
   handler: async (ctx, { cursor }) => {
+    // Rows are backfilled oldest first, so a partial run must not look complete
+    // to `auditIndexReady`. An existing state row (ready or running) stays as is.
+    if (!cursor && !(await ctx.db.query('auditIndexState').withIndex('by_key', (q) => q.eq('key', 'v1')).unique())) {
+      await ctx.db.insert('auditIndexState', { key: 'v1', ready: false });
+    }
     const result = await ctx.db.query('auditEvents').withIndex('by_createdAt')
       .paginate({ cursor: cursor ?? null, numItems: 100 });
     for (const row of result.page) {
