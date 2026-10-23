@@ -340,6 +340,43 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
     params.set('date', format(calendarDate(nextDate), 'yyyy-MM-dd'));
     router.replace(`/calendar?${params}`, { scroll: false });
   }
+  // View shortcuts (M/W/D/A/3, T for today) listen on the document while the
+  // calendar is mounted, so they keep working after a dialog or popover
+  // closes and returns focus to the page body. Typing targets, open overlays
+  // and the view tabs (arrow-key owners) are left alone.
+  const onShortcut = useRef<(event: KeyboardEvent) => void>(undefined);
+  onShortcut.current = (event) => {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        'input,textarea,select,[contenteditable=true],[role=tab],[role=dialog],[role=alertdialog],[role=menu],[role=listbox],[data-slot=popover-content]',
+      ) ||
+      document.querySelector('[role=dialog][data-state=open],[role=alertdialog][data-state=open]')
+    )
+      return;
+    const key = event.key.toLowerCase();
+    const shortcut: Record<string, CalendarView> = {
+      m: 'month',
+      w: 'week',
+      d: 'day',
+      a: 'agenda',
+      '3': 'days',
+    };
+    if (key === 't') {
+      event.preventDefault();
+      navigate(view, new Date());
+    } else if (shortcut[key] && availableViews.includes(shortcut[key])) {
+      event.preventDefault();
+      navigate(shortcut[key], date);
+    }
+  };
+  useEffect(() => {
+    if (isMobile) return;
+    const listener = (event: KeyboardEvent) => onShortcut.current?.(event);
+    document.addEventListener('keydown', listener);
+    return () => document.removeEventListener('keydown', listener);
+  }, [isMobile]);
   const events = useMemo<CalendarEvent<CalendarEntry>[]>(
     () =>
       displayed
@@ -473,42 +510,6 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
           aria-label="Calendar"
           tabIndex={0}
           className={`flex min-h-0 flex-1 flex-col bg-card md:overflow-hidden md:rounded-xl md:border md:border-border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}
-          onPointerDown={(e) => {
-            if (
-              !(e.target as HTMLElement).closest(
-                'button,input,textarea,[role=tab]',
-              )
-            )
-              e.currentTarget.focus({ preventScroll: true });
-          }}
-          onKeyDown={(e) => {
-            if (
-              e.altKey ||
-              e.ctrlKey ||
-              e.metaKey ||
-              (e.target as HTMLElement).closest(
-                'input,textarea,select,[contenteditable=true],[role=tab]',
-              )
-            )
-              return;
-            const shortcut: Record<string, CalendarView> = {
-              m: 'month',
-              w: 'week',
-              d: 'day',
-              a: 'agenda',
-              '3': 'days',
-            };
-            if (e.key.toLowerCase() === 't') {
-              e.preventDefault();
-              navigate(view, new Date());
-            } else if (
-              shortcut[e.key.toLowerCase()] &&
-              availableViews.includes(shortcut[e.key.toLowerCase()])
-            ) {
-              e.preventDefault();
-              navigate(shortcut[e.key.toLowerCase()], date);
-            }
-          }}
         >
           <Tabs
             value={view}
