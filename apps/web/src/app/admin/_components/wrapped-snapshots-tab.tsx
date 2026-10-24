@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { RefreshCw, Sparkles } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import type { WrappedSnapshotStatus } from '../_hooks/use-admin-wrapped';
 import { formatDateTime, schoolYearLabel } from '../_lib/admin-utils';
-import { AdminMetric, AdminNotice, AdminPanel } from './admin-ui';
+import { AdminNotice, AdminPanel } from './admin-ui';
 
 export function WrappedSnapshotsTab({
   wrappedSchoolYear,
@@ -28,17 +28,15 @@ export function WrappedSnapshotsTab({
   error: unknown;
   generateMutation: { isPending: boolean; mutate: (refresh: boolean) => void };
 }) {
-  const coveragePercent = status?.eligibleUsers
-    ? Math.round((status.generated / status.eligibleUsers) * 100)
-    : 0;
-  const isCurrent = !!status && status.missing === 0 && status.stale === 0;
+  const canGenerate = !!status && status.eligibleUsers > 0 && !isLoading && !isError && !generateMutation.isPending;
   const actions = (
     <>
       <Select
         value={String(wrappedSchoolYear)}
+        disabled={generateMutation.isPending}
         onValueChange={(value) => onWrappedSchoolYearChange(Number(value))}
       >
-        <SelectTrigger className="w-full sm:w-[150px]" placeholder="School year" />
+        <SelectTrigger aria-label="School year" className="w-full sm:w-[150px]" placeholder="School year" />
         <SelectContent>
           {wrappedYearOptions.map((year, index) => (
             <SelectItem key={year} index={index} value={String(year)}>
@@ -51,58 +49,56 @@ export function WrappedSnapshotsTab({
         type="button"
         variant="secondary"
         leadingIcon={Sparkles}
-        disabled={generateMutation.isPending}
+        disabled={!canGenerate || status?.missing === 0}
         onClick={() => generateMutation.mutate(false)}
       >
         Generate missing
       </Button>
-      <Button
-        type="button"
-        variant="tertiary"
-        leadingIcon={RefreshCw}
-        loading={generateMutation.isPending}
-        onClick={() => {
-          if (!confirm(`Refresh every ${schoolYearLabel(wrappedSchoolYear)} Wrapped snapshot?`)) return;
-          generateMutation.mutate(true);
-        }}
-      >
-        Refresh all
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant="tertiary" leadingIcon={RefreshCw} disabled={!canGenerate} loading={generateMutation.isPending}>
+            Refresh all
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Refresh {schoolYearLabel(wrappedSchoolYear)} snapshots?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Rebuild snapshots for all {status?.eligibleUsers ?? 0} eligible students, including {status?.generated ?? 0} already generated. Existing snapshots will be replaced. This cannot be undone here.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => generateMutation.mutate(true)}>Refresh all snapshots</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 
   return (
     <div>
-      <AdminPanel title="Wrapped Snapshots" actions={actions} contentClassName="space-y-5">
+      <AdminPanel title="Wrapped snapshots" actions={actions} contentClassName="space-y-5">
           {isLoading ? (
             <AdminNotice message="Loading Wrapped snapshot status..." />
           ) : isError ? (
             <AdminNotice
               tone="danger"
               title="Could not load Wrapped snapshot status."
-              message={(error as any)?.response?.data?.message || (error as Error)?.message || 'Request failed.'}
+              message={error instanceof Error ? error.message : 'Request failed.'}
             />
           ) : status ? (
             <>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <AdminMetric label="Coverage" value={`${coveragePercent}%`} detail={`${status.generated} of ${status.eligibleUsers} eligible students`} />
-                <AdminMetric label="Missing" value={status.missing} detail="Generate missing to fill these snapshots." />
-                <AdminMetric label="Stale" value={status.stale} detail={`Schema v${status.schemaVersion} is current.`} />
-                <AdminMetric label="Freshness" value={formatDateTime(status.latestGeneratedAt)} detail="Latest generated snapshot" compact />
-              </div>
-
-              <div className="flex flex-col gap-3 rounded-lg border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 py-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-foreground">
-                      {schoolYearLabel(status.schoolYear)} launch readiness
-                    </p>
-                    <Badge variant="solid" color={isCurrent ? 'green' : 'amber'}>
-                      {isCurrent ? 'Current' : 'Needs attention'}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Generate missing skips current snapshots. Refresh all rebuilds every eligible student for the selected school year.
+                  <p className="text-sm font-medium text-foreground">
+                    {status.eligibleUsers === 0 ? 'No eligible students for this school year.' : `${status.generated} of ${status.eligibleUsers} student snapshots generated`}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {status.missing} missing · {status.stale} need a schema refresh
+                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Latest generation: {formatDateTime(status.latestGeneratedAt)} · Schema v{status.schemaVersion}
                   </p>
                 </div>
                 <Link href="/wrapped" className="text-sm font-medium text-primary hover:underline">

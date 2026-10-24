@@ -9,10 +9,11 @@ import type { AdminTabId } from './use-admin-tab';
 
 export function useAdminFeedback(activeTab: AdminTabId) {
   const { toast } = useToast();
+  const [updating, setUpdating] = useState(false);
   const [feedbackSearch, setFeedbackSearch] = useState('');
   const deferredFeedbackSearch = useDeferredValue(feedbackSearch);
-  const reports =
-    useQuery(api.moderation.reports.listFeedback, activeTab === 'feedback' ? {} : 'skip') ?? [];
+  const reportResult = useQuery(api.moderation.reports.listFeedback, activeTab === 'feedback' ? {} : 'skip');
+  const reports = useMemo(() => reportResult ?? [], [reportResult]);
   const updateReport = useMutation(api.moderation.reports.update);
   const addFeedbackResponse = useMutation(api.moderation.reports.addFeedbackResponse);
   const retryGithubIssueSync = useMutation(api.moderation.reports.retryGithubIssueSync);
@@ -46,6 +47,8 @@ export function useAdminFeedback(activeTab: AdminTabId) {
       status: Doc<'moderationReports'>['status'];
       reviewNote: string;
     }) => {
+      if (updating) return;
+      setUpdating(true);
       void updateReport({
         reportId: id,
         status,
@@ -57,9 +60,10 @@ export function useAdminFeedback(activeTab: AdminTabId) {
             title: error instanceof Error ? error.message : 'Failed to update feedback',
             variant: 'destructive',
           }),
-        );
+        )
+        .finally(() => setUpdating(false));
     },
-    isPending: false,
+    isPending: updating,
   };
 
   async function responseMutation({ reportId, body }: { reportId: Id<'moderationReports'>; body: string }) {
@@ -89,6 +93,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
   }
 
   return {
+    isLoading: reportResult === undefined,
     feedbackSearch,
     setFeedbackSearch,
     deferredFeedbackSearch,

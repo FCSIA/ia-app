@@ -10,14 +10,17 @@ import type { AdminTabId } from './use-admin-tab';
 export function useAdminModeration(activeTab: AdminTabId) {
   const { toast } = useToast();
 
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [moderationSearch, setModerationSearch] = useState('');
   const deferredModerationSearch = useDeferredValue(moderationSearch);
 
   const keywords =
     useQuery(api.moderation.keywords.list, activeTab === 'moderation' ? {} : 'skip') ?? [];
-  const reports =
-    useQuery(api.moderation.reports.list, activeTab === 'moderation' ? {} : 'skip') ?? [];
+  const reportResult = useQuery(api.moderation.reports.list, activeTab === 'moderation' ? {} : 'skip');
+  const reports = useMemo(() => reportResult ?? [], [reportResult]);
 
   const addKeyword = useMutation(api.moderation.keywords.add);
   const removeKeyword = useMutation(api.moderation.keywords.remove);
@@ -44,6 +47,8 @@ export function useAdminModeration(activeTab: AdminTabId) {
 
   const addKeywordMutation = {
     mutate: (kw: string) => {
+      if (adding) return;
+      setAdding(true);
       void addKeyword({ keyword: kw })
         .then(() => {
           setKeyword('');
@@ -54,13 +59,16 @@ export function useAdminModeration(activeTab: AdminTabId) {
             title: error instanceof Error ? error.message : 'Failed to add keyword',
             variant: 'destructive',
           }),
-        );
+        )
+        .finally(() => setAdding(false));
     },
-    isPending: false,
+    isPending: adding,
   };
 
   const removeKeywordMutation = {
     mutate: (ruleId: string) => {
+      if (removing) return;
+      setRemoving(true);
       void removeKeyword({ ruleId: ruleId as Id<'moderationKeywordRules'> })
         .then(() => toast({ title: 'Removed' }))
         .catch((error: unknown) =>
@@ -68,9 +76,10 @@ export function useAdminModeration(activeTab: AdminTabId) {
             title: error instanceof Error ? error.message : 'Failed to remove keyword',
             variant: 'destructive',
           }),
-        );
+        )
+        .finally(() => setRemoving(false));
     },
-    isPending: false,
+    isPending: removing,
   };
 
   const reportMutation = {
@@ -83,6 +92,8 @@ export function useAdminModeration(activeTab: AdminTabId) {
       status: Doc<'moderationReports'>['status'];
       reviewNote: string;
     }) => {
+      if (updating) return;
+      setUpdating(true);
       void updateReport({
         reportId: id as Id<'moderationReports'>,
         status,
@@ -94,12 +105,14 @@ export function useAdminModeration(activeTab: AdminTabId) {
             title: error instanceof Error ? error.message : 'Failed to update report',
             variant: 'destructive',
           }),
-        );
+        )
+        .finally(() => setUpdating(false));
     },
-    isPending: false,
+    isPending: updating,
   };
 
   return {
+    isLoading: reportResult === undefined,
     keyword,
     setKeyword,
     keywords,
