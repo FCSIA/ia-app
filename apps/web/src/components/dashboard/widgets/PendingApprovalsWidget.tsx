@@ -89,7 +89,8 @@ export function PendingApprovalsWidget() {
   return (
     <Panel
       title="Needs you"
-      count={data ? `${data.total}${data.hasMore ? "+" : ""}` : undefined}
+      count={data?.total}
+      countHasMore={data?.hasMore}
       loading={!data}
       loadingRows={1}
       flush

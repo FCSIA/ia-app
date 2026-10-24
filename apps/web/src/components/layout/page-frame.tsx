@@ -59,7 +59,10 @@ type PanelProps = {
   action?: ReactNode;
   actions?: ReactNode;
   href?: string;
-  count?: ReactNode;
+  /** Item total shown as a chip right after the title; hidden at 0. */
+  count?: number;
+  /** The total is a lower bound (the source stopped counting): "N+", shown even at 0. */
+  countHasMore?: boolean;
   loading?: boolean;
   loadingRows?: number;
   flush?: boolean;
@@ -162,6 +165,7 @@ export function Panel({
   actions,
   href,
   count,
+  countHasMore = false,
   loading = false,
   loadingRows = 3,
   flush = false,
@@ -174,6 +178,15 @@ export function Panel({
   const dragProps = useContext(PanelHeaderDragContext);
   const reservedHeight = useContext(PanelReservedHeightContext);
   const heldHeight = loading && reservedHeight ? reservedHeight : undefined;
+  // One title anatomy with or without a link: title, count chip, then (links
+  // only) the chevron at the trailing edge. Both rows share the same height.
+  const countBadge =
+    count !== undefined && (count > 0 || countHasMore) ? (
+      <Badge size="sm" className="shrink-0 tabular-nums">
+        {count}
+        {countHasMore ? "+" : ""}
+      </Badge>
+    ) : null;
   return (
     <section
       className={cn(
@@ -205,25 +218,17 @@ export function Panel({
                     href={href}
                     className="flex min-h-8 items-center gap-2 rounded-sm focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
                   >
-                    <span className="min-w-0 flex-1">{title}</span>
-                    {count !== undefined ? (
-                      <Badge size="sm" className="tabular-nums">
-                        {count}
-                      </Badge>
-                    ) : null}
+                    <span className="min-w-0 truncate">{title}</span>
+                    {countBadge}
                     <ChevronRight
                       aria-hidden
-                      className="size-4 shrink-0 text-muted-foreground"
+                      className="ml-auto size-4 shrink-0 text-muted-foreground"
                     />
                   </Link>
                 ) : (
-                  <span className="flex items-center gap-2">
-                    {title}
-                    {count !== undefined ? (
-                      <Badge size="sm" className="tabular-nums">
-                        {count}
-                      </Badge>
-                    ) : null}
+                  <span className="flex min-h-8 items-center gap-2 pointer-coarse:min-h-11">
+                    <span className="min-w-0 truncate">{title}</span>
+                    {countBadge}
                   </span>
                 )}
               </h3>

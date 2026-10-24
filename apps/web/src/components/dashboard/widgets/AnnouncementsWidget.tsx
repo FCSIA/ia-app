@@ -17,7 +17,8 @@ export function AnnouncementsWidget() {
     <Panel
       title="Unread announcements"
       href="/announcements"
-      count={data ? `${data.total}${data.hasMore ? "+" : ""}` : undefined}
+      count={data?.total}
+      countHasMore={data?.hasMore}
       loading={data === undefined}
       loadingRows={5}
       flush
