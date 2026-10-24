@@ -6,6 +6,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -1242,7 +1243,7 @@ export default function ClubPeoplePage() {
                 </Button>
               ) : null}
               {club && canManageStructure ? (
-                <div className="order-3 flex min-w-0 sm:order-none">
+                <div className="order-3 flex min-w-0 justify-end sm:order-none sm:justify-start">
                   <BulkUnitAssignmentDialog club={club} />
                 </div>
               ) : null}
@@ -1494,12 +1495,18 @@ function PersonRow({
   const [primaryUnitName, ...otherUnitNames] = person.unitNames;
   const unitMembershipLabel = person.unitNames.join(", ");
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileOpener = useRef<HTMLButtonElement | null>(null);
   const presence = useMemberPresence(person._id);
 
   return (
     <>
       <Card
         index={index}
+        onClickCapture={(event) => {
+          if (event.target instanceof Element) {
+            profileOpener.current = event.target.closest("button");
+          }
+        }}
         onClick={() => setProfileOpen(true)}
         label={`View ${fullName(person)} profile`}
       >
@@ -1572,6 +1579,12 @@ function PersonRow({
       <UserProfileDialog
         open={profileOpen}
         onOpenChange={setProfileOpen}
+        onCloseAutoFocus={(event) => {
+          if (profileOpener.current?.isConnected) {
+            event.preventDefault();
+            profileOpener.current.focus();
+          }
+        }}
         person={person}
         roleName={person.roleName}
         unitNames={person.unitNames}

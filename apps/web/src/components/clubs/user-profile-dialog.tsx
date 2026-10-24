@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type ReactElement } from 'react';
+import { useId, useRef, useState, type ComponentProps, type ReactElement } from 'react';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
@@ -269,9 +269,10 @@ type UserProfileDialogProps = Omit<UserProfileContentProps, 'active' | 'variant'
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger?: ReactElement;
+  onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus'];
 };
 
-export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps }: UserProfileDialogProps) {
+export function UserProfileDialog({ open, onOpenChange, trigger, onCloseAutoFocus, ...contentProps }: UserProfileDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   // Profiles opened from inside this one (mutual friends), newest last. The
   // trail belongs to the person the dialog was opened for and clears on close.
@@ -298,6 +299,7 @@ export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps
         ref={contentRef}
         size="lg"
         className="gap-0"
+        onCloseAutoFocus={onCloseAutoFocus}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           contentRef.current?.focus();
