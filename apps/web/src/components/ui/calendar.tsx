@@ -31,7 +31,9 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       navLayout={navLayout}
       className={cn(
-        "bg-background group/calendar p-3 [--cell-size:2rem] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+        // The container owns the surface (popover, card or panel); the grid
+        // never paints its own background box inside it.
+        "group/calendar p-3 [--cell-size:2rem]",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -95,7 +97,7 @@ function Calendar({
         ),
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(
-          "text-muted-foreground flex-1 select-none rounded-md text-[0.8rem] font-normal",
+          "text-muted-foreground flex-1 select-none rounded-md text-xs font-normal",
           defaultClassNames.weekday
         ),
         week: cn("mt-2 flex w-full", defaultClassNames.week),
@@ -107,15 +109,18 @@ function Calendar({
           "text-muted-foreground select-none text-[0.8rem]",
           defaultClassNames.week_number
         ),
+        // Cells stretch with the grid; the day target inside stays a fixed
+        // --cell-size target. Button continues to own its configured shape.
         day: cn(
-          "group/day relative aspect-square h-full w-full select-none p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
+          "group/day relative flex h-(--cell-size) flex-1 select-none items-center justify-center p-0 text-center",
           defaultClassNames.day
         ),
+        // A range is one continuous band on the cells.
         range_start: cn(
           "bg-accent rounded-l-md",
           defaultClassNames.range_start
         ),
-        range_middle: cn("rounded-none", defaultClassNames.range_middle),
+        range_middle: cn("bg-accent rounded-none", defaultClassNames.range_middle),
         range_end: cn("bg-accent rounded-r-md", defaultClassNames.range_end),
         today: defaultClassNames.today,
         outside: cn(
@@ -212,15 +217,22 @@ function CalendarDayButton({
         // Button's content wrapper is normally relative. The day adapter owns
         // metadata positioning against the whole target, so that one wrapper
         // must not become the absolute slot's containing block.
-        "relative pointer-coarse:size-(--cell-size) [&>span:last-child]:static",
+        "relative size-(--cell-size) min-w-(--cell-size) p-0 pointer-coarse:size-(--cell-size) [&>span:last-child]:static",
+        "text-sm font-normal leading-none tabular-nums",
         // Fluid's ghost button owns its text color; state on the table cell
         // cannot override it through inheritance. Apply date states here.
         "text-foreground",
         modifiers.outside && "text-muted-foreground",
-        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 flex aspect-square h-auto w-full min-w-(--cell-size) font-normal leading-none data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px]",
+        // Selection is the strongest state and uses the primary-control fill
+        // (foreground on background) in every theme; white on the orange
+        // primary measured 2.6:1. Range middles sit on the cell's band.
+        "data-[selected-single=true]:bg-foreground data-[selected-single=true]:text-background data-[range-start=true]:bg-foreground data-[range-start=true]:text-background data-[range-end=true]:bg-foreground data-[range-end=true]:text-background data-[range-middle=true]:bg-transparent",
+        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50",
         defaultClassNames.day,
-        modifiers.today && !modifiers.selected &&
-          "bg-primary/20 text-foreground font-semibold ring-1 ring-primary",
+        // Today keeps the primary ring in every state, matching the calendar
+        // page's month and week headers; unselected it also gets the tint.
+        modifiers.today && "font-semibold ring-1 ring-primary",
+        modifiers.today && !modifiers.selected && "bg-primary/20",
         className
       )}
       {...props}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format, isValid, parseISO } from 'date-fns';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarDays, X } from 'lucide-react';
 import type { Matcher } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,6 +13,12 @@ type DatePickerProps = {
   value?: string | null;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Trigger id, for an external `<label htmlFor>`. */
+  id?: string;
+  /** Layout classes for the picker row (e.g. flex-1 inside a toolbar). */
+  className?: string;
+  /** date-fns pattern for the trigger label; one compact default app-wide. */
+  labelFormat?: string;
   buttonClassName?: string;
   disabled?: boolean;
   disabledDays?: Matcher | Matcher[];
@@ -31,6 +37,9 @@ export function DatePicker({
   value,
   onChange,
   placeholder = 'Pick a date',
+  id,
+  className,
+  labelFormat = 'MMM d, yyyy',
   buttonClassName,
   disabled = false,
   disabledDays,
@@ -42,13 +51,14 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <div className={cn('flex min-w-0 items-center gap-2', className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            id={id}
             type="button"
             variant="tertiary"
-            leadingIcon={CalendarIcon}
+            leadingIcon={CalendarDays}
             disabled={disabled}
             className={cn(
               'min-w-0 w-full justify-start text-left font-normal',
@@ -59,7 +69,7 @@ export function DatePicker({
             {/* The label owns truncation: Button centres its content, so an
                 unwrapped label wider than the trigger clips at both ends. */}
             <span className="min-w-0 truncate">
-              {selectedDate ? format(selectedDate, 'PPP') : placeholder}
+              {selectedDate ? format(selectedDate, labelFormat) : placeholder}
             </span>
           </Button>
         </PopoverTrigger>
