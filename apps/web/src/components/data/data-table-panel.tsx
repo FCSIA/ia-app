@@ -11,17 +11,19 @@ export type DataTableDensity = 'compact' | 'comfortable';
 export function dataTableClasses(density: DataTableDensity = 'comfortable') {
   const isCompact = density === 'compact';
   return {
-    table: isCompact ? 'text-[11px]' : 'text-[13px]', // Matching table.tsx default text-[13px]
+    table: isCompact ? 'text-xs' : 'text-[13px]',
     head: isCompact
-      ? 'h-8 px-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground'
-      : 'px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground',
-    cell: isCompact ? 'px-3 py-1.5 align-middle' : 'px-4 py-3 align-top',
+      ? 'px-3 py-1 text-xs font-medium text-muted-foreground'
+      : 'h-10 px-4 py-2.5 text-xs font-medium text-muted-foreground',
+    cell: isCompact ? 'px-3 py-1 align-middle' : 'px-4 py-3 align-middle',
   };
 }
 
 type DataTablePanelProps = {
   title: string;
   count?: number;
+  /** Records on the current page; omit when the total describes a different scope. */
+  shownCount?: number;
   toolbar?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
@@ -35,6 +37,7 @@ type DataTablePanelProps = {
 export function DataTablePanel({
   title,
   count,
+  shownCount,
   toolbar,
   children,
   footer,
@@ -58,8 +61,12 @@ export function DataTablePanel({
         <div className="flex min-w-0 items-center gap-2">
           <CardTitle className="text-sm font-semibold leading-tight">{title}</CardTitle>
           {typeof count === 'number' && (
-            <Badge variant="solid" color="gray" size="sm" className="px-1.5 py-0 text-[10px] font-bold">
-              {count}
+            <Badge
+              size="sm"
+              className="shrink-0 tabular-nums"
+              aria-label={shownCount === undefined ? `${count} total` : `${shownCount} shown of ${count} total`}
+            >
+              {shownCount === undefined ? count : `${shownCount} / ${count}`}
             </Badge>
           )}
         </div>
