@@ -50,6 +50,8 @@ import {
   Pencil,
   SkipForward,
   CornerDownRight,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react";
 
 export interface IconComponentProps {
@@ -71,9 +73,12 @@ export type IconName =
   | "image" | "link" | "check" | "rotate-ccw"
   | "play" | "pause" | "pipette"
   | "home" | "message-circle" | "inbox"
-  | "pencil" | "skip-forward" | "corner-down-right";
+  | "pencil" | "skip-forward" | "corner-down-right"
+  | "panel-left" | "panel-right";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
+  "panel-left": PanelLeft,
+  "panel-right": PanelRight,
   "chevron-right": ChevronRight,
   "chevron-down": ChevronDown,
   "pipette": Pipette,

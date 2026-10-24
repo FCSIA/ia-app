@@ -27,6 +27,7 @@ const adaptedComponents = new Set([
   "input-copy",
   "radio-group",
   "scroll-area",
+  "sidebar",
   "slider",
   "switch",
   "table",

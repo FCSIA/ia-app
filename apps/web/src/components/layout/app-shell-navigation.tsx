@@ -1,22 +1,16 @@
 "use client";
 
 import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
   useState,
-  type RefObject,
   type ReactNode,
   type Ref,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
   CalendarRange,
   ClipboardList,
-  Ellipsis,
   Home,
   MessageSquareText,
   Menu,
@@ -42,15 +36,19 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Tooltip } from "@/components/ui/tooltip";
 import { useNavIntent, usePrewarmRoute } from "@/lib/route-prewarm";
 import {
-  DropdownContent,
-  DropdownLabel,
-  DropdownMenu,
-  DropdownTrigger,
-} from "@/components/ui/dropdown";
-import { MenuItem } from "@/components/ui/menu-item";
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 
 import { MobileTabEditor } from "./mobile-tab-editor";
 import { Button } from "@/components/ui/button";
@@ -121,82 +119,6 @@ type AppShellNavigationProps = {
   mobileTabLayout?: string[];
 };
 
-const NAV_ICON_SIZE = 44;
-const NAV_ICON_GAP = 6;
-const COMPACT_RAIL_HEIGHT = 208;
-const NORMAL_RAIL_FIXED_HEIGHT = 156;
-const COMPACT_RAIL_FIXED_HEIGHT = 68;
-const PINNED_AUXILIARY_FIXED_HEIGHT = 332;
-
-/**
- * Returns the number of overflow-eligible destinations that can remain in the
- * desktop rail. Browser zoom changes the rail's CSS-pixel height, so this
- * intentionally measures available height instead of relying on viewport
- * breakpoint guesses. A rail tall enough to pin auxiliary controls reserves
- * their full height before allocating primary destinations.
- */
-export function getDesktopNavigationCapacity({
-  railHeight,
-  itemCount,
-  reserveAuxiliaryControls = false,
-}: {
-  railHeight: number;
-  itemCount: number;
-  reserveAuxiliaryControls?: boolean;
-}) {
-  if (!Number.isFinite(railHeight) || railHeight <= 0 || itemCount <= 0) {
-    return 0;
-  }
-
-  const fixedHeight = reserveAuxiliaryControls
-    ? PINNED_AUXILIARY_FIXED_HEIGHT
-    : railHeight <= COMPACT_RAIL_HEIGHT
-      ? COMPACT_RAIL_FIXED_HEIGHT
-      : NORMAL_RAIL_FIXED_HEIGHT;
-  const slotHeight = NAV_ICON_SIZE + NAV_ICON_GAP;
-  const capacity = Math.floor(
-    (railHeight - fixedHeight + NAV_ICON_GAP) / slotHeight,
-  );
-
-  return Math.max(0, Math.min(itemCount, capacity));
-}
-
-const useIsomorphicLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-function useDesktopNavigationRailHeight(
-  railRef: RefObject<HTMLElement | null>,
-) {
-  const [railHeight, setRailHeight] = useState<number | null>(null);
-
-  useIsomorphicLayoutEffect(() => {
-    const rail = railRef.current;
-    if (!rail) return;
-
-    const desktopQuery = window.matchMedia("(min-width: 1024px)");
-    const syncCapacity = () => {
-      setRailHeight(desktopQuery.matches ? rail.clientHeight : null);
-    };
-
-    syncCapacity();
-    const resizeObserver =
-      typeof ResizeObserver === "undefined"
-        ? null
-        : new ResizeObserver(syncCapacity);
-    resizeObserver?.observe(rail);
-    desktopQuery.addEventListener("change", syncCapacity);
-    window.addEventListener("resize", syncCapacity);
-
-    return () => {
-      resizeObserver?.disconnect();
-      desktopQuery.removeEventListener("change", syncCapacity);
-      window.removeEventListener("resize", syncCapacity);
-    };
-  }, [railRef]);
-
-  return railHeight;
-}
-
 function getNavigationItems({
   showSchedule,
   showWrapped,
@@ -211,46 +133,6 @@ function getNavigationItems({
 function isActive(pathname: string, href: string) {
   return (
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
-  );
-}
-
-function NavIcon({
-  item,
-  active,
-  badge,
-}: {
-  item: NavItem;
-  active: boolean;
-  badge?: ReactNode;
-}) {
-  const { icon: Icon, label, href } = item;
-  const intent = useNavIntent(href);
-
-  return (
-    <Tooltip side="right" sideOffset={10} content={label}>
-      <Link
-        href={href}
-        prefetch={true}
-        {...intent}
-        aria-label={label}
-        className={cn(
-          "group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
-          active
-            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-            : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        )}
-      >
-        <Icon
-          className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]"
-          strokeWidth={active ? 2.25 : 1.75}
-        />
-        {badge ? (
-          <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-            {badge}
-          </span>
-        ) : null}
-      </Link>
-    </Tooltip>
   );
 }
 
@@ -289,151 +171,66 @@ function MobileNavLink({
   );
 }
 
-function AppShellDesktopNavigation(props: AppShellNavigationProps) {
-  const primary = getNavigationItems(props);
-  const router = useRouter();
-  const railRef = useRef<HTMLElement>(null);
-  const railHeight = useDesktopNavigationRailHeight(railRef);
-  const profile = accountNav.find((item) => item.href === "/profile")!;
-  const auxiliaryItems = [
-    ...accountNav.filter((item) => item.href !== profile.href),
-    ...(props.showAdmin ? adminNav : []),
-  ];
-  const pinAuxiliaryControls =
-    railHeight !== null && railHeight >= PINNED_AUXILIARY_FIXED_HEIGHT;
-  const overflowCandidates = pinAuxiliaryControls
-    ? primary
-    : [...primary, ...auxiliaryItems];
-  const capacity =
-    railHeight === null
-      ? overflowCandidates.length
-      : getDesktopNavigationCapacity({
-          railHeight,
-          itemCount: overflowCandidates.length,
-          reserveAuxiliaryControls: pinAuxiliaryControls,
-        });
-  const hasOverflow = capacity < overflowCandidates.length;
-  // The ellipsis occupies one of the available control slots when anything
-  // moves into it, so reserve that slot before choosing direct destinations.
-  const directItems = hasOverflow
-    ? overflowCandidates.slice(0, Math.max(0, capacity - 1))
-    : overflowCandidates;
-  const overflowItems = overflowCandidates.slice(directItems.length);
-  const overflowActive = overflowItems.some((item) =>
-    isActive(props.pathname, item.href),
-  );
-
+function DesktopNavLink({ item, active, badge }: { item: NavItem; active: boolean; badge?: string }) {
+  const intent = useNavIntent(item.href);
   return (
-    <aside
-      ref={railRef}
-      className="sticky top-0 z-40 hidden h-[100dvh] w-[72px] shrink-0 flex-col items-center overflow-hidden bg-sidebar py-3 text-sidebar-foreground lg:flex [@media(max-height:13rem)]:py-2"
-      aria-label="Primary navigation"
-    >
-      <AppLogo className="size-11 [@media(max-height:13rem)]:hidden" />
-
-      <nav
-        className="mt-3 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-hidden px-0 [@media(max-height:13rem)]:mt-0"
-        aria-label="Primary navigation destinations"
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href={item.href} prefetch {...intent} aria-label={badge ? `${item.label}, ${badge} unread` : item.label} />}
+        icon={item.icon}
+        isActive={active}
       >
-        {directItems.map((item) => (
-          <NavIcon
-            key={item.href}
-            item={item}
-            active={isActive(props.pathname, item.href)}
-            badge={
-              item.href === "/notifications" ? props.unreadBadge : undefined
-            }
-          />
-        ))}
-      </nav>
-
-      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-2">
-        {hasOverflow ? (
-          <DesktopNavigationOverflow
-            items={overflowItems}
-            active={overflowActive}
-            pathname={props.pathname}
-            unreadBadge={props.unreadBadge}
-            onNavigate={(href) => router.push(href)}
-          />
-        ) : null}
-        {pinAuxiliaryControls
-          ? auxiliaryItems.map((item) => (
-              <NavIcon
-                key={item.href}
-                item={item}
-                active={isActive(props.pathname, item.href)}
-                badge={
-                  item.href === "/notifications" ? props.unreadBadge : undefined
-                }
-              />
-            ))
-          : null}
-        <NavIcon
-          item={profile}
-          active={isActive(props.pathname, profile.href)}
-        />
-      </div>
-    </aside>
+        {item.label}
+      </SidebarMenuButton>
+      {badge ? <SidebarMenuBadge aria-hidden>{badge}</SidebarMenuBadge> : null}
+    </SidebarMenuItem>
   );
 }
 
-function DesktopNavigationOverflow({
-  items,
-  active,
-  pathname,
-  unreadBadge,
-  onNavigate,
-}: {
-  items: NavItem[];
-  active: boolean;
-  pathname: string;
-  unreadBadge?: string;
-  onNavigate: (href: string) => void;
-}) {
+function AppShellDesktopNavigation(props: AppShellNavigationProps) {
+  const primary = getNavigationItems(props);
+  const profile = accountNav.find((item) => item.href === "/profile")!;
+  const account = [
+    ...accountNav.filter((item) => item.href !== profile.href),
+    ...(props.showAdmin ? adminNav : []),
+  ];
+
   return (
-    <DropdownMenu>
-      <Tooltip side="right" sideOffset={10} content="More navigation">
-        <DropdownTrigger
-          render={
-            <button
-              type="button"
-              aria-label="Open more navigation"
-              className={cn(
-                "group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
-                active
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <Ellipsis
-                className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]"
-                strokeWidth={active ? 2.25 : 1.75}
+    <Sidebar role="navigation" aria-label="Primary navigation" className="z-40 bg-sidebar text-sidebar-foreground">
+      <SidebarHeader className="h-16 justify-center px-4">
+        <Link href="/dashboard" aria-label="IA App home" className="flex min-w-0 items-center gap-2">
+          <IaOrbitMark alt="" width={32} height={32} className="size-8 shrink-0" />
+          <span className="truncate text-sm font-semibold">IA App</span>
+        </Link>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            {primary.map((item) => (
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href)} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarMenu>
+            {account.map((item) => (
+              <DesktopNavLink
+                key={item.href}
+                item={item}
+                active={isActive(props.pathname, item.href)}
+                badge={item.href === "/notifications" ? props.unreadBadge : undefined}
               />
-              {unreadBadge &&
-              items.some((item) => item.href === "/notifications") ? (
-                <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                  {unreadBadge}
-                </span>
-              ) : null}
-            </button>
-          }
-        />
-      </Tooltip>
-      <DropdownContent side="right" align="end" className="w-56">
-        <DropdownLabel>More navigation</DropdownLabel>
-        {items.map((item, index) => (
-          <MenuItem
-            key={item.href}
-            index={index}
-            icon={item.icon}
-            label={item.label}
-            onSelect={() => onNavigate(item.href)}
-            className={cn(isActive(pathname, item.href) && "bg-active")}
-          />
-        ))}
-      </DropdownContent>
-    </DropdownMenu>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <DesktopNavLink item={profile} active={isActive(props.pathname, profile.href)} />
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
 
@@ -672,25 +469,6 @@ function AppShellMobileTabBar({
   );
 }
 
-function AppLogo({ className }: { className: string }) {
-  return (
-    <Link
-      href="/dashboard"
-      aria-label="Home"
-      className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-xl",
-        className,
-      )}
-    >
-      <IaOrbitMark
-        alt="IA Orbit"
-        width={64}
-        height={64}
-        className="size-full object-cover"
-      />
-    </Link>
-  );
-}
 
 export {
   AppShellDesktopNavigation,

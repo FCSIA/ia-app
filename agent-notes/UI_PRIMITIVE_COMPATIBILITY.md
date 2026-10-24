@@ -76,6 +76,65 @@ by a vertical panel stack, and verify actual panel and handle bounding boxes.
 For stable initial sizing, give the group and panels stable IDs and pass a
 matching `defaultLayout` map.
 
+## Official Fluid Sidebar and workspace navigation
+
+The human explicitly requested the new official Fluid Sidebar for the main app
+navigation and nested workspaces on 2026-10-24. `ui/sidebar.tsx`,
+`sidebar-core.tsx`, `sidebar-menu.tsx`, `use-fluid-hover.ts`, and
+`fluid-hover-highlight.tsx` come from the current Radix registry. The old unused
+shadcn cookie/provider implementation has been replaced. `sidebar` is protected
+as an adapted primitive by the Fluid update script.
+
+Keep the official anatomy and behavior as the baseline: Provider, Sidebar,
+Header/Content/Footer, Group, Menu/Item/Button/Badge, and Trigger. Main navigation
+uses the default 16rem width and the official off-canvas/resize rail, active and
+hover surfaces, roving keyboard focus, and bare `[` shortcut. Its mobile
+breakpoint is the app's existing 1024px tab-bar boundary. The existing mobile tab
+bar and More drawer remain the primary phone navigation. Do not recreate an
+icon rail, custom menu engine, spacing ladder, or resize/collapse behavior.
+
+`WorkspaceSidebar` is a thin app composition of those official parts. Its
+supported `collapsible="none"` mode fills an externally bounded workspace;
+header/footer slots and feature children remain supported. Club's existing
+resizable layout and swipe-driven phone navigation remain their behavior
+owners. Admin's phone header trigger uses the existing Radix Sheet focus and
+dismissal lifecycle. Page links use SidebarMenuButton's native Link slot and
+`isActive`, so the primitive owns `aria-current`, hover, and keyboard selection.
+Club channel trees remain feature children with their own existing persistence,
+unread state, and actions. Three-view schedule configuration remains tabs.
+
+Every pane edge has one owner. A standalone sidebar owns its right border;
+`bordered={false}` yields it to a resize handle or enclosing Sheet. Club
+navigation/thread panes must not draw another border beside their existing
+handle. Admin's outer layout is flush to the app header; content padding belongs
+to the content pane.
+
+Registry dependency adaptations are deliberately narrow:
+
+- Use the installed `framer-motion` entry point for the same Motion APIs.
+- Map the new Sidebar's body/caption/micro classes to the existing local type
+  ladder instead of overwriting SizeContext or importing new global tokens.
+- Add only the two missing panel icon names to IconContext.
+- Merge Tooltip's upstream optional `followCursor` motion-value behavior for
+  the resize rail; retain existing grouped warm-up, portals, and themed surface.
+  Sidebar's shortcut chip inherits that surface's foreground.
+- Import only the required official scroll-fade/divider utilities from the
+  ScrollArea registry; use the existing `--color-border` theme bridge. Existing
+  global scrollbar styling remains local. Vertical-only Radix ScrollArea makes
+  its generated intrinsic table sizer a shrinkable block. Horizontal/both
+  scrollers retain intrinsic width. This is the exact containment issue called
+  out by official SidebarContent, also reproduced in admin's nested CSV table.
+
+Current Sidebar sources and dependencies were inspected through the shadcn CLI;
+its dry-run would create six files and overwrite ten adapters. Do not apply that
+wholesale update. Reviewed rendered, Code, and API examples:
+[Sidebar](https://www.fluidfunctionalism.com/docs/sidebar),
+[Card](https://www.fluidfunctionalism.com/docs/card), and
+[Scrollbars](https://www.fluidfunctionalism.com/docs/scrollbars), plus
+[Radix Sheet](https://ui.shadcn.com/docs/components/radix/sheet).
+Material visual changes still await the design owner; diagnostic screenshots
+must be re-critiqued after every capture and are not design approval.
+
 ## Concrete failure: calendar navigation and day metadata
 
 The shadcn DayPicker adapter depends on `months` remaining positioned relative

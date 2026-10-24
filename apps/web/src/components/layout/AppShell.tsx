@@ -32,6 +32,7 @@ import { useNavigationLoadingOptional } from "@/components/layout/navigation-loa
 import { PageTransition } from "@/components/layout/page-transition";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 import { cn } from "@/lib/utils";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
@@ -225,8 +226,10 @@ export function AppShell({
 
   return (
     <Fragment>
-      <div
+      <SidebarProvider
         ref={appRootRef}
+        mobileBreakpoint={1024}
+        persist={false}
         data-viewport-mode={viewportMode}
         className={cn(
           "app-root flex w-full bg-background",
@@ -251,7 +254,12 @@ export function AppShell({
         >
           <div className="sticky top-0 z-20 shrink-0">
             <AppShellHeader
-              headerSlot={headerSlot}
+              headerSlot={
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <SidebarTrigger className="hidden shrink-0 lg:inline-flex" aria-label="Toggle main navigation" />
+                  {headerSlot}
+                </div>
+              }
               channelSearch={channelSearch}
               searchScope={searchScope}
               commandHint={commandHint}
@@ -282,7 +290,7 @@ export function AppShell({
           tabBarRef={mobileTabBarRef}
           onOpenMenu={() => setMobileOpen(true)}
         />
-      </div>
+      </SidebarProvider>
       <GlobalCommandPalette
         user={user}
         open={commandOpen}

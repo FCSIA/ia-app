@@ -1,17 +1,29 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import Link from 'next/link';
+import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ChartLine, ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { ChartLine, ContactRound, FileText, Menu, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip } from '@/components/ui/tooltip';
+import { SidebarMenu } from '@/components/ui/sidebar';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { WorkspaceSidebar, WorkspaceSidebarItem, WorkspaceSidebarSection } from '@/components/ui/workspace-sidebar';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
-type AdminShellProps = { activeTab: AdminTabId; onTabChange: (tab: AdminTabId) => void; isSuperAdmin: boolean; canManageWrapped: boolean; pendingReports: number; children: ReactNode };
-export function AdminShell({ activeTab, onTabChange, isSuperAdmin, canManageWrapped, pendingReports, children }: AdminShellProps) {
+type AdminNavigationProps = {
+  activeTab: AdminTabId;
+  isSuperAdmin: boolean;
+  canManageWrapped: boolean;
+  pendingReports: number;
+};
+
+function AdminNavigation({
+  activeTab,
+  isSuperAdmin,
+  canManageWrapped,
+  pendingReports,
+  onNavigate,
+  bordered,
+}: AdminNavigationProps & { onNavigate?: () => void; bordered?: boolean }) {
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams?.toString() ?? '');
   params.delete('tab');
@@ -26,15 +38,60 @@ export function AdminShell({ activeTab, onTabChange, isSuperAdmin, canManageWrap
     { id: 'analytics' as const, label: 'Analytics', group: 'Insights', icon: ChartLine, visible: isSuperAdmin },
     { id: 'audit' as const, label: 'Audit log', group: 'Insights', icon: FileText, visible: true },
   ].filter((section) => section.visible);
-  return <div className="admin-shell flex h-full min-h-0 min-w-0 w-full flex-1 flex-col gap-3 lg:flex-row lg:gap-5">
-    <div className="shrink-0 lg:hidden"><Select value={activeTab} onValueChange={(value) => onTabChange(value as AdminTabId)}><SelectTrigger aria-label="Admin section" /><SelectContent>{sections.map((section, index) => <SelectItem key={section.id} index={index} value={section.id}>{section.label}</SelectItem>)}</SelectContent></Select></div>
-    <nav aria-label="Admin sections" className="hidden w-14 shrink-0 border-r border-border/60 pr-2 lg:flex xl:w-52">
-      <ScrollArea className="min-h-0 w-full"><div className="flex flex-col gap-1 py-1">{sections.map((section, index) => <div key={section.id}>
-        {index === 0 || section.group !== sections[index - 1]?.group ? <p className="hidden px-3 pb-1 pt-4 text-xs text-muted-foreground xl:block">{section.group}</p> : null}
-        <div className="hidden xl:block"><Button asChild variant="ghost" className="w-full justify-start" active={activeTab === section.id} leadingIcon={section.icon} aria-current={activeTab === section.id ? 'page' : undefined}><Link href={`/admin/${section.id}${suffix}`}>{section.label}</Link></Button></div>
-        <div className="xl:hidden"><Tooltip content={section.label} side="right"><Button asChild variant="ghost" size="icon" active={activeTab === section.id} aria-label={section.label} aria-current={activeTab === section.id ? 'page' : undefined}><Link href={`/admin/${section.id}${suffix}`}><section.icon /></Link></Button></Tooltip></div>
-      </div>)}</div></ScrollArea>
-    </nav>
-    <div className="flex min-h-0 min-w-0 flex-1">{children}</div>
-  </div>;
+
+  return (
+    <WorkspaceSidebar aria-label="Admin sections" bordered={bordered}>
+      {['People', 'Safety', 'Insights'].map((group) => (
+        <WorkspaceSidebarSection key={group} title={group}>
+          <SidebarMenu>
+            {sections.filter((section) => section.group === group).map((section) => (
+              <WorkspaceSidebarItem
+                key={section.id}
+                href={`/admin/${section.id}${suffix}`}
+                label={section.label}
+                icon={section.icon}
+                selected={activeTab === section.id}
+                onClick={onNavigate}
+                className={onNavigate ? 'min-h-11' : undefined}
+              />
+            ))}
+          </SidebarMenu>
+        </WorkspaceSidebarSection>
+      ))}
+    </WorkspaceSidebar>
+  );
+}
+
+/** Phone navigation uses the same links and permission filtering as desktop. */
+export function AdminMobileNavigation(props: AdminNavigationProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon-lg" className="lg:hidden" aria-label="Open admin sections">
+          <Menu />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-0 px-0 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+        <SheetHeader className="shrink-0 p-6 pr-16">
+          <SheetTitle>Admin sections</SheetTitle>
+          <SheetDescription className="sr-only">Choose an administration page.</SheetDescription>
+        </SheetHeader>
+        <AdminNavigation {...props} bordered={false} onNavigate={() => setOpen(false)} />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function AdminShell({ children, ...navigation }: AdminNavigationProps & { children: ReactNode }) {
+  return (
+    <div className="admin-shell flex h-full min-h-0 min-w-0 w-full flex-1">
+      <div className="hidden w-64 shrink-0 lg:flex">
+        <AdminNavigation {...navigation} />
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1 p-4 pt-1 md:p-6 md:pt-2 lg:p-8 lg:pt-2">
+        {children}
+      </div>
+    </div>
+  );
 }

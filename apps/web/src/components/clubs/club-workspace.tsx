@@ -38,6 +38,12 @@ import {
   DropdownTrigger,
 } from "@/components/ui/dropdown";
 import { Card, CardGroup } from "@/components/ui/card";
+import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  WorkspaceSidebar,
+  WorkspaceSidebarItem,
+  WorkspaceSidebarSection,
+} from "@/components/ui/workspace-sidebar";
 import {
   Collapsible,
   CollapsibleContent,
@@ -129,18 +135,18 @@ function ClubIdentity({
     );
   return (
     <>
-      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
+      <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
         {club?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={club.logoUrl ?? undefined}
-            alt={club.name}
+            alt=""
             className="size-full bg-background object-cover"
           />
         ) : (
           (club?.name?.charAt(0).toUpperCase() ?? "C")
         )}
-      </div>
+      </span>
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
         {club?.name ?? "Loading…"}
       </span>
@@ -364,6 +370,7 @@ export function ClubWorkspace({
   const desktopNavigation = (
     <ClubNavigationPanel
       density="desktop"
+      bordered={!isResizableNavigationViewport}
       clubId={clubId}
       viewerId={user?._id ?? null}
       club={club}
@@ -431,7 +438,7 @@ export function ClubWorkspace({
             maxSize="45%"
             style={{ overflow: "hidden" }}
           >
-            <aside className="h-full min-h-0 overflow-hidden border-l border-border bg-surface-1 channel-thread-surface">
+            <aside className="h-full min-h-0 overflow-hidden bg-surface-1 channel-thread-surface">
               {rightPane}
             </aside>
           </ResizablePanel>
@@ -604,7 +611,7 @@ export function ClubWorkspace({
               maxSize="32%"
               style={{ overflow: "hidden" }}
             >
-              <aside className="h-full min-h-0 border-r border-border bg-surface-1">
+              <aside className="h-full min-h-0">
                 {desktopNavigation}
               </aside>
             </ResizablePanel>
@@ -620,7 +627,7 @@ export function ClubWorkspace({
           </ResizablePanelGroup>
         ) : (
           <>
-            <aside className="hidden w-60 shrink-0 border-r border-border bg-surface-1 md:block">
+            <aside className="hidden w-60 shrink-0 md:block">
               {desktopNavigation}
             </aside>
             {workspaceContent}
@@ -640,6 +647,7 @@ type NavigationItem = {
 
 type ClubNavigationPanelProps = {
   density: "desktop" | "mobile";
+  bordered?: boolean;
   clubId: Id<"clubs">;
   viewerId: string | null;
   club?: ClubWorkspaceNavigation["club"];
@@ -759,6 +767,7 @@ function ClubRail({
 
 function ClubNavigationPanel({
   density,
+  bordered = false,
   clubId,
   viewerId,
   club,
@@ -778,7 +787,6 @@ function ClubNavigationPanel({
   hideBrowseClubs = false,
   hideClubHeader = false,
 }: ClubNavigationPanelProps) {
-  const rowClassName = density === "mobile" ? "min-h-11" : "min-h-8";
   const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
   const [openUnitIds, setOpenUnitIds] = useState<string[]>([]);
   const unitStateKey = viewerId
@@ -837,190 +845,147 @@ function ClubNavigationPanel({
   }, [activeChannelId, channels, unitStateKey, unitStateLoadedFor, units]);
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      {!hideClubHeader ? (
-        <div
-          className={cn(
-            "relative shrink-0 border-b border-border/70 p-2",
-            onClose && "pr-12",
-          )}
-        >
+    <WorkspaceSidebar
+      aria-label="Club pages and channels"
+      bordered={bordered}
+      header={!hideClubHeader ? (
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 flex-1">
+            {showClubPicker ? (
+              <SidebarMenu>
+              <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownTrigger
+                  render={
+                    <SidebarMenuButton size="lg" aria-label={club?.name ?? "Choose a club"}>
+                      <ClubIdentity club={club} showPickerIndicator />
+                    </SidebarMenuButton>
+                  }
+                />
+                <DropdownContent
+                  align="start"
+                  checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
+                  className="w-96 max-w-[calc(100vw-2rem)]"
+                >
+                  {myClubs.length > 0 ? (
+                    myClubs.map((entry, index) => (
+                      <ClubPickerItem
+                        key={entry._id}
+                        club={entry}
+                        active={entry._id === clubId}
+                        index={index}
+                      />
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No club memberships yet.
+                    </div>
+                  )}
+                </DropdownContent>
+              </DropdownMenu>
+              </SidebarMenuItem>
+              </SidebarMenu>
+            ) : (
+              <div className="flex min-h-11 w-full items-center gap-2 px-2" aria-label="Current club">
+                <ClubIdentity club={club} />
+              </div>
+            )}
+          </div>
           {onClose ? (
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
-              className="absolute right-2 top-2 size-9"
+              size="icon"
               aria-label="Close club navigation"
               onClick={onClose}
             >
               <X />
             </Button>
           ) : null}
-          {showClubPicker ? (
-            <DropdownMenu>
-              <DropdownTrigger
-                render={
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring",
-                      CARD_SURFACE_FOREGROUND,
-                    )}
-                  >
-                    <ClubIdentity club={club} showPickerIndicator />
-                  </button>
-                }
-              />
-              <DropdownContent
-                align="start"
-                checkedIndex={
-                  activeClubIndex >= 0 ? activeClubIndex : undefined
-                }
-                className="w-96 max-w-[calc(100vw-2rem)]"
-              >
-                {myClubs.length > 0 ? (
-                  myClubs.map((entry, index) => (
-                    <ClubPickerItem
-                      key={entry._id}
-                      club={entry}
-                      active={entry._id === clubId}
-                      index={index}
-                    />
-                  ))
-                ) : (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    No club memberships yet.
-                  </div>
-                )}
-              </DropdownContent>
-            </DropdownMenu>
-          ) : (
-            <div
-              className={cn(
-                "flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 shadow-surface-1",
-                CARD_SURFACE_FOREGROUND,
-              )}
-              aria-label="Current club"
-            >
-              <ClubIdentity club={club} />
-            </div>
-          )}
         </div>
-      ) : null}
+      ) : undefined}
+      footer={!hideBrowseClubs ? (
+        <SidebarMenu>
+          <WorkspaceSidebarItem
+            href="/clubs"
+            onClick={onNavigate}
+            icon={Compass}
+            label="Browse clubs"
+            className={density === "mobile" ? "min-h-11" : undefined}
+          />
+        </SidebarMenu>
+      ) : undefined}
+    >
+      <SidebarGroup>
+      <SidebarMenu aria-label="Club pages">
+        {nav.map((item) => (
+          <WorkspaceSidebarItem
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            label={item.label}
+            icon={item.icon}
+            selected={item.match(pathname)}
+            className={density === "mobile" ? "min-h-11" : undefined}
+          />
+        ))}
+      </SidebarMenu>
+      </SidebarGroup>
 
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="p-2">
-          <CardGroup
-            orientation="inline"
-            separated
-            proximityHover={density !== "mobile"}
-            className="gap-0.5"
-            aria-label="Club pages"
+      <WorkspaceSidebarSection
+        title="Channels"
+        action={canCreateChannels ? <CreateChannelTrigger clubId={clubId} /> : undefined}
+      >
+        {!club ? (
+          <div className="flex flex-col gap-2 p-2">
+            {[0, 1, 2].map((index) => (
+              <Skeleton key={index} className="h-7 w-full" />
+            ))}
+          </div>
+        ) : channels.length > 0 ? (
+          <ChannelRows
+            clubId={clubId}
+            channels={channels.filter((channel) => !channel.ownerUnitId)}
+            activeChannelId={activeChannelId}
+            density={density}
+            onNavigate={onNavigate}
+            canEditChannels={canEditChannels}
+            canDeleteChannels={canDeleteChannels}
+            onDeleteChannel={onDeleteChannel}
           >
-            {nav.map((item) => {
-              const Icon = item.icon;
-              const active = item.match(pathname);
-              return (
-                <Card
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => onNavigate?.()}
-                  label={item.label}
-                  selected={active}
-                  className={cn(
-                    "gap-2 rounded-md px-2 text-sm font-medium",
-                    rowClassName,
-                    active ? "text-foreground" : "text-muted-foreground",
-                  )}
-                >
-                  <Icon className="size-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Card>
-              );
-            })}
-          </CardGroup>
-
-          <div className="my-3 h-px bg-border/70" />
-
-          <section aria-labelledby={`channels-${density}`}>
-            <div className="flex h-7 items-center justify-between pl-2 pr-1">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <h2
-                  id={`channels-${density}`}
-                  className="text-[11px] font-bold uppercase tracking-wide"
-                >
-                  Channels
-                </h2>
-              </div>
-              {canCreateChannels ? (
-                <CreateChannelTrigger clubId={clubId} />
-              ) : null}
-            </div>
-
-            {!club ? (
-              <div className="space-y-2 p-2">
-                {[0, 1, 2].map((index) => (
-                  <Skeleton key={index} className="h-7 w-full" />
-                ))}
-              </div>
-            ) : channels.length > 0 ? (
-              <ChannelRows
-                clubId={clubId}
-                channels={channels.filter((channel) => !channel.ownerUnitId)}
-                activeChannelId={activeChannelId}
-                density={density}
-                onNavigate={onNavigate}
-                canEditChannels={canEditChannels}
-                canDeleteChannels={canDeleteChannels}
-                onDeleteChannel={onDeleteChannel}
-              >
-                {units
-                  .filter((unit) => !unit.parentUnitId)
-                  .map((unit) => (
-                    <UnitChannelTree
-                      key={unit._id}
-                      unit={unit}
-                      units={units}
-                      channels={channels}
-                      clubId={clubId}
-                      activeChannelId={activeChannelId}
-                      density={density}
-                      onNavigate={onNavigate}
-                      canEditChannels={canEditChannels}
-                      canDeleteChannels={canDeleteChannels}
-                      onDeleteChannel={onDeleteChannel}
-                      openUnitIds={openUnitIds}
-                      onOpenChange={(unitId, open) =>
-                        setOpenUnitIds((current) =>
-                          open
-                            ? [...new Set([...current, unitId])]
-                            : current.filter((id) => id !== unitId),
-                        )
-                      }
-                    />
-                  ))}
-              </ChannelRows>
-            ) : (
-              <div className="px-2 py-3 text-xs text-muted-foreground">
-                No channels yet.
-              </div>
-            )}
-          </section>
-        </div>
-      </ScrollArea>
-
-      {!hideBrowseClubs ? (
-        <Link
-          href="/clubs"
-          onClick={onNavigate}
-          className="flex min-h-11 shrink-0 items-center gap-2 border-t border-border/70 px-4 text-xs font-medium text-muted-foreground hover:bg-hover hover:text-foreground"
-        >
-          <Compass className="size-4" />
-          Browse clubs
-        </Link>
-      ) : null}
-    </div>
+            {units
+              .filter((unit) => !unit.parentUnitId)
+              .map((unit) => (
+                <UnitChannelTree
+                  key={unit._id}
+                  unit={unit}
+                  units={units}
+                  channels={channels}
+                  clubId={clubId}
+                  activeChannelId={activeChannelId}
+                  density={density}
+                  onNavigate={onNavigate}
+                  canEditChannels={canEditChannels}
+                  canDeleteChannels={canDeleteChannels}
+                  onDeleteChannel={onDeleteChannel}
+                  openUnitIds={openUnitIds}
+                  onOpenChange={(unitId, open) =>
+                    setOpenUnitIds((current) =>
+                      open
+                        ? [...new Set([...current, unitId])]
+                        : current.filter((id) => id !== unitId),
+                    )
+                  }
+                />
+              ))}
+          </ChannelRows>
+        ) : (
+          <div className="px-2 py-3 text-xs text-muted-foreground">
+            No channels yet.
+          </div>
+        )}
+      </WorkspaceSidebarSection>
+    </WorkspaceSidebar>
   );
 }
 
