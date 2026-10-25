@@ -130,3 +130,61 @@ states. Re-capture and critique every new image. Review loaded admin CSV preview
 with horizontal inner scrolling and full-width outer page. A production build
 is needed at parent integration because new CSS/module imports are involved.
 Material visual changes await design-owner review.
+
+## October 25: intentional main navigation and official inset composition
+
+The human requested Social grouping, then explicitly asked to explore official
+inset/floating variants and move destination strips into the sidebar. Root's
+Social commit supplies the actual student Friends/groups URLs and role gates.
+This follow-up uses the current official **inset** pairing so the work surface
+is dominant and navigation remains on the quiet substrate. Floating was
+inspected and rejected for this composition because it instead promotes the
+rail as an elevated card. No new primitive API, custom geometry, decorative
+badges, or product destinations were invented.
+
+Current official sources were retrieved again through `shadcn view @fluid/sidebar`
+at `/tmp/ia-claude-continuation/sidebar-variants-current.json`; CLI info confirms
+Radix/new-york/Lucide. Root inspected rendered Layouts/Nesting and their Code;
+this agent inspected the resulting docs captures:
+
+- `fluid-sidebar-layouts-visible.png`: floating bounds the nav with elevation;
+  the content does not receive that emphasis. Search, section labels and rows
+  share one icon-label rhythm; identity is fixed at the bottom.
+- `fluid-sidebar-inset-visible.png`: the content owns the card, navigation has
+  no competing border; common labels and native disclosure preserve hierarchy.
+  This directly supports IA's content-first direction. Both captures live in
+  `/tmp/ia-ui-continuation-2026-10-24/`.
+
+Main Sidebar now uses `variant="inset"` and a sibling `SidebarInset`. The latter
+is the single main landmark; the former inner main becomes a div. Its native
+gutter/radius/elevation are untouched. The app frame clips its own opaque header
+children to that boundary. The compact brand and real Search command sit in
+SidebarHeader. Search calls the same global palette; mobile and channel-scoped
+header search remain available. This removes repeated desktop global-search
+chrome while retaining its actual behavior.
+
+The app-owned optional `AppPageNavigation` config identifies a real parent href
+and real child links with truthful active state. Main navigation renders native
+MenuSub links under that parent; mobile More renders the same entries. Parent
+highlight yields to the active child. Admin/Super Admin day-plan dates,
+templates and school-config destinations use this same anatomy and canonical
+`tab=admin&section=…` URLs. Root owns the corresponding page mode/query changes;
+Calendar and Notifications/Flex route owners use the same app composition.
+Data filters and dialog form modes stay with their content.
+
+Root capture `social-inset-groups-1440.png`, inspected directly: selected Friend
+Groups is distinct from hover, Social/Account hierarchy and icon axis are
+consistent, search shortcuts are compact and readable, the content boundary is
+clear with one edge, and the header fits the native inset corners. The large
+empty area reflects a one-group fixture; the existing New group action remains
+at its feature's bounded content edge. No clipping or duplicate Schedule strip
+was found in that resting state. Interaction, short-height, phone, and alternate
+theme verification remain for the combined capture loop. Every new screenshot
+requires a fresh whole-interface critique.
+
+The original human prompts/CONTINUE/PRIMER and full latest video were reread.
+The composition retains native release cancellation, menu pointer-down,
+tooltip warm-up and official hover intent; it introduces no competing gestures
+or artificial delay. A subsequent explicit human request requires actual
+persistent frame identity and sidebar cookie restoration; that architecture is
+the next coherent slice, not claimed complete by this composition.

@@ -87,8 +87,10 @@ as an adapted primitive by the Fluid update script.
 
 Keep the official anatomy and behavior as the baseline: Provider, Sidebar,
 Header/Content/Footer, Group, Menu/Item/Button/Badge, and Trigger. Main navigation
-uses the default 16rem width and the official off-canvas/resize rail, active and
-hover surfaces, roving keyboard focus, and bare `[` shortcut. Its mobile
+uses documented `variant="inset"` beside `SidebarInset`; the primitive owns the
+8px gutter, shape, elevation and collapsed margin. The default 16rem width,
+official off-canvas/resize rail, hover-peek, active and hover surfaces, roving
+keyboard focus, and bare `[` shortcut remain unchanged. Its mobile
 breakpoint is the app's existing 1024px tab-bar boundary. The existing mobile tab
 bar and More drawer remain the primary phone navigation. Do not recreate an
 icon rail, custom menu engine, spacing ladder, or resize/collapse behavior.
@@ -101,7 +103,12 @@ owners. Admin's phone header trigger uses the existing Radix Sheet focus and
 dismissal lifecycle. Page links use SidebarMenuButton's native Link slot and
 `isActive`, so the primitive owns `aria-current`, hover, and keyboard selection.
 Club channel trees remain feature children with their own existing persistence,
-unread state, and actions. Three-view schedule configuration remains tabs.
+unread state, and actions. Main navigation's app-owned `pageNavigation` config
+composes native MenuSub links under the matching real destination. The same
+links appear in mobile More. Schedule's admin sections use this shared anatomy;
+Social groups Clubs, Friends and Friend Groups with existing role gates. The
+sidebar's Search command opens the existing palette; channel search stays in
+its conversation header. Content filters and form modes remain in context.
 
 Every pane edge has one owner. A standalone sidebar owns its right border;
 `bordered={false}` yields it to a resize handle or enclosing Sheet. Club

@@ -18,6 +18,7 @@ import {
   AppShellDesktopNavigation,
   AppShellMobileNavigation,
   AppShellMobileTabBar,
+  type AppPageNavigation,
 } from "@/components/layout/app-shell-navigation";
 import {
   AppShellHeader,
@@ -32,10 +33,11 @@ import { useNavigationLoadingOptional } from "@/components/layout/navigation-loa
 import { PageTransition } from "@/components/layout/page-transition";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 import { cn } from "@/lib/utils";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
+export type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
 
 export function AppShell({
   children,
@@ -46,6 +48,8 @@ export function AppShell({
   pageTransitionClassName,
   channelSearch,
   scheduleTab,
+  scheduleSection,
+  pageNavigation,
   onMobileSwipeRight,
   mobileNavigationSwipeOptions,
   viewportMode = "document",
@@ -59,6 +63,8 @@ export function AppShell({
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
   scheduleTab?: string;
+  scheduleSection?: string;
+  pageNavigation?: AppPageNavigation;
   onMobileSwipeRight?: () => void;
   mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
   viewportMode?: "document" | "visual";
@@ -218,7 +224,10 @@ export function AppShell({
     showAdmin,
     showSchedule,
     showFriends: Boolean(user && hasRole(user, "STUDENT")),
+    showDayPlans: Boolean(user && hasRole(user, "ADMIN", "SUPER_ADMIN")),
     scheduleTab,
+    scheduleSection,
+    pageNavigation,
     showWrapped,
     mobileTabLayout: user?.mobileTabLayout,
   };
@@ -246,22 +255,27 @@ export function AppShell({
         )}
       >
         {/* z-40 keeps hover labels above the adjacent workspace sidebar. */}
-        <AppShellDesktopNavigation {...navigationProps} />
+        <AppShellDesktopNavigation
+          {...navigationProps}
+          commandHint={commandHint}
+          onOpenGlobalSearch={() => setCommandOpen(true)}
+        />
         <AppShellMobileNavigation
           {...navigationProps}
           open={mobileOpen}
           onOpenChange={setMobileOpen}
         />
 
-        <div
+        <SidebarInset
           className={cn(
-            "app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
-            usesVisualViewport && "h-full overflow-hidden",
+            "app-main-surface overflow-clip pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
+            usesVisualViewport && "overflow-hidden",
           )}
         >
           <div className="sticky top-0 z-20 shrink-0">
             <AppShellHeader
               mode={headerMode}
+              globalSearchInSidebar
               headerSlot={
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <SidebarTrigger className="hidden shrink-0 lg:inline-flex" aria-label="Toggle main navigation" />
@@ -283,7 +297,7 @@ export function AppShell({
             {bannerSlot}
           </div>
 
-          <main
+          <div
             className={
               mainClassName ?? "flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8"
             }
@@ -291,8 +305,8 @@ export function AppShell({
             <PageTransition className={pageTransitionClassName}>
               {children}
             </PageTransition>
-          </main>
-        </div>
+          </div>
+        </SidebarInset>
         <AppShellMobileTabBar
           {...navigationProps}
           tabBarRef={mobileTabBarRef}

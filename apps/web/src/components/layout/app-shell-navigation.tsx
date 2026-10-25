@@ -11,6 +11,7 @@ import {
   Bell,
   CalendarRange,
   ClipboardList,
+  CalendarDays,
   Home,
   MessageSquareText,
   Menu,
@@ -18,6 +19,9 @@ import {
   Settings,
   Shield,
   Presentation,
+  LayoutTemplate,
+  School,
+  Search,
   Star,
   Ticket,
   UsersRound,
@@ -50,7 +54,11 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 import { MobileTabEditor } from "./mobile-tab-editor";
 import { Button } from "@/components/ui/button";
@@ -69,6 +77,17 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   mobileTabId?: MobileTabId;
+};
+
+export type AppPageNavigation = {
+  parentHref: string;
+  label: string;
+  items: Array<{
+    href: string;
+    label: string;
+    icon?: LucideIcon;
+    isActive: boolean;
+  }>;
 };
 
 const primaryNav: NavItem[] = [
@@ -107,6 +126,12 @@ const socialNav: NavItem[] = [
   { href: "/schedule?tab=groups", label: "Friend Groups", icon: Users },
 ];
 
+const dayPlanNav: Array<NavItem & { section: string }> = [
+  { href: "/schedule?tab=admin&section=dates", label: "Calendar dates", icon: CalendarDays, section: "dates" },
+  { href: "/schedule?tab=admin&section=templates", label: "Templates", icon: LayoutTemplate, section: "templates" },
+  { href: "/schedule?tab=admin&section=config", label: "School config", icon: School, section: "config" },
+];
+
 const accountNav: NavItem[] = [
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/report", label: "Feedback", icon: MessageSquareText },
@@ -123,7 +148,10 @@ type AppShellNavigationProps = {
   showAdmin: boolean;
   showSchedule: boolean;
   showFriends?: boolean;
+  showDayPlans?: boolean;
   scheduleTab?: string;
+  scheduleSection?: string;
+  pageNavigation?: AppPageNavigation;
   showWrapped: boolean;
   mobileTabLayout?: string[];
 };
@@ -160,7 +188,7 @@ function MobileNavLink({
   badge,
   onNavigate,
 }: {
-  item: NavItem;
+  item: Pick<NavItem, "href" | "label"> & Partial<Pick<NavItem, "icon">>;
   active: boolean;
   badge?: ReactNode;
   onNavigate?: () => void;
@@ -181,7 +209,7 @@ function MobileNavLink({
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
       )}
     >
-      <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+      {Icon ? <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} /> : null}
       <span className="flex-1">{label}</span>
       {badge ? (
         <span className="flex min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
@@ -192,25 +220,73 @@ function MobileNavLink({
   );
 }
 
-function DesktopNavLink({ item, active, badge }: { item: NavItem; active: boolean; badge?: string }) {
+function DesktopNavLink({ item, active, badge, subNavigation }: {
+  item: NavItem;
+  active: boolean;
+  badge?: string;
+  subNavigation?: AppPageNavigation["items"];
+}) {
   const intent = useNavIntent(item.href);
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         render={<Link href={item.href} prefetch {...intent} aria-label={badge ? `${item.label}, ${badge} unread` : item.label} />}
         icon={item.icon}
-        isActive={active}
+        isActive={active && !subNavigation?.some((child) => child.isActive)}
       >
         {item.label}
       </SidebarMenuButton>
       {badge ? <SidebarMenuBadge aria-hidden>{badge}</SidebarMenuBadge> : null}
+      {subNavigation ? (
+        <SidebarMenuSub>
+          {subNavigation.map((child) => (
+            <DesktopSubNavigationLink key={child.href} item={child} />
+          ))}
+        </SidebarMenuSub>
+      ) : null}
     </SidebarMenuItem>
   );
 }
 
-function AppShellDesktopNavigation(props: AppShellNavigationProps) {
+function DesktopSubNavigationLink({ item }: { item: AppPageNavigation["items"][number] }) {
+  const intent = useNavIntent(item.href);
+  return (
+    <SidebarMenuSubItem>
+      <SidebarMenuSubButton
+        render={<Link href={item.href} prefetch {...intent} />}
+        icon={item.icon}
+        isActive={item.isActive}
+      >
+        {item.label}
+      </SidebarMenuSubButton>
+    </SidebarMenuSubItem>
+  );
+}
+
+function isDayPlanActive(props: AppShellNavigationProps, section: string) {
+  return props.pathname === "/schedule" && props.scheduleTab === "admin" &&
+    (props.scheduleSection ?? "dates") === section;
+}
+
+function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] {
+  return [
+    ...(props.showDayPlans ? [{
+      parentHref: "/schedule",
+      label: "Day plans",
+      items: dayPlanNav.map(({ href, label, section }) => ({ href, label, isActive: isDayPlanActive(props, section) })),
+    }] : []),
+    ...(props.pageNavigation ? [props.pageNavigation] : []),
+  ];
+}
+
+function AppShellDesktopNavigation(props: AppShellNavigationProps & {
+  commandHint: boolean;
+  onOpenGlobalSearch: () => void;
+}) {
   const primary = getNavigationItems(props).filter((item) => !socialNav.some((social) => social.href === item.href));
   const social = getSocialItems(props);
+  const pageNavigation = getPageNavigation(props);
+  const getSubNavigation = (href: string) => pageNavigation.find((group) => group.parentHref === href)?.items;
   const profile = accountNav.find((item) => item.href === "/profile")!;
   const account = [
     ...accountNav.filter((item) => item.href !== profile.href),
@@ -218,18 +294,31 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
   ];
 
   return (
-    <Sidebar role="navigation" aria-label="Primary navigation" className="z-40 bg-sidebar text-sidebar-foreground">
-      <SidebarHeader className="h-16 justify-center px-4">
-        <Link href="/dashboard" aria-label="IA App home" className="flex min-w-0 items-center gap-2">
-          <IaOrbitMark alt="" width={32} height={32} className="size-8 shrink-0" />
+    <Sidebar variant="inset" role="navigation" aria-label="Primary navigation" className="z-40">
+      <SidebarHeader>
+        <Link href="/dashboard" aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
+          <IaOrbitMark alt="" width={16} height={16} className="size-4 shrink-0" />
           <span className="truncate text-sm font-semibold">IA App</span>
         </Link>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton icon={Search} onClick={props.onOpenGlobalSearch}>
+              <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                <span>Search</span>
+                <KbdGroup aria-hidden>
+                  <Kbd>{props.commandHint ? "⌘" : "Ctrl"}</Kbd>
+                  <Kbd>K</Kbd>
+                </KbdGroup>
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
             {primary.map((item) => (
-              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} />
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} subNavigation={getSubNavigation(item.href)} />
             ))}
           </SidebarMenu>
         </SidebarGroup>
@@ -237,7 +326,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
           <SidebarGroupLabel>Social</SidebarGroupLabel>
           <SidebarMenu>
             {social.map((item) => (
-              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} />
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} subNavigation={getSubNavigation(item.href)} />
             ))}
           </SidebarMenu>
         </SidebarGroup>
@@ -250,6 +339,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
                 item={item}
                 active={isActive(props.pathname, item.href, props.scheduleTab)}
                 badge={item.href === "/notifications" ? props.unreadBadge : undefined}
+                subNavigation={getSubNavigation(item.href)}
               />
             ))}
           </SidebarMenu>
@@ -312,6 +402,14 @@ function AppShellMobileNavigation({
                       : undefined
                   }
                 />
+              ))}
+              {getPageNavigation(props).map((group) => (
+                <section key={group.parentHref} aria-label={group.label}>
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">{group.label}</p>
+                  {group.items.map((item) => (
+                    <MobileNavLink key={item.href} item={item} active={item.isActive} onNavigate={() => onOpenChange(false)} />
+                  ))}
+                </section>
               ))}
               {overflowSocial.length ? (
                 <section aria-label="Social">

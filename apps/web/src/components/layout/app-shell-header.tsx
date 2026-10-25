@@ -35,6 +35,7 @@ export type SearchScope = "everything" | "channel";
 type AppShellHeaderProps = {
   headerSlot?: ReactNode;
   mode?: "default" | "editing";
+  globalSearchInSidebar?: boolean;
   channelSearch?: ChannelSearchControl;
   searchScope: SearchScope;
   commandHint: boolean;
@@ -145,6 +146,7 @@ function GlobalSearch({
 function AppShellHeader({
   headerSlot,
   mode = "default",
+  globalSearchInSidebar = false,
   channelSearch,
   searchScope,
   commandHint,
@@ -175,14 +177,14 @@ function AppShellHeader({
             channelSearch={channelSearch}
             onToggleScope={onToggleSearchScope}
           />
-        ) : (
+        ) : !globalSearchInSidebar || channelSearch ? (
           <GlobalSearch
             channelSearch={channelSearch}
             commandHint={commandHint}
             onOpen={onOpenGlobalSearch}
             onToggleScope={onToggleSearchScope}
           />
-        ))}
+        ) : null)}
 
       {mode !== "editing" ? (
         <Button
