@@ -1,4 +1,4 @@
-import { displayName } from '~/apps/shared/user-name';
+import { displayName } from "~/apps/shared/user-name";
 import type { ReactNode } from "react";
 import {
   ArrowLeftRight,
@@ -22,6 +22,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { PresenceAvatar } from "@/components/presence/club-presence";
 import { useDoNotDisturbMenu } from "@/components/presence/do-not-disturb";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { cn } from "@/lib/utils";
 
 export type ChannelSearchControl = {
   channelName: string;
@@ -33,6 +34,7 @@ export type SearchScope = "everything" | "channel";
 
 type AppShellHeaderProps = {
   headerSlot?: ReactNode;
+  mode?: "default" | "editing";
   channelSearch?: ChannelSearchControl;
   searchScope: SearchScope;
   commandHint: boolean;
@@ -142,6 +144,7 @@ function GlobalSearch({
 
 function AppShellHeader({
   headerSlot,
+  mode = "default",
   channelSearch,
   searchScope,
   commandHint,
@@ -154,37 +157,47 @@ function AppShellHeader({
   const doNotDisturb = useDoNotDisturbMenu();
 
   return (
-    <header className={`app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card px-4 pt-[env(safe-area-inset-top)] md:px-6 lg:px-8 ${CARD_SURFACE_FOREGROUND}`}>
+    <header
+      data-mode={mode}
+      className={cn(
+        "app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b px-4 pt-[env(safe-area-inset-top)] md:px-6 lg:px-8",
+        CARD_SURFACE_FOREGROUND,
+        mode === "editing" ? "bg-primary/20" : "bg-card",
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-4">
         {headerSlot ?? <div className="min-w-0 flex-1" />}
       </div>
 
-      {channelSearch && searchScope === "channel" ? (
-        <ChannelSearch
-          channelSearch={channelSearch}
-          onToggleScope={onToggleSearchScope}
-        />
-      ) : (
-        <GlobalSearch
-          channelSearch={channelSearch}
-          commandHint={commandHint}
-          onOpen={onOpenGlobalSearch}
-          onToggleScope={onToggleSearchScope}
-        />
-      )}
+      {mode !== "editing" &&
+        (channelSearch && searchScope === "channel" ? (
+          <ChannelSearch
+            channelSearch={channelSearch}
+            onToggleScope={onToggleSearchScope}
+          />
+        ) : (
+          <GlobalSearch
+            channelSearch={channelSearch}
+            commandHint={commandHint}
+            onOpen={onOpenGlobalSearch}
+            onToggleScope={onToggleSearchScope}
+          />
+        ))}
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-lg"
-        className="shrink-0 lg:hidden"
-        aria-label="Search"
-        onClick={onOpenGlobalSearch}
-      >
-        <Search />
-      </Button>
+      {mode !== "editing" ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-lg"
+          className="shrink-0 lg:hidden"
+          aria-label="Search"
+          onClick={onOpenGlobalSearch}
+        >
+          <Search />
+        </Button>
+      ) : null}
 
-      {user ? (
+      {mode !== "editing" && user ? (
         <DropdownMenu>
           <DropdownTrigger
             render={
@@ -193,7 +206,11 @@ function AppShellHeader({
                 size="icon-lg"
                 className="shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:w-auto sm:min-w-11 sm:px-0 sm:pr-3"
               >
-                <PresenceAvatar status={doNotDisturb.doNotDisturb ? "doNotDisturb" : undefined}>
+                <PresenceAvatar
+                  status={
+                    doNotDisturb.doNotDisturb ? "doNotDisturb" : undefined
+                  }
+                >
                   <UserAvatar
                     firstName={user.firstName}
                     lastName={user.lastName}

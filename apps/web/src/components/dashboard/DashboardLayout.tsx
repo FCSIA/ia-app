@@ -246,12 +246,16 @@ function WidgetColumn({
       ref={setNodeRef}
       className={cn(
         "flex min-w-0 flex-1 flex-col gap-6",
-        editing &&
-          "min-h-40 rounded-xl outline-1 outline-dashed outline-border",
+        editing && ids.length === 0 && "min-h-40",
       )}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         {children}
+        {editing && ids.length === 0 ? (
+          <Empty size="inline" frame="dashed">
+            <EmptyDescription>Drop a widget here</EmptyDescription>
+          </Empty>
+        ) : null}
       </SortableContext>
     </div>
   );
@@ -366,60 +370,56 @@ function SortableWidget({
         data-dashboard-widget={id}
         style={style}
         className={cn(
-          "relative",
-          editing
-            ? "rounded-3xl outline-1 outline-dashed outline-offset-4 outline-border"
-            : "",
+          "relative flex flex-col gap-2",
           isDragging ? "opacity-40" : "",
         )}
       >
-        <div>
-          {editing && (
-            <div className="absolute right-5 -top-4 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                type="button"
-                {...attributes}
-                {...listeners}
-                className="touch-none cursor-grab active:cursor-grabbing"
-                aria-label={`Drag ${widget.label}`}
-              >
-                <GripVertical />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                type="button"
-                onClick={() => onRemove(id)}
-
-                aria-label={`Remove ${widget.label}`}
-              >
-                <X />
-              </Button>
-            </div>
-          )}
-          <PanelHeaderDragContext.Provider
-            value={
-              editing
-                ? {
-                    onMouseDown: (event) => listeners?.onMouseDown?.(event),
-                    onTouchStart: (event) => listeners?.onTouchStart?.(event),
-                  }
-                : undefined
-            }
-          >
-            <DashboardWidgetEmptyContext.Provider
-              value={hideWhenEmpty ? reportEmpty : null}
+        {editing && (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              size="icon-compact"
+              variant="ghost"
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="touch-none cursor-grab active:cursor-grabbing"
+              aria-label={`Drag ${widget.label}`}
+              title={`Drag ${widget.label}`}
             >
-              <PanelReservedHeightContext.Provider value={reservedHeight}>
-                <WidgetErrorBoundary title={widget.label}>
-                  <Component />
-                </WidgetErrorBoundary>
-              </PanelReservedHeightContext.Provider>
-            </DashboardWidgetEmptyContext.Provider>
-          </PanelHeaderDragContext.Provider>
-        </div>
+              <GripVertical />
+            </Button>
+            <Button
+              size="icon-compact"
+              variant="ghost"
+              type="button"
+              onClick={() => onRemove(id)}
+              aria-label={`Remove ${widget.label}`}
+              title={`Remove ${widget.label}`}
+            >
+              <X />
+            </Button>
+          </div>
+        )}
+        <PanelHeaderDragContext.Provider
+          value={
+            editing
+              ? {
+                  onMouseDown: (event) => listeners?.onMouseDown?.(event),
+                  onTouchStart: (event) => listeners?.onTouchStart?.(event),
+                }
+              : undefined
+          }
+        >
+          <DashboardWidgetEmptyContext.Provider
+            value={hideWhenEmpty ? reportEmpty : null}
+          >
+            <PanelReservedHeightContext.Provider value={reservedHeight}>
+              <WidgetErrorBoundary title={widget.label}>
+                <Component />
+              </WidgetErrorBoundary>
+            </PanelReservedHeightContext.Provider>
+          </DashboardWidgetEmptyContext.Provider>
+        </PanelHeaderDragContext.Provider>
       </div>
     </m.div>
   );
@@ -430,7 +430,7 @@ function SortableWidget({
 function DragGhost({ widget }: { widget: WidgetDefinition }) {
   const Component = widget.Component;
   return (
-    <div className="pointer-events-none rounded-3xl ring-2 ring-primary/30">
+    <div className="pointer-events-none">
       <Component />
     </div>
   );
@@ -612,7 +612,14 @@ export function DashboardLayout({
   useEffect(() => {
     if (!editing) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !activeId && !pickerOpen) handleCancel();
+      if (
+        event.key === "Escape" &&
+        !event.defaultPrevented &&
+        !activeId &&
+        !pickerOpen
+      ) {
+        handleCancel();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -725,11 +732,6 @@ export function DashboardLayout({
       block: "nearest",
       behavior: reducedMotion ? "instant" : "smooth",
     });
-    if (!reducedMotion)
-      node.animate(
-        [{ outlineColor: "hsl(var(--ring))" }, { outlineColor: "transparent" }],
-        { duration: 1200 },
-      );
     setAddedId(null);
   }, [addedId, pickerOpen, reducedMotion]);
   const handleBalance = useCallback(() => {
@@ -832,14 +834,15 @@ export function DashboardLayout({
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogTrigger asChild>
           <Button
-            variant="primary"
+            variant="secondary"
             size="sm"
             leadingIcon={Plus}
             aria-label="Add widget"
-
             disabled={missingWidgets.length === 0 || isSaving}
           >
-            <span className="hidden sm:inline">Add widget</span>
+            <span>
+              Add<span className="hidden sm:inline"> widget</span>
+            </span>
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg">
@@ -880,7 +883,7 @@ export function DashboardLayout({
         </DialogContent>
       </Dialog>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-2">
         {canBalance ? (
           <Button
             variant="ghost"
@@ -906,17 +909,20 @@ export function DashboardLayout({
         </Button>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon-compact"
           onClick={handleCancel}
           disabled={isSaving || Boolean(activeId)}
+          aria-label="Cancel dashboard customization"
+          title="Cancel"
         >
-          Cancel
+          <X />
         </Button>
         <Button
           onClick={handleSave}
           disabled={isSaving || Boolean(activeId)}
           size="sm"
           leadingIcon={Save}
+          loading={isSaving}
         >
           {isSaving ? "Saving…" : "Save"}
         </Button>
@@ -972,7 +978,7 @@ export function DashboardLayout({
                   items={fullIds}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-6">
+                  <div className="flex flex-col gap-6">
                     {/* Full-width dynamic widgets */}
                     {fullIds.map((id) => {
                       const widget = WIDGETS[id];

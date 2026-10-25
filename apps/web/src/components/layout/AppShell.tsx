@@ -40,6 +40,7 @@ export type { ChannelSearchControl } from "@/components/layout/app-shell-header"
 export function AppShell({
   children,
   headerSlot,
+  headerMode,
   bannerSlot,
   mainClassName,
   pageTransitionClassName,
@@ -51,6 +52,7 @@ export function AppShell({
 }: {
   children: ReactNode;
   headerSlot?: ReactNode;
+  headerMode?: "default" | "editing";
   /** Full-width notices below the header, outside page padding. */
   bannerSlot?: ReactNode;
   mainClassName?: string;
@@ -259,6 +261,7 @@ export function AppShell({
         >
           <div className="sticky top-0 z-20 shrink-0">
             <AppShellHeader
+              mode={headerMode}
               headerSlot={
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <SidebarTrigger className="hidden shrink-0 lg:inline-flex" aria-label="Toggle main navigation" />
