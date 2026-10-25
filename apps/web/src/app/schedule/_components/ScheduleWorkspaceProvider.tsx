@@ -11,7 +11,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { CourseSummary } from "@/components/courses/types";
 import type {
@@ -59,6 +59,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   const { isAuthenticated } = useConvexAuth();
   const user = useCurrentUser();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { toast } = useToast();
   const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
@@ -164,10 +165,11 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     canManageBlocks,
   );
   const setActiveTab = (tab: string) => {
-    setTabState((current) => ({
-      ...current,
-      activeTab: resolveScheduleTab(tab, canEditOwnSchedule, canManageBlocks),
-    }));
+    const nextTab = resolveScheduleTab(tab, canEditOwnSchedule, canManageBlocks);
+    setTabState((current) => ({ ...current, activeTab: nextTab }));
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set("tab", nextTab);
+    router.replace(`/schedule?${params}`, { scroll: false });
   };
   const setScheduleEntries = (
     value: SetStateAction<StudentScheduleDraftEntry[]>,

@@ -41,9 +41,10 @@ export function ScheduleWorkspace() {
 
   return (
     <AppShell
+      scheduleTab={selectedTab}
       headerSlot={
         <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-          Schedule
+          {selectedTab === "friends" ? "Friends" : selectedTab === "groups" ? "Friend Groups" : "Schedule"}
         </h1>
       }
     >

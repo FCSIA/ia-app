@@ -29,11 +29,17 @@ function storageKey(tabId: MobileTabId) {
   return `ia:mobile-last:${tabId}`;
 }
 
+function isSocialSchedule(path: string) {
+  const [pathname, query] = path.split("?");
+  const tab = new URLSearchParams(query).get("tab");
+  return pathname.startsWith("/schedule/groups/") || tab === "friends" || tab === "groups";
+}
+
 function readStored(tabId: MobileTabId | "dashboard"): string | null {
   try {
     const key = tabId === "dashboard" ? DASHBOARD_KEY : storageKey(tabId);
     const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
+    if (!raw || (tabId === "schedule" && isSocialSchedule(raw))) return null;
     const root = tabId === "dashboard" ? "/dashboard" : ROOT_BY_TAB[tabId];
     if (raw !== root && !raw.startsWith(`${root}/`) && !raw.startsWith(`${root}?`) ) return null;
     return raw;
@@ -69,7 +75,7 @@ export function useMobileTabMemory() {
   useEffect(() => {
     if (!pathname) return;
     const tabId = tabIdForPathname(pathname);
-    if (!tabId) return;
+    if (!tabId || (tabId === "schedule" && isSocialSchedule(fullPath))) return;
     const key = tabId === "dashboard" ? DASHBOARD_KEY : storageKey(tabId as MobileTabId);
     try {
       window.localStorage.setItem(key, fullPath);

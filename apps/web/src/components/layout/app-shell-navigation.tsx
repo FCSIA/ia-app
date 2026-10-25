@@ -21,6 +21,8 @@ import {
   Star,
   Ticket,
   UsersRound,
+  Users,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -77,7 +79,6 @@ const primaryNav: NavItem[] = [
     icon: Megaphone,
     mobileTabId: "announcements",
   },
-  { href: "/clubs", label: "Clubs", icon: UsersRound, mobileTabId: "clubs" },
   {
     href: "/schedule",
     label: "Schedule",
@@ -100,6 +101,12 @@ const primaryNav: NavItem[] = [
   { href: "/wrapped", label: "Wrapped", icon: Star, mobileTabId: "wrapped" },
 ];
 
+const socialNav: NavItem[] = [
+  { href: "/clubs", label: "Clubs", icon: UsersRound, mobileTabId: "clubs" },
+  { href: "/schedule?tab=friends", label: "Friends", icon: UserRound },
+  { href: "/schedule?tab=groups", label: "Friend Groups", icon: Users },
+];
+
 const accountNav: NavItem[] = [
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/report", label: "Feedback", icon: MessageSquareText },
@@ -115,6 +122,8 @@ type AppShellNavigationProps = {
   unreadBadge?: string;
   showAdmin: boolean;
   showSchedule: boolean;
+  showFriends?: boolean;
+  scheduleTab?: string;
   showWrapped: boolean;
   mobileTabLayout?: string[];
 };
@@ -122,28 +131,39 @@ type AppShellNavigationProps = {
 function getNavigationItems({
   showSchedule,
   showWrapped,
+  showFriends,
 }: AppShellNavigationProps) {
-  return primaryNav.filter((item) => {
+  return [...primaryNav, ...getSocialItems({ showFriends })].filter((item) => {
     if (item.href === "/schedule" && !showSchedule) return false;
     if (item.href === "/wrapped" && !showWrapped) return false;
     return true;
   });
 }
 
-function isActive(pathname: string, href: string) {
-  return (
-    pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
-  );
+function getSocialItems({ showFriends }: Pick<AppShellNavigationProps, "showFriends">) {
+  return socialNav.filter((item) => item.href === "/clubs" || showFriends);
+}
+
+function isActive(pathname: string, href: string, scheduleTab?: string) {
+  const [target, query] = href.split("?");
+  if (target === "/schedule" && pathname.startsWith("/schedule")) {
+    const tab = pathname.startsWith("/schedule/groups/") ? "groups" : scheduleTab;
+    const targetTab = new URLSearchParams(query).get("tab");
+    return targetTab ? tab === targetTab : tab !== "friends" && tab !== "groups";
+  }
+  return pathname === target || (target !== "/dashboard" && pathname.startsWith(`${target}/`));
 }
 
 function MobileNavLink({
   item,
   active,
   badge,
+  onNavigate,
 }: {
   item: NavItem;
   active: boolean;
   badge?: ReactNode;
+  onNavigate?: () => void;
 }) {
   const { icon: Icon, label, href } = item;
   const intent = useNavIntent(href);
@@ -151,6 +171,7 @@ function MobileNavLink({
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       prefetch={true}
       {...intent}
       className={cn(
@@ -188,7 +209,8 @@ function DesktopNavLink({ item, active, badge }: { item: NavItem; active: boolea
 }
 
 function AppShellDesktopNavigation(props: AppShellNavigationProps) {
-  const primary = getNavigationItems(props);
+  const primary = getNavigationItems(props).filter((item) => !socialNav.some((social) => social.href === item.href));
+  const social = getSocialItems(props);
   const profile = accountNav.find((item) => item.href === "/profile")!;
   const account = [
     ...accountNav.filter((item) => item.href !== profile.href),
@@ -207,18 +229,26 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
         <SidebarGroup>
           <SidebarMenu>
             {primary.map((item) => (
-              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href)} />
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} />
             ))}
           </SidebarMenu>
         </SidebarGroup>
-        <SidebarGroup>
+        <SidebarGroup collapsible>
+          <SidebarGroupLabel>Social</SidebarGroupLabel>
+          <SidebarMenu>
+            {social.map((item) => (
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup collapsible>
           <SidebarGroupLabel>Account</SidebarGroupLabel>
           <SidebarMenu>
             {account.map((item) => (
               <DesktopNavLink
                 key={item.href}
                 item={item}
-                active={isActive(props.pathname, item.href)}
+                active={isActive(props.pathname, item.href, props.scheduleTab)}
                 badge={item.href === "/notifications" ? props.unreadBadge : undefined}
               />
             ))}
@@ -227,7 +257,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <DesktopNavLink item={profile} active={isActive(props.pathname, profile.href)} />
+          <DesktopNavLink item={profile} active={isActive(props.pathname, profile.href, props.scheduleTab)} />
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
@@ -249,7 +279,8 @@ function AppShellMobileNavigation({
       .filter((item) => item.href !== "#more")
       .map((item) => item.href),
   );
-  const overflowPrimary = primary.filter((item) => !directPaths.has(item.href));
+  const overflowPrimary = primary.filter((item) => !directPaths.has(item.href) && !socialNav.some((social) => social.href === item.href));
+  const overflowSocial = getSocialItems(props).filter((item) => !directPaths.has(item.href));
 
   return (
     <>
@@ -273,7 +304,8 @@ function AppShellMobileNavigation({
                 <MobileNavLink
                   key={item.href}
                   item={item}
-                  active={isActive(props.pathname, item.href)}
+                  onNavigate={() => onOpenChange(false)}
+                  active={isActive(props.pathname, item.href, props.scheduleTab)}
                   badge={
                     item.href === "/notifications"
                       ? props.unreadBadge
@@ -281,14 +313,23 @@ function AppShellMobileNavigation({
                   }
                 />
               ))}
-              {overflowPrimary.length ? (
+              {overflowSocial.length ? (
+                <section aria-label="Social">
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">Social</p>
+                  {overflowSocial.map((item) => (
+                    <MobileNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} onNavigate={() => onOpenChange(false)} />
+                  ))}
+                </section>
+              ) : null}
+              {overflowPrimary.length || overflowSocial.length ? (
                 <div className="my-2 h-px bg-sidebar-border" />
               ) : null}
               {accountNav.map((item) => (
                 <MobileNavLink
                   key={item.href}
                   item={item}
-                  active={isActive(props.pathname, item.href)}
+                  onNavigate={() => onOpenChange(false)}
+                  active={isActive(props.pathname, item.href, props.scheduleTab)}
                   badge={
                     item.href === "/notifications"
                       ? props.unreadBadge
@@ -301,7 +342,8 @@ function AppShellMobileNavigation({
                     <MobileNavLink
                       key={item.href}
                       item={item}
-                      active={isActive(props.pathname, item.href)}
+                      onNavigate={() => onOpenChange(false)}
+                      active={isActive(props.pathname, item.href, props.scheduleTab)}
                     />
                   ))
                 : null}
@@ -375,7 +417,7 @@ function AppShellMobileTabBar({
   const items = getMobileTabItems(props);
   const directItems = items.filter((item) => item.href !== "#more");
   const moreActive = !directItems.some((item) =>
-    isActive(props.pathname, item.href),
+    isActive(props.pathname, item.href, props.scheduleTab),
   );
 
   return (
@@ -395,7 +437,7 @@ function AppShellMobileTabBar({
         const active =
           item.href === "#more"
             ? moreActive
-            : isActive(props.pathname, item.href);
+            : isActive(props.pathname, item.href, props.scheduleTab);
         const Icon = item.icon;
         const content = (
           <>

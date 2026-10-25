@@ -44,6 +44,7 @@ export function AppShell({
   mainClassName,
   pageTransitionClassName,
   channelSearch,
+  scheduleTab,
   onMobileSwipeRight,
   mobileNavigationSwipeOptions,
   viewportMode = "document",
@@ -55,6 +56,7 @@ export function AppShell({
   mainClassName?: string;
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
+  scheduleTab?: string;
   onMobileSwipeRight?: () => void;
   mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
   viewportMode?: "document" | "visual";
@@ -213,6 +215,8 @@ export function AppShell({
     unreadBadge,
     showAdmin,
     showSchedule,
+    showFriends: Boolean(user && hasRole(user, "STUDENT")),
+    scheduleTab,
     showWrapped,
     mobileTabLayout: user?.mobileTabLayout,
   };
@@ -229,6 +233,7 @@ export function AppShell({
       <SidebarProvider
         ref={appRootRef}
         mobileBreakpoint={1024}
+        peek="hover"
         persist={false}
         data-viewport-mode={viewportMode}
         className={cn(
