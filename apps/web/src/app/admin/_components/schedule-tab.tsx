@@ -1,10 +1,14 @@
 'use client';
 
 import { Download, Upload } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileInput } from '@/components/ui/file-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,15 +20,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import type { StudentBulkUpdateResult, StudentImportResult } from '../_lib/types';
-import { AdminMetric, AdminPanel } from './admin-ui';
-
-const studentCsvExample = `first_name,last_name,student_id,email,grade_level,major_pathway,minor_pathway
-Alex,Smith,STU001,alex.smith@example.com,10,IT,`;
-
-const studentBulkUpdateCsvExample = `student_id,major_pathway,minor_pathway
-STU001,Engineering,
-STU002,Engineering,Health Science`;
+import type { RosterCsvPreview } from '../_lib/roster-csv';
+import type {
+  StudentBulkUpdateResult,
+  StudentImportResult,
+} from '../_lib/types';
+import { AdminPanel } from './admin-ui';
+import {
+  RosterCsvHelp,
+  RosterCsvReview,
+  RosterImportResult,
+  RosterUpdateResult,
+} from './roster-csv-review';
 
 export function AdminScheduleTab({
   studentCsvInputKey,
@@ -33,12 +40,20 @@ export function AdminScheduleTab({
   isImporting,
   onImport,
   isExporting,
+  canExport,
   onExport,
   lastStudentImport,
   onExportGeneratedPasswords,
   isUpdating,
   onBulkUpdate,
   lastStudentUpdate,
+  fileName,
+  isReading,
+  fileError,
+  clearFile,
+  preview,
+  mode,
+  onModeChange,
 }: {
   studentCsvInputKey: number;
   onStudentCsvFileChange: (file: File | null) => void;
@@ -46,169 +61,193 @@ export function AdminScheduleTab({
   isImporting: boolean;
   onImport: () => void;
   isExporting: boolean;
+  canExport: boolean;
   onExport: () => void;
   lastStudentImport: StudentImportResult | null;
   onExportGeneratedPasswords: () => void;
   isUpdating: boolean;
   onBulkUpdate: () => void;
   lastStudentUpdate: StudentBulkUpdateResult | null;
+  fileName?: string;
+  isReading: boolean;
+  fileError?: string;
+  clearFile: () => void;
+  preview: RosterCsvPreview<unknown> | null;
+  mode: 'import' | 'update';
+  onModeChange: (mode: 'import' | 'update') => void;
 }) {
+  const busy = isImporting || isUpdating;
+  const updating = mode === 'update';
+  const count = preview?.rows.length ?? 0;
+  const studentLabel = count === 1 ? 'student' : 'students';
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-      <AdminPanel title="Student Roster Import" contentClassName="space-y-5">
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            {['First Name', 'Last Name', 'Student ID', 'Grade Level', 'Major Pathway', 'Minor Pathway (optional)'].map((field) => (
-              <Badge key={field} variant="solid" size="sm">
-                {field}
-              </Badge>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Accepted pathway labels: <span className="text-foreground">IT</span>, <span className="text-foreground">Health Science</span>, <span className="text-foreground">Engineering</span>.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-foreground">Example CSV</p>
-          <pre className="overflow-x-auto rounded-lg bg-muted/30 p-3 font-mono text-xs leading-5 text-foreground">
-            <code>{studentCsvExample}</code>
-          </pre>
-          <p className="text-xs text-muted-foreground">
-            Use the first line as your header row. Email, grade, major, and minor are optional.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <Input
+    <div className="space-y-4">
+      <AdminPanel
+        title="Student roster"
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onExport}
+            loading={isExporting}
+            disabled={!canExport}
+            leadingIcon={Download}
+          >
+            Export CSV
+          </Button>
+        }
+        contentClassName="space-y-4"
+      >
+        <p className="text-sm text-muted-foreground">
+          Choose a CSV to validate and review before changing student records.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value={mode}
+            disabled={busy}
+            onValueChange={(value) =>
+              onModeChange(value as 'import' | 'update')
+            }
+          >
+            <SelectTrigger
+              aria-label="Roster operation"
+              className="w-full sm:w-56"
+            />
+            <SelectContent>
+              <SelectItem value="import" index={0}>
+                Import new students
+              </SelectItem>
+              <SelectItem value="update" index={1}>
+                Update existing students
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <FileInput
             key={studentCsvInputKey}
-            type="file"
-            accept=".csv"
-            onChange={(event) => onStudentCsvFileChange(event.target.files?.[0] || null)}
+            accept=".csv,text/csv"
+            label={fileName ? 'Replace CSV' : 'Choose CSV'}
+            onFileSelect={onStudentCsvFileChange}
+            disabled={busy}
+            loading={isReading}
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              onClick={onImport}
-              disabled={!canImport}
-              loading={isImporting}
-              leadingIcon={Upload}
-            >
-              Import students
-            </Button>
+          {fileName ? (
+            <>
+              <span className="min-w-0 break-all text-sm text-muted-foreground">
+                {fileName}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={clearFile}
+              >
+                Clear file
+              </Button>
+            </>
+          ) : null}
+        </div>
+        {fileError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {fileError}
+          </p>
+        ) : null}
+        {preview ? (
+          <div className="space-y-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   type="button"
-                  variant="tertiary"
-                  disabled={!canImport || isImporting || isUpdating}
                   leadingIcon={Upload}
+                  disabled={!canImport || busy}
+                  loading={busy}
                 >
-                  Bulk update records
+                  Review {updating ? 'update' : 'import'}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Update students from this CSV?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {updating ? 'Update' : 'Import'} {count} student records?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Each row must include a student ID and at least one of grade level, major pathway, or minor pathway. Only columns in the file are changed; blank values clear that field.
+                    {updating
+                      ? `Update records from ${fileName}. Only grade, major, and minor columns included in this CSV change; blanks clear those fields. Names, email addresses, and other columns are not updated. This cannot be undone here.`
+                      : `Import ${count} rows from ${fileName}. Existing student IDs will be skipped. New students receive temporary passwords to export after import.`}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isUpdating}>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    disabled={isUpdating}
-                    onClick={onBulkUpdate}
+                    disabled={!canImport || busy}
+                    onClick={updating ? onBulkUpdate : onImport}
                   >
-                    Update students
+                    {updating ? 'Update' : 'Import'} {count} {studentLabel}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onExport}
-              loading={isExporting}
-              leadingIcon={Download}
-            >
-              Export CSV
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              {canImport
+                ? 'File validation passed. Existing accounts and record conflicts are checked when submitted.'
+                : 'Correct the validation errors below, then replace this CSV.'}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            New students receive a random temporary password that must be exported after import.
+        ) : null}
+        <RosterCsvHelp>
+          <p>
+            Up to 200 rows. Use a header row. Grades must be whole numbers from
+            9 to 12; pathways are IT, Health Science, or Engineering. A minor
+            must differ from the major.
           </p>
-        </div>
+          {updating ? (
+            <>
+              <p>
+                Include student_id and only the columns to change. A blank in an
+                included column clears that field. Fields outside this CSV stay
+                unchanged.
+              </p>
+              <pre className="overflow-x-auto font-mono text-xs">
+                <code>
+                  {
+                    'student_id,major_pathway,minor_pathway\nSTU001,Engineering,\nSTU002,Engineering,Health Science'
+                  }
+                </code>
+              </pre>
+            </>
+          ) : (
+            <>
+              <p>
+                First name, last name, and student ID are required. Email,
+                grade, major, and minor are optional. Existing IDs are skipped.
+              </p>
+              <pre className="overflow-x-auto font-mono text-xs">
+                <code>
+                  {
+                    'first_name,last_name,student_id,email,grade_level,major_pathway,minor_pathway\nAlex,Smith,STU001,alex.smith@example.com,10,IT,'
+                  }
+                </code>
+              </pre>
+              <p>
+                New students receive temporary passwords. Export them
+                immediately after import.
+              </p>
+            </>
+          )}
+        </RosterCsvHelp>
       </AdminPanel>
-
-      <div className="space-y-4">
-        <AdminPanel title="Import Notes" contentClassName="space-y-3 text-sm text-muted-foreground">
-          <p>Grade level must be a number from 9 to 12.</p>
-          <p>Minor pathway must be different from the major pathway.</p>
-          <p>Existing student IDs are skipped to avoid overwriting live accounts.</p>
-        </AdminPanel>
-
-        <AdminPanel title="Bulk Update CSV" contentClassName="space-y-3">
-          <pre className="overflow-x-auto rounded-lg bg-muted/30 p-3 font-mono text-xs leading-5 text-foreground">
-            <code>{studentBulkUpdateCsvExample}</code>
-          </pre>
-          <p className="text-sm text-muted-foreground">
-            Include <span className="text-foreground">student_id</span> and only the columns to change: grade_level, major_pathway, or minor_pathway. A blank value clears an included field.
-          </p>
-        </AdminPanel>
-
-        {lastStudentImport ? (
-          <AdminPanel title="Latest Import" contentClassName="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <AdminMetric label="Created" value={lastStudentImport.created} />
-              <AdminMetric label="Skipped" value={lastStudentImport.skipped} />
-              <AdminMetric label="Temp Passwords" value={lastStudentImport.generatedCredentials.length} />
-            </div>
-
-            {lastStudentImport.generatedCredentials.length > 0 ? (
-              <Button type="button" onClick={onExportGeneratedPasswords} leadingIcon={Download}>
-                Export temp passwords CSV
-              </Button>
-            ) : null}
-
-            {lastStudentImport.errors.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Skipped rows</p>
-                <ScrollArea
-                  className="rounded-lg border bg-muted/30 text-xs text-muted-foreground"
-                  viewportClassName="max-h-48 p-3"
-                >
-                  {lastStudentImport.errors.map((error, index) => (
-                    <p key={`${error}-${index}`} className="leading-5">{error}</p>
-                  ))}
-                </ScrollArea>
-              </div>
-            ) : null}
-          </AdminPanel>
-        ) : null}
-
-        {lastStudentUpdate ? (
-          <AdminPanel title="Latest Bulk Update" contentClassName="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <AdminMetric label="Updated" value={lastStudentUpdate.updated} />
-              <AdminMetric label="Skipped" value={lastStudentUpdate.skipped} />
-            </div>
-            {lastStudentUpdate.errors.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Skipped rows</p>
-                <ScrollArea
-                  className="rounded-lg border bg-muted/30 text-xs text-muted-foreground"
-                  viewportClassName="max-h-48 p-3"
-                >
-                  {lastStudentUpdate.errors.map((error, index) => (
-                    <p key={`${error}-${index}`} className="leading-5">{error}</p>
-                  ))}
-                </ScrollArea>
-              </div>
-            ) : null}
-          </AdminPanel>
-        ) : null}
-      </div>
+      {preview ? (
+        <RosterCsvReview preview={preview} clearsBlanks={updating} />
+      ) : null}
+      {lastStudentImport ? (
+        <RosterImportResult
+          result={lastStudentImport}
+          onExportPasswords={onExportGeneratedPasswords}
+        />
+      ) : null}
+      {lastStudentUpdate ? (
+        <RosterUpdateResult result={lastStudentUpdate} />
+      ) : null}
     </div>
   );
 }

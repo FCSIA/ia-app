@@ -8,6 +8,11 @@ export function AdministratorRosterTabPanel() {
 
   return (
     <AdministratorRosterTab
+      fileName={roster.fileName}
+      isReading={roster.isReading}
+      fileError={roster.fileError}
+      clearFile={roster.clearFile}
+      preview={roster.preview}
       fileInputKey={roster.fileInputKey}
       onFileChange={roster.setFile}
       canImport={roster.canImport}
