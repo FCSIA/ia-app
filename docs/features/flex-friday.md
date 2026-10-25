@@ -61,6 +61,14 @@ attendance, and yearly credits.
 Admins create Fridays. Staff manage sessions/workshops and attendance. Students
 register or unregister themselves where capacity and session type allow.
 
+The existing admin activity-query contract is restricted to Admin and Super
+Admin roles. Those users see Schedule and Activity beneath Flex Friday in the
+main sidebar and mobile More navigation, at `?view=schedule` and
+`?view=activity`. Other roles remain on Schedule even when given an Activity
+query URL. The older `?view=audit` spelling also selects Activity for authorized
+users. Destination links retain Friday, session, and attendance selections;
+same-page view navigation preserves local search and mounted form drafts.
+
 ## Side Effects
 
 Creating a Friday adds a calendar entry and writes an audit event. Registration,

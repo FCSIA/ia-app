@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CalendarDays, History } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -22,27 +23,34 @@ import { AttendancePanel } from './_components/AttendancePanel';
 
 // Constants & Types
 import { EMPTY_SESSION_FORM, EMPTY_WORKSHOP_FORM } from './_constants';
-import type { SessionForm as SessionFormType, WorkshopForm as WorkshopFormType } from './_types';
+import type {
+  SessionForm as SessionFormType,
+  WorkshopForm as WorkshopFormType,
+} from './_types';
 
 export default function FlexFridayPage() {
   const { toast } = useToast();
-  
+
   // Data & State Hook
   const flex = useFlexFriday();
-  
+
   // Actions & Mutations Hook
   const actions = useFlexActions();
 
   // Form State
   const [fridayFormOpen, setFridayFormOpen] = useState(false);
-  
+
   const [sessionFormOpen, setSessionFormOpen] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [sessionForm, setSessionForm] = useState<SessionFormType>(EMPTY_SESSION_FORM);
+  const [sessionForm, setSessionForm] =
+    useState<SessionFormType>(EMPTY_SESSION_FORM);
 
   const [workshopFormOpen, setWorkshopFormOpen] = useState(false);
-  const [editingWorkshopId, setEditingWorkshopId] = useState<string | null>(null);
-  const [workshopForm, setWorkshopForm] = useState<WorkshopFormType>(EMPTY_WORKSHOP_FORM);
+  const [editingWorkshopId, setEditingWorkshopId] = useState<string | null>(
+    null,
+  );
+  const [workshopForm, setWorkshopForm] =
+    useState<WorkshopFormType>(EMPTY_WORKSHOP_FORM);
 
   // ── Session Handlers ──────────────────────────────────────────────────────
   const openNewSessionForm = () => {
@@ -64,7 +72,11 @@ export default function FlexFridayPage() {
   };
 
   const handleDeleteSession = (s: any) => {
-    if (confirm(`Delete session "${s.title}"? This will fail if workshops are attached.`)) {
+    if (
+      confirm(
+        `Delete session "${s.title}"? This will fail if workshops are attached.`,
+      )
+    ) {
       void actions.runAction('session-delete', async () => {
         await actions.mutations.deleteSession({ sessionId: s._id });
         toast({ title: 'Session deleted' });
@@ -93,8 +105,12 @@ export default function FlexFridayPage() {
         ? w.linkedSessions.map((s: any) => s._id)
         : [],
       targetGrades: Array.isArray(w.targetGrades) ? w.targetGrades : [],
-      targetMajorPathways: Array.isArray(w.targetMajorPathways) ? w.targetMajorPathways : [],
-      targetMinorPathways: Array.isArray(w.targetMinorPathways) ? w.targetMinorPathways : [],
+      targetMajorPathways: Array.isArray(w.targetMajorPathways)
+        ? w.targetMajorPathways
+        : [],
+      targetMinorPathways: Array.isArray(w.targetMinorPathways)
+        ? w.targetMinorPathways
+        : [],
     });
     setWorkshopFormOpen(true);
   };
@@ -110,21 +126,51 @@ export default function FlexFridayPage() {
 
   const handleRegister = (workshopId: string) => {
     void actions.runAction('register', async () => {
-      await actions.mutations.register({ workshopId: workshopId as Id<'flexWorkshops'> });
+      await actions.mutations.register({
+        workshopId: workshopId as Id<'flexWorkshops'>,
+      });
       toast({ title: 'Registered successfully' });
     });
   };
 
   const handleUnregister = (workshopId: string) => {
     void actions.runAction('unregister', async () => {
-      await actions.mutations.unregister({ workshopId: workshopId as Id<'flexWorkshops'> });
+      await actions.mutations.unregister({
+        workshopId: workshopId as Id<'flexWorkshops'>,
+      });
       toast({ title: 'Registration removed' });
     });
   };
 
   return (
     <AppShell
-      headerSlot={<h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Flex Friday</h1>}
+      pageNavigation={
+        flex.canViewActivity
+          ? {
+              parentHref: '/flex-friday',
+              label: 'Flex Friday',
+              items: [
+                {
+                  href: flex.scheduleHref,
+                  label: 'Schedule',
+                  icon: CalendarDays,
+                  isActive: flex.activeView === 'schedule',
+                },
+                {
+                  href: flex.activityHref,
+                  label: 'Activity',
+                  icon: History,
+                  isActive: flex.activeView === 'audit',
+                },
+              ],
+            }
+          : undefined
+      }
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Flex Friday
+        </h1>
+      }
       mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
@@ -135,8 +181,6 @@ export default function FlexFridayPage() {
           onAddFriday={() => setFridayFormOpen(true)}
           canManage={flex.canCreateFriday}
           isStudent={flex.isStudent}
-          activeView={flex.activeView}
-          onViewChange={flex.setActiveView}
           credits={flex.credits}
         />
 
@@ -146,9 +190,17 @@ export default function FlexFridayPage() {
             <Skeleton className="h-72 lg:col-span-8" />
           </div>
         ) : flex.activeView === 'audit' ? (
-          <AuditView auditEvents={flex.auditEvents} isLoading={flex.auditLoading} />
+          <section aria-label="Flex Friday activity">
+            <AuditView
+              auditEvents={flex.auditEvents}
+              isLoading={flex.auditLoading}
+            />
+          </section>
         ) : (
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+          <section
+            aria-label="Flex Friday schedule"
+            className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12"
+          >
             {/* Sessions Column */}
             <div className="lg:col-span-4">
               <SessionPanel
@@ -196,21 +248,21 @@ export default function FlexFridayPage() {
                     roster={flex.rosterData}
                     isLoading={flex.rosterLoading}
                     error={null}
-                    onMark={(studentId, status) => 
-                      void actions.runAction('attendance-mark', () => 
+                    onMark={(studentId, status) =>
+                      void actions.runAction('attendance-mark', () =>
                         actions.mutations.markAttendance({
                           workshopId: flex.attendanceWorkshopId!,
                           studentId,
                           status,
-                        })
+                        }),
                       )
                     }
-                    onClear={(studentId) => 
-                      void actions.runAction('attendance-clear', () => 
+                    onClear={(studentId) =>
+                      void actions.runAction('attendance-clear', () =>
                         actions.mutations.clearAttendance({
                           workshopId: flex.attendanceWorkshopId!,
                           studentId,
-                        })
+                        }),
                       )
                     }
                     isMarking={actions.actionPending != null}
@@ -218,7 +270,7 @@ export default function FlexFridayPage() {
                 </div>
               )}
             </div>
-          </div>
+          </section>
         )}
       </div>
 

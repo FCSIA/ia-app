@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -11,10 +11,15 @@ import { Bell, BellDot, Inbox, SearchX, Settings } from 'lucide-react';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notification-category-options';
 import { cn } from '@/lib/utils';
@@ -43,7 +48,10 @@ function NotificationListSkeleton() {
   return (
     <div>
       {Array.from({ length: 5 }).map((_, index) => (
-        <div key={index} className="flex gap-4 border-b border-border/60 py-4 last:border-b-0">
+        <div
+          key={index}
+          className="flex gap-4 border-b border-border/60 py-4 last:border-b-0"
+        >
           <Skeleton className="mt-1 size-8 shrink-0 rounded-full" />
           <div className="min-w-0 flex-1">
             <div className="mb-3 flex items-center gap-2">
@@ -61,11 +69,20 @@ function NotificationListSkeleton() {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('inbox');
+  const activeTab =
+    searchParams?.get('tab') === 'settings' ? 'settings' : 'inbox';
+  const destinationHref = (tab: 'inbox' | 'settings') => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set('tab', tab);
+    return `/notifications?${params.toString()}`;
+  };
   const [documentVisible, setDocumentVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
-  const acknowledgeInbox = useMutation(api.notifications.inbox.acknowledgeInbox);
+  const acknowledgeInbox = useMutation(
+    api.notifications.inbox.acknowledgeInbox,
+  );
   const markRead = useMutation(api.notifications.inbox.markRead);
   const acknowledgingKeyRef = useRef<string | null>(null);
   const pendingDismissalRef = useRef<{
@@ -80,14 +97,20 @@ export default function NotificationsPage() {
     results: notifications,
     status: notificationsStatus,
     loadMore: loadMoreNotifications,
-  } = usePaginatedQuery(api.notifications.inbox.listPage, {}, { initialNumItems: 50 });
+  } = usePaginatedQuery(
+    api.notifications.inbox.listPage,
+    {},
+    { initialNumItems: 50 },
+  );
   const isLoading = notificationsStatus === 'LoadingFirstPage';
 
   useEffect(() => {
-    const syncVisibility = () => setDocumentVisible(document.visibilityState === 'visible');
+    const syncVisibility = () =>
+      setDocumentVisible(document.visibilityState === 'visible');
     syncVisibility();
     document.addEventListener('visibilitychange', syncVisibility);
-    return () => document.removeEventListener('visibilitychange', syncVisibility);
+    return () =>
+      document.removeEventListener('visibilitychange', syncVisibility);
   }, []);
 
   useEffect(() => {
@@ -100,8 +123,9 @@ export default function NotificationsPage() {
   // A failed acknowledgement may retry after the user leaves and returns to
   // the Inbox, but never continuously for the same visible snapshot.
   useEffect(() => {
-    if (!documentVisible) acknowledgingKeyRef.current = null;
-  }, [documentVisible]);
+    if (!documentVisible || activeTab !== 'inbox')
+      acknowledgingKeyRef.current = null;
+  }, [activeTab, documentVisible]);
 
   const filteredNotifications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -119,7 +143,7 @@ export default function NotificationsPage() {
     void markRead({ ids: [id] });
   }
 
-  type Notification = typeof notifications[number];
+  type Notification = (typeof notifications)[number];
 
   function openNotification(notification: Notification) {
     if (!notification.isRead) handleMarkRead(notification.id);
@@ -135,7 +159,14 @@ export default function NotificationsPage() {
     .join(',');
 
   useEffect(() => {
-    if (activeTab !== 'inbox' || isLoading || !documentVisible || !unreadKey || acknowledging) return;
+    if (
+      activeTab !== 'inbox' ||
+      isLoading ||
+      !documentVisible ||
+      !unreadKey ||
+      acknowledging
+    )
+      return;
     if (acknowledgingKeyRef.current === unreadKey) return;
 
     acknowledgingKeyRef.current = unreadKey;
@@ -143,7 +174,10 @@ export default function NotificationsPage() {
     const acknowledgedDeliveryIds = new Set(unreadKey.split(','));
     void acknowledgeInbox({})
       .then(({ cutoff }) => {
-        pendingDismissalRef.current = { cutoff, deliveryIds: acknowledgedDeliveryIds };
+        pendingDismissalRef.current = {
+          cutoff,
+          deliveryIds: acknowledgedDeliveryIds,
+        };
         if (mountedRef.current) setDismissalRevision((current) => current + 1);
       })
       // Keep this exact snapshot acknowledged after a failure too: retrying a
@@ -153,7 +187,14 @@ export default function NotificationsPage() {
       .finally(() => {
         if (mountedRef.current) setAcknowledging(false);
       });
-  }, [acknowledgeInbox, acknowledging, activeTab, documentVisible, isLoading, unreadKey]);
+  }, [
+    acknowledgeInbox,
+    acknowledging,
+    activeTab,
+    documentVisible,
+    isLoading,
+    unreadKey,
+  ]);
 
   useEffect(() => {
     const pending = pendingDismissalRef.current;
@@ -162,20 +203,45 @@ export default function NotificationsPage() {
     // The acknowledgement may continue in server-side batches. Close only
     // notifications whose rows have already appeared as read reactively.
     const readDeliveryIds = new Set(
-      notifications.filter((notification) => notification.isRead).map((notification) => notification.id),
+      notifications
+        .filter((notification) => notification.isRead)
+        .map((notification) => notification.id),
     );
     const acknowledgedDeliveryIds = new Set(
-      [...pending.deliveryIds].filter((id) => readDeliveryIds.has(id as Id<'notificationDeliveries'>)),
+      [...pending.deliveryIds].filter((id) =>
+        readDeliveryIds.has(id as Id<'notificationDeliveries'>),
+      ),
     );
     if (acknowledgedDeliveryIds.size === 0) return;
 
     for (const id of acknowledgedDeliveryIds) pending.deliveryIds.delete(id);
     if (pending.deliveryIds.size === 0) pendingDismissalRef.current = null;
-    void dismissAcknowledgedWebNotifications(pending.cutoff, acknowledgedDeliveryIds);
+    void dismissAcknowledgedWebNotifications(
+      pending.cutoff,
+      acknowledgedDeliveryIds,
+    );
   }, [dismissalRevision, notifications]);
 
   return (
     <AppShell
+      pageNavigation={{
+        parentHref: '/notifications',
+        label: 'Notifications',
+        items: [
+          {
+            href: destinationHref('inbox'),
+            label: 'Inbox',
+            icon: Inbox,
+            isActive: activeTab === 'inbox',
+          },
+          {
+            href: destinationHref('settings'),
+            label: 'Settings',
+            icon: Settings,
+            isActive: activeTab === 'settings',
+          },
+        ],
+      }}
       headerSlot={
         <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
           Notifications
@@ -184,16 +250,11 @@ export default function NotificationsPage() {
     >
       <PageFrame className="pt-0">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div>
-              <TabsList>
-                <TabItem value="inbox" icon={Bell} label="Inbox" />
-                <TabItem value="settings" icon={Settings} label="Settings" />
-              </TabsList>
-            </div>
-            <TabPanel value="inbox" className="mt-5">
-              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${CARD_SURFACE_FOREGROUND}`}>
+          {activeTab === 'inbox' ? (
+            <section aria-label="Notification inbox">
+              <div
+                className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${CARD_SURFACE_FOREGROUND}`}
+              >
                 <section className="min-w-0">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <SearchInput
@@ -218,7 +279,11 @@ export default function NotificationsPage() {
                         <EmptyMedia variant="icon">
                           {hasQuery ? <SearchX /> : <Inbox />}
                         </EmptyMedia>
-                        <EmptyTitle>{hasQuery ? 'No matching notifications' : "You're all caught up"}</EmptyTitle>
+                        <EmptyTitle>
+                          {hasQuery
+                            ? 'No matching notifications'
+                            : "You're all caught up"}
+                        </EmptyTitle>
                         <EmptyDescription>
                           {hasQuery
                             ? 'Try a different title, message, or category.'
@@ -226,7 +291,11 @@ export default function NotificationsPage() {
                         </EmptyDescription>
                       </EmptyHeader>
                       {hasQuery ? (
-                        <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSearch('')}
+                        >
                           Clear search
                         </Button>
                       ) : null}
@@ -235,8 +304,10 @@ export default function NotificationsPage() {
                     <Elevated offset={1} className="overflow-hidden rounded-xl">
                       <ul className="divide-y divide-border/60">
                         {filteredNotifications.map((n) => {
-                          const categoryDetails = NOTIFICATION_CATEGORY_DETAILS[n.category];
-                          const categoryColor = CATEGORY_COLORS[n.category] ?? 'gray';
+                          const categoryDetails =
+                            NOTIFICATION_CATEGORY_DETAILS[n.category];
+                          const categoryColor =
+                            CATEGORY_COLORS[n.category] ?? 'gray';
                           return (
                             <li key={n.id}>
                               <button
@@ -257,26 +328,42 @@ export default function NotificationsPage() {
                                   )}
                                   aria-hidden
                                 >
-                                  {n.isRead ? <Bell className="size-4" /> : <BellDot className="size-4" />}
+                                  {n.isRead ? (
+                                    <Bell className="size-4" />
+                                  ) : (
+                                    <BellDot className="size-4" />
+                                  )}
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                                    <Badge variant="solid" size="sm" color={categoryColor}>
+                                    <Badge
+                                      variant="solid"
+                                      size="sm"
+                                      color={categoryColor}
+                                    >
                                       {categoryDetails?.badgeLabel ?? 'Update'}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">
-                                      {formatDistanceToNow(new Date(n.createdAt), {
-                                        addSuffix: true,
-                                      })}
+                                      {formatDistanceToNow(
+                                        new Date(n.createdAt),
+                                        {
+                                          addSuffix: true,
+                                        },
+                                      )}
                                     </span>
                                     {!n.isRead ? (
-                                      <span className="size-1.5 rounded-full bg-primary" aria-label="Unread" />
+                                      <span
+                                        className="size-1.5 rounded-full bg-primary"
+                                        aria-label="Unread"
+                                      />
                                     ) : null}
                                   </span>
                                   <span
                                     className={cn(
                                       'block text-[13px] font-medium leading-5',
-                                      n.isRead ? 'text-muted-foreground' : 'text-foreground',
+                                      n.isRead
+                                        ? 'text-muted-foreground'
+                                        : 'text-foreground',
                                     )}
                                   >
                                     {n.title}
@@ -295,7 +382,8 @@ export default function NotificationsPage() {
                     </Elevated>
                   )}
 
-                  {filteredNotifications.length > 0 && notificationsStatus !== 'Exhausted' ? (
+                  {filteredNotifications.length > 0 &&
+                  notificationsStatus !== 'Exhausted' ? (
                     <div className="mt-4 flex justify-center">
                       <Button
                         variant="tertiary"
@@ -308,13 +396,13 @@ export default function NotificationsPage() {
                     </div>
                   ) : null}
                 </section>
-
               </div>
-            </TabPanel>
-            <TabPanel value="settings" className="mt-5 max-w-4xl">
+            </section>
+          ) : (
+            <section aria-label="Notification settings" className="max-w-4xl">
               <NotificationSettingsPanel />
-            </TabPanel>
-          </Tabs>
+            </section>
+          )}
         </div>
       </PageFrame>
     </AppShell>
