@@ -1,6 +1,10 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Shared workspace modules must use this project config, not an ancestor
+  // tsconfig belonging to another checkout on the developer machine.
+  tsconfig: fileURLToPath(new URL("./src/tsconfig.json", import.meta.url)),
   test: {
     environment: "edge-runtime",
     include: ["src/**/*.test.ts"],
