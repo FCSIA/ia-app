@@ -4,7 +4,12 @@ import type { ReactNode } from 'react';
 import { AlertCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 
 type AdminPanelProps = {
@@ -23,13 +28,19 @@ export function AdminPanel({
   contentClassName,
 }: AdminPanelProps) {
   return (
-      <Card className={className}>
-        <CardHeader className="flex flex-col gap-3 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
-          {actions ? <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div> : null}
-        </CardHeader>
-        <CardContent className={cn('px-4 pb-4 pt-3', contentClassName)}>{children}</CardContent>
-      </Card>
+    <Card className={className}>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle className="text-sm font-semibold text-foreground">
+          {title}
+        </CardTitle>
+        {actions ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+            {actions}
+          </div>
+        ) : null}
+      </CardHeader>
+      <CardContent className={contentClassName}>{children}</CardContent>
+    </Card>
   );
 }
 
@@ -40,14 +51,26 @@ type AdminMetricProps = {
   compact?: boolean;
 };
 
-export function AdminMetric({ label, value, detail, compact }: AdminMetricProps) {
+export function AdminMetric({
+  label,
+  value,
+  detail,
+  compact,
+}: AdminMetricProps) {
   return (
     <dl className="min-w-0 py-2">
-        <dt className="text-sm text-muted-foreground">{label}</dt>
-        <dd className={cn('mt-1 font-semibold tabular-nums text-foreground', compact ? 'text-base' : 'text-2xl')}>
-          {value}
-        </dd>
-        {detail ? <dd className="mt-1.5 text-xs text-muted-foreground">{detail}</dd> : null}
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          'mt-1 font-semibold tabular-nums text-foreground',
+          compact ? 'text-base' : 'text-2xl',
+        )}
+      >
+        {value}
+      </dd>
+      {detail ? (
+        <dd className="mt-1.5 text-xs text-muted-foreground">{detail}</dd>
+      ) : null}
     </dl>
   );
 }
@@ -73,17 +96,31 @@ export function AdminNotice({
   const isSuccess = tone === 'success';
 
   return (
-    <Empty size="inline" className={className} role={isDanger ? 'alert' : undefined}>
-      {isDanger ? <AlertCircle className="size-5 text-destructive" /> : isSuccess ? <Check className="size-5 text-success" /> : null}
+    <Empty
+      size="inline"
+      className={className}
+      role={isDanger ? 'alert' : undefined}
+    >
+      {isDanger ? (
+        <AlertCircle className="size-5 text-destructive" />
+      ) : isSuccess ? (
+        <Check className="size-5 text-success" />
+      ) : null}
       <EmptyHeader>
         {title ? <EmptyTitle className="text-sm">{title}</EmptyTitle> : null}
         <EmptyDescription>{message}</EmptyDescription>
       </EmptyHeader>
-        {actionLabel && onAction ? (
-          <Button type="button" variant={isDanger || isSuccess ? 'primary' : 'ghost'} size="sm" onClick={onAction} className="mt-4">
-            {actionLabel}
-          </Button>
-        ) : null}
+      {actionLabel && onAction ? (
+        <Button
+          type="button"
+          variant={isDanger || isSuccess ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={onAction}
+          className="mt-4"
+        >
+          {actionLabel}
+        </Button>
+      ) : null}
     </Empty>
   );
 }

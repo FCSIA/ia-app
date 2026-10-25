@@ -17,9 +17,15 @@ export function useAdminModeration(activeTab: AdminTabId) {
   const [moderationSearch, setModerationSearch] = useState('');
   const deferredModerationSearch = useDeferredValue(moderationSearch);
 
-  const keywords =
-    useQuery(api.moderation.keywords.list, activeTab === 'moderation' ? {} : 'skip') ?? [];
-  const reportResult = useQuery(api.moderation.reports.list, activeTab === 'moderation' ? {} : 'skip');
+  const keywordResult = useQuery(
+    api.moderation.keywords.list,
+    activeTab === 'moderation' ? {} : 'skip',
+  );
+  const keywords = keywordResult ?? [];
+  const reportResult = useQuery(
+    api.moderation.reports.list,
+    activeTab === 'moderation' ? {} : 'skip',
+  );
   const reports = useMemo(() => reportResult ?? [], [reportResult]);
 
   const addKeyword = useMutation(api.moderation.keywords.add);
@@ -56,7 +62,8 @@ export function useAdminModeration(activeTab: AdminTabId) {
         })
         .catch((error: unknown) =>
           toast({
-            title: error instanceof Error ? error.message : 'Failed to add keyword',
+            title:
+              error instanceof Error ? error.message : 'Failed to add keyword',
             variant: 'destructive',
           }),
         )
@@ -73,7 +80,10 @@ export function useAdminModeration(activeTab: AdminTabId) {
         .then(() => toast({ title: 'Removed' }))
         .catch((error: unknown) =>
           toast({
-            title: error instanceof Error ? error.message : 'Failed to remove keyword',
+            title:
+              error instanceof Error
+                ? error.message
+                : 'Failed to remove keyword',
             variant: 'destructive',
           }),
         )
@@ -102,7 +112,10 @@ export function useAdminModeration(activeTab: AdminTabId) {
         .then(() => toast({ title: 'Report updated' }))
         .catch((error: unknown) =>
           toast({
-            title: error instanceof Error ? error.message : 'Failed to update report',
+            title:
+              error instanceof Error
+                ? error.message
+                : 'Failed to update report',
             variant: 'destructive',
           }),
         )
@@ -113,6 +126,7 @@ export function useAdminModeration(activeTab: AdminTabId) {
 
   return {
     isLoading: reportResult === undefined,
+    isKeywordsLoading: keywordResult === undefined,
     keyword,
     setKeyword,
     keywords,
