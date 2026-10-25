@@ -87,7 +87,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabItem, TabPanel } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { defaultCalendarRange } from '@/lib/calendar-range';
@@ -343,7 +342,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
   // View shortcuts (M/W/D/A/3, T for today) listen on the document while the
   // calendar is mounted, so they keep working after a dialog or popover
   // closes and returns focus to the page body. Typing targets, open overlays
-  // and the view tabs (arrow-key owners) are left alone.
+  // and navigation controls are left alone.
   const onShortcut = useRef<(event: KeyboardEvent) => void>(undefined);
   onShortcut.current = (event) => {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -501,6 +500,16 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       classNames={{ allDaySection: view === 'day' ? 'xl:hidden' : undefined }}
     >
       <AppShell
+        pageNavigation={{
+          parentHref: '/calendar',
+          label: 'Calendar views',
+          items: availableViews.map((item) => {
+            const params = new URLSearchParams(search?.toString());
+            params.set('view', item);
+            params.set('date', format(calendarDate(date), 'yyyy-MM-dd'));
+            return { href: `/calendar?${params}`, label: VIEW_LABELS[item] ?? item, isActive: view === item };
+          }),
+        }}
         headerSlot={<PeriodHeader isMobile={isMobile} view={view} />}
         mainClassName={FILL_MAIN_CLASS}
         pageTransitionClassName="flex min-h-0 flex-1 flex-col"
@@ -511,21 +520,8 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
           tabIndex={0}
           className={`flex min-h-0 flex-1 flex-col bg-card md:overflow-hidden md:rounded-xl md:border md:border-border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}
         >
-          <Tabs
-            value={view}
-            onValueChange={(next) => navigate(next as CalendarView, date)}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 bg-muted/30 px-2 py-2 sm:px-3">
-              <TabsList aria-label="Calendar view">
-                {availableViews.map((item) => (
-                  <TabItem
-                    key={item}
-                    value={item}
-                    label={VIEW_LABELS[item] ?? item}
-                  />
-                ))}
-              </TabsList>
+            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 px-2 py-2 sm:px-3">
+
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -609,18 +605,13 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                 <div className="h-full w-full animate-pulse bg-primary motion-reduce:animate-none" />
               ) : null}
             </div>
-            {availableViews.map((item) => (
-              <TabPanel
-                key={item}
-                value={item}
-                className="flex min-h-0 flex-1 data-[state=inactive]:hidden"
-              >
+            <div className="flex min-h-0 flex-1 flex-col">
                 <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
                   {/* An empty range is still a calendar: keep the dates, slots
                       and school bands, and float the hint above them. The
                       agenda renders the same hint through renderNoEvents. */}
                   <EventCalendarContent />
-                  {item !== 'agenda' &&
+                  {view !== 'agenda' &&
                   entries !== undefined &&
                   events.length === 0 ? (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
@@ -634,7 +625,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                     </div>
                   ) : null}
                 </div>
-                {item === 'day' ? (
+                {view === 'day' ? (
                   <CalendarDaySummary
                     day={date}
                     entries={displayed.filter(
@@ -657,9 +648,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                     onCreate={() => openSlot(date, false)}
                   />
                 ) : null}
-              </TabPanel>
-            ))}
-          </Tabs>
+            </div>
         </section>
         {owned && editing ? (
           <EditCalendarEntryDialog

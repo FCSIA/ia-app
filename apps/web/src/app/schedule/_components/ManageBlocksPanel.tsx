@@ -42,7 +42,6 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Sortable,
@@ -925,7 +924,8 @@ export function ManageBlocksPanel() {
   const { toast } = useToast();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"dates" | "templates" | "config">("dates");
+  const requestedSection = searchParams?.get("section");
+  const mode = requestedSection === "templates" || requestedSection === "config" ? requestedSection : "dates";
   const [setupView, setSetupView] = useState<"year" | "template">("year");
   const urlDateKey = searchParams?.get("date") ?? null;
   const [dateKey, setDateKey] = useState(() =>
@@ -1171,21 +1171,12 @@ export function ManageBlocksPanel() {
 
   return (
     <div className="space-y-5">
-      <Tabs
-        value={mode}
-        onValueChange={(value) => setMode(value as "dates" | "templates" | "config")}
-      >
-        <TabsList>
-          <TabItem value="dates" label="Calendar dates" icon={CalendarDays} />
-          <TabItem value="templates" label="Templates" icon={LayoutTemplate} />
-          <TabItem value="config" label="School config" icon={School} />
-        </TabsList>
 
         {workspace === undefined ? (
           <div className="mt-5 h-48 animate-pulse rounded-xl bg-muted/30" />
         ) : (
           <>
-            <TabPanel value="dates">
+            {mode === "dates" ? <section aria-label="Calendar dates">
               <DatePlanWorkspace
                 workspace={workspace}
                 dateKey={dateKey}
@@ -1246,8 +1237,8 @@ export function ManageBlocksPanel() {
                   )
                 }
               />
-            </TabPanel>
-            <TabPanel value="templates">
+            </section> : null}
+            {mode === "templates" ? <section aria-label="Templates">
               <TemplateWorkspace
                 workspace={workspace}
                 selectedTemplateId={selectedTemplateId}
@@ -1317,8 +1308,8 @@ export function ManageBlocksPanel() {
                   );
                 }}
               />
-            </TabPanel>
-            <TabPanel value="config">
+            </section> : null}
+            {mode === "config" ? <section aria-label="School config">
               <SchoolConfigWorkspace
                 regularTemplate={regularTemplate}
                 academicStart={academicStart}
@@ -1335,10 +1326,9 @@ export function ManageBlocksPanel() {
                   );
                 }}
               />
-            </TabPanel>
+            </section> : null}
           </>
         )}
-      </Tabs>
     </div>
   );
 }
