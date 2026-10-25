@@ -17,3 +17,8 @@ reason = "Package-name reuse false positive: sandbox 4.4.0 is the Vercel Sandbox
 id = "GHSA-gc25-3vc5-2jf9"
 ignoreUntil = 2026-11-01
 reason = "Package-name reuse false positive for Vercel Sandbox CLI 4.4.0, not gf3/sandbox. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. See GHSA-fm4j-4xhm-xpwx above; the dependency-security regression checks all locked versions and installed provenance. Recheck the database correction before expiry."
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+ignoreUntil = 2026-11-01
+reason = "Zod 4.6.5 uncontrolled resource consumption in $ZodArray (CVE-2023-54404). Application dependencies upgraded to zod 4.6.7. OSV advisory records unbounded lower SEMVER range (< 4.6.6) which false-positives on Zod 3.x instances used by Expo CLI and Vercel tooling. Recheck upstream advisory scoping before expiry."
