@@ -107,3 +107,15 @@ test("OSV sandbox exceptions apply only to the Vercel CLI package identity", () 
   assert.equal(cli.repository.url, "https://github.com/vercel/sandbox.git");
   assert.equal(cli.repository.directory, "packages/sandbox");
 });
+
+test("Zod advisory exception never masks a vulnerable v4 dependency", () => {
+  const lock = JSON.parse(readFileSync(new URL("../bun.lock", import.meta.url), "utf8").replace(/,\s*([}\]])/g, "$1"));
+  const versions = Object.values(lock.packages)
+    .map(([id]) => /^zod@(4\.\d+\.\d+)$/.exec(id)?.[1])
+    .filter(Boolean);
+  assert.ok(versions.length > 0);
+  for (const version of versions) {
+    const [, minor, patch] = version.split(".").map(Number);
+    assert.ok(minor > 6 || (minor === 6 && patch >= 6), `Vulnerable Zod ${version}`);
+  }
+});
