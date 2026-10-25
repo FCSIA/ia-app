@@ -111,6 +111,7 @@ export const schema = defineSchema({
     .index("by_avatarStorageId", ["avatarStorageId"])
     .index("by_customBackgroundStorageId", ["customBackgroundStorageId"])
     .index("by_isActive", ["isActive"])
+    .index("by_isActive_and_approvedBugCount", ["isActive", "approvedBugCount"])
     .index("by_lastName_and_firstName", ["lastName", "firstName"])
     .index("by_isStudent_and_lastName_and_firstName", [
       "isStudent",

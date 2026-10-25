@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import styles from './finder-wall.module.css';
+import styles from '@/components/recognition/plaque-wall.module.css';
 
 function FinderPlaques() {
   const { results, status, loadMore } = usePaginatedQuery(

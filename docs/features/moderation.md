@@ -41,6 +41,10 @@ rules, and user-submitted reports.
 - `api.moderation.reports.listMyFeedback`
 - `api.moderation.reports.addFeedbackResponse`
 - `api.moderation.reports.retryGithubIssueSync`
+- `api.moderation.bugRewards.approve`
+- `api.moderation.bugRewards.myReward`
+- `api.moderation.bugRewards.hallOfFame`
+- `api.moderation.bugRewards.setColor`
 
 ## Data Model
 
@@ -88,6 +92,26 @@ Submission text remains primary, status and time share a metadata row, and staff
 responses sit under the item they answer. Loading and empty history are distinct
 states. Feedback notifications use their own category rather than Moderation;
 see [Notifications](notifications.md).
+
+## Bug recognition
+
+Students select **Bug report** on `/report` and describe the problem. The app
+includes its version, and the student may attach screenshots. A report alone
+earns no reward. Staff can review feedback, but only an account with both the
+developer designation and feedback-review access can approve a confirmed bug.
+Reviewers should reproduce the problem, check whether it was already reported,
+and dismiss duplicates with a clear review note. Duplicate detection is a
+manual review step; the app does not claim to detect identical bugs itself.
+
+Approval is idempotent per report. It records the approving developer and time,
+increments the submitter's saved approved-bug count once, and writes an audit
+event. Dismissed reports cannot be approved. The saved count unlocks the regular
+tag at 1, a chosen color at 5, a multicolored tag at 20, and an animated tag at
+50; reduced-motion settings stop the animation. Profile shows earned milestones
+and the current tag. The signed-in Bug Hall of Fame lists active contributors
+with at least one approved report, ordered by count, and loads more names on
+demand. Milestones derive from the saved count rather than a second achievement
+table.
 
 ## Preferred-name safety
 

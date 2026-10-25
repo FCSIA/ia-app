@@ -92,4 +92,32 @@ describe("developer-approved bug rewards", () => {
     await student.mutation(api.moderation.bugRewards.setColor, { color: "purple" });
     expect(await student.query(api.moderation.bugRewards.myReward, {})).toEqual({ approvedCount: 5, color: "purple" });
   });
+
+  it("lists approved contributors for signed-in members without exposing inactive accounts", async () => {
+    const { t, studentId, reviewerId } = await fixture();
+    await t.run(async (ctx) => {
+      await ctx.db.patch(studentId, { approvedBugCount: 5 });
+      await ctx.db.patch(reviewerId, { approvedBugCount: 1 });
+    });
+    const args = { paginationOpts: { cursor: null, numItems: 10 } };
+    await expect(t.query(api.moderation.bugRewards.hallOfFame, args)).rejects.toThrow();
+    const member = t.withIdentity({ subject: studentId });
+    const hall = await member.query(api.moderation.bugRewards.hallOfFame, args);
+    expect(hall.page.map(({ name, approvedCount, isYou }) => ({ name, approvedCount, isYou }))).toEqual([
+      { name: "Bug Reporter", approvedCount: 5, isYou: true },
+      { name: "Dev Reviewer", approvedCount: 1, isYou: false },
+    ]);
+    const firstPage = await member.query(api.moderation.bugRewards.hallOfFame, {
+      paginationOpts: { cursor: null, numItems: 1 },
+    });
+    expect(firstPage.page.map((entry) => entry.id)).toEqual([studentId]);
+    const secondPage = await member.query(api.moderation.bugRewards.hallOfFame, {
+      paginationOpts: { cursor: firstPage.continueCursor, numItems: 1 },
+    });
+    expect(secondPage.page.map((entry) => entry.id)).toEqual([reviewerId]);
+
+    await t.run((ctx) => ctx.db.patch(reviewerId, { isActive: false }));
+    const activeHall = await member.query(api.moderation.bugRewards.hallOfFame, args);
+    expect(activeHall.page.map((entry) => entry.id)).toEqual([studentId]);
+  });
 });
