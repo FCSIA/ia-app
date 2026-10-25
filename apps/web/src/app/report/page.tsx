@@ -9,6 +9,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { FileInput } from '@/components/ui/file-input';
 import { AnimatedGif } from '@/components/media/animated-gif';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +33,7 @@ type SelectedImage = {
 
 export default function ReportPage() {
   const [message, setMessage] = useState('');
+  const [feedbackKind, setFeedbackKind] = useState<'BUG' | 'OTHER'>('OTHER');
   const [images, setImages] = useState<SelectedImage[]>([]);
   const imageUrls = useRef(new Set<string>());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +41,7 @@ export default function ReportPage() {
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeFeedbackImage = useAction(api.uploads.files.finalizeFeedbackImage);
   const myFeedback = useQuery(api.moderation.reports.listMyFeedback);
+  const bugReward = useQuery(api.moderation.bugRewards.myReward);
   const shape = useShape();
   const { toast } = useToast();
   const trimmedMessage = message.trim();
@@ -98,10 +102,12 @@ export default function ReportPage() {
         contentType: 'GENERAL',
         contentId: 'report-page',
         reason: trimmedMessage,
+        feedbackKind,
         imageUploadIds,
         appVersion: formatVersion(APP_VERSION, RELEASE_CHANNEL),
       });
       setMessage('');
+      setFeedbackKind('OTHER');
       setImages((current) => {
         current.forEach((image) => {
           URL.revokeObjectURL(image.previewUrl);
@@ -128,6 +134,15 @@ export default function ReportPage() {
             <label htmlFor="feedback-message" className="text-sm font-semibold text-foreground">
               What would you like to change?
             </label>
+            <label htmlFor="feedback-kind" className="text-sm font-medium text-foreground">Feedback type</label>
+            <Select value={feedbackKind} onValueChange={(value) => setFeedbackKind(value as 'BUG' | 'OTHER')}>
+              <SelectTrigger id="feedback-kind" placeholder="Choose feedback type" />
+              <SelectContent>
+                <SelectItem value="OTHER" index={0}>Idea or other feedback</SelectItem>
+                <SelectItem value="BUG" index={1}>Bug report</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Only bugs confirmed by a developer count toward Bug Hunter tags.</p>
             <Textarea
               id="feedback-message"
               placeholder="Describe an issue or suggest an improvement…"
@@ -194,7 +209,10 @@ export default function ReportPage() {
         </form>
 
         <section className="flex flex-col gap-3" aria-labelledby="feedback-history-title">
-          <h2 id="feedback-history-title" className="text-sm font-semibold text-foreground">Your feedback</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="feedback-history-title" className="text-sm font-semibold text-foreground">Your feedback</h2>
+            {bugReward ? <BugHunterTag user={{ approvedBugCount: bugReward.approvedCount, bugTagColor: bugReward.color }} /> : null}
+          </div>
           {myFeedback === undefined ? (
             <p className="text-sm text-muted-foreground" role="status">Loading feedback…</p>
           ) : myFeedback.length === 0 ? (
@@ -210,6 +228,9 @@ export default function ReportPage() {
                     </time>
                   </div>
                   <p className="whitespace-pre-wrap break-words text-sm text-foreground">{feedback.reason}</p>
+                  {feedback.feedbackKind === 'BUG' ? (
+                    <p className="text-xs text-muted-foreground">{feedback.bugApprovedAt ? 'Developer-approved bug' : 'Bug awaiting developer approval'}</p>
+                  ) : null}
                   {feedback.reviewNote ? (
                     <div className="border-l-2 border-border/50 pl-3 text-sm">
                       <p className="font-medium text-foreground">Review update</p>

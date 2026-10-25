@@ -8,8 +8,12 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { Panel } from "@/components/layout/page-frame";
 import { Progress } from "@/components/ui/progress";
 import { schoolDateKey } from "@/lib/school-date";
+import { useFoundersQuest } from "@/hooks/use-founders-quest";
+import { FlightOfFive } from "@/components/quest/FlightOfFive";
 
 export function DayProgressWidget() {
+  const { progress: questProgress } = useFoundersQuest();
+  const crystalAvailable = Boolean(questProgress?.keys.includes('jade') && !questProgress.keys.includes('crystal'));
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -67,7 +71,7 @@ export function DayProgressWidget() {
 
   if (!progress) {
     return (
-      <Panel title="Day Progress">
+      <Panel title="Day Progress" action={crystalAvailable ? <FlightOfFive /> : undefined}>
         <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
           No schedule today
         </div>
@@ -99,13 +103,20 @@ export function DayProgressWidget() {
           ) : null}
         </div>
 
-        <Progress
-          value={progress.percent}
-          className="h-3 w-full rounded-full bg-muted/40"
-          indicatorClassName={
-            progress.percent >= 100 ? "bg-emerald-500" : "bg-primary"
-          }
-        />
+        <div className="relative pt-5">
+          {crystalAvailable ? (
+            <div className="absolute top-0 -translate-x-1/2" style={{ left: `${Math.max(5, Math.min(95, progress.percent))}%` }}>
+              <FlightOfFive />
+            </div>
+          ) : null}
+          <Progress
+            value={progress.percent}
+            className="h-3 w-full rounded-full bg-muted/40"
+            indicatorClassName={
+              progress.percent >= 100 ? "bg-emerald-500" : "bg-primary"
+            }
+          />
+        </div>
       </div>
     </Panel>
   );

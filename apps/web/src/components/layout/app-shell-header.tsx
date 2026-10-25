@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import {
   ArrowLeftRight,
   ChevronDown,
+  KeyRound,
   LogOut,
   Search,
   Settings,
@@ -37,6 +38,7 @@ type AppShellHeaderProps = {
   searchScope: SearchScope;
   commandHint: boolean;
   user: ReturnType<typeof useCurrentUser>;
+  questKeysFound: number;
   onOpenGlobalSearch: () => void;
   onToggleSearchScope: () => void;
   onOpenProfile: () => void;
@@ -146,6 +148,7 @@ function AppShellHeader({
   searchScope,
   commandHint,
   user,
+  questKeysFound,
   onOpenGlobalSearch,
   onToggleSearchScope,
   onOpenProfile,
@@ -183,6 +186,15 @@ function AppShellHeader({
       >
         <Search />
       </Button>
+
+      {user && questKeysFound > 0 ? (
+        <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary" aria-label={`${questKeysFound} of 3 Founders’ Quest keys found`}>
+          {[0, 1, 2].map((slot) => (
+            <KeyRound key={slot} className={`size-3.5 ${slot < questKeysFound ? 'text-primary' : 'text-muted-foreground/40'}`} aria-hidden />
+          ))}
+          <span className="ml-0.5 hidden sm:inline">{questKeysFound}/3</span>
+        </span>
+      ) : null}
 
       {user ? (
         <DropdownMenu>

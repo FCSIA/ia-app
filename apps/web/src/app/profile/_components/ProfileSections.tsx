@@ -1,10 +1,11 @@
 'use client';
 
-import { type Dispatch, type SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { displayName as profileName, regularName } from '~/apps/shared/user-name';
 import {
   Bell,
   Lock,
+  KeyRound,
   LogOut,
   Palette,
   ShieldAlert,
@@ -14,19 +15,22 @@ import {
 import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevlogList } from '@/components/devlog/devlog-list';
-import { AppVersionStamp } from '@/components/devlog/devlog-version';
+import { appVersionLabel } from '@/components/devlog/devlog-version-label';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useFoundersQuest, useRecordQuestKey } from '@/hooks/use-founders-quest';
 import { useGifAutoplay } from '@/hooks/use-gif-autoplay';
-import type { AppUser } from '@/lib/auth';
+import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { PreferredNameSettings } from './PreferredNameSettings';
@@ -54,6 +58,31 @@ type ModerationAlert = {
   title: string;
   body: string;
 };
+
+type SettingsCardProps = {
+  children?: ReactNode;
+  contentClassName?: string;
+  description?: string;
+  icon?: LucideIcon;
+  title: string;
+};
+
+export function SettingsCard({ children, contentClassName, description, icon: Icon, title }: SettingsCardProps) {
+  return (
+    <Card className={cardClass}>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border/70 px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
+          <div className="min-w-0">
+            <CardTitle className="text-base font-semibold leading-tight">{title}</CardTitle>
+            {description ? <CardDescription className="mt-1 text-xs leading-5 text-foreground/80">{description}</CardDescription> : null}
+          </div>
+        </div>
+      </CardHeader>
+      {children ? <CardContent className={cn('p-5', contentClassName)}>{children}</CardContent> : null}
+    </Card>
+  );
+}
 
 function friendlyRole(role: string) {
   return role
@@ -147,6 +176,7 @@ export function ProfileSidebar({
                 {displayName}
               </CardTitle>
               <DeveloperBadge user={user} size={16} />
+              <BugHunterTag user={user} />
             </div>
             {realName && realName !== displayName ? (
               <p className="mt-1 break-words text-sm text-muted-foreground">{realName}</p>
@@ -419,14 +449,70 @@ export function AppearanceSection({
 }
 
 export function WhatsNewSection() {
+  const user = useCurrentUser();
+  const { progress } = useFoundersQuest();
+  const { toast } = useToast();
+  const recordQuestKey = useRecordQuestKey();
+  const versionTapMatcher = useRef(createEasterEggTapMatcher());
+  const tapCount = useRef(0);
+  const lastTapAt = useRef(0);
+  const [seal, setSeal] = useState<'hidden' | 'revealed' | 'claimed'>('hidden');
+  const [savingSeal, setSavingSeal] = useState(false);
+  const copperFound = progress?.keys.includes('copper') ?? false;
+
+  useEffect(() => {
+    if (seal === 'hidden') return;
+    const timer = window.setTimeout(() => setSeal('hidden'), seal === 'claimed' ? 5_000 : 15_000);
+    return () => window.clearTimeout(timer);
+  }, [seal]);
+
+  async function claimCopper() {
+    if (savingSeal || copperFound) return;
+    setSavingSeal(true);
+    const saved = await recordQuestKey('copper');
+    setSavingSeal(false);
+    if (saved) {
+      setSeal('claimed');
+      toast({ title: 'Copper Key found: 1 of 3', description: 'Your next clue is on your profile.', duration: 5_000 });
+    }
+  }
+
   return (
     <section aria-label="What's new" className="flex min-w-0 flex-col gap-5">
       <DevlogList />
       <div className="border-t border-border/30 pt-4">
-        <AppVersionStamp />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="font-mono tracking-wide"
+          aria-label={`App version ${appVersionLabel()}`}
+          onClick={() => {
+            if (!user?.roles.includes('STUDENT') || copperFound || seal !== 'hidden') return;
+            const now = Date.now();
+            tapCount.current = now - lastTapAt.current > 1500 ? 1 : tapCount.current + 1;
+            lastTapAt.current = now;
+            if (tapCount.current === 2) toast({ title: '3 more…', duration: 1_600 });
+            if (versionTapMatcher.current(now)) {
+              tapCount.current = 0;
+              setSeal('revealed');
+              toast({ title: 'A copper seal appeared', description: 'It will fade soon. Open it while it is here.', duration: 3_000 });
+            }
+          }}
+        >
+          {appVersionLabel()}
+        </Button>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Include this version when you report a problem so we know which build you were on.
+          {user?.roles.includes('STUDENT') && !copperFound
+            ? 'Every story leaves a mark in its version history.'
+            : 'Include this version when you report a problem so we know which build you were on.'}
         </p>
+        {seal === 'revealed' && !copperFound ? (
+          <Button type="button" size="sm" variant="secondary" leadingIcon={KeyRound} className="mt-3" loading={savingSeal} onClick={() => void claimCopper()}>
+            Open the copper seal
+          </Button>
+        ) : null}
+        {seal === 'claimed' ? <p className="mt-3 text-sm text-primary" role="status">Copper Key saved. The seal is fading, but your key is yours.</p> : null}
       </div>
     </section>
   );

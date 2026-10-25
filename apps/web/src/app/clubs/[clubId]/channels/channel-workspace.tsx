@@ -133,6 +133,7 @@ import {
 } from '@/components/ui/attachment';
 import { Badge } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { Button } from '@/components/ui/button';
 import {
   Carousel,
@@ -541,6 +542,7 @@ function PinnedMessagesButton({
                           {fullName(message.author)}
                         </span>
                         <DeveloperBadge user={message.author} size={13} />
+                        <BugHunterTag user={message.author} />
                         <span className="shrink-0 text-[11px] text-muted-foreground">
                           {formatChatTimestamp(message.createdAt)}
                         </span>
@@ -603,6 +605,7 @@ function MessageAuthorPreview({
       >
         <span className="truncate">{name}</span>
         <DeveloperBadge user={author} size={13} />
+        <BugHunterTag user={author} />
       </button>
     ) : (
       <button
@@ -2349,6 +2352,7 @@ export function ChannelWorkspace() {
           <p className="flex min-w-0 items-center gap-1 text-sm font-medium">
             <span className="truncate">{fullName(selectedThread.author)}</span>
             <DeveloperBadge user={selectedThread.author} size={13} />
+            <BugHunterTag user={selectedThread.author} />
           </p>
         </div>
         <Button

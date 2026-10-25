@@ -17,6 +17,8 @@ import {
   WhatsNewSection,
 } from './_components/ProfileSections';
 import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
+import { QuestTracker } from './_components/QuestTracker';
+import { BugRewards } from './_components/BugRewards';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
@@ -37,8 +39,9 @@ export default function ProfilePage() {
   const { unseenCount, markSeen } = useSeenRelease();
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('section') === 'whats-new') {
-      setActiveSection('whats-new');
+    const section = new URLSearchParams(window.location.search).get('section');
+    if (section === 'whats-new') {
+      setActiveSection(section);
     }
   }, []);
 
@@ -109,7 +112,8 @@ export default function ProfilePage() {
         />
         <div className="min-w-0">
           {visibleSection === 'account' ? (
-            <AccountSettingsSection
+            <>
+              <AccountSettingsSection
               user={user}
               changing={changingPassword}
               form={passwordForm}
@@ -119,7 +123,10 @@ export default function ProfilePage() {
               onSubmit={(data) => void handleChangePassword(data)}
               onSignOut={() => void handleSignOut()}
               signingOut={signingOut}
-            />
+              />
+              <QuestTracker />
+              <BugRewards user={user} />
+            </>
           ) : null}
           {visibleSection === 'notifications' ? (
             <NotificationSettingsPanel />

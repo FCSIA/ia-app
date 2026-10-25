@@ -33,6 +33,9 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 import { cn } from "@/lib/utils";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
+import { createPhoenixEasterEggMatcher, isPhoenixEasterEggKey } from "@/lib/phoenix-easter-egg";
+import { useFoundersQuest, useRecordBonusEgg } from "@/hooks/use-founders-quest";
+import { QUEST_KEY_DISPLAY_MS, visibleQuestKeyCount } from "@/lib/founders-quest";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 
@@ -61,6 +64,9 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const user = useCurrentUser();
+  const { progress: questProgress } = useFoundersQuest();
+  const recordBonusEgg = useRecordBonusEgg();
+  const [questClock, setQuestClock] = useState(() => Date.now());
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -81,6 +87,14 @@ export function AppShell({
   }, []);
 
   useEffect(() => {
+    if (questProgress?.completedAt == null) return;
+    const remaining = questProgress.completedAt + QUEST_KEY_DISPLAY_MS - Date.now();
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setQuestClock(Date.now()), remaining);
+    return () => window.clearTimeout(timer);
+  }, [questProgress?.completedAt, questClock]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -95,6 +109,21 @@ export function AppShell({
       window.removeEventListener("ia:open-global-search", onOpenGlobalSearch);
     };
   }, []);
+
+  useEffect(() => {
+    const matchPhoenix = createPhoenixEasterEggMatcher();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isPhoenixEasterEggKey(event)) {
+        matchPhoenix('', Date.now());
+        return;
+      }
+      if (matchPhoenix(event.key, Date.now())) {
+        void recordBonusEgg('phoenix');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [recordBonusEgg]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -256,6 +285,7 @@ export function AppShell({
               searchScope={searchScope}
               commandHint={commandHint}
               user={user}
+              questKeysFound={visibleQuestKeyCount(questProgress, questClock)}
               onOpenGlobalSearch={() => setCommandOpen(true)}
               onToggleSearchScope={toggleSearchScope}
               onOpenProfile={() => {
