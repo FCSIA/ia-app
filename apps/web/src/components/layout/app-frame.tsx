@@ -89,17 +89,9 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
   }, []);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setCommandOpen((current) => !current);
-      }
-    };
     const onOpenGlobalSearch = () => setCommandOpen(true);
-    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("ia:open-global-search", onOpenGlobalSearch);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("ia:open-global-search", onOpenGlobalSearch);
     };
   }, []);

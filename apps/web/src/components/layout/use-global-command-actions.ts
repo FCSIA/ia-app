@@ -85,7 +85,7 @@ export function useGlobalCommandActions({
       .filter((announcement) => !announcement.isRead)
       .slice(0, 8)
       .map((announcement) => ({
-        id: `unread-announcement-${announcement._id}`,
+        id: `announcement-${announcement._id}`,
         label: announcement.title,
         detail:
           announcement.club?.name ||
