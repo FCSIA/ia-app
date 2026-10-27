@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { DateTimeField } from '@/components/forms/date-time-field';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { useEventsPage } from './use-events-page';
@@ -166,10 +166,10 @@ export default function EventsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Start *</label>
-                      <DateTimePicker
+                      <DateTimeField
+                        aria-label="Event start"
                         value={form.startAt}
                         onChange={(startAt) => setForm({ ...form, startAt })}
-                        buttonClassName="w-full border-border/60 focus:border-primary focus:ring-primary/20"
                         disabledDays={
                           form.endAt
                             ? (date) => format(date, 'yyyy-MM-dd') > form.endAt.slice(0, 10)
@@ -179,10 +179,10 @@ export default function EventsPage() {
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block font-medium">End (optional)</label>
-                      <DateTimePicker
+                      <DateTimeField
+                        aria-label="Event end"
                         value={form.endAt}
                         onChange={(endAt) => setForm({ ...form, endAt })}
-                        buttonClassName="w-full border-border/60 focus:border-primary focus:ring-primary/20"
                         disabledDays={
                           form.startAt
                             ? (date) => format(date, 'yyyy-MM-dd') < form.startAt.slice(0, 10)

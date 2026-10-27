@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { DateTimeField } from '@/components/forms/date-time-field';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ToggleGroup } from '@/components/ui/toggle-group';
@@ -590,7 +590,7 @@ export default function AnnouncementsPage() {
 
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Expires (optional)</label>
-                  <DateTimePicker value={form.expiresAt} onChange={(expiresAt) => setForm({ ...form, expiresAt })} allowClear />
+                  <DateTimeField aria-label="Announcement expiry" value={form.expiresAt} onChange={(expiresAt) => setForm({ ...form, expiresAt })} allowClear />
                 </div>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-3">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">

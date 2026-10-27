@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, type ComponentType, type ReactNode } from "react";
 
 import {
+  CalendarDays,
   ChevronRight,
   ChevronDown,
   X,
@@ -74,9 +75,10 @@ export type IconName =
   | "play" | "pause" | "pipette"
   | "home" | "message-circle" | "inbox"
   | "pencil" | "skip-forward" | "corner-down-right"
-  | "panel-left" | "panel-right";
+  | "panel-left" | "panel-right" | "calendar";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
+  "calendar": CalendarDays,
   "panel-left": PanelLeft,
   "panel-right": PanelRight,
   "chevron-right": ChevronRight,

@@ -19,11 +19,29 @@
   reload, and club viewport cleanup restores document scrolling. See
   `docs/reference/ui-continuation-coordination-2026-10-27.md` for checks, captures
   and remaining human/device review. Material visuals await the design owner.
-- **Isolated UI preview**: Web runs at `http://localhost:3101`; the existing
+- **Isolated UI preview**: Web runs at `http://localhost:3000`; the existing
   local backend `local:local-ia_app-ia_app-3231` runs at 3280/3281. It was restarted
   without resetting or seeding data. No shared or production deployment, push,
   merge or release was performed. Older process/checkout notes below describe
   their dated work, not this isolated continuation.
+
+- **Fluid date and command upgrade (2026-10-27)**: The latest official Fluid
+  CommandMenu, Calendar (DayPicker 10), and Radix DatePicker replace the older
+  global palette/date controls. Native command scope tabs, time-slot editing,
+  clear behavior and day-detail slots compose with existing feature data.
+  Existing combobox choices and the full event calendar retain their semantic
+  owners. The owner approved native Radix trigger support for Cmd+K focus return.
+  Integrated verification and diagnostic captures are recorded in
+  `docs/reference/ui-fluid-calendar-continuation-2026-10-27.md`; material visuals
+  remain awaiting the design owner. Port 3101 was used for isolation; the current
+  preview uses the now-free standard port 3000 with the same isolated backend.
+
+- **Owner-requested local cleanup (2026-10-27)**: Eight clean obsolete worktrees
+  and ten local branches were removed after merged-PR or exact range-diff proof.
+  Active UI/primary/Swift/teacher prototype, open GIF PR and ambiguous refs remain.
+  Recovery refs, a verified bundle and 183 local env/database/blob files are in
+  `/Users/sreysus/workflow/ia-app-archives/2026-10-27-cleanup` (private archive).
+  Primary checkout changes are unchanged; no remote branches were removed.
 
 - **Current checkout (2026-10-21)**: `codex/teacher-flex-community-plan`, based on
   released main `57e7ddb4` (v0.8.38). Audit PR #152, banner PR #166, and release

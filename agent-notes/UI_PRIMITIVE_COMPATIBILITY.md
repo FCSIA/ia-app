@@ -153,31 +153,40 @@ wholesale update. Reviewed rendered, Code, and API examples:
 Material visual changes still await the design owner; diagnostic screenshots
 must be re-critiqued after every capture and are not design approval.
 
-## Concrete failure: calendar navigation and day metadata
+## Official Fluid Calendar and DatePicker
 
-The shadcn DayPicker adapter depends on `months` remaining positioned relative
-so its absolute navigation stays anchored to the month caption. Replacing the
-adapter's `classNames.months` value from a page removes that positioning and
-can place the previous/next buttons against an outer card or viewport. Use the
-adapter's existing width contract; do not replace its structural class names.
+The owner requested the latest official Calendar, DatePicker and CommandMenu
+on 2026-10-27. Calendar now uses `@daypicker/react` 10 and the exact current
+Fluid registry anatomy. DatePicker uses the Radix registry wrapper and shared
+DatePickerCore. The former DayPicker 9 adapter, `CalendarDayButton.meta`, and
+bespoke DateTimePicker are removed. Calendar, DatePicker and CommandMenu are
+protected adapted components in the selective update script.
 
-The local Fluid `Button` also wraps button content, while upstream shadcn's
-calendar expects direct day-button children. `CalendarDayButton` therefore owns
-the numeral and a reserved absolute metadata slot at the bottom of the day
-target. Metadata must use the adapter's `meta` prop; it must not displace the
-centered numeral or be positioned by a caller. Keep metadata compact enough to
-fit that reserved slot.
+Keep native Calendar selection, month navigation/slides, measured hover,
+range behavior, focus and ARIA. School calendar status dots use its documented
+`dayDetail` callback with accessible descriptions, `fill`, and `cellSize={56}`;
+do not replace the DayButton or structural class names. The full agenda/week/
+month event calendar remains the feature calendar; Fluid Calendar owns its
+Go-to-date chooser, with native autofocus and the published padded popup frame.
 
-Calendar day targets also use the adapter's `--cell-size` in touch mode. Fluid's
-generic 44px icon-button expansion would otherwise force a seven-column date
-grid beyond a narrow widget or date-picker popup.
+Native DatePicker owns date labels, optional clear, time parsing/editing,
+quarter-hour slots, responsive segments and popup interaction. `forms/DateField`
+and `DateTimeField` are app-owned serialization boundaries for existing local
+ISO strings. They use distinct names and do not add a parallel date/time UI.
+A required date remains selected when re-clicked; optional clear is explicit.
+Time can be drafted before selecting a date. Named groups distinguish multiple
+date/time fields for assistive technology.
 
-`DatePicker` and `DateTimePicker` own their trigger label: it sits in a
-`min-w-0 truncate` span because the Fluid `Button` centres its content, so an
-unwrapped label wider than a narrow trigger clipped at both ends.
-`DateTimePicker` shows the compact `MMM d, yyyy · h:mm a` value. Both pass
-`required` to the day grid unless `allowClear` is set: re-clicking the chosen
-day must not silently empty a required value; clearing is the X control's job.
+Registry adaptation is limited to installed `framer-motion`, the current local
+type ladder, equivalent ShapeContext values, the required calendar icon,
+upstream HoverHighlight's optional `fadeIn`, and official popup/keyboard/omit
+helpers. Do not overwrite global size/shape contexts or theme variables to
+install a component. Reviewed rendered, Code and API examples:
+[Calendar](https://www.fluidfunctionalism.com/docs/calendar),
+[DatePicker](https://www.fluidfunctionalism.com/docs/date-picker), and
+[CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu), plus exact
+`/r/calendar.json`, `/r/date-picker.json` and `/r/command-menu.json` registry items.
+See `docs/reference/ui-fluid-calendar-continuation-2026-10-27.md` for evidence.
 
 ## Concrete failure: `Toggle` inside `Tooltip`
 

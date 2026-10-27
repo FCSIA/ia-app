@@ -7,7 +7,7 @@ import { displayName } from '~/apps/shared/user-name';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DateField } from '@/components/forms/date-field';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
@@ -50,8 +50,8 @@ function PersonFilter({ audit }: { audit: AuditState }) {
 export function AuditColumnFilter({ column, audit }: { column: AuditFilterColumn; audit: AuditState }) {
   if (column === 'Person') return <PersonFilter audit={audit} />;
   if (column === 'When') return <FieldGroup>
-    <Field><FieldLabel>From</FieldLabel><DatePicker placeholder="From date" value={audit.auditStartDate} onChange={audit.setAuditStartDateWithBounds} disabledDays={audit.auditEndDate ? (date) => format(date, 'yyyy-MM-dd') > audit.auditEndDate : undefined} allowClear /></Field>
-    <Field><FieldLabel>To</FieldLabel><DatePicker placeholder="To date" value={audit.auditEndDate} onChange={audit.setAuditEndDateWithBounds} disabledDays={audit.auditStartDate ? (date) => format(date, 'yyyy-MM-dd') < audit.auditStartDate : undefined} allowClear /></Field>
+    <Field><FieldLabel>From</FieldLabel><DateField placeholder="From date" value={audit.auditStartDate} onChange={audit.setAuditStartDateWithBounds} disabledDays={audit.auditEndDate ? (date) => format(date, 'yyyy-MM-dd') > audit.auditEndDate : undefined} allowClear /></Field>
+    <Field><FieldLabel>To</FieldLabel><DateField placeholder="To date" value={audit.auditEndDate} onChange={audit.setAuditEndDateWithBounds} disabledDays={audit.auditStartDate ? (date) => format(date, 'yyyy-MM-dd') < audit.auditStartDate : undefined} allowClear /></Field>
   </FieldGroup>;
   if (column === 'Action') return <ActionFilter audit={audit} />;
   return <FieldGroup>

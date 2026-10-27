@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { usePathname, useSearchParams } from "next/navigation";
-import { DayButton } from "react-day-picker";
 import {
   ArrowLeft,
   CalendarPlus,
@@ -22,8 +21,8 @@ import {
 } from "lucide-react";
 import { Badge, badgeColors } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Calendar } from "@/components/ui/calendar";
+import { DateField } from "@/components/forms/date-field";
 import {
   Empty,
   EmptyContent,
@@ -365,31 +364,6 @@ const DAY_PLAN_MARKERS = [
   { kind: "unassigned", label: "Unassigned Friday", color: badgeColors.orange },
 ] as const;
 
-function AdminCalendarDayButton({
-  workspace,
-  ...props
-}: ComponentProps<typeof DayButton> & { workspace: AdminWorkspace }) {
-  const state = calendarDayState(workspace, props.day.date);
-  const marker = DAY_PLAN_MARKERS.find(({ kind }) => kind === state.kind);
-  return (
-    <Tooltip content={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
-      <CalendarDayButton
-        {...props}
-        aria-label={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}
-        meta={marker ? (
-          <span
-            aria-hidden="true"
-            className="size-1 rounded-full"
-            style={{ backgroundColor: marker.color }}
-          />
-        ) : undefined}
-      >
-        {props.children}
-      </CalendarDayButton>
-    </Tooltip>
-  );
-}
-
 function AcademicYearSetup({
   regularTemplate,
   academicStart,
@@ -446,11 +420,11 @@ function AcademicYearSetup({
         <FieldGroup className="grid gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel>Starts</FieldLabel>
-            <DatePicker value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
+            <DateField aria-label="Academic year start" value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
           </Field>
           <Field>
             <FieldLabel>Ends</FieldLabel>
-            <DatePicker value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
+            <DateField aria-label="Academic year end" value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
           </Field>
         </FieldGroup>
 
@@ -518,12 +492,19 @@ function DatePlanWorkspace({
   const canAssign = isWeekday && isInAcademicYear && !workspace.setupRequired;
   const currentOverride = isDateLoading ? null : workspace.override;
   const canAssignFriday = canAssign && weekday === 5 && !currentOverride;
-  const CalendarDay = useCallback(
-    (props: ComponentProps<typeof DayButton>) => (
-      <AdminCalendarDayButton workspace={workspace} {...props} />
-    ),
-    [workspace],
-  );
+  const dayDetail = useCallback((date: Date) => {
+    const state = calendarDayState(workspace, date);
+    const marker = DAY_PLAN_MARKERS.find(({ kind }) => kind === state.kind);
+    if (!marker) return null;
+    return (
+      <Tooltip content={state.detail}>
+        <span className="inline-flex items-center justify-center">
+          <span aria-hidden="true" className="size-1 rounded-full" style={{ backgroundColor: marker.color }} />
+          <span className="sr-only">{state.detail}</span>
+        </span>
+      </Tooltip>
+    );
+  }, [workspace]);
 
   useEffect(() => {
     setDisplayMonth(selectedDate);
@@ -551,8 +532,9 @@ function DatePlanWorkspace({
               onMonthChange={setDisplayMonth}
               startMonth={workspace.academicYearStartDateKey ? dateFromKey(workspace.academicYearStartDateKey) : undefined}
               endMonth={workspace.academicYearEndDateKey ? dateFromKey(workspace.academicYearEndDateKey) : undefined}
-              className="w-full"
-              components={{ DayButton: CalendarDay }}
+              fill
+              cellSize={56}
+              dayDetail={dayDetail}
             />
             <ul aria-label="School calendar legend" className="flex flex-wrap gap-x-4 gap-y-2 px-4 pb-4 text-xs text-muted-foreground">
               {DAY_PLAN_MARKERS.map((marker) => (
@@ -904,11 +886,11 @@ function SchoolConfigWorkspace({
         <FieldGroup className="grid gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel>First day</FieldLabel>
-            <DatePicker value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" />
+            <DateField aria-label="Academic year start" value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" />
           </Field>
           <Field>
             <FieldLabel>Last day</FieldLabel>
-            <DatePicker value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" />
+            <DateField aria-label="Academic year end" value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" />
           </Field>
         </FieldGroup>
         <Button type="button" className="self-start" leadingIcon={Save} disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null} loading={pending === "configure-year"} onClick={onSave}>

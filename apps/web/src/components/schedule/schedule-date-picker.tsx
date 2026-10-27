@@ -1,12 +1,8 @@
 "use client";
 
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateField } from "@/components/forms/date-field";
 
-/**
- * The schedule's school-day picker is the shared DatePicker (same trigger,
- * popover and day grid as every other date field), labelled with the long
- * weekday because the day name decides which schedule applies.
- */
+/** The shared school-day field uses Fluid's weekday-aware date label. */
 export function ScheduleDatePicker({
   dateKey,
   onDateChange,
@@ -19,13 +15,13 @@ export function ScheduleDatePicker({
   className?: string;
 }) {
   return (
-    <DatePicker
+    <DateField
+      aria-label="Schedule date"
       id={id}
       value={dateKey}
       onChange={(next) => {
         if (next) onDateChange(next);
       }}
-      labelFormat="EEEE, MMMM d"
       className={className}
     />
   );

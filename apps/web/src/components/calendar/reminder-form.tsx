@@ -8,8 +8,8 @@ import {
   parseISO,
   startOfDay,
 } from 'date-fns';
-import { DatePicker } from '@/components/ui/date-picker';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { DateField } from '@/components/forms/date-field';
+import { DateTimeField } from '@/components/forms/date-time-field';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -149,13 +149,15 @@ export function ReminderForm({
         <Field aria-labelledby={`${id}-start`}>
           <FieldLabel id={`${id}-start`}>Starts</FieldLabel>
           {values.allDay ? (
-            <DatePicker
+            <DateField
+              aria-label="Starts"
               value={values.start.slice(0, 10)}
               disabled={disabled}
               onChange={(date) => changeStart(`${date}T00:00`)}
             />
           ) : (
-            <DateTimePicker
+            <DateTimeField
+              aria-label="Starts"
               value={values.start}
               disabled={disabled}
               onChange={changeStart}
@@ -167,13 +169,15 @@ export function ReminderForm({
             {values.allDay ? 'Last day' : 'Ends'}
           </FieldLabel>
           {values.allDay ? (
-            <DatePicker
+            <DateField
+              aria-label="Last day"
               value={values.end.slice(0, 10)}
               disabled={disabled}
               onChange={(date) => set('end', `${date}T00:00`)}
             />
           ) : (
-            <DateTimePicker
+            <DateTimeField
+              aria-label="Ends"
               value={values.end}
               disabled={disabled}
               onChange={(value) => set('end', value)}

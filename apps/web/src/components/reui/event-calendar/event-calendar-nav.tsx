@@ -462,11 +462,15 @@ function EventCalendarDatePicker({
       </NavTooltip>
       <PopoverContent
         align="start"
-        className={cn("w-auto p-0!", viewConfig.classNames?.datePickerContent)}
+        aria-label={settings.i18n.labels.goToDate}
+        // Match Fluid DatePicker's padded calendar frame; the old DayPicker
+        // popup assumed a transparent grid flush against its outer surface.
+        className={cn("w-auto p-1", viewConfig.classNames?.datePickerContent)}
       >
         {resolved === "range" ? (
           <Calendar
             mode="range"
+            autoFocus
             selected={{
               from: toZoned(activeRange.start, settings.timeZone),
               to: toZoned(addDays(activeRange.end, -1), settings.timeZone),
@@ -479,6 +483,8 @@ function EventCalendarDatePicker({
         ) : (
           <Calendar
             mode="single"
+            autoFocus
+            required
             selected={zoned}
             defaultMonth={zoned}
             onSelect={pick}

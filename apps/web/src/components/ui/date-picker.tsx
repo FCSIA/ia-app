@@ -1,109 +1,119 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { format, isValid, parseISO } from 'date-fns';
-import { CalendarDays, X } from 'lucide-react';
-import type { Matcher } from 'react-day-picker';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { cn } from "@/lib/utils";
+import { spring, exitFallbackMs } from "@/lib/springs";
+import {
+  DatePickerCore,
+  DatePickerPopupFrame,
+  type DatePickerPopoverProps,
+  type DatePickerProps,
+} from "@/components/ui/date-picker-core";
 
-type DatePickerProps = {
-  value?: string | null;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  /** Trigger id, for an external `<label htmlFor>`. */
-  id?: string;
-  /** Layout classes for the picker row (e.g. flex-1 inside a toolbar). */
-  className?: string;
-  /** date-fns pattern for the trigger label; one compact default app-wide. */
-  labelFormat?: string;
-  buttonClassName?: string;
-  disabled?: boolean;
-  disabledDays?: Matcher | Matcher[];
-  allowClear?: boolean;
-  startMonth?: Date;
-  endMonth?: Date;
-};
+// ---------------------------------------------------------------------------
+// DatePicker on Radix Popover. Radix owns positioning, the portal, outside
+// press and focus-out dismissal, Escape, and focus return to the trigger;
+// the calendar moves focus to the selected day itself. On close the content
+// stays mounted (forceMount) until the exit spring finishes.
+// ---------------------------------------------------------------------------
 
-function parseDateValue(value?: string | null) {
-  if (!value) return undefined;
-  const parsed = parseISO(value);
-  return isValid(parsed) ? parsed : undefined;
-}
-
-export function DatePicker({
-  value,
-  onChange,
-  placeholder = 'Pick a date',
-  id,
+function DatePickerPopover({
+  open,
+  onOpenChange,
+  kind,
+  anchor,
+  anchorRef,
+  escapeBlocked,
+  align = "start",
   className,
-  labelFormat = 'MMM d, yyyy',
-  buttonClassName,
-  disabled = false,
-  disabledDays,
-  allowClear = false,
-  startMonth,
-  endMonth,
-}: DatePickerProps) {
-  const selectedDate = parseDateValue(value);
-  const [open, setOpen] = useState(false);
+  children,
+}: DatePickerPopoverProps) {
+  const [mounted, setMounted] = useState(false);
+  // Set during the render that opens it, so the portal mounts in the same
+  // commit as `open`.
+  if (open && !mounted) setMounted(true);
+
+  // Fallback release for the deferred unmount, for throttled tabs where the
+  // exit's animation callback stalls.
+  useEffect(() => {
+    if (open) return;
+    const id = setTimeout(() => setMounted(false), exitFallbackMs(spring.fast));
+    return () => clearTimeout(id);
+  }, [open]);
+
+  // A press or focus on the time field itself is not "outside".
+  const guardAnchor = (e: { target: EventTarget | null; preventDefault: () => void }) => {
+    if (anchorRef?.current?.contains(e.target as Node)) e.preventDefault();
+  };
 
   return (
-    <div className={cn('flex min-w-0 items-center gap-2', className)}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            id={id}
-            type="button"
-            variant="tertiary"
-            leadingIcon={CalendarDays}
-            disabled={disabled}
+    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
+      {kind === "trigger" ? (
+        <PopoverPrimitive.Trigger asChild>{anchor}</PopoverPrimitive.Trigger>
+      ) : (
+        <PopoverPrimitive.Anchor asChild>{anchor}</PopoverPrimitive.Anchor>
+      )}
+      {mounted && (
+        <PopoverPrimitive.Portal forceMount>
+          <PopoverPrimitive.Content
+            asChild
+            forceMount
+            side="bottom"
+            align={align}
+            sideOffset={6}
+            collisionPadding={8}
+            // The calendar focuses its day; a time field keeps focus.
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={kind === "anchor" ? (e) => e.preventDefault() : undefined}
+            onEscapeKeyDown={(e) => {
+              if (escapeBlocked?.()) e.preventDefault();
+            }}
+            onFocusOutside={guardAnchor}
+            onPointerDownOutside={guardAnchor}
+            onInteractOutside={guardAnchor}
             className={cn(
-              'min-w-0 w-full justify-start text-left font-normal',
-              !selectedDate && 'text-muted-foreground',
-              buttonClassName,
+              "z-50 outline-none",
+              "[--popup-available-height:var(--radix-popover-content-available-height)]"
             )}
           >
-            {/* The label owns truncation: Button centres its content, so an
-                unwrapped label wider than the trigger clips at both ends. */}
-            <span className="min-w-0 truncate">
-              {selectedDate ? format(selectedDate, labelFormat) : placeholder}
-            </span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            defaultMonth={selectedDate}
-            selected={selectedDate}
-            // Without a clear control, re-clicking the chosen day must not
-            // silently empty the field; clearing is the X button's job.
-            required={!allowClear}
-            onSelect={(date: Date | undefined) => {
-              onChange(date ? format(date, 'yyyy-MM-dd') : '');
-              if (date) setOpen(false);
-            }}
-            disabled={disabledDays}
-            startMonth={startMonth}
-            endMonth={endMonth}
-            autoFocus
-          />
-        </PopoverContent>
-      </Popover>
-      {allowClear && value ? (
-        <Button
-          type="button"
-          variant="tertiary"
-          size="icon"
-          className="shrink-0"
-          onClick={() => onChange('')}
-        >
-          <X className="size-4" />
-          <span className="sr-only">Clear date</span>
-        </Button>
-      ) : null}
-    </div>
+            <div>
+              <DatePickerPopupFrame
+                open={open}
+                onExitComplete={() => setMounted(false)}
+                className={className}
+              >
+                {children}
+              </DatePickerPopupFrame>
+            </div>
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+      )}
+    </PopoverPrimitive.Root>
   );
 }
+
+function DatePicker(props: DatePickerProps) {
+  return <DatePickerCore {...props} Popover={DatePickerPopover} />;
+}
+
+DatePicker.displayName = "DatePicker";
+
+export { DatePicker };
+export {
+  formatDateLabel,
+  formatRangeLabel,
+  formatDuration,
+  formatTime,
+  parseTime,
+  shiftEnd,
+  buildSlots,
+} from "@/components/ui/date-picker-core";
+export type {
+  DatePickerProps,
+  DatePickerSingleProps,
+  DatePickerRangeProps,
+  DatePickerPreset,
+  TimeRange,
+  DateRange,
+} from "@/components/ui/date-picker-core";
