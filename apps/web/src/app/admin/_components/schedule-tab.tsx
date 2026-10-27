@@ -168,7 +168,7 @@ export function AdminScheduleTab({
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    {updating ? 'Update' : 'Import'} {count} student records?
+                    {updating ? 'Update' : 'Import'} {count} student {count === 1 ? 'record' : 'records'}?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     {updating
