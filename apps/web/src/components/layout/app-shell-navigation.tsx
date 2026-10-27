@@ -270,7 +270,7 @@ function isDayPlanActive(props: AppShellNavigationProps, section: string) {
 
 function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] {
   return [
-    ...(props.showDayPlans ? [{
+    ...(props.showDayPlans && props.pageNavigation?.parentHref !== "/schedule" ? [{
       parentHref: "/schedule",
       label: "Day plans",
       items: dayPlanNav.map(({ href, label, section }) => ({ href, label, isActive: isDayPlanActive(props, section) })),

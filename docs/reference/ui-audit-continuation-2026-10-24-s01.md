@@ -188,3 +188,69 @@ tooltip warm-up and official hover intent; it introduces no competing gestures
 or artificial delay. A subsequent explicit human request requires actual
 persistent frame identity and sidebar cookie restoration; that architecture is
 the next coherent slice, not claimed complete by this composition.
+
+## Persistent frame continuation, October 27
+
+The human explicitly requested that sidebar collapse state survive navigation
+and reload, and that the actual frame remain mounted across app pages. Moving
+only the state, or setting motion duration to zero, would not satisfy that
+request. `AppFrame` now lives inside root Providers' existing authenticated
+boundary and navigation-loading provider. It owns the official SidebarProvider,
+Sidebar, SidebarInset, mobile navigation/tab bar, global command palette and
+viewport effects. Ordinary route transitions replace only the inset's children;
+there is no route key, template, animation wrapper, or content portal.
+
+`AppShell` keeps its public page API and renders its header/banner/content
+inline, preserving feature-provider ancestry (especially Calendar PeriodHeader
+and the Dashboard editing toolbar). A layout effect registers only route
+configuration: pathname, schedule/page navigation and viewport/swipe options.
+The action context is stable and separate from changing configuration. No-op
+registrations preserve state, and an instance token prevents an outgoing
+page's cleanup from clearing a newer registration. Stale pathname config is not
+used. Existing swipe code keeps callbacks current through refs; viewport
+effects restore document overflow/styles when leaving a bounded chat view.
+
+The documented primitive `persist` option writes its existing seven-day
+`sidebar_state` cookie. RootLayout uses Next 16's awaited `cookies()` API and
+passes a strict `false` default to the provider before the initial render, so
+reload restoration does not replay an expanded rail. This makes the root
+request-dependent. Resize width, group disclosure and sidebar scroll remain
+in the mounted primitive during ordinary navigation; only collapse is claimed
+persisted across full reloads. Public/auth, password-change and immersive
+Wrapped routes retain their existing shellless behavior. Genuine auth loss
+still belongs to AuthenticatedRouteBoundary, not a new client redirect.
+
+Schedule's supplied contextual navigation overrides the fallback for the same
+parent href, preserving its selected `date` query instead of duplicating a
+second tree with fixed URLs. The feature remains responsible for real route
+semantics, active state and role-gated content.
+
+Verification at the final source:
+
+- Web typecheck and scoped ESLint pass for AppShell, AppFrame/context, navigation,
+  root layout and Providers; whitespace check passes.
+- Full web lint passes with 19 existing warnings in unrelated files and no errors.
+- Root's authenticated CUA check observed the same backend DOM IDs for wrapper,
+  sidebar and inset (357/354/355) through Dashboard → Calendar → Dashboard.
+  Collapse followed by a native peek link retained those nodes and state.
+- Root read `sidebar_state=false` after collapsing; a full reload restored the
+  collapsed accessibility state. Root continues expanded/reload, Calendar local
+  header, phone, and document↔visual viewport checks on the combined source.
+- Root's Notifications query-only Inbox/Settings/Back and mobile More checks
+  pass; its fresh phone capture was critiqued for native inset geometry,
+  readable search/list rhythm, reachable navigation and no top destination
+  strip or horizontal overflow. This is parent-executed evidence.
+- Root's final Dashboard → Day plans dates → Templates → School config → dates
+  sequence retained wrapper/sidebar/inset IDs 6341/6332/6333. The selected
+  October 28 date survived every section URL, with no top tablist. The final
+  `day-plans-sidebar-final-1440.png` capture was directly inspected again:
+  quiet rail, one native inset canvas, clear indented active child, consistent
+  header axes, readable date markers and aligned calendar/table. No clipping
+  or new spacing defect was found in that resting desktop state.
+
+Child IAB was unavailable for this follow-up, so parent owns all final captures
+and diagnostic interactions. Each new capture must be visually inspected and
+re-critiqued; DOM identity and code checks do not confer design approval. The
+integrated production build remains the parent's final check because async
+root cookie rendering and the live preview share compilation output. Human
+visual review and native iPhone gesture/keyboard verification remain pending.

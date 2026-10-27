@@ -15,6 +15,7 @@ import {
 } from '@/lib/custom-theme';
 import { ConvexQueryCacheProvider } from '@/components/layout/convex-query-cache-provider';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
+import { AppFrame } from '@/components/layout/app-frame';
 import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
 import { PresenceHeartbeat } from '@/components/presence/presence-heartbeat';
 import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
@@ -123,7 +124,7 @@ function AuthConnectionState() {
   );
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, defaultSidebarOpen = true }: { children: React.ReactNode; defaultSidebarOpen?: boolean }) {
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ConvexQueryCacheProvider>
@@ -139,7 +140,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <PresenceHeartbeat />
           <Suspense fallback={null}>
             <AuthenticatedRouteBoundary>
-              <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+              <NavigationLoadingProvider>
+                <AppFrame defaultSidebarOpen={defaultSidebarOpen}>{children}</AppFrame>
+              </NavigationLoadingProvider>
             </AuthenticatedRouteBoundary>
           </Suspense>
           <Toaster position="top-right" />

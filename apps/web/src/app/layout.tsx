@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Work_Sans } from 'next/font/google';
+import { cookies } from 'next/headers';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/toaster';
@@ -39,15 +40,16 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const defaultSidebarOpen = (await cookies()).get('sidebar_state')?.value !== 'false';
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${workSans.variable} font-sans`} suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers defaultSidebarOpen={defaultSidebarOpen}>{children}</Providers>
         <Toaster />
         <ServiceWorkerRegistrar />
       </body>

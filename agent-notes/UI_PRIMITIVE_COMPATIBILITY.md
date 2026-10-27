@@ -110,6 +110,17 @@ Social groups Clubs, Friends and Friend Groups with existing role gates. The
 sidebar's Search command opens the existing palette; channel search stays in
 its conversation header. Content filters and form modes remain in context.
 
+The main frame lives once in root `Providers`, inside the existing authenticated
+boundary and navigation-loading provider. Per-page `AppShell` registers route
+configuration through stable actions; its header, banner and children stay
+inline under feature providers. Do not move those React nodes into frame state
+or portal the page content: Calendar's header relies on route-local context.
+The main SidebarProvider/Sidebar/SidebarInset are not keyed by route. Official
+`persist` writes collapse preference and root layout restores `sidebar_state`
+through the server cookie before initial rendering. Login/logout, password
+change and immersive Wrapped keep their shellless composition. Independent
+admin/club providers keep their existing boundaries and persistence rules.
+
 Every pane edge has one owner. A standalone sidebar owns its right border;
 `bordered={false}` yields it to a resize handle or enclosing Sheet. Club
 navigation/thread panes must not draw another border beside their existing
