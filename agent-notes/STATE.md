@@ -2,6 +2,29 @@
 
 ## Active Focus
 
+- **UI continuation (2026-10-27)**: Active implementation is in
+  `.claude/worktrees/ui-verify`, branch `claude/ui-audit-fixes`. The primary
+  checkout and its unrelated changes are preserved. Recovered Claude UI work
+  continues the owner's original prompts and supplied interaction transcript.
+  Main, club and admin navigation use the official Fluid Sidebar; main navigation
+  uses its inset variant. Social groups Clubs/Friends/Friend Groups with existing
+  role gates. Page destinations moved into sidebar sublinks for Day plans,
+  Calendar, Notifications and staff Flex Friday. The redundant Schedule status
+  and top navigation strips are removed.
+- **Persistent React frame**: Root Providers own the main SidebarProvider,
+  Sidebar and SidebarInset across authenticated page navigation. Collapse is
+  persisted through the primitive's cookie and read by the server layout.
+  Route headers/content retain their feature context. Browser diagnostics prove
+  the same frame DOM nodes survive page changes, both collapse states survive
+  reload, and club viewport cleanup restores document scrolling. See
+  `docs/reference/ui-continuation-coordination-2026-10-27.md` for checks, captures
+  and remaining human/device review. Material visuals await the design owner.
+- **Isolated UI preview**: Web runs at `http://localhost:3101`; the existing
+  local backend `local:local-ia_app-ia_app-3231` runs at 3280/3281. It was restarted
+  without resetting or seeding data. No shared or production deployment, push,
+  merge or release was performed. Older process/checkout notes below describe
+  their dated work, not this isolated continuation.
+
 - **Current checkout (2026-10-21)**: `codex/teacher-flex-community-plan`, based on
   released main `57e7ddb4` (v0.8.38). Audit PR #152, banner PR #166, and release
   PR #165 are merged; the release reached production. The earlier release

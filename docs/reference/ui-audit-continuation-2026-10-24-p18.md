@@ -14,7 +14,7 @@ checkout. Agent reports are historical evidence, not independent design approval
 
 - Reuse `DataTablePanel` and indexed Fluid Table rows rather than introducing
   another table family. Compact cells now follow the local Table's native
-  36px target and coarse-pointer 44px minimum; no forced row-height override.
+  cell padding and coarse-pointer 44px minimum; no forced row-height override.
 - Align search and role selection on their existing compact control step.
   Use sentence-case headers and readable compact text.
 - Keep toolbar, column headings, and pagination mounted while loading, empty,
@@ -54,7 +54,9 @@ alone does not establish correctness or human design approval.
 
 The before capture showed 57–64px rows and a 28px search beside a 36px Select.
 The first after capture showed 36px rows and 28px controls, with more records
-visible and no document overflow. Reviewing cancellation then exposed focus
+visible and no document overflow. The final primitive-first pass restores native
+vertical cell padding; measured rows are now 41px, still denser than the baseline.
+Reviewing cancellation then exposed focus
 falling to the body; the supported trigger composition repaired that cause.
 The repeated Cancel check returned focus to `Delete 1 selected` and preserved
 selection. The test then cleared selection.
@@ -67,7 +69,9 @@ device and coarse-pointer interaction were not simulated by viewport resizing.
 
 Captures: `/tmp/ia-ui-continuation-2026-10-24/p18-before-users-1440.jpg` and
 `p18-after-users-1440.jpg`. The latter predates completion of the new main
-Sidebar migration, so the final combined layout needs another capture/critique.
+Sidebar migration. The final combined layout is captured at actual 1440×900 in
+`p18-final-users-1440.png`; the same title/count/toolbar alignment and bounded
+table remain intact with the labeled navigation.
 
 Scoped ESLint and web TypeScript pass. Final combined typecheck/lint/build and
 sidebar integration checks are recorded in the continuation coordination report.
