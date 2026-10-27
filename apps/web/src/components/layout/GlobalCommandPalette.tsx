@@ -23,7 +23,7 @@ import { hasRole, isSuperAdmin, type AppUser } from '@/lib/auth';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import {
   CommandMenu,
-  CommandMenuDialog,
+  CommandMenuDialogContent,
   CommandMenuEmpty,
   CommandMenuFooter,
   CommandMenuInput,
@@ -73,16 +73,12 @@ function menuItem(action: CommandAction, group: string, run: (href: string) => v
 export function GlobalCommandPalette({
   user,
   open,
-  onOpenChange,
 }: {
   user: AppUser | null;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <CommandMenuDialog
-      open={open}
-      onOpenChange={onOpenChange}
+    <CommandMenuDialogContent
       title="Search IA"
       description="Find pages, people, clubs, announcements, events, and courses."
     >
@@ -91,7 +87,7 @@ export function GlobalCommandPalette({
         user={user}
         open={open}
       />
-    </CommandMenuDialog>
+    </CommandMenuDialogContent>
   );
 }
 

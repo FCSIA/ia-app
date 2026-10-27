@@ -14,6 +14,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { computeWrappedAvailability } from "@/lib/wrapped";
 import { GlobalCommandPalette } from "@/components/layout/GlobalCommandPalette";
+import { CommandMenuDialogRoot } from "@/components/ui/command-menu";
 import {
   AppShellDesktopNavigation,
   AppShellMobileNavigation,
@@ -219,32 +220,34 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
 
   return (
     <AppFrameActionsProvider value={actions}>
-      <SidebarProvider
-        ref={appRootRef}
-        mobileBreakpoint={1024}
-        peek="hover"
-        defaultOpen={defaultSidebarOpen}
-        persist
-        data-viewport-mode={viewportMode}
-        className={cn(
-          "app-root flex w-full bg-background",
-          usesVisualViewport
-            ? "fixed inset-x-0 top-0 h-[var(--app-visual-viewport-height,100dvh)] min-h-0 overflow-hidden overscroll-none"
-            : "min-h-[100dvh]",
-        )}
-      >
-        <AppShellDesktopNavigation {...navigationProps} commandHint={commandHint} onOpenGlobalSearch={openGlobalSearch} />
-        <AppShellMobileNavigation {...navigationProps} open={mobileOpen} onOpenChange={setMobileOpen} />
-        <SidebarInset className={cn(
-          "app-main-surface overflow-clip pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
-          usesVisualViewport && "overflow-hidden",
-        )}>
-          {children}
-        </SidebarInset>
-        <AppShellMobileTabBar {...navigationProps} tabBarRef={mobileTabBarRef} onOpenMenu={() => setMobileOpen(true)} />
-      </SidebarProvider>
-      <GlobalCommandPalette user={user} open={commandOpen} onOpenChange={setCommandOpen} />
-      <ImpersonationBanner />
+      <CommandMenuDialogRoot open={commandOpen} onOpenChange={setCommandOpen}>
+        <SidebarProvider
+          ref={appRootRef}
+          mobileBreakpoint={1024}
+          peek="hover"
+          defaultOpen={defaultSidebarOpen}
+          persist
+          data-viewport-mode={viewportMode}
+          className={cn(
+            "app-root flex w-full bg-background",
+            usesVisualViewport
+              ? "fixed inset-x-0 top-0 h-[var(--app-visual-viewport-height,100dvh)] min-h-0 overflow-hidden overscroll-none"
+              : "min-h-[100dvh]",
+          )}
+        >
+          <AppShellDesktopNavigation {...navigationProps} commandHint={commandHint} />
+          <AppShellMobileNavigation {...navigationProps} open={mobileOpen} onOpenChange={setMobileOpen} />
+          <SidebarInset className={cn(
+            "app-main-surface overflow-clip pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
+            usesVisualViewport && "overflow-hidden",
+          )}>
+            {children}
+          </SidebarInset>
+          <AppShellMobileTabBar {...navigationProps} tabBarRef={mobileTabBarRef} onOpenMenu={() => setMobileOpen(true)} />
+        </SidebarProvider>
+        <GlobalCommandPalette user={user} open={commandOpen} />
+        <ImpersonationBanner />
+      </CommandMenuDialogRoot>
     </AppFrameActionsProvider>
   );
 }

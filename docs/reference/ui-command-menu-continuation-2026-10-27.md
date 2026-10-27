@@ -94,3 +94,50 @@ viewport list scroll and footer; light/reduced-motion/native keyboard review.
 Every image requires a fresh full critique of hierarchy, spacing, sizes,
 contrast/surface, state, action reachability and overflow. Source conformance
 and code checks alone do not approve the visual result.
+
+## Approved native trigger extension
+
+The owner explicitly approved extending the shared command dialog API after
+the parent found that Escape did not return focus to the sidebar Search
+opener. The official convenience component nests its Dialog root inside the
+palette, leaving the sidebar outside the native trigger lifecycle. Current
+Fluid docs/API and registry source were rechecked; the registry still exposes
+the convenience component without a trigger. The project still reports
+Radix/new-york/Lucide. [Radix Dialog's documented composition](https://www.radix-ui.com/primitives/docs/components/dialog)
+supplies `Root`, `Trigger asChild`, and content under one root.
+
+The local extension is deliberately compositional:
+
+- `CommandMenuDialogRoot` owns the same controlled/uncontrolled state, stable
+  callbacks, shortcut scope and peer arbitration as before.
+- `CommandMenuDialogTrigger` is the existing native Radix `DialogTrigger`,
+  with its native props, event composition and forwarded ref.
+- `CommandMenuDialogContent` owns the unchanged panel, title, description and
+  menu selection-close context. Keeping that context inside the panel avoids
+  making unrelated inline command menus close the global palette.
+- `CommandMenuDialog` still composes Root and Content with the original props
+  and defaults, preserving official example compatibility.
+
+The persistent app frame now places its existing SidebarProvider, route
+children and palette under one controlled command dialog root. Search uses
+`CommandMenuDialogTrigger asChild` around the existing SidebarMenuButton,
+whose props and ref reach the button. Its previous manual open callback is
+removed. Header and custom-event opening remain controlled entry points, and
+palette `open` still gates queries and resets query/tab state. Route children
+remain in their original React context ancestry; no route key, portal or
+frame remount was introduced. There is one command shortcut registration.
+
+No close-autofocus interception, refocus timer, delayed cancellation or custom
+focus-restoration logic was added. Focus return is owned by Radix. This also
+follows the video's preference for immediate, unambiguous interactions and
+safe cancellation, with no invented undo behavior.
+
+After the split, scoped ESLint for the four affected source files, full
+`bun run --filter web typecheck`, and scoped `git diff --check` pass. The
+parent owns the browser exclusively for the integrated pass at
+`http://localhost:3000`; no new child screenshots were taken. The remaining
+runtime checks are sidebar Search → input → Escape → Search focus, Cmd+K
+opening and closing once, selection/navigation, reopening reset, persistent
+frame/Calendar context, and mobile header/event opening. Native trigger
+composition and static checks do not establish a browser focus result or
+human design approval.

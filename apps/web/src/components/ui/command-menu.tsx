@@ -43,6 +43,7 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { TabsSubtle, TabsSubtleItem } from "@/components/ui/tabs-subtle";
 
@@ -436,6 +437,9 @@ interface CommandMenuDialogContextValue {
 }
 
 const CommandMenuDialogContext = createContext<CommandMenuDialogContextValue | null>(null);
+// The root may span an app frame to include its trigger. Only the panel
+// supplies selection behavior to a menu, leaving inline menus independent.
+const CommandMenuDialogRootContext = createContext<CommandMenuDialogContextValue | null>(null);
 
 // ---------------------------------------------------------------------------
 // CommandMenu (root)
@@ -1454,7 +1458,7 @@ function comboKey(parsed: ParsedShortcut): string {
     .join("+");
 }
 
-export interface CommandMenuDialogProps {
+export interface CommandMenuDialogRootProps {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -1465,12 +1469,16 @@ export interface CommandMenuDialogProps {
    *  for a demo or a pane that must not take an app-wide combo from the
    *  palette mounted at the root. Closing on the combo works from anywhere. */
   shortcutScope?: RefObject<HTMLElement | null>;
+  /** Traps focus and locks page scroll while open. @default true */
+  modal?: boolean;
+  children: ReactNode;
+}
+
+export interface CommandMenuDialogContentProps {
   /** Read to screen readers as the dialog's name. @default "Command menu" */
   title?: string;
   /** @default "Search for a command to run." */
   description?: string;
-  /** Traps focus and locks page scroll while open. @default true */
-  modal?: boolean;
   /** Portal target, for scoping the dialog to a region (see Dialog). */
   container?: HTMLElement | null;
   /** Merged onto the dialog panel. */
@@ -1478,19 +1486,18 @@ export interface CommandMenuDialogProps {
   children: ReactNode;
 }
 
-function CommandMenuDialog({
+export interface CommandMenuDialogProps
+  extends CommandMenuDialogRootProps, CommandMenuDialogContentProps {}
+
+function CommandMenuDialogRoot({
   open: openProp,
   defaultOpen = false,
   onOpenChange,
   shortcut = "mod+k",
   shortcutScope,
-  title = "Command menu",
-  description = "Search for a command to run.",
   modal,
-  container,
-  className,
   children,
-}: CommandMenuDialogProps) {
+}: CommandMenuDialogRootProps) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = openProp ?? internalOpen;
   // Read through refs so `setOpen` keeps one identity for the dialog's
@@ -1551,28 +1558,76 @@ function CommandMenuDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen} modal={modal}>
-      <DialogContent
-        size="lg"
-        container={container}
-        showCloseButton={false}
-        padding="none"
-        // Opens centered at its cap and keeps that top edge: the top is where
-        // a panel at the cap height, min(440px, 76dvh), sits centered, so
-        // the field stays put while the rows under it filter down. Below
-        // 580px of height the cap is 76dvh and the top lands on 12dvh.
-        position="top"
-        className={cn(
-          "top-[max(12dvh,calc(50dvh-220px))] flex max-h-[min(440px,76dvh)] flex-col overflow-hidden p-0",
-          className
-        )}
-      >
-        <DialogTitle className="sr-only">{title}</DialogTitle>
-        <DialogDescription className="sr-only">{description}</DialogDescription>
-        <CommandMenuDialogContext.Provider value={dialogCtx}>
-          {children}
-        </CommandMenuDialogContext.Provider>
-      </DialogContent>
+      <CommandMenuDialogRootContext.Provider value={dialogCtx}>
+        {children}
+      </CommandMenuDialogRootContext.Provider>
     </Dialog>
+  );
+}
+
+CommandMenuDialogRoot.displayName = "CommandMenuDialogRoot";
+
+const CommandMenuDialogTrigger = DialogTrigger;
+
+function CommandMenuDialogContent({
+  title = "Command menu",
+  description = "Search for a command to run.",
+  container,
+  className,
+  children,
+}: CommandMenuDialogContentProps) {
+  const dialogCtx = useContext(CommandMenuDialogRootContext);
+  if (!dialogCtx) {
+    throw new Error("CommandMenuDialogContent must be inside <CommandMenuDialogRoot>");
+  }
+
+  return (
+    <DialogContent
+      size="lg"
+      container={container}
+      showCloseButton={false}
+      padding="none"
+      // Opens centered at its cap and keeps that top edge: the top is where
+      // a panel at the cap height, min(440px, 76dvh), sits centered, so
+      // the field stays put while the rows under it filter down. Below
+      // 580px of height the cap is 76dvh and the top lands on 12dvh.
+      position="top"
+      className={cn(
+        "top-[max(12dvh,calc(50dvh-220px))] flex max-h-[min(440px,76dvh)] flex-col overflow-hidden p-0",
+        className
+      )}
+    >
+      <DialogTitle className="sr-only">{title}</DialogTitle>
+      <DialogDescription className="sr-only">{description}</DialogDescription>
+      <CommandMenuDialogContext.Provider value={dialogCtx}>
+        {children}
+      </CommandMenuDialogContext.Provider>
+    </DialogContent>
+  );
+}
+
+CommandMenuDialogContent.displayName = "CommandMenuDialogContent";
+
+function CommandMenuDialog({
+  open,
+  defaultOpen,
+  onOpenChange,
+  shortcut,
+  shortcutScope,
+  modal,
+  ...contentProps
+}: CommandMenuDialogProps) {
+  return (
+    <CommandMenuDialogRoot
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={onOpenChange}
+      shortcut={shortcut}
+      shortcutScope={shortcutScope}
+      modal={modal}
+    >
+      <CommandMenuDialogContent {...contentProps} />
+    </CommandMenuDialogRoot>
   );
 }
 
@@ -1585,6 +1640,9 @@ CommandMenuDialog.displayName = "CommandMenuDialog";
 export {
   CommandMenu,
   CommandMenuDialog,
+  CommandMenuDialogRoot,
+  CommandMenuDialogTrigger,
+  CommandMenuDialogContent,
   CommandMenuInput,
   CommandMenuTabs,
   CommandMenuFilters,

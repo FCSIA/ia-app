@@ -59,6 +59,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { CommandMenuDialogTrigger } from "@/components/ui/command-menu";
 
 import { MobileTabEditor } from "./mobile-tab-editor";
 import { Button } from "@/components/ui/button";
@@ -281,7 +282,6 @@ function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] 
 
 function AppShellDesktopNavigation(props: AppShellNavigationProps & {
   commandHint: boolean;
-  onOpenGlobalSearch: () => void;
 }) {
   const primary = getNavigationItems(props).filter((item) => !socialNav.some((social) => social.href === item.href));
   const social = getSocialItems(props);
@@ -302,15 +302,17 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
         </Link>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton icon={Search} onClick={props.onOpenGlobalSearch}>
-              <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                <span>Search</span>
-                <KbdGroup aria-hidden>
-                  <Kbd>{props.commandHint ? "⌘" : "Ctrl"}</Kbd>
-                  <Kbd>K</Kbd>
-                </KbdGroup>
-              </span>
-            </SidebarMenuButton>
+            <CommandMenuDialogTrigger asChild>
+              <SidebarMenuButton icon={Search}>
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span>Search</span>
+                  <KbdGroup aria-hidden>
+                    <Kbd>{props.commandHint ? "⌘" : "Ctrl"}</Kbd>
+                    <Kbd>K</Kbd>
+                  </KbdGroup>
+                </span>
+              </SidebarMenuButton>
+            </CommandMenuDialogTrigger>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
