@@ -22,6 +22,7 @@ import {
   type SetStateAction,
 } from "react";
 import { animate, motion, useReducedMotion } from "framer-motion";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
@@ -1194,6 +1195,13 @@ export interface CommandMenuShortcutProps extends HTMLAttributes<HTMLElement> {
   keys: string | readonly string[];
 }
 
+const shortcutArrows = {
+  "↑": { Icon: ArrowUp, label: "Up arrow" },
+  "↓": { Icon: ArrowDown, label: "Down arrow" },
+  "←": { Icon: ArrowLeft, label: "Left arrow" },
+  "→": { Icon: ArrowRight, label: "Right arrow" },
+} as const;
+
 const CommandMenuShortcut = forwardRef<HTMLElement, CommandMenuShortcutProps>(
   ({ keys, className, ...props }, ref) => {
     const mac = useIsMac();
@@ -1208,18 +1216,26 @@ const CommandMenuShortcut = forwardRef<HTMLElement, CommandMenuShortcutProps>(
         className={cn("ml-auto inline-flex shrink-0 items-center gap-0.5 align-middle font-sans", className)}
         {...props}
       >
-        {caps.map((cap, i) => (
-          <span
-            key={`${cap}-${i}`}
-            className={cn(
-              "flex items-center justify-center rounded-[5px] bg-hover text-muted-foreground",
-              compact ? "h-4 min-w-4 px-1" : "h-5 min-w-5 px-1",
-              typeClass("micro", compact ? "compact" : "default")
-            )}
-          >
-            {cap}
-          </span>
-        ))}
+        {caps.map((cap, i) => {
+          const arrow = shortcutArrows[cap as keyof typeof shortcutArrows];
+          return (
+            <span
+              key={`${cap}-${i}`}
+              className={cn(
+                "flex items-center justify-center rounded-[5px] bg-hover text-muted-foreground",
+                compact ? "h-4 min-w-4 px-1" : "h-5 min-w-5 px-1",
+                typeClass("micro", compact ? "compact" : "default")
+              )}
+            >
+              {arrow ? (
+                <>
+                  <arrow.Icon aria-hidden="true" size={compact ? 12 : 14} strokeWidth={1.5} />
+                  <span className="sr-only">{arrow.label}</span>
+                </>
+              ) : cap}
+            </span>
+          );
+        })}
       </kbd>
     );
   }

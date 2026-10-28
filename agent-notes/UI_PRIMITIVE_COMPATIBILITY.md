@@ -165,6 +165,10 @@ DatePickerCore. The former DayPicker 9 adapter, `CalendarDayButton.meta`, and
 bespoke DateTimePicker are removed. Calendar, DatePicker and CommandMenu are
 protected adapted components in the selective update script.
 
+CommandMenu shortcut caps render arrow keys with the app's Lucide arrows and
+screen-reader labels, as requested by the owner; other shortcut glyphs retain
+the registry behavior. Keyboard handling and cap geometry remain unchanged.
+
 Keep native Calendar selection, month navigation/slides, measured hover,
 range behavior, focus and ARIA. School calendar status dots use its documented
 `dayDetail` callback with accessible descriptions, `fill`, and `cellSize={56}`;
