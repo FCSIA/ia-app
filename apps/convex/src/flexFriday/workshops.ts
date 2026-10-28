@@ -5,6 +5,31 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { pathwayValidator } from "../validators";
+import {
+  getUpcomingPersonalWorkshops,
+  getWorkshopDetail,
+  upcomingPersonalValidator,
+  workshopDetailValidator,
+} from "./_personalWorkshops";
+
+export const detail = query({
+  args: { flexFridayId: v.string(), workshopId: v.string() },
+  returns: workshopDetailValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const flexFridayId = ctx.db.normalizeId("flexFridays", args.flexFridayId);
+    const workshopId = ctx.db.normalizeId("flexWorkshops", args.workshopId);
+    if (!flexFridayId || !workshopId) return null;
+    return getWorkshopDetail(ctx, user, { flexFridayId, workshopId });
+  },
+});
+
+export const upcomingPersonal = query({
+  args: { now: v.number(), limit: v.optional(v.number()) },
+  returns: upcomingPersonalValidator,
+  handler: async (ctx, args) =>
+    getUpcomingPersonalWorkshops(ctx, await getCurrentAppUser(ctx), args),
+});
 
 function canManageWorkshops(user: { roles: string[] }) {
   return (

@@ -77,6 +77,7 @@ import type * as events_externalCalendarSync from "../events/externalCalendarSyn
 import type * as events_externalCalendars from "../events/externalCalendars.js";
 import type * as events_serialize from "../events/serialize.js";
 import type * as flexFriday__lib from "../flexFriday/_lib.js";
+import type * as flexFriday__personalWorkshops from "../flexFriday/_personalWorkshops.js";
 import type * as flexFriday_attendance from "../flexFriday/attendance.js";
 import type * as flexFriday_counts from "../flexFriday/counts.js";
 import type * as flexFriday_credits from "../flexFriday/credits.js";
@@ -224,6 +225,7 @@ declare const fullApi: ApiFromModules<{
   "events/externalCalendars": typeof events_externalCalendars;
   "events/serialize": typeof events_serialize;
   "flexFriday/_lib": typeof flexFriday__lib;
+  "flexFriday/_personalWorkshops": typeof flexFriday__personalWorkshops;
   "flexFriday/attendance": typeof flexFriday_attendance;
   "flexFriday/counts": typeof flexFriday_counts;
   "flexFriday/credits": typeof flexFriday_credits;
