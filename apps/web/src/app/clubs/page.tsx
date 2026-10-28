@@ -1,6 +1,7 @@
 "use client";
 
 import { displayName } from '~/apps/shared/user-name';
+import { CommunityPrototype } from '@/features/friday-prototype/community-workspace';
 
 import { useMemo } from "react";
 import Link from "next/link";
@@ -33,6 +34,13 @@ const CLUB_SKELETON_IDS = [
 ];
 
 export default function ClubsLandingPage() {
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true') {
+    return <CommunityPrototype />;
+  }
+  return <ClubsLandingWorkspace />;
+}
+
+function ClubsLandingWorkspace() {
   const user = useCurrentUser();
   const { toast } = useToast();
 
