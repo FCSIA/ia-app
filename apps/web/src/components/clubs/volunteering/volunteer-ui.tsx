@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { durationLabel, serviceDateLabel } from "./volunteer-format";
 import type { FunctionReturnType } from "convex/server";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -42,19 +43,6 @@ export type VolunteerLog = FunctionReturnType<
 >["page"][number];
 export type PageStatus =
   "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
-
-// Display the stored integer minutes exactly, including one-minute entries.
-export function durationLabel(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return remainder
-    ? `${hours ? `${hours} hr ` : ""}${remainder} min`
-    : `${hours} hr`;
-}
-
-export function serviceDateLabel(date: string) {
-  return format(parseISO(date), "MMM d, yyyy");
-}
 
 export function VolunteerStatus({
   status,

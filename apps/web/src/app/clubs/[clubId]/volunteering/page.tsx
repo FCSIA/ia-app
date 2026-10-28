@@ -15,13 +15,13 @@ import {
   VolunteerMemberReports,
 } from "@/components/clubs/volunteering/volunteer-reports";
 import {
-  durationLabel,
   VolunteerEmpty,
   VolunteerLoading,
   VolunteerLogDialog,
   VolunteerLogTable,
   VolunteerMetrics,
 } from "@/components/clubs/volunteering/volunteer-ui";
+import { durationLabel } from "@/components/clubs/volunteering/volunteer-format";
 
 function MyVolunteerHours({
   clubId,

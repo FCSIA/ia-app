@@ -41,6 +41,7 @@ export function VolunteerSubmission({ clubId }: { clubId: Id<"clubs"> }) {
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState("");
   const [date, setDate] = useState("");
+  const [today, setToday] = useState<Date>();
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
   const [notes, setNotes] = useState("");
@@ -160,6 +161,7 @@ export function VolunteerSubmission({ clubId }: { clubId: Id<"clubs"> }) {
       open={open}
       onOpenChange={(value) => {
         if (!busy) {
+          if (value) setToday(new Date());
           setOpen(value);
           setError("");
         }
@@ -206,7 +208,7 @@ export function VolunteerSubmission({ clubId }: { clubId: Id<"clubs"> }) {
                   onChange={setDate}
                   placeholder="Choose service date"
                   disabled={busy}
-                  disabledDays={{ after: new Date() }}
+                  disabledDays={today ? { after: today } : undefined}
                 />
               </div>
             </Field>

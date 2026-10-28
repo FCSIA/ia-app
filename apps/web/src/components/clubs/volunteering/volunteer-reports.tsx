@@ -22,7 +22,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  durationLabel,
   LoadVolunteerPage,
   VolunteerEmpty,
   VolunteerLoading,
@@ -30,6 +29,7 @@ import {
   VolunteerMetrics,
   type VolunteerLog,
 } from "./volunteer-ui";
+import { durationLabel } from "./volunteer-format";
 
 export type InspectVolunteerLog = (
   logId: Id<"clubVolunteerLogs">,
