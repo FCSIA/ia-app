@@ -205,8 +205,10 @@ function AppShellHeader({
             render={
               <Button
                 variant="ghost"
-                size="icon-lg"
-                className="shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:w-auto sm:min-w-11 sm:px-0 sm:pr-3"
+                size="md"
+                trailingIcon={ChevronDown}
+                aria-label={`${displayName(user)} account menu`}
+                className="h-11 shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:min-w-11 sm:pr-3"
               >
                 <PresenceAvatar
                   status={
@@ -225,10 +227,6 @@ function AppShellHeader({
                 <span className="hidden truncate pl-1 sm:inline">
                   {displayName(user)}
                 </span>
-                <ChevronDown
-                  aria-hidden
-                  className="hidden size-4 text-muted-foreground sm:block"
-                />
               </Button>
             }
           />

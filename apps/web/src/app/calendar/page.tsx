@@ -14,7 +14,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
 import { addDays, format, isValid } from 'date-fns';
 import {
-  ChevronDown,
   Mail,
   MoreHorizontal,
   Plus,
@@ -87,6 +86,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { defaultCalendarRange } from '@/lib/calendar-range';
@@ -234,7 +234,6 @@ function PeriodHeader({
           <span className="truncate text-lg font-semibold tracking-tight text-foreground">
             {isMobile ? compactTitle : title}
           </span>
-          <ChevronDown aria-hidden="true" />
         </EventCalendarDatePicker>
       </h1>
       <span className="hidden sm:contents">
@@ -443,6 +442,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
 
   return (
     <EventCalendar<CalendarEntry>
+      className="flex-1"
       events={events}
       view={view}
       date={date}
@@ -499,17 +499,12 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       // only repeat them.
       classNames={{ allDaySection: view === 'day' ? 'xl:hidden' : undefined }}
     >
+      <Tabs
+        value={view}
+        onValueChange={(next) => navigate(next as CalendarView, date)}
+        className="flex min-h-0 flex-1 flex-col"
+      >
       <AppShell
-        pageNavigation={{
-          parentHref: '/calendar',
-          label: 'Calendar views',
-          items: availableViews.map((item) => {
-            const params = new URLSearchParams(search?.toString());
-            params.set('view', item);
-            params.set('date', format(calendarDate(date), 'yyyy-MM-dd'));
-            return { href: `/calendar?${params}`, label: VIEW_LABELS[item] ?? item, isActive: view === item };
-          }),
-        }}
         headerSlot={<PeriodHeader isMobile={isMobile} view={view} />}
         mainClassName={FILL_MAIN_CLASS}
         pageTransitionClassName="flex min-h-0 flex-1 flex-col"
@@ -520,7 +515,12 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
           tabIndex={0}
           className={`flex min-h-0 flex-1 flex-col bg-card md:overflow-hidden md:rounded-xl md:border md:border-border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}
         >
-            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 px-2 py-2 sm:px-3">
+            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 px-2 py-2 sm:px-3">
+              <TabsList aria-label="Calendar view">
+                {availableViews.map((item) => (
+                  <TabItem key={item} value={item} label={VIEW_LABELS[item] ?? item} />
+                ))}
+              </TabsList>
 
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Popover>
@@ -605,7 +605,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                 <div className="h-full w-full animate-pulse bg-primary motion-reduce:animate-none" />
               ) : null}
             </div>
-            <div className="flex min-h-0 flex-1 flex-col">
+            <TabPanel value={view} className="flex min-h-0 flex-1 flex-col">
                 <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
                   {/* An empty range is still a calendar: keep the dates, slots
                       and school bands, and float the hint above them. The
@@ -648,7 +648,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                     onCreate={() => openSlot(date, false)}
                   />
                 ) : null}
-            </div>
+            </TabPanel>
         </section>
         {owned && editing ? (
           <EditCalendarEntryDialog
@@ -684,6 +684,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
           onClose={() => setActive(null)}
         />
       </AppShell>
+      </Tabs>
     </EventCalendar>
   );
 }

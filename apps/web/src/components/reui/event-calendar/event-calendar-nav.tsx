@@ -303,18 +303,14 @@ function EventCalendarViewSwitcher({
         <Button
           variant={nav.variant}
           size={nav.size}
+          trailingIcon={children ? undefined : ChevronDownIcon}
           data-slot="event-calendar-view-switcher"
           aria-label={labels.selectView}
           title={typeof tooltip === "string" ? tooltip : undefined}
           className={cn("gap-1", nav.className, className)}
           asChild={asChild}
         >
-          {children ?? (
-            <>
-              {viewLabel(view)}
-              <ChevronDownIcon className="size-4 opacity-60" aria-hidden="true" />
-            </>
-          )}
+          {children ?? viewLabel(view)}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -448,6 +444,7 @@ function EventCalendarDatePicker({
           <Button
             variant={nav.variant}
             size={children ? nav.size : nav.iconSize}
+            trailingIcon={children && !asChild ? ChevronDownIcon : undefined}
             data-slot="event-calendar-date-picker"
             data-mode={resolved}
             aria-label={props["aria-label"] ?? settings.i18n.labels.goToDate}
