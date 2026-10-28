@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { FridayPrototype } from '@/features/friday-prototype/friday-workspace';
 import { AppShell } from '@/components/layout/AppShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,13 @@ import { EMPTY_SESSION_FORM, EMPTY_WORKSHOP_FORM } from './_constants';
 import type { SessionForm as SessionFormType, WorkshopForm as WorkshopFormType } from './_types';
 
 export default function FlexFridayPage() {
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true') {
+    return <FridayPrototype />;
+  }
+  return <FlexFridayWorkspace />;
+}
+
+function FlexFridayWorkspace() {
   const { toast } = useToast();
   
   // Data & State Hook
