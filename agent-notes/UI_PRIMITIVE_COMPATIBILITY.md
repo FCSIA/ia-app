@@ -88,9 +88,12 @@ as an adapted primitive by the Fluid update script.
 Keep the official anatomy and behavior as the baseline: Provider, Sidebar,
 Header/Content/Footer, Group, Menu/Item/Button/Badge, and Trigger. Main navigation
 uses documented `variant="inset"` beside `SidebarInset`; the primitive owns the
-8px gutter, shape, elevation and collapsed margin. The default 16rem width,
-official off-canvas/resize rail, hover-peek, active and hover surfaces, roving
-keyboard focus, and bare `[` shortcut remain unchanged. Its mobile
+8px gutter, shape, elevation and collapsed margin. The main provider uses the
+documented click-peek mode: hover-peek opens over the header toggle before it can
+be clicked. The edge can still show a temporary preview; the header trigger pins
+the sidebar open. The default 16rem width, official off-canvas/resize rail,
+active and hover surfaces, roving keyboard focus, and bare `[` shortcut remain
+unchanged. Its mobile
 breakpoint is the app's existing 1024px tab-bar boundary. The existing mobile tab
 bar and More drawer remain the primary phone navigation. Do not recreate an
 icon rail, custom menu engine, spacing ladder, or resize/collapse behavior.

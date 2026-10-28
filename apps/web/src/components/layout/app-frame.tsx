@@ -224,7 +224,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
         <SidebarProvider
           ref={appRootRef}
           mobileBreakpoint={1024}
-          peek="hover"
+          peek="click"
           defaultOpen={defaultSidebarOpen}
           persist
           data-viewport-mode={viewportMode}
