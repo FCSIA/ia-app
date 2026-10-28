@@ -11,7 +11,8 @@
   retained and indexed. Signed-in phone-width diagnostics cover 320/390px and
   tablet/desktop widths; native-device and design-owner review remain pending.
   Keep this worktree/backend separate from concurrent PR #171 and the primary
-  checkout's unrelated edits. No remote push or shared deployment is authorized.
+  checkout's unrelated edits. The owner authorized pushing to PR #173, addressing
+  generated reviews, and merging into main. Shared deployment remains unauthorized.
 
 - **Current checkout (2026-10-21)**: The primary checkout is on
   `codex/desktop-notification-banner`, carrying the three earlier local banner
