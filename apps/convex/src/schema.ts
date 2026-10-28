@@ -644,6 +644,8 @@ export const schema = defineSchema({
     isActive: v.boolean(),
     autoCreateUnitChannels: v.optional(v.boolean()),
     volunteerTrackingEnabled: v.optional(v.boolean()),
+    volunteerAnalyticsReady: v.optional(v.boolean()),
+    volunteerAnalyticsBackfillAt: v.optional(v.number()),
     // Denormalized so a club list does not have to read every member and
     // channel row to show "42 members". Maintained by the membership and
     // channel mutations; `undefined` on rows written before the counters
@@ -711,6 +713,8 @@ export const schema = defineSchema({
   })
     .index("by_clubId_and_userId_and_submittedAt", ["clubId", "userId", "submittedAt"])
     .index("by_clubId_and_status_and_submittedAt", ["clubId", "status", "submittedAt"])
+    .index("by_clubId_and_submittedAt", ["clubId", "submittedAt"])
+    .index("by_clubId_and_userId_and_status_and_submittedAt", ["clubId", "userId", "status", "submittedAt"])
     .index("by_proofStorageId", ["proofStorageId"]),
 
   clubVolunteerTotals: defineTable({

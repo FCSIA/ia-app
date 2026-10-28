@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
 import { adjustClubCounts } from "./counts";
+import { volunteerLogs as volunteerLogAggregate, volunteerMembers as volunteerMemberAggregate } from "./volunteerAggregates";
 
 const CLUB_DELETION_BATCH_SIZE = 25;
 
@@ -220,10 +221,12 @@ export const cleanupDeletedClub = internalMutation({
       ...peopleGroupRules,
       ...volunteerTotals,
     ]) {
+      if ("approvedMinutes" in row) await volunteerMemberAggregate.deleteIfExists(ctx, row);
       await ctx.db.delete(row._id);
     }
 
     for (const log of volunteerLogs) {
+      await volunteerLogAggregate.deleteIfExists(ctx, log);
       await ctx.storage.delete(log.proofStorageId).catch(() => {});
       await ctx.db.delete(log._id);
     }

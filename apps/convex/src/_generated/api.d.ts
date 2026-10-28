@@ -56,6 +56,7 @@ import type * as clubs_serialize from "../clubs/serialize.js";
 import type * as clubs_shared from "../clubs/shared.js";
 import type * as clubs_sharedPagination from "../clubs/sharedPagination.js";
 import type * as clubs_tags from "../clubs/tags.js";
+import type * as clubs_volunteerAggregates from "../clubs/volunteerAggregates.js";
 import type * as clubs_volunteerProofHttp from "../clubs/volunteerProofHttp.js";
 import type * as clubs_volunteering from "../clubs/volunteering.js";
 import type * as clubs_whiteboardElements from "../clubs/whiteboardElements.js";
@@ -201,6 +202,7 @@ declare const fullApi: ApiFromModules<{
   "clubs/shared": typeof clubs_shared;
   "clubs/sharedPagination": typeof clubs_sharedPagination;
   "clubs/tags": typeof clubs_tags;
+  "clubs/volunteerAggregates": typeof clubs_volunteerAggregates;
   "clubs/volunteerProofHttp": typeof clubs_volunteerProofHttp;
   "clubs/volunteering": typeof clubs_volunteering;
   "clubs/whiteboardElements": typeof clubs_whiteboardElements;
@@ -323,4 +325,5 @@ export declare const components: {
   migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
   presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
+  volunteerHours: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"volunteerHours">;
 };

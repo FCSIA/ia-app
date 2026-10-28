@@ -23,6 +23,9 @@ export async function consumeVolunteerProof(
 ) {
   const proof = await ctx.db.get(proofUploadId);
   if (!proof || proof.uploaderId !== uploaderId) throw new ConvexError("Proof image not found");
+  const submitted = await ctx.db.query("clubVolunteerLogs")
+    .withIndex("by_proofStorageId", q => q.eq("proofStorageId", proof.storageId)).first();
+  if (submitted) throw new ConvexError("Proof image has already been submitted");
   const metadata = await ctx.db.system.get("_storage", proof.storageId);
   if (!metadata) throw new ConvexError("Proof image not found");
   // The finalization action already checked the file signature before staging.
@@ -41,7 +44,9 @@ export const cleanupStagedVolunteerProof = internalMutation({
   handler: async (ctx, args) => {
     const proof = await ctx.db.get(args.proofUploadId);
     if (!proof) return null;
-    await ctx.storage.delete(proof.storageId).catch(() => {});
+    const submitted = await ctx.db.query("clubVolunteerLogs")
+      .withIndex("by_proofStorageId", q => q.eq("proofStorageId", proof.storageId)).first();
+    if (!submitted) await ctx.storage.delete(proof.storageId).catch(() => {});
     await ctx.db.delete(proof._id);
     return null;
   },

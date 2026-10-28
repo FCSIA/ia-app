@@ -150,6 +150,13 @@ export const discardRejectedUpload = internalMutation({
       intent.storageId !== args.storageId
     )
       throw new ConvexError("Unauthorized");
+    // A repeated finalization may fail after the stage was consumed. Its
+    // submitted evidence now belongs to the log, not to upload cleanup.
+    if (intent.purpose === "VOLUNTEER_PROOF") {
+      const submitted = await ctx.db.query("clubVolunteerLogs")
+        .withIndex("by_proofStorageId", q => q.eq("proofStorageId", args.storageId)).first();
+      if (submitted) return null;
+    }
     await ctx.storage.delete(args.storageId).catch(() => {});
     await ctx.db.delete(intent._id);
     return null;

@@ -465,6 +465,9 @@ export const finalizeVolunteerProofMutation = internalMutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     await claimUploadIntent(ctx, { ...args, uploaderId: user._id, purpose: "VOLUNTEER_PROOF" });
+    const submitted = await ctx.db.query("clubVolunteerLogs")
+      .withIndex("by_proofStorageId", q => q.eq("proofStorageId", args.storageId)).first();
+    if (submitted) throw new ConvexError("Proof image has already been submitted");
     const existing = await ctx.db.query("volunteerProofUploads")
       .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId)).unique();
     if (existing) {

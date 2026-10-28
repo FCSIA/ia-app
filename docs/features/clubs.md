@@ -72,6 +72,17 @@ code after the app confirms the viewer is already a club member.
   entries count toward approved hours. Disabling the tracker hides it without
   deleting existing records; permanent club deletion removes the records and
   proof files.
+- Gives volunteer reviewers a club-wide report on the same Volunteering page:
+  approved, pending, and declined hours and entry counts; the number of people
+  with submissions; paginated per-member totals; and a complete submission
+  history with status and member filters. Individual details include the
+  reviewer, decision time, and review note. Ordinary members can access only
+  their own history and totals.
+- Stores hours as integer minutes. Approval/decline transitions update personal
+  counters and the club aggregate in the same transaction; repeated decisions
+  are refused. Reports use an aggregate rather than adding up visible pages.
+  Existing submissions are indexed in background batches when a reviewer first
+  opens the report; incomplete totals are hidden until preparation finishes.
 
 ## Source Files
 
@@ -127,7 +138,10 @@ invites or adds people.
 - `api.clubs.peopleGroups.*`
 - `api.clubs.hierarchy.*`
 - `api.clubs.management.setVolunteerTrackingEnabled`
-- `api.clubs.volunteering.*`
+- `api.clubs.volunteering.*` (`getClubSummary`, `listMemberTotals`,
+  `getMemberSummary`, and `listHistory` require volunteer-review permission)
+- `api.clubs.volunteering.prepareAnalytics` (permission-checked, idempotent
+  background preparation for existing volunteer submissions)
 
 ## Data Model
 
@@ -324,3 +338,18 @@ fanout should be verified before treating it as production-complete.
 - [Events](events.md)
 - [Uploads](uploads.md)
 - [Notifications](notifications.md)
+
+### Volunteer report indexing
+
+The `volunteerHours` aggregate component keeps per-club submission counts and
+minute sums by status, plus a separate namespace for distinct submitters.
+`submit`, `review`, and permanent-club cleanup update its entries atomically with
+source rows. Indexing of existing rows uses idempotent batches of 50. The club's
+`volunteerAnalyticsReady` flag becomes true only after the final batch. A stalled
+preparation can be retried after one minute; replay does not double-count rows.
+
+Per-member rows retain approved/pending counters, while declined minutes are
+read from the indexed logs so old records need no estimated backfill. Reports
+retain historical contributors after they leave a club; missing accounts use a
+former-member label. Current club access and review permission are checked on
+every report read. Evidence never uses a public storage URL.
