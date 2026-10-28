@@ -152,6 +152,13 @@ osv-scanner scan source --config=osv-scanner.toml \
 
 ## Verification and limits
 
+### October 28 CI follow-up
+
+PR #171's full-tree audit identified `systeminformation@5.33.15` as affected by
+[GHSA-3f7j-7jwc-fxfj](https://github.com/sebhildebrandt/systeminformation/security/advisories/GHSA-3f7j-7jwc-fxfj).
+The workspace pins the maintainer's patched `5.33.16` release for this transitive
+dependency. No audit exception or severity threshold was changed.
+
 - Frozen install passes with Bun 1.4.4 and Node 24.22.1.
 - All 11 inventory, exploit-patch, and package-provenance tests pass.
 - All 455 backend tests across 87 files pass. The patched Vite transformer is

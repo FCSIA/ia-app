@@ -13,7 +13,7 @@ and special-day plans without rewriting student course choices.
 ## What It Does
 
 - Students manage classes from an actual school date instead of a Monday–Friday selector strip, with a manual class-name option when a class is not in the catalog.
-- Students can upload an Infinite Campus Schedule Term screenshot or photo. The app temporarily stages it in authenticated Convex storage, sends its bytes to Google Cloud Vision for OCR, then deletes the staged image whether OCR succeeds or fails. The review table requires every class to have a unique, explicitly confirmed canonical period before it can apply to every school weekday.
+- Students can upload an Infinite Campus Schedule Term screenshot or photo. In development, Tesseract reads the image in the browser without uploading it. Deployed builds temporarily stage it in authenticated Convex storage, send its bytes to Google Cloud Vision for OCR, then delete the staged image whether OCR succeeds or fails. Import reads the image's row positions, ignores lunch, SSS/Flex, and Period 9, and selects the available Period 4 or 5 lunch slot. The review table requires every imported class to have a unique, explicitly confirmed canonical period before it can apply to every school weekday.
 - Every student selects exactly one lunch assignment: Period 4 or Period 5. A selected lunch period cannot also contain a class on any weekday.
 - Students can inspect the resolved schedule for a date, including reordered or shortened periods, custom blocks, omitted periods, and special-day labels.
 - Students choose public/private schedule visibility.
@@ -157,7 +157,48 @@ Google Cloud Vision receives the image solely to perform OCR. Deployment owners
 must configure the `GOOGLE_VISION_SERVICE_ACCOUNT_JSON` secret with a
 least-privilege service account that has Cloud Vision access. The import UI must
 not be enabled in a deployment until its Google Cloud data-processing terms have
-been approved.
+been approved. Development builds use browser-side Tesseract instead; its
+public English model is fetched from jsDelivr and cached by the browser, but
+the schedule image is not sent to that CDN.
+
+Local OCR enlarges small screenshots within a 16-megapixel limit, recognizes
+the aligned period-number column separately, and reads course text without
+flattening teacher/room columns into it. The parser preserves explicit period
+labels when layout information is incomplete. Lunch is omitted from the class
+list and assigned to Period 4 or 5; SSS/Flex is excluded.
+
+Row association uses relative text geometry rather than fixed pixel offsets.
+If automatic segmentation omits isolated digits, a block pass locates the
+period column before the digit-only pass. It never assigns periods just by
+counting classes. Cropped imports preserve existing classes outside the imported
+periods. Unreadable labels remain unassigned and block Apply until reviewed;
+different classes for one period (such as two semesters) remain separate and
+require resolving the duplicate. Both lunch-candidate periods cannot contain
+classes in an applied import. Ambiguous catalog abbreviations remain custom
+names rather than selecting a catalog entry by order; AP/Honors and numbered
+course distinctions are retained.
+
+The Google Vision adapter preserves word boxes and detected line breaks rather
+than flattening paragraphs, which may span multiple rows or columns. Its local
+response fixtures cover this geometry; they do not establish external Google
+Vision recognition accuracy or production configuration.
+
+`schedule-ocr.test.ts` includes a sanitized position/text fixture from the owner's
+Campus screenshot. To run real OCR against that same local image without
+committing it, set `SCHEDULE_OCR_IMAGE` to its absolute path and run Vitest on
+`apps/web/src/lib/schedule-ocr-image.test.ts`. The opt-in test downloads the
+public English model when it is not cached; the image stays local.
+
+Run `direnv exec . bun run test:schedule-ocr` for offline parser, geometry, and
+draft-preservation tests. They also run as part of `bun run test`. Set
+`SCHEDULE_OCR_INTEGRATION=1` to add real Tesseract runs against synthetic
+desktop, phone-card, cropped, PNG, JPEG, and WebP schedules, with either lunch
+slot, a single-row crop, and dark mode. Set `SCHEDULE_OCR_IMAGE` to additionally
+test the owner's reference image.
+The generated samples vary content and layout; they are not a collection of
+independent students' screenshots. Arbitrary district layouts, sideways or
+blurred photos, and unseen portal revisions still need representative examples
+and manual review before claiming universal coverage.
 
 Friend links are bearer capabilities. The server generates a 256-bit URL-safe
 secret, stores only its SHA-256 digest, expires it after seven days, bounds use

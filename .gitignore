@@ -101,3 +101,5 @@ apps/web/next-env.d.ts
 
 # Generated from @excalidraw/excalidraw by scripts/copy-excalidraw-assets.mjs
 apps/web/public/excalidraw-assets/
+# Generated from the installed Tesseract packages for local schedule OCR.
+apps/web/public/schedule-ocr-assets/

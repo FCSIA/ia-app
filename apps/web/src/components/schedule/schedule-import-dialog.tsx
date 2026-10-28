@@ -35,12 +35,15 @@ import {
 } from "@/components/ui/table";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useAction, useMutation } from "@/lib/convex-react";
+import { readScheduleImageLocally } from "@/lib/schedule-ocr-local";
 import {
   parseInfiniteCampusSchedule,
   type ImportedScheduleRow,
   type OcrScheduleRow,
 } from "@/lib/schedule-ocr";
 import { api } from "~/apps/convex/src/_generated/api";
+
+const USE_LOCAL_OCR = process.env.NODE_ENV === "development";
 
 export function ScheduleImportDialog({
   courses,
@@ -71,10 +74,12 @@ export function ScheduleImportDialog({
     .filter((period): period is number => period !== null);
   const hasDuplicatePeriod =
     new Set(assignedPeriods).size !== assignedPeriods.length;
+  const hasLunchConflict = assignedPeriods.includes(4) && assignedPeriods.includes(5);
   const canApply =
     rows.length > 0 &&
     assignedPeriods.length === rows.length &&
-    !hasDuplicatePeriod;
+    !hasDuplicatePeriod &&
+    !hasLunchConflict;
 
   const reset = () => {
     setFile(null);
@@ -87,6 +92,10 @@ export function ScheduleImportDialog({
 
   const scan = async () => {
     if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setError("Choose a PNG, JPEG, or WebP image.");
+      return;
+    }
     if (file.size > 10 * 1024 * 1024) {
       setError("Choose an image smaller than 10 MB.");
       return;
@@ -96,19 +105,31 @@ export function ScheduleImportDialog({
     setError(null);
     setProgress(0);
     try {
-      setStatus("Uploading image");
-      setProgress(20);
-      const uploaded = await uploadFileToConvex(
-        {
-          generateUploadUrl: () =>
-            generateUploadUrl({ purpose: "SCHEDULE_OCR" }),
-        },
-        file,
+      const result = USE_LOCAL_OCR
+        ? await (async () => {
+            setStatus("Reading picture on this device");
+            setProgress(10);
+            return readScheduleImageLocally(file, setProgress);
+          })()
+        : await (async () => {
+            setStatus("Uploading image");
+            setProgress(20);
+            const uploaded = await uploadFileToConvex(
+              {
+                generateUploadUrl: () =>
+                  generateUploadUrl({ purpose: "SCHEDULE_OCR" }),
+              },
+              file,
+            );
+            setStatus("Reading schedule");
+            setProgress(60);
+            return scanImage(uploaded);
+          })();
+      const parsed = parseInfiniteCampusSchedule(
+        result.fullText,
+        courses,
+        result.lines,
       );
-      setStatus("Reading schedule");
-      setProgress(60);
-      const result = await scanImage(uploaded);
-      const parsed = parseInfiniteCampusSchedule(result.fullText, courses);
       if (!parsed.length)
         setError(
           "No schedule rows were found. Try a clearer, more complete picture.",
@@ -121,7 +142,7 @@ export function ScheduleImportDialog({
       setError(
         scanError instanceof Error
           ? scanError.message
-          : "Could not read this image.",
+          : "Could not read this image. Try again or choose a clearer picture.",
       );
     } finally {
       setScanning(false);
@@ -158,8 +179,9 @@ export function ScheduleImportDialog({
         <DialogHeader>
           <DialogTitle>Import schedule</DialogTitle>
           <DialogDescription>
-            A clear picture is sent to Google Cloud Vision to read, then deleted
-            immediately from IA storage. Review every class before applying.
+            {USE_LOCAL_OCR
+              ? "This picture is read on your device. Review every class before applying."
+              : "A clear picture is sent to Google Cloud Vision to read, then deleted immediately from IA storage. Review every class before applying."}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-5">
@@ -210,6 +232,8 @@ export function ScheduleImportDialog({
                   <AlertDescription>
                     {hasDuplicatePeriod
                       ? "Each class needs a different period."
+                      : hasLunchConflict
+                        ? "Periods 4 and 5 both contain classes. Remove the lunch entry before applying."
                       : "Choose a period for every class before applying."}
                   </AlertDescription>
                 </Alert>
@@ -281,10 +305,10 @@ export function ScheduleImportDialog({
                                         ...entry,
                                         matchedCourse: course,
                                         className:
-                                          course?.title ?? entry.className,
+                                          course?.title ?? entry.sourceText,
                                         confidence: course
                                           ? 1
-                                          : entry.confidence,
+                                          : 0,
                                       }
                                     : entry,
                                 ),
@@ -294,7 +318,7 @@ export function ScheduleImportDialog({
                             <SelectTrigger />
                             <SelectContent>
                               <SelectItem value="custom" index={0}>
-                                {row.className} (use reading)
+                                {row.sourceText}
                               </SelectItem>
                               {courses.map((course, courseIndex) => (
                                 <SelectItem
