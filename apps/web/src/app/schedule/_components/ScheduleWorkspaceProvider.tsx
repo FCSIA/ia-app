@@ -34,6 +34,7 @@ import {
   buildScheduleRecord,
   isScheduleDraftDirty,
   moveClassesToFormerLunchPeriod,
+  mergeImportedSchedule,
   replaceScheduleEntry,
   resolveScheduleTab,
   type ScheduleClassSelection,
@@ -382,24 +383,10 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   };
 
   const applyImportedSchedule = (rows: ImportedScheduleRow[]) => {
-    const importedPeriods = new Set(rows.map((row) => row.periodNumber));
-    if (importedPeriods.has(5) && !importedPeriods.has(4)) {
-      setScheduleDraft((current) => ({ ...current, lunchPeriod: "PERIOD_4" }));
-    } else if (importedPeriods.has(4) && !importedPeriods.has(5)) {
-      setScheduleDraft((current) => ({ ...current, lunchPeriod: "PERIOD_5" }));
-    }
-    setScheduleEntries(() => {
-      let next: StudentScheduleDraftEntry[] = [];
-      for (const row of rows) {
-        next = replaceScheduleEntry(
-          next,
-          "MONDAY",
-          row.periodNumber,
-          row.course ?? { className: row.className },
-        );
-      }
-      return next;
-    });
+    setScheduleDraft((current) => ({
+      ...current,
+      ...mergeImportedSchedule(current.entries, current.lunchPeriod, rows),
+    }));
     toast({
       title: "Schedule imported",
       description: "Review the classes, then save your schedule.",

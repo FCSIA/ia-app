@@ -74,10 +74,12 @@ export function ScheduleImportDialog({
     .filter((period): period is number => period !== null);
   const hasDuplicatePeriod =
     new Set(assignedPeriods).size !== assignedPeriods.length;
+  const hasLunchConflict = assignedPeriods.includes(4) && assignedPeriods.includes(5);
   const canApply =
     rows.length > 0 &&
     assignedPeriods.length === rows.length &&
-    !hasDuplicatePeriod;
+    !hasDuplicatePeriod &&
+    !hasLunchConflict;
 
   const reset = () => {
     setFile(null);
@@ -230,6 +232,8 @@ export function ScheduleImportDialog({
                   <AlertDescription>
                     {hasDuplicatePeriod
                       ? "Each class needs a different period."
+                      : hasLunchConflict
+                        ? "Periods 4 and 5 both contain classes. Remove the lunch entry before applying."
                       : "Choose a period for every class before applying."}
                   </AlertDescription>
                 </Alert>
@@ -301,10 +305,10 @@ export function ScheduleImportDialog({
                                         ...entry,
                                         matchedCourse: course,
                                         className:
-                                          course?.title ?? entry.className,
+                                          course?.title ?? entry.sourceText,
                                         confidence: course
                                           ? 1
-                                          : entry.confidence,
+                                          : 0,
                                       }
                                     : entry,
                                 ),
@@ -314,7 +318,7 @@ export function ScheduleImportDialog({
                             <SelectTrigger />
                             <SelectContent>
                               <SelectItem value="custom" index={0}>
-                                {row.className} (use reading)
+                                {row.sourceText}
                               </SelectItem>
                               {courses.map((course, courseIndex) => (
                                 <SelectItem

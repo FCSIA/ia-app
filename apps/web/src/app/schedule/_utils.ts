@@ -5,8 +5,28 @@ import type {
 } from '@/components/schedule/types';
 import { WEEKDAYS } from '@/components/schedule/schedule-utils';
 import type { ScheduleTab } from './_types';
+import type { ImportedScheduleRow } from '@/lib/schedule-ocr';
 
 export type ScheduleClassSelection = CourseSummary | { className: string };
+
+export function mergeImportedSchedule(
+  entries: StudentScheduleDraftEntry[],
+  lunchPeriod: ScheduleLunchPeriod | null,
+  rows: ImportedScheduleRow[],
+) {
+  const periods = new Set(rows.map((row) => row.periodNumber));
+  const nextLunch = periods.has(4) && periods.has(5) ? null
+    : periods.has(4) && !periods.has(5) ? 'PERIOD_5'
+    : periods.has(5) && !periods.has(4) ? 'PERIOD_4' : lunchPeriod;
+  let next = entries;
+  for (const row of rows) {
+    next = replaceScheduleEntry(next, 'MONDAY', row.periodNumber, row.course ?? { className: row.className });
+  }
+  // Partial pictures update only their recognized periods. The selected lunch
+  // slot still cannot retain a class from the preceding draft.
+  const lunchNumber = nextLunch === 'PERIOD_4' ? 4 : nextLunch === 'PERIOD_5' ? 5 : null;
+  return { entries: next.filter((entry) => entry.periodNumber !== lunchNumber), lunchPeriod: nextLunch };
+}
 
 export function buildScheduleRecord(
   entries: StudentScheduleDraftEntry[],
