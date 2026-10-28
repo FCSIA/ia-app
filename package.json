@@ -75,7 +75,8 @@
     "fast-uri": ">=3.1.9",
     "body-parser": ">=2.4.0",
     "zod@4": "4.6.7",
-    "undici@6": "6.29.1"
+    "undici@6": "6.29.1",
+    "qs": "6.16.1"
   },
   "trustedDependencies": [
     "bcrypt",
@@ -97,6 +98,7 @@
   },
   "patchedDependencies": {
     "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
-    "braces@3.0.3": "patches/braces@3.0.3.patch"
+    "braces@3.0.3": "patches/braces@3.0.3.patch",
+    "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch"
   }
 }
