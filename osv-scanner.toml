@@ -17,3 +17,33 @@ reason = "Package-name reuse false positive: sandbox 4.4.0 is the Vercel Sandbox
 id = "GHSA-gc25-3vc5-2jf9"
 ignoreUntil = 2026-11-01
 reason = "Package-name reuse false positive for Vercel Sandbox CLI 4.4.0, not gf3/sandbox. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. See GHSA-fm4j-4xhm-xpwx above; the dependency-security regression checks all locked versions and installed provenance. Recheck the database correction before expiry."
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+ignoreUntil = 2026-11-01
+reason = "Zod 4.6.5 uncontrolled resource consumption in $ZodArray (CVE-2023-54404). Application dependencies upgraded to zod 4.6.7. OSV advisory records unbounded lower SEMVER range (< 4.6.6) which false-positives on Zod 3.x instances used by Expo CLI and Vercel tooling. Recheck upstream advisory scoping before expiry."
+
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2026-11-01
+reason = "deepmerge 4.3.1 has no fixed upstream release. patches/deepmerge@4.3.1.patch rejects __proto__ keys in both target-copy and source-merge paths in source, CommonJS and UMD entry points. scripts/dependency-security.test.mjs reproduces the null-prototype, null-placeholder and poisoned-target attacks and checks ordinary merges. This exception covers the patched version identifier only; remove when a fixed release is adopted."
+
+[[IgnoredVulns]]
+id = "GHSA-44jh-23m7-hpcf"
+ignoreUntil = 2026-11-01
+reason = "Configuration-specific non-applicability: this app uses the Convex adapter, never the PostgreSQL Drizzle/Kysely adapters implicated by the rate-limit race. scripts/dependency-security.test.mjs enforces the exact createAuthOptions configuration and locked better-auth/adapter 1.6.22 versions. Convex integration currently supports <1.7.0; reassess on integration upgrade or any auth configuration change. This does not mark upstream code patched."
+
+[[IgnoredVulns]]
+id = "GHSA-965c-763c-88jm"
+ignoreUntil = 2026-11-01
+reason = "Configuration-specific non-applicability: Magic Link and social/Generic OAuth providers are not enabled. scripts/dependency-security.test.mjs fails on auth option/plugin changes and pins the reviewed 1.6.22 package instances. The upstream flaw remains; reassess before enabling these features or upgrading the Convex integration."
+
+[[IgnoredVulns]]
+id = "GHSA-q84f-53jg-9ppm"
+ignoreUntil = 2026-11-01
+reason = "Configuration-specific non-applicability: the opt-in deviceAuthorization plugin is not enabled. scripts/dependency-security.test.mjs enforces the exact auth option/plugin list and locked 1.6.22 package instances. This is not a package-level fix; reassess before auth configuration changes."
+
+[[IgnoredVulns]]
+id = "GHSA-r4xp-prcw-77qf"
+ignoreUntil = 2026-11-01
+reason = "Configuration-specific non-applicability: the OAuth Proxy plugin is not enabled. scripts/dependency-security.test.mjs enforces the exact auth option/plugin list and locked 1.6.22 package instances. This is not a package-level fix; reassess before auth configuration changes."

@@ -102,14 +102,18 @@ const workspaceNavigationValidator = v.union(
       _id: v.id("clubs"),
       name: v.string(),
       logoUrl: v.union(v.string(), v.null()),
+      volunteerTrackingEnabled: v.boolean(),
     }),
     viewer: v.object({
+      isMember: v.boolean(),
       canCreateChannels: v.boolean(),
       canEditChannels: v.boolean(),
       canDeleteChannels: v.boolean(),
       canManageChannels: v.boolean(),
       canManageRoles: v.boolean(),
       canManageClubStructure: v.boolean(),
+      canManageClubSettings: v.boolean(),
+      canReviewVolunteerHours: v.boolean(),
     }),
     channels: v.array(workspaceClubChannelValidator),
     units: v.array(v.object({
@@ -530,14 +534,17 @@ export const getWorkspaceNavigation = query({
         ).filter((row): row is NonNullable<typeof row> => !!row);
 
     return {
-      club: { _id: club._id, name: club.name, logoUrl: club.logoUrl ?? null },
+      club: { _id: club._id, name: club.name, logoUrl: club.logoUrl ?? null, volunteerTrackingEnabled: club.volunteerTrackingEnabled ?? false },
       viewer: {
+        isMember: context.isMember,
         canCreateChannels: context.permissions.createChannels,
         canEditChannels: context.permissions.editChannels,
         canDeleteChannels: context.permissions.deleteChannels,
         canManageChannels: context.canManageChannels,
         canManageRoles: context.permissions.manageRoles,
         canManageClubStructure: context.permissions.manageClubStructure,
+        canManageClubSettings: context.permissions.manageClubSettings,
+        canReviewVolunteerHours: context.permissions.reviewVolunteerHours ?? false,
       },
       channels,
       units: unitRows.map((unit) => ({

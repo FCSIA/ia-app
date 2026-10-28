@@ -26,6 +26,7 @@ export const NO_CLUB_PERMISSIONS: ClubRolePermissions = {
   manageClubStructure: false,
   manageJoinCodes: false,
   createEvents: false,
+  reviewVolunteerHours: false,
 };
 
 export const LEADER_CLUB_PERMISSIONS: ClubRolePermissions = {
@@ -49,6 +50,7 @@ export const LEADER_CLUB_PERMISSIONS: ClubRolePermissions = {
   manageClubStructure: true,
   manageJoinCodes: true,
   createEvents: true,
+  reviewVolunteerHours: true,
 };
 
 export function permissionsForRole(role: Doc<"clubRoles"> | null | undefined) {
