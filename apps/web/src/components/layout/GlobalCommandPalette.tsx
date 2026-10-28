@@ -2,7 +2,7 @@
 
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@/lib/convex-react';
+import { useConvexAuth, useQuery } from '@/lib/convex-react';
 import {
   Bell,
   BookOpen,
@@ -27,6 +27,7 @@ import {
   CommandMenuEmpty,
   CommandMenuFooter,
   CommandMenuInput,
+  CommandMenuItem,
   CommandMenuList,
   CommandMenuTabs,
   type CommandMenuItemData,
@@ -35,6 +36,8 @@ import {
   useGlobalCommandActions,
   type CommandAction,
 } from '@/components/layout/use-global-command-actions';
+import { personalCommandQueryArgs, rankCommandSuggestions } from './command-suggestions';
+import { schoolDateKey } from '@/lib/school-date';
 
 const staticActions: CommandAction[] = [
   { id: 'route-dashboard', label: 'Dashboard', detail: 'Home and widgets', href: '/dashboard', Icon: Home },
@@ -45,7 +48,6 @@ const staticActions: CommandAction[] = [
   { id: 'route-calendar', label: 'Calendar', detail: 'Shared calendar', href: '/calendar', Icon: CalendarRange },
   { id: 'route-courses', label: 'Courses', detail: 'Course catalog', href: '/courses', Icon: BookOpen },
   { id: 'route-flex', label: 'Flex Friday', detail: 'Workshops and passes', href: '/flex-friday', Icon: Presentation },
-  { id: 'route-pass', label: 'My Pass', detail: 'Flex Friday pass', href: '/flex-friday/pass', Icon: PanelTop },
   { id: 'route-notifications', label: 'Notifications', detail: 'Inbox and settings', href: '/notifications', Icon: Bell },
   { id: 'route-profile', label: 'Profile Settings', detail: 'Account and preferences', href: '/profile', Icon: Settings },
 ];
@@ -53,6 +55,7 @@ const staticActions: CommandAction[] = [
 const commandTabs = [
   { value: 'all', label: 'All' },
   { value: 'pages', label: 'Pages' },
+  { value: 'agenda', label: 'Agenda' },
   { value: 'people', label: 'People' },
   { value: 'clubs', label: 'Clubs' },
 ];
@@ -100,13 +103,18 @@ function GlobalCommandPaletteContent({
 }) {
   const router = useRouter();
   const navigationLoading = useNavigationLoadingOptional();
+  const { isAuthenticated } = useConvexAuth();
   const [searchValue, setSearchValue] = useState('');
   const [selectedTab, setSelectedTab] = useState('all');
   const deferredSearch = useDeferredValue(searchValue.trim());
-  const shouldLoad = open && !!user;
+  const shouldLoad = open && isAuthenticated && !!user;
   const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
   const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
   const announcementNow = useAnnouncementFeedClock();
+  const minuteNow = useAnnouncementFeedClock(60_000);
+  const [openedAt] = useState(() => Date.now());
+  const now = Math.max(openedAt, minuteNow);
+  const personalArgs = personalCommandQueryArgs({ open, isAuthenticated, hasUser: !!user, now });
 
   const announcements = useQuery(api.announcements.feed.list, shouldLoad ? { now: announcementNow } : 'skip');
   const clubs = useQuery(api.clubs.management.getAll, shouldLoad ? {} : 'skip');
@@ -121,12 +129,16 @@ function GlobalCommandPaletteContent({
     shouldLoad ? { unreadOnly: true, limit: 20 } : 'skip',
   );
   const flexFridays = useQuery(api.flexFriday.fridays.list, shouldLoad ? {} : 'skip');
+  const personalWorkshops = useQuery(api.flexFriday.workshops.upcomingPersonal, personalArgs.workshops);
+  const calendarEntries = useQuery(api.events.calendar.list, personalArgs.calendar);
+  const upcomingEvents = useQuery(api.events.events.upcoming, personalArgs.events);
+  const needsYou = useQuery(api.dashboard.needsYou.list, personalArgs.needsYou);
   const schedule = useQuery(
     api.schedule.dashboard.get,
     shouldLoad &&
       !!user &&
       hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
-      ? {}
+      ? { dateKey: schoolDateKey(new Date(now)) }
       : 'skip',
   );
   const globalResults = useQuery(
@@ -139,8 +151,28 @@ function GlobalCommandPaletteContent({
     return new Set<string>(entries.map((club) => club._id));
   }, [myClubs]);
 
+  const entityGroups = useGlobalCommandActions({
+    announcements,
+    clubs,
+    courses,
+    events,
+    upcomingEvents,
+    calendarEntries,
+    personalWorkshops,
+    needsYou,
+    flexFridays,
+    globalResults,
+    myClubIds,
+    notifications,
+    schedule,
+    user,
+    now,
+  });
   const navActions = useMemo(() => {
     const items = [...staticActions];
+    if (entityGroups.hasStudentBooking) {
+      items.push({ id: 'route-pass', label: 'My Pass', detail: 'Your booked Flex Friday workshops', href: '/flex-friday/pass', Icon: PanelTop });
+    }
     if (showAdmin) {
       items.push({
         id: 'route-admin',
@@ -151,20 +183,7 @@ function GlobalCommandPaletteContent({
       });
     }
     return items;
-  }, [showAdmin]);
-
-  const entityGroups = useGlobalCommandActions({
-    announcements,
-    clubs,
-    courses,
-    events,
-    flexFridays,
-    globalResults,
-    myClubIds,
-    notifications,
-    schedule,
-    user,
-  });
+  }, [showAdmin, entityGroups.hasStudentBooking]);
   const run = useCallback((href: string) => {
     navigationLoading?.startNavigation(href);
     router.push(href);
@@ -173,6 +192,10 @@ function GlobalCommandPaletteContent({
   const allItems = useMemo(() => {
     const groups: Array<[string, CommandAction[]]> = [
       ['Pages', navActions],
+      ['Workshops', entityGroups.workshops],
+      ['Your calendar', entityGroups.calendar],
+      ['Today', entityGroups.todaySchedule],
+      ['Needs you', entityGroups.tasks],
       ['Notifications', entityGroups.notifications],
       ['My Clubs', entityGroups.joinedClubs],
       ['Announcements', entityGroups.announcements],
@@ -188,16 +211,15 @@ function GlobalCommandPaletteContent({
   }, [entityGroups, navActions, run]);
   const items = useMemo(() => {
     if (selectedTab === 'pages') return allItems.filter((item) => item.group === 'Pages');
+    if (selectedTab === 'agenda') return allItems.filter((item) => ['Workshops', 'Your calendar', 'Today', 'Events', 'Flex Friday'].includes(item.group ?? ''));
     if (selectedTab === 'people') return allItems.filter((item) => item.group === 'People' || item.group === 'Schedule');
     if (selectedTab === 'clubs') return allItems.filter((item) => ['My Clubs', 'Clubs', 'Club Channels'].includes(item.group ?? ''));
     return allItems;
   }, [allItems, selectedTab]);
-  const suggestions = useMemo(() => [...new Set([
-    ...entityGroups.notifications.slice(0, 3).map((action) => action.id),
-    ...entityGroups.unreadAnnouncements.slice(0, 3).map((action) => action.id),
-    ...entityGroups.joinedClubs.slice(0, 4).map((action) => action.id),
-    'route-dashboard', 'route-announcements', 'route-clubs', 'route-schedule',
-  ])].slice(0, 10), [entityGroups]);
+  const suggestions = useMemo(() => rankCommandSuggestions([
+    ...entityGroups.workshops, ...entityGroups.calendar, ...entityGroups.todaySchedule,
+    ...entityGroups.tasks, ...entityGroups.events, ...entityGroups.notifications, ...entityGroups.announcements,
+  ].flatMap((action) => action.suggestion ? [{ ...action.suggestion, id: action.id, href: action.href }] : []), now), [entityGroups, now]);
   const searchingRemote = shouldLoad && searchValue.trim().length >= 2 &&
     (deferredSearch !== searchValue.trim() || globalResults === undefined);
   const waitingForPeopleQuery = selectedTab === 'people' && searchValue.trim().length < 2;
@@ -206,7 +228,14 @@ function GlobalCommandPaletteContent({
     <CommandMenu items={items} query={searchValue} onQueryChange={setSearchValue} suggestions={suggestions}>
       <CommandMenuInput placeholder="Search IA…" aria-label="Search IA" />
       <CommandMenuTabs tabs={commandTabs} value={selectedTab} onValueChange={setSelectedTab} />
-      <CommandMenuList>
+      <CommandMenuList renderItem={(item) => (
+        <CommandMenuItem value={item.value}>
+          <span className="flex min-w-0 flex-1 items-baseline gap-2">
+            <span className="truncate font-medium text-foreground">{item.label}</span>
+            {item.description ? <span className="min-w-0 truncate text-muted-foreground">{item.description}</span> : null}
+          </span>
+        </CommandMenuItem>
+      )}>
         <CommandMenuEmpty>
           {searchingRemote && selectedTab !== 'pages'
             ? 'Searching people and club channels…'

@@ -17,6 +17,7 @@ import { formatSchoolTime } from "@/lib/time-format";
 import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
 import { schoolDateKey } from "@/lib/school-date";
+import { workshopDetailHref } from "@/app/flex-friday/_utils";
 
 export function FlexFridaySnapshotWidget() {
   const [from] = useState(() => startOfDay(calendarDate()).getTime());
@@ -35,7 +36,9 @@ export function FlexFridaySnapshotWidget() {
           {data.workshops.map((workshop) => (
             <Card
               key={workshop.id}
-              href={`/flex-friday?friday=${data.fridayId}&session=${workshop.sessionId}${!data.student && schoolDateKey(new Date(data.date)) === schoolDateKey() ? `&attendance=${workshop.id}` : ""}`}
+              href={!data.student && schoolDateKey(new Date(data.date)) === schoolDateKey()
+                ? `/flex-friday?friday=${data.fridayId}&session=${workshop.sessionId}&attendance=${workshop.id}`
+                : workshopDetailHref(data.fridayId, workshop.id, workshop.sessionId)}
               label={`Open ${workshop.title}`}
             >
               <CardHeader>

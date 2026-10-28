@@ -1,9 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, MapPin, Users, Ticket, CheckCircle } from 'lucide-react';
-import { formatTimeRange } from '../_utils';
+import { formatTimeRange, workshopDetailHref } from '../_utils';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -106,7 +107,12 @@ export function WorkshopPanel({
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">
                             <h3 className="text-base font-semibold leading-tight text-foreground">
-                              {w.title}
+                              <Link
+                                href={workshopDetailHref(selectedSession.flexFridayId, w._id, selectedSession._id)}
+                                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+                              >
+                                {w.title}
+                              </Link>
                             </h3>
                             {spansMultiple && (
                               <Badge variant="solid" color="indigo" className="text-[10px] leading-tight py-0">

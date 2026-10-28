@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { workshopDetailHref } from '../_utils';
 
 type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
 type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
@@ -297,6 +298,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
     .filter(Boolean)
     .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''));
   const first = linkedSessions[0];
+  const friday = fridayForPass(pass);
 
   return (
     <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
@@ -323,7 +325,16 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
               </Badge>
             ) : null}
           </div>
-          <h3 className="truncate font-semibold text-foreground">{workshop.title}</h3>
+          <h3 className="break-words font-semibold text-foreground">
+            {friday ? (
+              <Link
+                href={workshopDetailHref(friday._id, workshop._id, first?._id)}
+                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+              >
+                {workshop.title}
+              </Link>
+            ) : workshop.title}
+          </h3>
           {workshop.description ? (
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
               {workshop.description}
