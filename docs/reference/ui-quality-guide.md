@@ -113,6 +113,12 @@ private and permission-dependent states. Make the visible label and result
 truthful. For an undo-first interaction, verify there is a real restoration
 path; don't replace a necessary confirmation with a fake undo.
 
+Distinguish the first load from a refetch: a temporary lack of data is not an
+empty result or an access denial. The original chat audit captured a false
+access error while the channel was loading; the audit-log review held replies
+and observed the table disappear during search. Exercise delayed responses and
+check both the message and the continuity of the surrounding workspace.
+
 ### 6. Preserve spatial and interaction continuity
 
 **Avoid:** Controls shifting when optional content appears; skeletons that
@@ -190,8 +196,10 @@ they are not a full interaction or responsive audit.
    People. The screenshot suggests the faint outlines and gaps do not read like
    a coherent list. Compare actual rendered surfaces, borders and separators
    in the same theme: the current shadow can draw an outline, while Fluid
-   grouped cards can own separators. Do not assume every friend row must become
-   clickable: Compare, course links and remove are independent actions.
+   grouped cards can own separators. Include Friend Groups in that comparison,
+   and measure row, content and action bounding boxes at the reported width and
+   zoom. Do not assume every friend row must become clickable: Compare, course
+   links and remove are independent actions.
 4. **Repetition crowds out useful information.** Each shared row repeats
    “Shared”, “NOW” and “No live block,” using two text levels for a status that
    is identical across most of the screenshot. Decide which context can be
@@ -214,19 +222,29 @@ they are not a full interaction or responsive audit.
 1. State the job and scope: route, role, data, viewport, theme and state.
 2. Capture the actual screen, then critique the whole composition each time:
    hierarchy, spacing, typography, icons, surfaces, edges, size, content,
-   interaction and overflow. A screenshot is evidence, not approval.
-3. Compare the same job on other pages. Distinguish actual mismatches from
-   purposeful differences. Record the source of each observation and the
-   states or devices not tested.
+   interaction and overflow. Measure same-role control heights, radii, edges
+   and alignment when they appear inconsistent; record viewport, theme, role
+   and state. A screenshot is evidence of appearance, not proof of interaction
+   or design approval.
+3. Compare the same job on other pages at the same width and theme. Distinguish
+   actual mismatches from purposeful differences. Check whether visible
+   affordances lead to useful actions, and whether optional controls or delayed
+   content displace targets. Record the source of each observation and the states
+   or devices not tested.
 4. Trace each issue to its owner: callsite, shared feature component, primitive,
    token, or data. Inspect actual DOM/geometry and the relevant current Fluid
    documentation before changing a primitive. Treat new shared API or design
    gaps under the repository's explicit decision process.
-5. Implement a coherent fix, exercise its real interactions and states, then
+5. Propose a specific change and explain its impact, evidence and ownership.
+   Favor a small change when it solves the problem; rethink a larger region when
+   testing shows a need. For a structural change, name who uses it, what they
+   gain or lose and how the action remains discoverable. Distinguish observed
+   behavior, inferred cause, proposal and implemented result.
+6. Implement a coherent fix, exercise its real interactions and states, then
    capture and critique the entire result again. Continue the loop when the new
    capture reveals another problem. Check narrow and wide layouts, long content,
    light/dark themes, motion and relevant input modes; say what was not tested.
-6. Ask the design owner to review material visual changes. Code checks and an
+7. Ask the design owner to review material visual changes. Code checks and an
    agent's own impression do not substitute for that review.
 
 ## Evidence and limits
@@ -234,16 +252,19 @@ they are not a full interaction or responsive audit.
 - The original audit brief and findings are in the primary checkout at
   `ui-audit-2026-10-22/tooling/PRIMER.md` and `ui-audit-2026-10-22/pages/`.
   They describe what the Claude agents observed at the time; proposals and
-  injected mockups are not automatically completed fixes.
+  injected mockups are not automatically completed fixes. The retained reports
+  cover four pages (Dashboard, Calendar, Channel Chat and Admin Audit Log),
+  with 122 numbered findings in total; they are not an app-wide audit.
 - The Codex continuation and its verification are documented in
   [UI continuation coordination](ui-continuation-coordination-2026-10-27.md),
   [Fluid calendar continuation](ui-fluid-calendar-continuation-2026-10-27.md),
   and the `ui-audit-continuation-2026-10-24-*` reports. Git history supplies the
   concrete examples referenced above.
 - The original recovered temporary transcript bundle is no longer present at
-  its documented `/tmp/ia-claude-continuation/` path. This synthesis uses the
-  retained original audit materials, continuation reports, selected commit
-  history, the supplied interaction transcript, screenshots and current source;
-  it does not claim an exhaustive reread of every agent transcript or page.
+  its documented `/tmp/ia-claude-continuation/` path. The original Claude
+  session and many subagent transcripts, and Codex continuation sessions,
+  remain in local session storage. A subsequent targeted extraction checked
+  owner direction and selected audit and continuation episodes against the
+  retained reports; it did not reread every transcript or establish full coverage.
 - The latest calendar implementation has desktop diagnostic checks; narrow
   viewport visual verification and design-owner approval remain outstanding.
