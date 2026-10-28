@@ -2,6 +2,19 @@
 
 ## Active Focus
 
+- **PR #171 OCR review (2026-10-28)**: `.worktrees/pr-171-review` uses
+  `codex/pr-171-ocr-accuracy`, based on PR head `eed55c75`. Generalized local OCR,
+  relative row/column parsing, conservative catalog matching, Google word-box
+  extraction, and partial-import preservation pass 64 focused tests and the
+  production web build. The supplied screenshot stays outside Git; fixtures
+  contain only sanitized course text/geometry or generated data. Web preview
+  uses port 3011 and this worktree's isolated anonymous backend uses 3290/3291,
+  preserving its existing demo data. The owner now authorizes publishing the
+  changes in logical commits and merging PR #171 with a merge commit, never a
+  squash merge. Shared/production deployment remains outside this request.
+  Windows has no direnv;
+  verification uses this worktree's pinned Bun 1.4.4 runtime.
+
 - **Current checkout (2026-10-21)**: The primary checkout is on
   `codex/desktop-notification-banner`, carrying the three earlier local banner
   commits onto main after audit PR #152 squash-merged as `4c464526`.
