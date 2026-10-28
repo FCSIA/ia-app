@@ -2,6 +2,14 @@
 
 ## Active Focus
 
+- **Search and workshops (2026-10-28)**: The command menu ranks personal
+  workshop commitments, calendar entries, events, review tasks and unread
+  activity. Workshop detail routes retain one workshop across linked sessions.
+  Focused query/ranking tests and the production build pass; signed-in browser
+  verification and design-owner review remain outstanding after the local
+  preview returned to the sign-in screen. The local backend was restarted
+  against the same isolated deployment, without seeding or resetting data.
+
 - **UI continuation (2026-10-27)**: Active implementation is in
   `.claude/worktrees/ui-verify`, branch `claude/ui-audit-fixes`. The primary
   checkout and its unrelated changes are preserved. Recovered Claude UI work
