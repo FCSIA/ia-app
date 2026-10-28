@@ -4,6 +4,36 @@ tags: [reference, security, dependencies]
 
 # Software vulnerability remediation, October 23, 2026
 
+## October 28 PR validation follow-up
+
+The refreshed PR audit reported new advisory metadata. `qs` is now pinned to
+6.16.1 for [GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw).
+`deepmerge@4.3.1` has no fixed release for
+[GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
+Its local patch rejects `__proto__` in both input-copy paths in all three shipped
+JavaScript entry points. Regression tests cover poisoned source and target
+objects, null prototypes, null placeholders, and ordinary nested/array merges.
+The version-only exception expires November 1; upstream remains unpatched.
+
+Four Better Auth advisories are not applicable to the current configuration:
+
+- [GHSA-44jh-23m7-hpcf](https://github.com/advisories/GHSA-44jh-23m7-hpcf)
+  requires PostgreSQL Drizzle/Kysely rate-limit storage; this app uses Convex.
+- [GHSA-965c-763c-88jm](https://github.com/advisories/GHSA-965c-763c-88jm)
+  requires Magic Link and OAuth; neither is enabled.
+- [GHSA-q84f-53jg-9ppm](https://github.com/advisories/GHSA-q84f-53jg-9ppm)
+  requires the device authorization plugin, which is not enabled.
+- [GHSA-r4xp-prcw-77qf](https://github.com/advisories/GHSA-r4xp-prcw-77qf)
+  requires the OAuth Proxy plugin, which is not enabled.
+
+These are configuration exceptions, not upstream fixes. Better Auth 1.7.7 fixes
+the advisories, but the latest Convex integration (0.12.6) still declares
+`better-auth >=1.6.11 <1.7.0`. Keep the supported 1.6.22 pin for this change.
+The audit regression suite checks the exact locked package versions and parses
+`createAuthOptions` to reject changes to its adapter, option keys, or plugin
+list. Reassess before adding providers/plugins or upgrading the integration.
+All four exceptions expire November 1, 2026.
+
 ## Scope and result
 
 Reviewed every npm package instance in `bun.lock` across the web, mobile, backend,

@@ -7,6 +7,30 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.39",
+    "date": "2026-10-23",
+    "commit": "48d983fb",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "courses",
+        "summary": "Add AP Cybersecurity.",
+        "commit": "2eb193d5"
+      },
+      {
+        "category": "Fixed",
+        "scope": "chat",
+        "summary": "Scrolling through chat stays in place when GIFs reload or new messages arrive.",
+        "commit": "3814985e"
+      },
+      {
+        "category": "Security",
+        "summary": "Updated the app's software to protect against newly disclosed security vulnerabilities.",
+        "commit": "48d983fb"
+      }
+    ]
+  },
+  {
     "version": "0.8.38",
     "date": "2026-10-21",
     "commit": "2990cac4",

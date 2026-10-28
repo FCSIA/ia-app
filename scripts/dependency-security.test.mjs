@@ -4,10 +4,12 @@ import { generateKeyPairSync } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
 import vm from "node:vm";
+import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const forge = require("node-forge");
 const braces = require("braces");
+const deepmerge = require("deepmerge");
 const { getAssetSize } = require("metro/private/Assets");
 const { privateKey: pem } = generateKeyPairSync("rsa", {
   modulusLength: 1024,
@@ -106,4 +108,60 @@ test("OSV sandbox exceptions apply only to the Vercel CLI package identity", () 
   assert.equal(cli.version, "4.4.0");
   assert.equal(cli.repository.url, "https://github.com/vercel/sandbox.git");
   assert.equal(cli.repository.directory, "packages/sandbox");
+});
+
+test("deepmerge rejects prototype keys from both merge inputs (GHSA-gcqx-w48m-w2h4)", () => {
+  for (const entry of ["deepmerge", "deepmerge/dist/umd.js"]) {
+    const merge = require(entry);
+    const poisoned = JSON.parse('{"__proto__":{"injected":true},"nested":{"safe":1}}');
+    for (const [target, source] of [
+      [Object.create(null), poisoned],
+      [{ nested: null }, { nested: poisoned }],
+      [poisoned, { ordinary: true }],
+    ]) {
+      const result = merge(target, source);
+      assert.equal(result.injected, undefined);
+      assert.equal(result.nested?.injected, undefined);
+      assert.equal(Object.getPrototypeOf(result), Object.prototype);
+      assert.equal(Object.hasOwn(result, "__proto__"), false);
+    }
+  }
+  assert.deepEqual(deepmerge({ a: { b: 1 }, list: [1] }, { a: { c: 2 }, list: [2] }), {
+    a: { b: 1, c: 2 }, list: [1, 2],
+  });
+});
+
+test("Better Auth audit exceptions remain limited to the pinned unused feature configuration", () => {
+  const lock = JSON.parse(readFileSync(new URL("../bun.lock", import.meta.url), "utf8").replace(/,\s*([}\]])/g, "$1"));
+  const names = ["better-auth", "@better-auth/drizzle-adapter", "@better-auth/kysely-adapter"];
+  for (const name of names) {
+    const instances = Object.values(lock.packages).filter(([id]) => id.startsWith(`${name}@`));
+    assert.ok(instances.length > 0);
+    for (const [id] of instances) assert.equal(id, `${name}@1.6.22`);
+  }
+  const source = readFileSync(new URL("../apps/convex/src/auth.ts", import.meta.url), "utf8");
+  const ast = ts.createSourceFile("auth.ts", source, ts.ScriptTarget.Latest, true);
+  let options;
+  function visit(node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "createAuthOptions") options = node.initializer.body;
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  while (ts.isParenthesizedExpression(options) || ts.isSatisfiesExpression(options)) options = options.expression;
+  assert.ok(ts.isObjectLiteralExpression(options));
+  // Fail closed if new options, spreads, providers or plugin calls are added.
+  const properties = options.properties;
+  assert.ok(properties.every((property) => ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)));
+  assert.deepEqual(properties.map((property) => property.name.getText(ast)).sort(), [
+    "secret", "baseURL", "basePath", "trustedOrigins", "database", "disabledPaths", "session", "emailAndPassword", "plugins",
+  ].sort());
+  const database = properties.find((property) => property.name.getText(ast) === "database").initializer;
+  assert.equal(database.getText(ast), "authComponent.adapter(ctx)");
+  const plugins = properties.find((property) => property.name.getText(ast) === "plugins").initializer;
+  assert.ok(ts.isArrayLiteralExpression(plugins));
+  assert.ok(plugins.elements.every(ts.isCallExpression));
+  assert.deepEqual(plugins.elements.map((plugin) => plugin.expression.getText(ast)), [
+    "createLoginRateLimitPlugin", "username", "admin", "expo", "convex",
+  ]);
+  assert.doesNotMatch(source, /(?:magicLink|genericOAuth|oauthProxy|deviceAuthorization|drizzleAdapter|kyselyAdapter)\s*\(/);
 });

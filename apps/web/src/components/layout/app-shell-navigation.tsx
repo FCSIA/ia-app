@@ -74,7 +74,7 @@ type NavItem = {
 const primaryNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/announcements", label: "Announcements", icon: Megaphone, mobileTabId: "announcements" },
-  { href: "/clubs", label: "Clubs", icon: UsersRound, mobileTabId: "clubs" },
+  { href: "/clubs", label: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true' ? "Community" : "Clubs", icon: UsersRound, mobileTabId: "clubs" },
   { href: "/schedule", label: "Schedule", icon: ClipboardList, mobileTabId: "schedule" },
   { href: "/events", label: "Events", icon: Ticket, mobileTabId: "events" },
   { href: "/calendar", label: "Calendar", icon: CalendarRange, mobileTabId: "calendar" },

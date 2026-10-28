@@ -52,7 +52,8 @@ permission. `Member` and `Leader` are renameable default role records, not
 backend authority levels. Role permissions independently cover announcement
 drafts, events, channel creation/editing/deletion, polls, message moderation,
 private/read-only channels, invitations, join requests/codes, member removal,
-role assignment/management, tags, club settings, and club structure. Sponsors
+role assignment/management, tags, club settings, club structure, and review of
+volunteer-hour submissions when that club enables the tracker. Sponsors
 and admins receive the full club permission set independently of role names.
 
 Members with the structure-management permission, sponsors, admins, and super

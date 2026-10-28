@@ -15,6 +15,18 @@
   Windows has no direnv;
   verification uses this worktree's pinned Bun 1.4.4 runtime.
 
+- **PR #173 local review (2026-10-28)**: `codex/pr-173-volunteer-reporting`
+  in `.worktrees/pr-173-review` contains the volunteer UI/reporting follow-up.
+  Its anonymous local backend uses 3294/3295; the web preview uses 3173.
+  Members have exact-minute personal tracking; permitted reviewers have all-time
+  club totals, member breakdowns, and complete status-filtered history. Proof
+  restaging/cleanup now preserves submitted evidence. Existing demo records are
+  retained and indexed. Signed-in phone-width diagnostics cover 320/390px and
+  tablet/desktop widths; native-device and design-owner review remain pending.
+  Keep this worktree/backend separate from concurrent PR #171 and the primary
+  checkout's unrelated edits. The owner authorized pushing to PR #173, addressing
+  generated reviews, and merging into main. Shared deployment remains unauthorized.
+
 - **Current checkout (2026-10-21)**: The primary checkout is on
   `codex/desktop-notification-banner`, carrying the three earlier local banner
   commits onto main after audit PR #152 squash-merged as `4c464526`.

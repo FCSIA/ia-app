@@ -174,6 +174,15 @@ const permissionGroups: Array<{
     ],
   },
   {
+    title: "Volunteering",
+    description: "Check submitted service hours and proof photos.",
+    items: [{
+      key: "reviewVolunteerHours",
+      label: "Review volunteer hours",
+      description: "Approve or decline other members' submitted hours and proof photos.",
+    }],
+  },
+  {
     title: "Administration",
     description: "Change how the club itself is configured.",
     items: [
@@ -228,6 +237,7 @@ export default function ClubSettingsPage() {
   const createRole = useMutation(api.clubs.management.createRole);
   const renameRole = useMutation(api.clubs.management.renameRole);
   const removeRole = useMutation(api.clubs.management.removeRole);
+  const setVolunteerTrackingEnabled = useMutation(api.clubs.management.setVolunteerTrackingEnabled);
   const setRolePermission = useMutation(
     api.clubs.management.setRolePermission,
   ).withOptimisticUpdate((localStore, args) => {
@@ -318,6 +328,7 @@ export default function ClubSettingsPage() {
   const [editor, setEditor] = useState<Editor>(null);
   const [roleName, setRoleName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [savingVolunteerSetting, setSavingVolunteerSetting] = useState(false);
   const [removeRoleOpen, setRemoveRoleOpen] = useState(false);
   const [removingRole, setRemovingRole] = useState(false);
   const [savingPermissionGroup, setSavingPermissionGroup] = useState<
@@ -326,6 +337,7 @@ export default function ClubSettingsPage() {
   const canManageRoles = navigation?.viewer.canManageRoles ?? false;
   const canManageStructure = navigation?.viewer.canManageClubStructure ?? false;
   const canManageChannels = navigation?.viewer.canManageChannels ?? false;
+  const canManageClubSettings = navigation?.viewer.canManageClubSettings ?? false;
   const canDeleteClub = isSuperAdmin(user);
 
   useEffect(() => {
@@ -483,6 +495,7 @@ export default function ClubSettingsPage() {
     !canManageRoles &&
     !canManageStructure &&
     !canManageChannels &&
+    !canManageClubSettings &&
     !canDeleteClub
   ) {
     return (
@@ -504,6 +517,34 @@ export default function ClubSettingsPage() {
     <ClubWorkspace title={settingsTitle}>
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-5">
+          {canManageClubSettings && navigation ? (
+            <Elevated offset={1} className="overflow-hidden rounded-xl">
+              <Card className="pb-0">
+                <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Volunteer hours</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Let members submit service hours with photo proof for club review.
+                    </p>
+                  </div>
+                  <Switch
+                    aria-label="Enable volunteer-hours tracking"
+                    checked={navigation.club.volunteerTrackingEnabled}
+                    disabled={savingVolunteerSetting}
+                    onCheckedChange={(enabled) => {
+                      setSavingVolunteerSetting(true);
+                      void setVolunteerTrackingEnabled({ clubId, enabled })
+                        .catch((error) => toast({
+                          title: error instanceof Error ? error.message : "Could not update volunteer hours",
+                          variant: "destructive",
+                        }))
+                        .finally(() => setSavingVolunteerSetting(false));
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </Elevated>
+          ) : null}
           {club && (canManageStructure || canDeleteClub) ? (
             <Elevated offset={1} className="overflow-hidden rounded-xl">
               <Card className="pb-0">
@@ -668,7 +709,7 @@ export default function ClubSettingsPage() {
                         </div>
 
                         <div className="divide-y divide-border/70 px-5">
-                          {permissionGroups.map((group) => (
+                          {permissionGroups.filter((group) => group.title !== "Volunteering" || navigation?.club.volunteerTrackingEnabled).map((group) => (
                             <Collapsible
                               key={group.title}
                               className="group/permission py-5"
