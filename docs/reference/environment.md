@@ -21,6 +21,11 @@ development.
 
 ## Convex Variables
 
+Bun's automatic environment-file loading is disabled in `bunfig.toml` so root
+files cannot override a worktree's Convex selection. Convex and Next.js load
+their own environment files; export shell variables explicitly when a command
+needs them outside those tools.
+
 The Convex CLI writes the selected deployment. Local selection is the default:
 
 ```env
@@ -103,7 +108,9 @@ bun run sync:convex-env -- --host 127.0.0.1
 HTTPS tunnels need a named cloud dev deployment (below).
 
 A refused or timed-out connection on ports 3210/3211 usually means `bun run dev`
-is not running.
+is not running. In isolated mode, the dev command starts Convex first and shows
+its prompts directly (including any local backend upgrade prompt); the web server
+starts after Convex is ready. The web dev server runs on the pinned Bun runtime.
 
 For a feature that needs a public URL, off-LAN mobile-device access, webhooks,
 an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment

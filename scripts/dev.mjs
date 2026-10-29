@@ -8,7 +8,6 @@ const modePath = join(root, ".worktree-bootstrap.json");
 const mode = existsSync(modePath)
   ? JSON.parse(readFileSync(modePath, "utf8")).convex
   : "isolated";
-const filters = mode === "shared" ? ["--filter=web"] : ["--filter=web", "--filter=cvx"];
 if (mode !== "shared") {
   // A phone-testing LAN host goes stale when the machine changes networks,
   // and the web app then times out reaching Convex. Re-point the clients
@@ -18,7 +17,12 @@ if (mode !== "shared") {
     stdio: "inherit",
   });
 }
-const result = spawnSync("bun", ["x", "turbo", "run", "dev", ...filters], {
+// Convex owns stdin so its local-backend upgrade prompt is visible and can be
+// answered. It starts the web server after the backend is ready.
+const args = mode === "shared"
+  ? ["run", "--filter", "web", "dev"]
+  : ["run", "--cwd", "apps/convex", "convex", "dev", "--start", "bun run --cwd ../web dev"];
+const result = spawnSync("bun", args, {
   cwd: root,
   stdio: "inherit",
 });

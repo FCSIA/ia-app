@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:phone": "node scripts/sync-convex-env.mjs --host auto && node scripts/dev.mjs",
+    "dev": "bun scripts/dev.mjs",
+    "dev:phone": "node scripts/sync-convex-env.mjs --host auto && bun scripts/dev.mjs",
     "dev:mobile": "bun run --filter mobile dev",
     "dev:mobile:tunnel": "bun run --filter mobile dev:client:tunnel",
     "build": "turbo run build",
