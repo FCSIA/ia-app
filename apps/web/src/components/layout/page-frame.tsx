@@ -247,7 +247,7 @@ export function Panel({
       <div
         className={cn(
           "flex-1 p-(--panel-inset)",
-          flush && "px-0 sm:px-1",
+          flush && "px-0 pb-0 sm:px-1 sm:pb-1",
           contentClassName,
         )}
       >
