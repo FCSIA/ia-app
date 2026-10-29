@@ -1,2 +1,6 @@
+# Let each application load its own environment instead of inheriting the
+# repository root's .env.local as process-level overrides.
+env = false
+
 [install]
 linker = "hoisted"
