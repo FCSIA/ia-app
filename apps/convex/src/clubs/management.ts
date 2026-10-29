@@ -197,6 +197,31 @@ export const update = mutation({
   },
 });
 
+export const setVolunteerTrackingEnabled = mutation({
+  args: { clubId: v.id("clubs"), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.manageClubSettings) {
+      throw new ConvexError("You do not have permission to manage club settings");
+    }
+    if (!context.club.isActive) throw new ConvexError("Club is not active");
+    await ctx.db.patch(args.clubId, {
+      volunteerTrackingEnabled: args.enabled,
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_UPDATED",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { volunteerTrackingEnabled: args.enabled },
+    });
+    return null;
+  },
+});
+
 export const deactivate = mutation({
   args: { clubId: v.id("clubs") },
   returns: v.null(),

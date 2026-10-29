@@ -182,6 +182,7 @@ export const clubRolePermissionValidator = v.union(
   v.literal("manageClubStructure"),
   v.literal("manageJoinCodes"),
   v.literal("createEvents"),
+  v.literal("reviewVolunteerHours"),
 );
 
 export type ClubRolePermission = Infer<typeof clubRolePermissionValidator>;
@@ -207,6 +208,8 @@ export const clubRolePermissionsValidator = v.object({
   manageClubStructure: v.boolean(),
   manageJoinCodes: v.boolean(),
   createEvents: v.boolean(),
+  // Optional so roles saved before the tracker existed remain valid.
+  reviewVolunteerHours: v.optional(v.boolean()),
 });
 
 export type ClubRolePermissions = Infer<typeof clubRolePermissionsValidator>;

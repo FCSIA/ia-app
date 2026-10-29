@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import rateLimiter from "@convex-dev/rate-limiter/convex.config.js";
 import migrations from "@convex-dev/migrations/convex.config.js";
 import presence from "@convex-dev/presence/convex.config.js";
-import aggregate from "@convex-dev/aggregate/convex.config";
+import aggregate from "@convex-dev/aggregate/convex.config.js";
 import betterAuth from "./betterAuth/convex.config";
 
 const app = defineApp({
@@ -27,5 +27,6 @@ app.use(rateLimiter);
 app.use(presence);
 app.use(aggregate, { name: "auditByCategory" });
 app.use(aggregate, { name: "auditByActor" });
+app.use(aggregate, { name: "volunteerHours" });
 
 export default app;

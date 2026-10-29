@@ -35,6 +35,13 @@ Feature components then call the matching finalize mutation.
 
 - Club hero images use `finalizeClubImage`.
 - Club channel attachments use `finalizeChatAttachment`.
+- Volunteer-hours proof photos use `finalizeVolunteerProof`. They are validated
+  images, stored by storage ID, and served through an authenticated HTTP
+  action that rechecks the submitter or club reviewer on every request. The
+  browser never receives a reusable Convex storage URL. Unsubmitted staged
+  proofs expire. Once submitted, a proof cannot be staged or consumed again.
+  Rejected-finalization and staged-upload cleanup preserve any storage object
+  referenced by a submitted volunteer log, including stale pre-upgrade stages.
 
 ## Rules
 

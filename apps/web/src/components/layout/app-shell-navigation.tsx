@@ -122,7 +122,7 @@ const primaryNav: NavItem[] = [
 ];
 
 const socialNav: NavItem[] = [
-  { href: "/clubs", label: "Clubs", icon: UsersRound, mobileTabId: "clubs" },
+  { href: "/clubs", label: process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === "true" ? "Community" : "Clubs", icon: UsersRound, mobileTabId: "clubs" },
   { href: "/schedule?tab=friends", label: "Friends", icon: UserRound },
   { href: "/schedule?tab=groups", label: "Friend Groups", icon: Users },
 ];

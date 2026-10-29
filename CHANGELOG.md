@@ -12,6 +12,20 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.39 — 2026-10-23 (alpha)
+
+### Added
+
+- **courses** — Add AP Cybersecurity. ([`2eb193d5`](https://github.com/virajdas/ia-app/commit/2eb193d5))
+
+### Fixed
+
+- **chat** — Scrolling through chat stays in place when GIFs reload or new messages arrive. ([`3814985e`](https://github.com/virajdas/ia-app/commit/3814985e))
+
+### Security
+
+- Updated the app's software to protect against newly disclosed security vulnerabilities. ([`48d983fb`](https://github.com/virajdas/ia-app/commit/48d983fb))
+
 ## v0.8.38 — 2026-10-21 (alpha)
 
 **Preferred names, theme controls, and smoother GIF playback**

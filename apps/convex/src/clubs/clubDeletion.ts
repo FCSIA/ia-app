@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
 import { adjustClubCounts } from "./counts";
+import { volunteerLogs as volunteerLogAggregate, volunteerMembers as volunteerMemberAggregate } from "./volunteerAggregates";
 
 const CLUB_DELETION_BATCH_SIZE = 25;
 
@@ -134,6 +135,8 @@ export const cleanupDeletedClub = internalMutation({
       tags,
       announcements,
       events,
+      volunteerLogs,
+      volunteerTotals,
     ] = await Promise.all([
       ctx.db
         .query("clubMembers")
@@ -189,6 +192,14 @@ export const cleanupDeletedClub = internalMutation({
         .query("events")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
         .take(CLUB_DELETION_BATCH_SIZE),
+      ctx.db
+        .query("clubVolunteerLogs")
+        .withIndex("by_clubId_and_userId_and_submittedAt", (q) => q.eq("clubId", args.clubId))
+        .take(CLUB_DELETION_BATCH_SIZE),
+      ctx.db
+        .query("clubVolunteerTotals")
+        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId))
+        .take(CLUB_DELETION_BATCH_SIZE),
     ]);
 
     // Before the rows go: the club document outlives the drain by design — it
@@ -208,8 +219,16 @@ export const cleanupDeletedClub = internalMutation({
       ...joinRequests,
       ...peopleGroups,
       ...peopleGroupRules,
+      ...volunteerTotals,
     ]) {
+      if ("approvedMinutes" in row) await volunteerMemberAggregate.deleteIfExists(ctx, row);
       await ctx.db.delete(row._id);
+    }
+
+    for (const log of volunteerLogs) {
+      await volunteerLogAggregate.deleteIfExists(ctx, log);
+      await ctx.storage.delete(log.proofStorageId).catch(() => {});
+      await ctx.db.delete(log._id);
     }
 
     for (const channel of channels) {
@@ -259,6 +278,8 @@ export const cleanupDeletedClub = internalMutation({
       tags,
       announcements,
       events,
+      volunteerLogs,
+      volunteerTotals,
     ];
     if (batches.some(hasFullBatch)) {
       await ctx.scheduler.runAfter(

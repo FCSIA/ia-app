@@ -9,6 +9,7 @@ import {
   normalizeStoredFileMime,
 } from "../uploads/fileSignatures";
 import { scheduleOcrRateLimiter } from "../rateLimits";
+import { extractVisionScheduleLines } from "../../../shared/schedule/vision-ocr";
 
 const MAX_SCHEDULE_IMAGE_BYTES = 10 * 1024 * 1024;
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -28,15 +29,6 @@ type GoogleServiceAccount = {
   client_email: string;
   private_key: string;
   token_uri?: string;
-};
-
-type OcrLine = {
-  text: string;
-  confidence: number;
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
 };
 
 function base64Url(value: string) {
@@ -139,85 +131,6 @@ async function googleAccessToken() {
   return (body as { access_token: string }).access_token;
 }
 
-function verticesToBounds(vertices: unknown) {
-  const points = Array.isArray(vertices) ? vertices : [];
-  const coordinates = points.flatMap((point) => {
-    if (!point || typeof point !== "object") return [];
-    const { x = 0, y = 0 } = point as { x?: unknown; y?: unknown };
-    return [
-      { x: typeof x === "number" ? x : 0, y: typeof y === "number" ? y : 0 },
-    ];
-  });
-  if (!coordinates.length) return { left: 0, top: 0, right: 0, bottom: 0 };
-  return {
-    left: Math.min(...coordinates.map((point) => point.x)),
-    top: Math.min(...coordinates.map((point) => point.y)),
-    right: Math.max(...coordinates.map((point) => point.x)),
-    bottom: Math.max(...coordinates.map((point) => point.y)),
-  };
-}
-
-function extractLines(annotation: unknown): OcrLine[] {
-  if (!annotation || typeof annotation !== "object") return [];
-  const pages = (annotation as { pages?: unknown }).pages;
-  if (!Array.isArray(pages)) return [];
-  const lines: OcrLine[] = [];
-  for (const page of pages) {
-    const blocks =
-      page && typeof page === "object"
-        ? (page as { blocks?: unknown }).blocks
-        : null;
-    if (!Array.isArray(blocks)) continue;
-    for (const block of blocks) {
-      const paragraphs =
-        block && typeof block === "object"
-          ? (block as { paragraphs?: unknown }).paragraphs
-          : null;
-      if (!Array.isArray(paragraphs)) continue;
-      for (const paragraph of paragraphs) {
-        const words =
-          paragraph && typeof paragraph === "object"
-            ? (paragraph as { words?: unknown }).words
-            : null;
-        if (!Array.isArray(words)) continue;
-        const text = words
-          .flatMap((word) => {
-            const symbols =
-              word && typeof word === "object"
-                ? (word as { symbols?: unknown }).symbols
-                : null;
-            if (!Array.isArray(symbols)) return [];
-            return symbols.flatMap((symbol) =>
-              symbol &&
-              typeof symbol === "object" &&
-              typeof (symbol as { text?: unknown }).text === "string"
-                ? [(symbol as { text: string }).text]
-                : [],
-            );
-          })
-          .join("")
-          .trim();
-        if (!text) continue;
-        const confidence =
-          typeof (paragraph as { confidence?: unknown }).confidence === "number"
-            ? (paragraph as { confidence: number }).confidence
-            : 0;
-        lines.push({
-          text,
-          confidence,
-          ...verticesToBounds(
-            (paragraph as { boundingBox?: { vertices?: unknown } }).boundingBox
-              ?.vertices,
-          ),
-        });
-      }
-    }
-  }
-  return lines.sort(
-    (left, right) => left.top - right.top || left.left - right.left,
-  );
-}
-
 export const prepareImage = internalMutation({
   args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage") },
   returns: v.object({ url: v.string(), mimeType: v.string() }),
@@ -318,7 +231,7 @@ export const scanImage = action({
         typeof (annotation as { text?: unknown }).text === "string"
           ? (annotation as { text: string }).text
           : "";
-      return { fullText, lines: extractLines(annotation) };
+      return { fullText, lines: extractVisionScheduleLines(annotation) };
     } catch (error) {
       if (error instanceof ConvexError) throw error;
       throw new ConvexError("Schedule import could not read this image.");

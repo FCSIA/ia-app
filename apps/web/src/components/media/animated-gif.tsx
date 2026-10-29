@@ -112,7 +112,9 @@ function GifPlayer({ src, name, pending = false, maxHeight = 320, maxWidth = 840
         </div>
       ) : null}
       {!thumbnail && (pending || (src && !ready && !failed)) ? (
-        <p role="status" className="text-xs text-muted-foreground">Loading…</p>
+        // Releasing an offscreen still must not add a line to the message.
+        // Keep loading feedback inside the canvas's reserved geometry.
+        <p role="status" className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">Loading…</p>
       ) : failed || (!src && !pending) ? (
         <p role="status" className="text-xs text-muted-foreground">Animation unavailable</p>
       ) : null}

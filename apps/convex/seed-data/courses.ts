@@ -164,6 +164,24 @@ export const COURSE_SEEDS: CourseSeed[] = [
     studentWorkload: "1.5 hours per week",
     teacherWorkload: "1-2 hours per week",
   }),
+  mergedApCourse({
+    slug: "ap-cybersecurity",
+    title: "AP Cybersecurity",
+    courseNumbers: ["11.4811011", "11.4811012"],
+    department: "Information Technology",
+    pathway: "INFORMATION_TECHNOLOGY",
+    term: "YEAR",
+    gradeText: "10-12",
+    minGrade: 10,
+    maxGrade: 12,
+    prerequisitesText: "Advanced Cybersecurity or test-in.",
+    summary:
+      "A yearlong AP Career Kickstart course introducing cybersecurity through hands-on, authentic scenarios and foundational skills for protecting systems, data, and organizations.",
+    majorTopics:
+      "Introduction to security, social engineering, physical-space security, network security, device security, application and data security, risk analysis and mitigation, attack detection, collaboration.",
+    essentialSkills:
+      "Analyze risk, implement protective controls, detect attacks, investigate problems, communicate cybersecurity concepts, assess impacts, and collaborate to enact solutions.",
+  }),
   catalogCourse({
     slug: "foundations-of-artificial-intelligence",
     title: "Foundations of Artificial Intelligence",

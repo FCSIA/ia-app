@@ -18,6 +18,7 @@ import {
   Compass,
   ArrowLeft,
   Home,
+  HeartHandshake,
   Menu,
   Plus,
   Settings,
@@ -295,8 +296,15 @@ export function ClubWorkspace({
       icon: Users2,
       match: (p) => p.startsWith(`/clubs/${clubId}/people`),
     },
+    ...(navigation?.club.volunteerTrackingEnabled && (navigation.viewer.isMember || navigation.viewer.canReviewVolunteerHours) ? [{
+      href: `/clubs/${clubId}/volunteering`,
+      label: "Volunteering",
+      icon: HeartHandshake,
+      match: (p: string) => p.startsWith(`/clubs/${clubId}/volunteering`),
+    }] : []),
     ...(navigation?.viewer.canManageRoles ||
-    navigation?.viewer.canManageClubStructure
+    navigation?.viewer.canManageClubStructure ||
+    navigation?.viewer.canManageClubSettings
       ? [
           {
             href: `/clubs/${clubId}/settings`,

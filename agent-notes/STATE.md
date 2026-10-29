@@ -2,69 +2,42 @@
 
 ## Active Focus
 
-- **Search and workshops (2026-10-28)**: The command menu ranks personal
-  workshop commitments, calendar entries, events, review tasks and unread
-  activity. Workshop detail routes retain one workshop across linked sessions.
-  Focused query/ranking tests and the production build pass; signed-in browser
-  verification and design-owner review remain outstanding after the local
-  preview returned to the sign-in screen. The local backend was restarted
-  against the same isolated deployment, without seeding or resetting data.
+- **PR #171 OCR review (2026-10-28)**: `.worktrees/pr-171-review` uses
+  `codex/pr-171-ocr-accuracy`, based on PR head `eed55c75`. Generalized local OCR,
+  relative row/column parsing, conservative catalog matching, Google word-box
+  extraction, and partial-import preservation pass 64 focused tests and the
+  production web build. The supplied screenshot stays outside Git; fixtures
+  contain only sanitized course text/geometry or generated data. Web preview
+  uses port 3011 and this worktree's isolated anonymous backend uses 3290/3291,
+  preserving its existing demo data. The owner now authorizes publishing the
+  changes in logical commits and merging PR #171 with a merge commit, never a
+  squash merge. Shared/production deployment remains outside this request.
+  Windows has no direnv;
+  verification uses this worktree's pinned Bun 1.4.4 runtime.
 
-- **UI continuation (2026-10-27)**: Active implementation is in
-  `.claude/worktrees/ui-verify`, branch `claude/ui-audit-fixes`. The primary
-  checkout and its unrelated changes are preserved. Recovered Claude UI work
-  continues the owner's original prompts and supplied interaction transcript.
-  Main, club and admin navigation use the official Fluid Sidebar; main navigation
-  uses its inset variant. Social groups Clubs/Friends/Friend Groups with existing
-  role gates. Page destinations moved into sidebar sublinks for Day plans,
-  Calendar, Notifications and staff Flex Friday. The redundant Schedule status
-  and top navigation strips are removed.
-- **Persistent React frame**: Root Providers own the main SidebarProvider,
-  Sidebar and SidebarInset across authenticated page navigation. Collapse is
-  persisted through the primitive's cookie and read by the server layout.
-  Route headers/content retain their feature context. Browser diagnostics prove
-  the same frame DOM nodes survive page changes, both collapse states survive
-  reload, and club viewport cleanup restores document scrolling. See
-  `docs/reference/ui-continuation-coordination-2026-10-27.md` for checks, captures
-  and remaining human/device review. Material visuals await the design owner.
-- **Isolated UI preview**: Web runs at `http://localhost:3000`; the existing
-  local backend `local:local-ia_app-ia_app-3231` runs at 3280/3281. It was restarted
-  without resetting or seeding data. No shared or production deployment, push,
-  merge or release was performed. Older process/checkout notes below describe
-  their dated work, not this isolated continuation.
+- **PR #173 local review (2026-10-28)**: `codex/pr-173-volunteer-reporting`
+  in `.worktrees/pr-173-review` contains the volunteer UI/reporting follow-up.
+  Its anonymous local backend uses 3294/3295; the web preview uses 3173.
+  Members have exact-minute personal tracking; permitted reviewers have all-time
+  club totals, member breakdowns, and complete status-filtered history. Proof
+  restaging/cleanup now preserves submitted evidence. Existing demo records are
+  retained and indexed. Signed-in phone-width diagnostics cover 320/390px and
+  tablet/desktop widths; native-device and design-owner review remain pending.
+  Keep this worktree/backend separate from concurrent PR #171 and the primary
+  checkout's unrelated edits. The owner authorized pushing to PR #173, addressing
+  generated reviews, and merging into main. Shared deployment remains unauthorized.
 
-- **Fluid date and command upgrade (2026-10-27)**: The latest official Fluid
-  CommandMenu, Calendar (DayPicker 10), and Radix DatePicker replace the older
-  global palette/date controls. Native command scope tabs, time-slot editing,
-  clear behavior and day-detail slots compose with existing feature data.
-  Existing combobox choices and the full event calendar retain their semantic
-  owners. The owner approved native Radix trigger support for Cmd+K focus return.
-  Integrated verification and diagnostic captures are recorded in
-  `docs/reference/ui-fluid-calendar-continuation-2026-10-27.md`; material visuals
-  remain awaiting the design owner. Port 3101 was used for isolation; the current
-  preview uses the now-free standard port 3000 with the same isolated backend.
-
-- **Owner-requested local cleanup (2026-10-27)**: Eight clean obsolete worktrees
-  and ten local branches were removed after merged-PR or exact range-diff proof.
-  Active UI/primary/Swift/teacher prototype, open GIF PR and ambiguous refs remain.
-  Recovery refs, a verified bundle and 183 local env/database/blob files are in
-  `/Users/sreysus/workflow/ia-app-archives/2026-10-27-cleanup` (private archive).
-  Primary checkout changes are unchanged; no remote branches were removed.
-
-- **Current checkout (2026-10-21)**: `codex/teacher-flex-community-plan`, based on
-  released main `57e7ddb4` (v0.8.38). Audit PR #152, banner PR #166, and release
-  PR #165 are merged; the release reached production. The earlier release
-  preparation and no-push notes below are historical.
-- **Current focus**: Teacher tutoring/Flex Friday issue #82 and navigation
-  structure. The owner chose immediate student booking. The proposal recommends
-  role-specific Friday views and Community with Clubs/Friends siblings, retaining
-  schedule comparison in Schedule. Product implementation remains pending;
-  see `docs/architecture/teacher-flex-community-proposal.md`. The interactive
-  study uses fictional data and does not establish design-owner approval.
-- **Local processes**: The owner requested stopping all IA app processes after
-  the release. Web and Convex remain stopped. Proposal review uses only a temporary
-  static preview server, stopped when its browser review ends. No shared backend
-  or production deployment was changed for this proposal.
+- **Current checkout (2026-10-21)**: The primary checkout is on
+  `codex/desktop-notification-banner`, carrying the three earlier local banner
+  commits onto main after audit PR #152 squash-merged as `4c464526`.
+  The original commits are preserved on `work/desktop-notification-banner`.
+- **Current goal**: The owner authorized including the banner in the release,
+  after squash-merging audit PR #152 and running `release:ship`.
+  Release PR #165 is held in draft until the banner lands; regenerate its single
+  release commit from the combined main before validation and production shipping.
+  This supersedes earlier draft/awaiting-owner-review and no-production-authorization
+  notes for this release. Preserve main's preferred-name display/search support
+  when integrating the audit refactor. Local demo data remains intact.
 - **Dashboard calendar follow-up**: The owner requested a small commit directly
   in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
   October 18. After owner feedback, the month controls and full-calendar arrow

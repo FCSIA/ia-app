@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CalendarDays, History } from 'lucide-react';
+import { FridayPrototype } from '@/features/friday-prototype/friday-workspace';
 import { AppShell } from '@/components/layout/AppShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +30,13 @@ import type {
 } from './_types';
 
 export default function FlexFridayPage() {
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true') {
+    return <FridayPrototype />;
+  }
+  return <FlexFridayWorkspace />;
+}
+
+function FlexFridayWorkspace() {
   const { toast } = useToast();
 
   // Data & State Hook

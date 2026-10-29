@@ -654,6 +654,9 @@ export const schema = defineSchema({
     joinCodeExpiresAt: v.optional(v.number()),
     isActive: v.boolean(),
     autoCreateUnitChannels: v.optional(v.boolean()),
+    volunteerTrackingEnabled: v.optional(v.boolean()),
+    volunteerAnalyticsReady: v.optional(v.boolean()),
+    volunteerAnalyticsBackfillAt: v.optional(v.number()),
     // Denormalized so a club list does not have to read every member and
     // channel row to show "42 members". Maintained by the membership and
     // channel mutations; `undefined` on rows written before the counters
@@ -704,6 +707,36 @@ export const schema = defineSchema({
     .index("by_clubId_and_name", ["clubId", "name"])
     .index("by_clubId_and_position", ["clubId", "position"])
     .index("by_clubId_and_isDefault", ["clubId", "isDefault"]),
+
+  clubVolunteerLogs: defineTable({
+    clubId: v.id("clubs"),
+    userId: v.id("users"),
+    activity: v.string(),
+    serviceDate: v.string(),
+    minutes: v.number(),
+    notes: v.optional(v.string()),
+    proofStorageId: v.id("_storage"),
+    status: v.union(v.literal("PENDING"), v.literal("APPROVED"), v.literal("DECLINED")),
+    submittedAt: v.number(),
+    reviewedById: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    reviewerNote: v.optional(v.string()),
+  })
+    .index("by_clubId_and_userId_and_submittedAt", ["clubId", "userId", "submittedAt"])
+    .index("by_clubId_and_status_and_submittedAt", ["clubId", "status", "submittedAt"])
+    .index("by_clubId_and_submittedAt", ["clubId", "submittedAt"])
+    .index("by_clubId_and_userId_and_status_and_submittedAt", ["clubId", "userId", "status", "submittedAt"])
+    .index("by_proofStorageId", ["proofStorageId"]),
+
+  clubVolunteerTotals: defineTable({
+    clubId: v.id("clubs"),
+    userId: v.id("users"),
+    approvedMinutes: v.number(),
+    approvedCount: v.number(),
+    pendingMinutes: v.number(),
+    pendingCount: v.number(),
+    declinedCount: v.number(),
+  }).index("by_clubId_and_userId", ["clubId", "userId"]),
 
   clubUnits: defineTable({
     clubId: v.id("clubs"),
@@ -1128,6 +1161,16 @@ export const schema = defineSchema({
     .index("by_storageId", ["storageId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
+  volunteerProofUploads: defineTable({
+    uploaderId: v.id("users"),
+    storageId: v.id("_storage"),
+    mimeType: v.string(),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
   announcementImageUploads: defineTable({
     uploaderId: v.id("users"),
     storageId: v.id("_storage"),
@@ -1147,6 +1190,7 @@ export const schema = defineSchema({
       v.literal("FEEDBACK_IMAGE"),
       v.literal("ANNOUNCEMENT_IMAGE"),
       v.literal("SCHEDULE_OCR"),
+      v.literal("VOLUNTEER_PROOF"),
     ),
     storageId: v.optional(v.id("_storage")),
     createdAt: v.number(),
