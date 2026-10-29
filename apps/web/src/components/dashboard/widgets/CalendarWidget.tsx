@@ -107,7 +107,7 @@ export function CalendarWidget() {
         </Empty>
       )}
       {feeds?.length === 0 ? (
-        <p className="px-4 pb-4 pt-3 text-sm text-muted-foreground">
+        <p className="px-4 pt-3 text-sm text-muted-foreground">
           Assignments missing?{' '}
           <a
             href="/calendar?connect=canvas"
