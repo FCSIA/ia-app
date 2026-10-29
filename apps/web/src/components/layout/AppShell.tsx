@@ -55,7 +55,7 @@ export function AppShell({
   mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
   viewportMode?: "document" | "visual";
 }) {
-  const pathname = usePathname() ?? "/dashboard";
+  const pathname = usePathname() ?? "/home";
   const router = useRouter();
   const user = useCurrentUser();
   const navigationLoading = useNavigationLoadingOptional();

@@ -30,7 +30,7 @@ export function AdminPageContent() {
 
   useEffect(() => {
     if (user && !hasAdministrativeAccess && !canReviewFeedback) {
-      router.replace('/dashboard');
+      router.replace('/home');
     }
   }, [canReviewFeedback, hasAdministrativeAccess, user, router]);
 

@@ -66,6 +66,9 @@ const buildCommit = (
 ).slice(0, 7);
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [{ source: '/dashboard', destination: '/home', permanent: true }];
+  },
   env: {
     NEXT_PUBLIC_APP_COMMIT: buildCommit,
   },

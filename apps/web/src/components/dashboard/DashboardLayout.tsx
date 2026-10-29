@@ -638,11 +638,11 @@ export function DashboardLayout({
         columns: arrangement.columns,
       });
       saveLayout(user._id, arrangement);
-      toast({ title: "Dashboard saved" });
+      toast({ title: "Home saved" });
       onEditingChange(false);
     } catch {
       toast({
-        title: "Could not save dashboard",
+        title: "Could not save home",
         description: "Your changes are still here. Try again.",
         variant: "destructive",
       });
@@ -670,10 +670,10 @@ export function DashboardLayout({
       columns: normalizeDashboardColumns(getDefaultColumns(user?.roles), fresh),
     });
     undoToast.current = toast({
-      title: "Default dashboard restored",
+      title: "Default home restored",
       action: (
         <ToastAction
-          altText="Undo dashboard reset"
+          altText="Undo home reset"
           onClick={() => {
             setArrangement(previous);
             dismissUndo();
@@ -849,7 +849,7 @@ export function DashboardLayout({
           <DialogHeader>
             <DialogTitle>Add a widget</DialogTitle>
             <DialogDescription>
-              Choose a widget to add to your dashboard.
+              Choose a widget to add to your home.
             </DialogDescription>
           </DialogHeader>
           <CardGroup orientation="inline" aria-label="Available widgets">
@@ -912,7 +912,7 @@ export function DashboardLayout({
           size="icon-compact"
           onClick={handleCancel}
           disabled={isSaving || Boolean(activeId)}
-          aria-label="Cancel dashboard customization"
+          aria-label="Cancel home customization"
           title="Cancel"
         >
           <X />
@@ -1034,7 +1034,7 @@ export function DashboardLayout({
                     {columnIds.length + fullIds.length === 0 ? (
                       <Empty size="inline">
                         <EmptyDescription>
-                          Your dashboard is empty.
+                          Your home is empty.
                         </EmptyDescription>
                         <Button
                           variant="ghost"

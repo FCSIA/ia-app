@@ -14,7 +14,7 @@ export function NavigationControls({ go, atStart, atEnd }: NavigationControlsPro
     <>
       {/* Close button */}
       <Link
-        href="/dashboard"
+        href="/home"
         aria-label="Close"
         className="absolute top-4 right-4 z-30 flex size-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md hover:bg-white/30 transition border border-white/20"
       >

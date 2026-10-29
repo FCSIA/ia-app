@@ -8,10 +8,10 @@ export function ErrorState() {
       <h1 className="text-2xl font-semibold">Wrapped isn&apos;t ready</h1>
       <p className="text-white/70 text-sm">We couldn&apos;t load your year summary.</p>
       <Link
-        href="/dashboard"
+        href="/home"
         className="rounded-full border border-white/30 bg-white/10 px-5 py-2 text-sm font-medium backdrop-blur hover:bg-white/20 transition"
       >
-        Back to dashboard
+        Back to home
       </Link>
     </div>
   );

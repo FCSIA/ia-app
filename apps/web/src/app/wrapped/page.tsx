@@ -74,7 +74,7 @@ export default function WrappedPage() {
         e.preventDefault();
         go(-1);
       } else if (e.key === 'Escape') {
-        window.location.href = '/dashboard';
+        window.location.href = '/home';
       }
     };
     window.addEventListener('keydown', onKey);

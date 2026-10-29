@@ -18,7 +18,7 @@ const ROOT_BY_TAB: Record<MobileTabId, string> = {
 const DASHBOARD_KEY = "ia:mobile-last:dashboard";
 
 function tabIdForPathname(pathname: string): MobileTabId | "dashboard" | null {
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/dashboard?")) return "dashboard";
+  if (pathname === "/home" || pathname.startsWith("/home/") || pathname.startsWith("/home?")) return "dashboard";
   for (const [id, root] of Object.entries(ROOT_BY_TAB) as Array<[MobileTabId, string]>) {
     if (pathname === root || pathname.startsWith(`${root}/`) || pathname.startsWith(`${root}?`)) return id;
   }
@@ -40,7 +40,7 @@ function readStored(tabId: MobileTabId | "dashboard"): string | null {
     const key = tabId === "dashboard" ? DASHBOARD_KEY : storageKey(tabId);
     const raw = window.localStorage.getItem(key);
     if (!raw || (tabId === "schedule" && isSocialSchedule(raw))) return null;
-    const root = tabId === "dashboard" ? "/dashboard" : ROOT_BY_TAB[tabId];
+    const root = tabId === "dashboard" ? "/home" : ROOT_BY_TAB[tabId];
     if (raw !== root && !raw.startsWith(`${root}/`) && !raw.startsWith(`${root}?`) ) return null;
     return raw;
   } catch {
@@ -84,7 +84,7 @@ export function useMobileTabMemory() {
   }, [pathname, fullPath]);
 
   const getHref = (tabId: MobileTabId | undefined, fallbackHref: string) => {
-    if (fallbackHref === "/dashboard") return (lastByTab["dashboard"] as string | undefined) ?? fallbackHref;
+    if (fallbackHref === "/home") return (lastByTab["dashboard"] as string | undefined) ?? fallbackHref;
     if (!tabId) return fallbackHref;
     return (lastByTab[tabId] as string | undefined) ?? fallbackHref;
   };

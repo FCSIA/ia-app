@@ -77,7 +77,7 @@ function queriesForRoute(pathname: string, user: AppUser): KeepAliveEntry[] {
         { query: api.flexFriday.registration.getMyRegistrations },
       ];
 
-    case '/dashboard':
+    case '/home':
       // Widget layout is per user, and the widgets share their queries with the
       // tabs above, so the dashboard rides on whichever of those was pointed at
       // rather than pulling all of them.

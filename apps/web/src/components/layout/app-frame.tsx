@@ -40,7 +40,7 @@ export function AppFrame({ children, defaultSidebarOpen }: {
   children: ReactNode;
   defaultSidebarOpen: boolean;
 }) {
-  const pathname = usePathname() ?? "/dashboard";
+  const pathname = usePathname() ?? "/home";
   const isFramedPage = !SHELLLESS_ROUTES.has(pathname);
   return isFramedPage ? (
     <PersistentAppFrame defaultSidebarOpen={defaultSidebarOpen}>{children}</PersistentAppFrame>
@@ -59,7 +59,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
   const [commandOpen, setCommandOpen] = useState(false);
   const appRootRef = useRef<HTMLDivElement>(null);
   const mobileTabBarRef = useRef<HTMLElement>(null);
-  const safePathname = pathname ?? "/dashboard";
+  const safePathname = pathname ?? "/home";
   const routeConfig = registration?.config.pathname === safePathname ? registration.config : null;
   const viewportMode = routeConfig?.viewportMode ?? "document";
   const usesVisualViewport = viewportMode === "visual";

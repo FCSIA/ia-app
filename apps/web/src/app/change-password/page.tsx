@@ -40,7 +40,7 @@ export default function ForcedPasswordChangePage() {
     setSubmitting(true);
     try {
       await changePassword({ currentPassword, newPassword });
-      router.replace('/dashboard');
+      router.replace('/home');
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Password change failed.');

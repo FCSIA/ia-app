@@ -50,7 +50,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     icon: Home,
     label: 'Overview',
     description:
-      'Unified dashboard header with greeting, time, and class info.',
+      'Greeting, time, and class info.',
     size: 'full',
     Component: WelcomeWidget,
     isFixed: true,

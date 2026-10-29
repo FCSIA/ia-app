@@ -30,12 +30,12 @@ export default function DashboardPage() {
             className={editing ? "min-w-0 flex-1" : "hidden"}
           />
           {!editing ? (
-            <Tooltip content="Customize dashboard">
+            <Tooltip content="Customize home">
               <Button
                 ref={customizeButton}
                 variant="ghost"
                 size="icon"
-                aria-label="Customize dashboard"
+                aria-label="Customize home"
                 onClick={() => setEditing(true)}
               >
                 <LayoutGrid />

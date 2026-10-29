@@ -92,7 +92,7 @@ export type AppPageNavigation = {
 };
 
 const primaryNav: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/home", label: "Home", icon: Home },
   {
     href: "/announcements",
     label: "Announcements",
@@ -180,7 +180,7 @@ function isActive(pathname: string, href: string, scheduleTab?: string) {
     const targetTab = new URLSearchParams(query).get("tab");
     return targetTab ? tab === targetTab : tab !== "friends" && tab !== "groups";
   }
-  return pathname === target || (target !== "/dashboard" && pathname.startsWith(`${target}/`));
+  return pathname === target || (target !== "/home" && pathname.startsWith(`${target}/`));
 }
 
 function MobileNavLink({
@@ -296,7 +296,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
   return (
     <Sidebar variant="inset" role="navigation" aria-label="Primary navigation" className="z-40">
       <SidebarHeader>
-        <Link href="/dashboard" aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
+        <Link href="/home" aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
           <IaOrbitMark alt="" width={16} height={16} className="size-4 shrink-0" />
           <span className="truncate text-sm font-semibold">IA App</span>
         </Link>
@@ -494,7 +494,7 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   );
 
   return [
-    { href: "/dashboard", label: "Home", icon: Home },
+    { href: "/home", label: "Home", icon: Home },
     ...selectedIds.map((id) => {
       const item = availableById.get(id)!;
       return item.href === "/announcements" ? { ...item, label: "Feed" } : item;
