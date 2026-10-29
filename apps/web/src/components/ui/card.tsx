@@ -103,9 +103,10 @@ interface CardGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, "onDrag"> 
   /** Split the group into individually-shaped cards with a gap between them
    *  (a grid of tiles) instead of one continuous divided block. @default false */
   separated?: boolean;
-  /** Tighter 12px surface corners for dense or inset groups. Controls retain
-   *  their surrounding shape. @default "default" */
-  corners?: "default" | "compact";
+  /** Compact uses 12px corners; panel follows a flush Panel's inset shape for
+   *  hover, focus and persistent surfaces. Controls retain their own shape.
+   *  @default "default" */
+  corners?: "default" | "compact" | "panel";
   /** Enable the magnetic proximity-hover highlight. @default true */
   proximityHover?: boolean;
 }
@@ -127,7 +128,9 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
-    const containerShape = corners === "compact" ? shapeMap.rounded.container : shape.container;
+    const containerShape = corners === "panel"
+      ? "rounded-[var(--panel-card-radius,0.75rem)]"
+      : corners === "compact" ? shapeMap.rounded.container : shape.container;
 
     // >1 column wraps into a grid, where nearest-item must be resolved in two
     // dimensions; a single column is a plain vertical list.

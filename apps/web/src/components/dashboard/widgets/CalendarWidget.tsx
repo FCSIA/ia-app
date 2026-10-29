@@ -59,7 +59,7 @@ export function CalendarWidget() {
                   ? 'Today'
                   : format(new Date(`${date}T12:00:00`), 'EEEE, MMM d')}
               </h4>
-              <CardGroup orientation="inline" corners="compact">
+              <CardGroup orientation="inline" corners="panel">
                 {rows
                   .filter(
                     (entry) =>
@@ -107,7 +107,7 @@ export function CalendarWidget() {
         </Empty>
       )}
       {feeds?.length === 0 ? (
-        <p className="px-4 pt-3 text-sm text-muted-foreground">
+        <p className="px-4 pb-4 pt-3 text-sm text-muted-foreground">
           Assignments missing?{' '}
           <a
             href="/calendar?connect=canvas"

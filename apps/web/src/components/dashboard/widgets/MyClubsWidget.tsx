@@ -18,7 +18,7 @@ export function MyClubsWidget() {
       flush
     >
       {data?.clubs.length ? (
-        <CardGroup orientation="inline" corners="compact">
+        <CardGroup orientation="inline" corners="panel">
           {data.clubs.slice(0, 3).map((club) => (
             <ClubListRow
               key={club._id}

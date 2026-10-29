@@ -32,7 +32,7 @@ export function FlexFridaySnapshotWidget() {
       flush
     >
       {data?.workshops.length ? (
-        <CardGroup orientation="inline" corners="compact">
+        <CardGroup orientation="inline" corners="panel">
           {data.workshops.map((workshop) => (
             <Card
               key={workshop.id}

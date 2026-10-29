@@ -299,6 +299,13 @@ The default continues to follow ShapeContext. Do not substitute feature-level
 radius overrides. In a clickable Card, passive footer text and gaps pass through
 to the stretched target; semantic controls retain independent pointer targets.
 
+For flush dashboard Panels, the owner approved `CardGroup corners="panel"`.
+The Panel supplies an inset radius derived from its shape and its 1px border
+plus 4px content inset; CardGroup shares it with hover, focus and persistent
+surfaces. The compact contract remains unchanged outside these Panels. Check
+single and multiple rows, both shape modes, focus, and narrow widths when
+reviewing this geometry. Material visual changes still await owner review.
+
 Solid neutral Badge uses the shared foreground-based active fill and border,
 so it remains bounded on an attention surface. Colored and dot badges retain
 their existing mappings. Native modal scroll locking must not add a second body

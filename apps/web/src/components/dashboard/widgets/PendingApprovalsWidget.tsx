@@ -96,7 +96,7 @@ export function PendingApprovalsWidget() {
       flush
     >
       {data?.items.length ? (
-        <CardGroup orientation="inline" corners="compact">
+        <CardGroup orientation="inline" corners="panel">
           {data.items.map((item) => (
             <Card key={item.id} href={item.href} label={`Review ${item.title}`}>
               <CardMedia icon={icons[item.kind]} />

@@ -26,7 +26,7 @@ export function AnnouncementsWidget() {
       {data?.items.length ? (
         <CardGroup
           orientation="inline"
-          corners="compact"
+          corners="panel"
           aria-label="Unread announcements"
         >
           {data.items.map((announcement) => (

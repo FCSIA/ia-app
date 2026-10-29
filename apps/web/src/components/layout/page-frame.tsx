@@ -192,6 +192,11 @@ export function Panel({
       className={cn(
         "flex flex-col border [--panel-inset:1rem] sm:[--panel-inset:1.25rem]",
         shape.container,
+        // The group is inset 4px inside the 1px panel border. Subtract both
+        // from the panel radius so its surfaces follow the enclosing corner.
+        flush && (shape.container === "rounded-3xl"
+          ? "[--panel-card-radius:calc(var(--radius-3xl)-5px)]"
+          : "[--panel-card-radius:calc(var(--radius-xl)-5px)]"),
         tone === "accent"
           ? "border-transparent bg-accent"
           : cn("bg-card", CARD_SURFACE_FOREGROUND),
@@ -247,7 +252,7 @@ export function Panel({
       <div
         className={cn(
           "flex-1 p-(--panel-inset)",
-          flush && "px-0 sm:px-1",
+          flush && "px-1 pb-1",
           contentClassName,
         )}
       >
