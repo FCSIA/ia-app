@@ -2,6 +2,15 @@
 
 ## Active Focus
 
+- **PR #187 seed optimization (2026-10-29)**: `perf/seed-benchmark-report`
+  in `.worktrees/seed-benchmark-report` is stacked on `ui/restore-audit` (#186).
+  Its separate local backend uses 3214/3215 and retains disposable development
+  fixtures; do not share its state or environment files with another worktree.
+  The work covers per-run demo password hashing, sequential batches of eight,
+  bounded announcement cleanup, and the measured performance report. The owner
+  authorized full-send through merging #187 into its UI base; production and
+  merging #186 into main remain outside this task.
+
 - **PR #171 OCR review (2026-10-28)**: `.worktrees/pr-171-review` uses
   `codex/pr-171-ocr-accuracy`, based on PR head `eed55c75`. Generalized local OCR,
   relative row/column parsing, conservative catalog matching, Google word-box

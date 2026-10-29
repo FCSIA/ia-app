@@ -3,18 +3,47 @@ import type { WithoutSystemFields } from "convex/server";
 import { internalMutation } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { type NotificationCategory } from "../validators";
+import { isLocalDemoSeedEnabled } from "../seed";
+
+const CLEANUP_BATCH_SIZE = 200;
+const CLEANUP_TABLES = [
+  "announcementPins",
+  "announcementBookmarks",
+  "announcementReads",
+  "comments",
+  "announcements",
+  "moderationKeywordRules",
+  "notificationPreferences",
+  "notificationDeliveries",
+] as const;
+
+export const clearBatch = internalMutation({
+  args: {},
+  returns: v.object({ deleted: v.number(), isDone: v.boolean() }),
+  handler: async (ctx) => {
+    if (!isLocalDemoSeedEnabled(process.env.ALLOW_LOCAL_DEMO_SEED)) {
+      throw new Error("Demo seed is disabled.");
+    }
+    let deleted = 0;
+    for (const table of CLEANUP_TABLES) {
+      const records = await ctx.db.query(table).take(CLEANUP_BATCH_SIZE - deleted);
+      for (const record of records) await ctx.db.delete(record._id);
+      deleted += records.length;
+      if (deleted === CLEANUP_BATCH_SIZE) return { deleted, isDone: false };
+    }
+    return { deleted, isDone: true };
+  },
+});
 
 export const run = internalMutation({
-  args: {
-    reset: v.optional(v.boolean()),
-  },
+  args: {},
   returns: v.object({
     announcementsSeeded: v.number(),
     bookmarksSeeded: v.number(),
     keywordsSeeded: v.number(),
     preferencesSeeded: v.number(),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const now = Date.now();
     const oneMonth = 30 * 24 * 60 * 60 * 1000;
     const oneWeek = 7 * 24 * 60 * 60 * 1000;
@@ -22,40 +51,6 @@ export const run = internalMutation({
     const promotedUntil = now + oneMonth;
     const nextWeek = now + oneWeek;
     const lastWeek = now - oneWeek;
-
-    if (args.reset) {
-      const oldPins = await ctx.db.query("announcementPins").take(5000);
-      for (const pin of oldPins) await ctx.db.delete(pin._id);
-
-      const oldBookmarks = await ctx.db
-        .query("announcementBookmarks")
-        .take(5000);
-      for (const b of oldBookmarks) await ctx.db.delete(b._id);
-
-      const oldReads = await ctx.db.query("announcementReads").take(5000);
-      for (const r of oldReads) await ctx.db.delete(r._id);
-
-      const oldComments = await ctx.db.query("comments").take(5000);
-      for (const c of oldComments) await ctx.db.delete(c._id);
-
-      const oldAnnouncements = await ctx.db.query("announcements").take(5000);
-      for (const a of oldAnnouncements) await ctx.db.delete(a._id);
-
-      const oldKeywords = await ctx.db
-        .query("moderationKeywordRules")
-        .take(100);
-      for (const k of oldKeywords) await ctx.db.delete(k._id);
-
-      const oldPreferences = await ctx.db
-        .query("notificationPreferences")
-        .take(20000);
-      for (const p of oldPreferences) await ctx.db.delete(p._id);
-
-      const oldDeliveries = await ctx.db
-        .query("notificationDeliveries")
-        .take(20000);
-      for (const delivery of oldDeliveries) await ctx.db.delete(delivery._id);
-    }
 
     // Load necessary users
     const adminUser = await ctx.db

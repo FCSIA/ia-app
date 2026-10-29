@@ -55,6 +55,13 @@ seed. The password applies only to the disposable isolated local deployment;
 never use or configure it for a shared or production deployment. Starting a
 replacement run removes credentials from the previous run.
 
+Each run prepares one standard Better Auth password hash for those demo
+accounts and carries it through sequential batches of eight users. Normal
+account creation and password changes continue to hash passwords independently.
+The prepared hash is used only by the guarded local-demo factory. If an
+interrupted or old users step reports a missing hash, restart the full reset
+instead of invoking the users seed directly.
+
 ## Dashboard Alternative
 
 Open the Convex Dashboard for the selected deployment and run the internal
@@ -74,6 +81,10 @@ then run `bootstrap:seedStatus` to monitor completion.
 
 Schedule and user writes still run in small internal batches to stay under
 Convex transaction limits.
+
+Announcement/notification cleanup also runs in bounded batches before its
+fixtures are recreated, so switching back from the full profile does not try
+to delete every notification preference in one transaction.
 
 Do not call individual per-domain seed functions as a routine repair shortcut.
 They can leave related domains, cleanup, counters, and later seed phases out of
@@ -109,6 +120,6 @@ The full profile targets these fixture counts:
 ## Related
 
 - [Measured local seed performance](seed-benchmark-2026-10-29.md) - timing data,
-  charts, and proposed improvements to local demo account creation.
+  charts, and verified improvements to local demo account creation.
 - [Developer setup](../reference/getting-started.md)
 - [Schema map](../database/schema-map.md)

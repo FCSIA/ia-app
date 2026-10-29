@@ -10,12 +10,94 @@ particularly password hashing, as the largest measured cost. File size does not
 explain this workload: the seed builds linked auth/app records and maintains
 indexes and counters through scheduled transactions.
 
-This report records an investigation, not an implemented optimization. It is
-stacked on [PR #186](https://github.com/virajdas/ia-app/pull/186). The measurement
+This report records the original investigation and its implementation follow-up.
+The seed now prepares one normal hash per run and creates users in sequential
+batches of eight. The shared auth configuration and password-reset paths retain
+their standard hashing. This work is stacked on
+[PR #186](https://github.com/virajdas/ia-app/pull/186). The original measurement
 checkout was `ui/restore-audit` at `41b7a885`; the report branches from the
 published PR head `26a0263c`. The seed, auth configuration, account-creation
 helper, and counter behavior discussed here match that parent; the measurement
 checkout also contained unrelated Home/widget changes.
+
+## Implementation follow-up
+
+A separate isolated local deployment was created for the comparison. It used
+the same development profile, machine, Convex/Better Auth versions, and
+`bootstrap:resetAndSeed` entry point. The table uses the server's seed-run
+completion timestamp minus its start timestamp, excluding deployment/build time.
+
+| Configuration | Development reset time |
+| --- | ---: |
+| Original code, empty deployment | 37.077 s |
+| Original code, replacing existing fixtures | 45.323 s |
+| One hash per run, batches of 1, before cleanup fix | 17.348 s |
+| One hash per run, batches of 4, before cleanup fix | 13.591 s |
+| One hash per run, batches of 8, before cleanup fix | 13.136 s |
+| Final code: one hash, batches of 8, bounded cleanup | 16.220 s |
+
+![Development reset time before and after hash reuse and batching.](seed-benchmark-2026-10-29/seed-reset-timings.png)
+
+The final-code run was **64% shorter (2.79× as fast)** than the reset baseline
+on this backend. It was measured after the full-profile recovery, with no
+concurrent build or test commands. The first empty-deployment run and the earlier 48.900-second
+run show that baseline timings vary. Each configuration above has one measured
+run; these observations are not a distribution or a cloud performance promise.
+The difference between four- and eight-user batches before the cleanup fix is
+small. Removing repeated hashing produced the largest improvement. The final
+cleanup flow uses additional bounded transactions; these sequential single runs
+do not isolate their individual cost.
+
+The prepared hash is carried explicitly in internal scheduled arguments during
+the users phase. It is neither a module-global cache nor a field returned by
+`seedStatus`. The demo-only Better Auth factory returns it only for the exact
+demo password. An incomplete users step without a prepared hash fails with a
+restart instruction rather than silently resuming with another hashing mode.
+Restart an interrupted run with the normal `bootstrap:resetAndSeed` workflow.
+
+Focused tests use the real Better Auth component adapter with transaction limits
+enabled. They verify hash reuse across eight-user batches, repeat-batch
+idempotence/counters, the demo guard, incomplete-run failure, ordinary independent
+salts, and normal password changes. The hash-reuse regression test failed on
+the original code before the implementation.
+
+Live HTTP checks on the isolated backend passed demo login, wrong-password
+rejection, password changes, rejection of the old password, login with the new
+password, and revocation of the other session with the cookie cache bypassed.
+
+The full profile also completed: 1,500 students and 119 staff, each linked to an
+auth user and credential account; user counters matched. Both profiles had one
+shared prepared hash, no missing passwords, and no forced password resets before
+the HTTP checks. Observed fixtures included 104 courses, 26 clubs, 15
+announcements, and 3 moderation rules; schedules numbered 50/1,500 and accepted
+friendships 29/184 for development/full respectively. These are observed counts,
+not changes to the fixture definitions. The full run completed after transient
+4 MiB/s local write-rate throttling was retried by the backend. It was a
+correctness check with some concurrent validation, rather than a controlled
+full-profile performance comparison.
+
+Returning from the full profile exposed an existing reset bug: announcement
+cleanup tried to read/delete all notification preferences in one transaction,
+exceeding the 4,096-read limit. The failed transaction could not update its error
+record after exhausting its budget, so `seedStatus` retained the last committed
+phase (`clubs`). A bounded diagnostic invocation located the failure at the
+notification-preferences query. Cleanup now deletes at most 200 records across
+its original tables per scheduled transaction, then creates announcements in a
+separate step. Its component tests verify the shared budget, repeated-batch
+completion/idempotence, and the local-demo guard.
+
+The same full-to-development reset then completed successfully, returning to
+169 linked accounts, 50 schedules, and 29 accepted friendships. A subsequent
+development reset using the final code produced those same counts and supplied
+the final 16.220-second measurement above.
+
+[Follow-up raw results](seed-benchmark-2026-10-29/optimization.json) include all
+timestamps and sanitized count snapshots. The
+[HTTP verification source](seed-benchmark-2026-10-29/verify-login.mjs.txt) changes
+a demo password and sessions: use only the verified disposable local deployment
+described in the source, then reset it. The temporary
+[count-verification query](seed-benchmark-2026-10-29/verification.ts.txt) is stored
+outside the deployed source tree as text.
 
 ## What was measured
 
@@ -92,7 +174,11 @@ These rounded sizes were captured after seeding and subsequent use, rather
 than immediately after the initial seed. Throughput inferred from 13 MiB / 49 s
 would therefore be misleading.
 
-## Recommended changes, in order
+## Initial recommendations and remaining work
+
+The first two recommendations are implemented above. The retained guidance
+below explains their scope and the remaining costs; snapshot restores remain a
+future option to measure.
 
 ### 1. Reuse a normal hash for the shared local demo password
 
@@ -123,14 +209,14 @@ For ordinary UI, role, session, and sign-in testing, reusing a valid hash should
 preserve expected behavior; it does make the fixtures share a salt as well as a
 password. It does not exercise the normal per-account hashing path. Keep
 separate tests for regular account creation, wrong-password rejection, password
-changes, session revocation, and independently salted hashes. This compatibility
-is a proposal to verify, not something the benchmark has already proved.
+changes, session revocation, and independently salted hashes. The original
+microbenchmark did not prove this compatibility; the implementation follow-up
+adds component tests and real HTTP verification.
 
 ### 2. Then measure modest sequential user batches
 
-`USER_BATCH_SIZE` is currently 1, while `seed.run` already caps configurable
-batches at 8. After removing repeated hashing, compare small batches such as
-4 and 8 against the baseline, checking transaction headroom and counters.
+`USER_BATCH_SIZE` was 1, while `seed.run` already capped configurable batches at
+8. The follow-up compares 1, 4, and 8, then selects 8 without increasing that cap.
 Account creation and adapter writes remain after caching the hash; they still
 need real measurement.
 
@@ -195,8 +281,8 @@ environment with Matplotlib installed:
 python3 docs/backend/seed-benchmark-2026-10-29/generate-charts.py
 ```
 
-Validate the proposed optimization in a separate implementation change: compare
-fresh, equivalently configured development seeds, verify expected domain counts,
-test actual login and wrong-password behavior, test normal account/password
-paths, and check cleanup and recovery after an interrupted seed. Do not claim an
-optimized completion time until that full workflow has been measured.
+For further optimizations, compare fresh, equivalently configured seeds, verify
+domain counts and linked auth records, and repeat the auth and recovery checks.
+The remaining runtime still includes auth-component adapter calls, application
+records, indexes/counters, transaction commits, cleanup, and fixture generation.
+Do not infer their individual costs by subtracting overlapping measurements.

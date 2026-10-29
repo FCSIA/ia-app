@@ -14,7 +14,7 @@ DATA = json.loads((ROOT / "measurements.json").read_text())
 plt.rcParams.update({"font.size": 11, "font.family": "DejaVu Sans"})
 
 
-def chart(filename, title, labels, samples, colors, footnote):
+def chart(filename, title, labels, samples, colors, footnote, xlabel="Milliseconds (mean; whiskers show observed minimum and maximum)", unit="ms"):
     means = [statistics.mean(values) for values in samples]
     fig, ax = plt.subplots(figsize=(10, 4.8), layout="constrained")
     fig.set_facecolor("#ffffff")
@@ -34,12 +34,13 @@ def chart(filename, title, labels, samples, colors, footnote):
         linewidth=1.3,
         zorder=3,
     )
+    offset = 5 if unit == "ms" else max(means) * 0.025
     for y, mean, values in zip(positions, means, samples):
-        ax.text(max(values) + 5, y, f"{mean:.1f} ms", va="center", fontsize=10, color="#263445")
+        ax.text(max(values) + offset, y, f"{mean:.1f} {unit}", va="center", fontsize=10, color="#263445")
     ax.set_yticks(positions, labels)
     ax.invert_yaxis()
     ax.set_xlim(0, max(max(values) for values in samples) * 1.3)
-    ax.set_xlabel("Milliseconds (mean; whiskers show observed minimum and maximum)")
+    ax.set_xlabel(xlabel)
     ax.set_title(title, loc="left", pad=20, weight="bold", fontsize=14)
     ax.grid(axis="x", color="#e5e9ee", zorder=0)
     ax.set_axisbelow(True)
@@ -70,4 +71,17 @@ chart(
     [samples["hashMs"], DATA["hostHash"]["samplesMs"]],
     ["#4285d4", "#6f8e56"],
     "12 warmed samples per environment, using Better Auth's hashPassword API.\nDifferent timing boundaries and input strings; this is not a measured application speedup.",
+)
+
+optimization = json.loads((ROOT / "optimization.json").read_text())
+variants = [run for run in optimization["runs"] if run["id"] in ["baseline-reset", "cached-1", "cached-4", "cached-8", "final-8"]]
+chart(
+    "seed-reset-timings.png",
+    f"Development reset: {variants[0]['elapsedMs'] / 1000:.1f} seconds to {variants[-1]['elapsedMs'] / 1000:.1f} seconds",
+    ["Original: hash every account", "One hash, batches of 1*", "One hash, batches of 4*", "One hash, batches of 8*", "Final: batches of 8 + bounded cleanup"],
+    [[run["elapsedMs"] / 1000] for run in variants],
+    ["#8c9eb5", "#4285d4", "#2868b3", "#174f93", "#367346"],
+    "169 users; existing fixtures; same isolated local backend. *Before the cleanup fix.\nOne run per configuration, in order. Observed timings vary; no cloud speedup is claimed.",
+    xlabel="Seconds (one complete development reset per configuration)",
+    unit="s",
 )
