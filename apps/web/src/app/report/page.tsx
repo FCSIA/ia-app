@@ -32,6 +32,7 @@ type SelectedImage = {
 export default function ReportPage() {
   const [message, setMessage] = useState('');
   const [images, setImages] = useState<SelectedImage[]>([]);
+  const imagesRef = useRef<SelectedImage[]>([]);
   const imageUrls = useRef(new Set<string>());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitReport = useMutation(api.moderation.reports.submit);
@@ -58,24 +59,34 @@ export default function ReportPage() {
       toast({ title: 'Each image must be 5 MB or smaller', variant: 'destructive' });
       return;
     }
-    if (images.length >= MAX_FEEDBACK_IMAGES) {
+    if (imagesRef.current.length >= MAX_FEEDBACK_IMAGES) {
       toast({ title: 'You can attach up to 3 images', variant: 'destructive' });
       return;
     }
     const previewUrl = URL.createObjectURL(file);
     imageUrls.current.add(previewUrl);
-    setImages((current) => [...current, { file, previewUrl }]);
+    imagesRef.current = [...imagesRef.current, { file, previewUrl }];
+    setImages(imagesRef.current);
+  }
+
+  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (isSubmitting) return;
+    for (const item of Array.from(event.clipboardData.items)) {
+      if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+      const file = item.getAsFile();
+      if (file) addImage(file);
+    }
+    // Leave the browser's default paste intact so mixed text and images keep the text.
   }
 
   function removeImage(index: number) {
-    setImages((current) => {
-      const image = current[index];
-      if (image) {
-        URL.revokeObjectURL(image.previewUrl);
-        imageUrls.current.delete(image.previewUrl);
-      }
-      return current.filter((_, currentIndex) => currentIndex !== index);
-    });
+    const image = imagesRef.current[index];
+    if (image) {
+      URL.revokeObjectURL(image.previewUrl);
+      imageUrls.current.delete(image.previewUrl);
+    }
+    imagesRef.current = imagesRef.current.filter((_, currentIndex) => currentIndex !== index);
+    setImages(imagesRef.current);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -102,13 +113,12 @@ export default function ReportPage() {
         appVersion: formatVersion(APP_VERSION, RELEASE_CHANNEL),
       });
       setMessage('');
-      setImages((current) => {
-        current.forEach((image) => {
-          URL.revokeObjectURL(image.previewUrl);
-          imageUrls.current.delete(image.previewUrl);
-        });
-        return [];
+      imagesRef.current.forEach((image) => {
+        URL.revokeObjectURL(image.previewUrl);
+        imageUrls.current.delete(image.previewUrl);
       });
+      imagesRef.current = [];
+      setImages([]);
       toast({ title: 'Feedback sent', description: 'School staff will review it.' });
     } catch (error) {
       toast({
@@ -133,6 +143,7 @@ export default function ReportPage() {
               placeholder="Describe an issue or suggest an improvement…"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
+              onPaste={handlePaste}
               maxLength={MAX_FEEDBACK_CHARACTERS}
               rows={7}
               required
