@@ -108,5 +108,7 @@ The full profile targets these fixture counts:
 
 ## Related
 
+- [Measured local seed performance](seed-benchmark-2026-10-29.md) - timing data,
+  charts, and proposed improvements to local demo account creation.
 - [Developer setup](../reference/getting-started.md)
 - [Schema map](../database/schema-map.md)
