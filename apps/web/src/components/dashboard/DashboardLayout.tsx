@@ -81,6 +81,7 @@ import {
 } from "~/apps/convex/src/users/dashboardLayout";
 import {
   WIDGETS,
+  getWidget,
   getAvailableWidgets,
   getDefaultLayout,
   getDefaultColumns,
@@ -415,7 +416,7 @@ function SortableWidget({
           >
             <PanelReservedHeightContext.Provider value={reservedHeight}>
               <WidgetErrorBoundary title={widget.label}>
-                <Component />
+                <Component id={id} layoutEditing={editing} />
               </WidgetErrorBoundary>
             </PanelReservedHeightContext.Provider>
           </DashboardWidgetEmptyContext.Provider>
@@ -547,7 +548,7 @@ export function DashboardLayout({
       : local;
     const nextLayout = normalizeDashboardLayout(
       saved?.layout ?? getDefaultLayout(user.roles),
-    ).filter((id) => WIDGETS[id] && isWidgetAllowed(WIDGETS[id], user.roles));
+    ).filter((id) => { const widget = getWidget(id); return widget && isWidgetAllowed(widget, user.roles); });
     setArrangement({
       layout: nextLayout,
       columns: normalizeDashboardColumns(
@@ -573,7 +574,7 @@ export function DashboardLayout({
         fixedIds.push(widget.id);
     }
     for (const id of layout ?? []) {
-      const widget = WIDGETS[id];
+      const widget = getWidget(id);
       if (!widget || widget.isFixed) continue;
       if (widget.size === "full") fullIds.push(id);
       else columnIds.push(id);
@@ -703,22 +704,23 @@ export function DashboardLayout({
   const handleAdd = useCallback(
     (id: string) => {
       beginEdit();
+      const instanceId = id === "note" ? `note:${crypto.randomUUID()}` : id;
       setArrangement((prev) => {
-        if (!prev || prev.layout.includes(id)) return prev;
+        if (!prev || prev.layout.includes(instanceId)) return prev;
         const target =
           columnHeight(prev.columns[0], heights) <=
           columnHeight(prev.columns[1], heights)
             ? 0
             : 1;
         return {
-          layout: [...prev.layout, id],
+          layout: [...prev.layout, instanceId],
           columns: prev.columns.map((column, index) =>
-            index === target ? [...column, id] : column,
+            index === target ? [...column, instanceId] : column,
           ),
         };
       });
       setPickerOpen(false);
-      setAddedId(id);
+      setAddedId(instanceId);
     },
     [beginEdit, heights],
   );
@@ -826,8 +828,8 @@ export function DashboardLayout({
     );
   }
 
-  const missingWidgets = availableWidgets.filter((w) => !layout.includes(w.id));
-  const activeWidget = activeId ? WIDGETS[activeId] : null;
+  const missingWidgets = availableWidgets.filter((w) => w.id === "note" || !layout.includes(w.id));
+  const activeWidget = activeId ? getWidget(activeId) : null;
 
   const editToolbar = (
     <div className="flex w-full min-w-0 items-center gap-2">
@@ -857,20 +859,32 @@ export function DashboardLayout({
               <Card
                 key={widget.id}
                 label={`Add ${widget.label}`}
-                disabled={layout.includes(widget.id)}
+                disabled={widget.id !== "note" && layout.includes(widget.id)}
                 onClick={() => handleAdd(widget.id)}
               >
                 <CardMedia icon={widget.icon} />
                 <CardHeader>
                   <CardTitle>
                     {widget.label}
-                    {layout.includes(widget.id) ? " · Added" : ""}
+                    {widget.id !== "note" && layout.includes(widget.id) ? " · Added" : ""}
                   </CardTitle>
                   <CardDescription>{widget.description}</CardDescription>
                 </CardHeader>
               </Card>
             ))}
           </CardGroup>
+          {user?.dashboardNotes?.some((note) => !layout.includes(note.id)) ? (
+            <div>
+              <h3 className="px-4 text-sm font-semibold">Removed notes</h3>
+              <CardGroup orientation="inline" aria-label="Removed notes">
+                {user.dashboardNotes.filter((note) => !layout.includes(note.id)).map((note) => (
+                  <Card key={note.id} label={`Restore ${note.title || "untitled note"}`} onClick={() => handleAdd(note.id)}>
+                    <CardHeader><CardTitle>{note.title || "Untitled note"}</CardTitle><CardDescription>Restore note</CardDescription></CardHeader>
+                  </Card>
+                ))}
+              </CardGroup>
+            </div>
+          ) : null}
           <Button
             variant="ghost"
             onClick={() => {
@@ -959,13 +973,13 @@ export function DashboardLayout({
                 accessibility={{
                   announcements: {
                     onDragStart: ({ active }) =>
-                      `Picked up ${WIDGETS[String(active.id)]?.label ?? "widget"}.`,
+                      `Picked up ${getWidget(String(active.id))?.label ?? "widget"}.`,
                     onDragOver: ({ active, over }) =>
                       over
-                        ? `${WIDGETS[String(active.id)]?.label ?? "Widget"} over ${WIDGETS[String(over.id)]?.label ?? "empty column"}.`
+                        ? `${getWidget(String(active.id))?.label ?? "Widget"} over ${getWidget(String(over.id))?.label ?? "empty column"}.`
                         : undefined,
                     onDragEnd: ({ active }) =>
-                      `Placed ${WIDGETS[String(active.id)]?.label ?? "widget"}.`,
+                      `Placed ${getWidget(String(active.id))?.label ?? "widget"}.`,
                     onDragCancel: () => "Move canceled.",
                   },
                 }}
@@ -981,7 +995,7 @@ export function DashboardLayout({
                   <div className="flex flex-col gap-6">
                     {/* Full-width dynamic widgets */}
                     {fullIds.map((id) => {
-                      const widget = WIDGETS[id];
+                      const widget = getWidget(id);
                       if (!widget) return null;
                       return (
                         <SortableWidget
@@ -1008,7 +1022,7 @@ export function DashboardLayout({
                             editing={editing && !isSaving}
                           >
                             {colIds.map((id) => {
-                              const widget = WIDGETS[id];
+                              const widget = getWidget(id);
                               if (!widget) return null;
                               return (
                                 <SortableWidget

@@ -50,6 +50,22 @@ async function fixture() {
 }
 
 describe("dashboard preference ownership", () => {
+  it("keeps multiple notes private and requires each note to be in the user's layout", async () => {
+    const { t, ids, user } = await fixture();
+    const first = "note:11111111-1111-4111-8111-111111111111";
+    const second = "note:22222222-2222-4222-8222-222222222222";
+    await user.mutation(api.users.me.updateDashboardLayout, { layout: ["welcome", first, second], columns: [[first], [second]] });
+    await user.mutation(api.users.me.updateDashboardNote, { id: first, title: "One", body: "**private**" });
+    await user.mutation(api.users.me.updateDashboardNote, { id: second, title: "Two", body: "Other" });
+    expect((await t.run((ctx) => ctx.db.get(ids[0])))?.dashboardNotes).toHaveLength(2);
+    expect((await t.run((ctx) => ctx.db.get(ids[1])))?.dashboardNotes).toBeUndefined();
+    await expect(t.withIdentity({ subject: ids[1] }).mutation(api.users.me.updateDashboardNote, { id: first, title: "Changed", body: "" })).rejects.toThrow("not in your home layout");
+    await user.mutation(api.users.me.updateDashboardLayout, { layout: ["welcome", second], columns: [[second], []] });
+    await expect(user.mutation(api.users.me.updateDashboardNote, { id: first, title: "Changed", body: "" })).rejects.toThrow("not in your home layout");
+    expect((await t.run((ctx) => ctx.db.get(ids[0])))?.dashboardNotes?.find((note) => note.id === first)?.body).toBe("**private**");
+    await user.mutation(api.users.me.updateDashboardLayout, { layout: ["welcome", first, second], columns: [[first], [second]] });
+    await user.mutation(api.users.me.updateDashboardNote, { id: first, title: "Restored", body: "**private**" });
+  });
   it("persists manual columns in the self profile and changes only the authenticated user", async () => {
     const { t, ids, user } = await fixture();
     const result = await user.mutation(api.users.me.updateDashboardLayout, {

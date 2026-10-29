@@ -6,12 +6,15 @@ import {
   UsersRound,
   Lightbulb,
   Home,
+  StickyNote,
+  Gamepad2,
   type LucideIcon,
 } from 'lucide-react';
 import {
   getDefaultDashboardLayout,
   getDefaultDashboardColumns,
   isDashboardReviewer,
+  isDashboardNoteId,
 } from '~/apps/convex/src/users/dashboardLayout';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
@@ -21,6 +24,8 @@ import { PendingApprovalsWidget } from './widgets/PendingApprovalsWidget';
 import { FlexFridaySnapshotWidget } from './widgets/FlexFridaySnapshotWidget';
 import { MyClubsWidget } from './widgets/MyClubsWidget';
 import { FunFactWidget } from './widgets/FunFactWidget';
+import { NoteWidget } from './widgets/NoteWidget';
+import { SnakeWidget } from './widgets/SnakeWidget';
 
 export type WidgetSize = 'full' | 'half';
 
@@ -30,7 +35,7 @@ export type WidgetDefinition = {
   icon: LucideIcon;
   description: string;
   size: WidgetSize;
-  Component: React.ComponentType;
+  Component: React.ComponentType<{ id?: string; layoutEditing?: boolean }>;
   /** If set, widget is only available to users with at least one of these roles. */
   allowedRoles?: AppRole[];
   /** If set, any matching role takes precedence over allowedRoles. */
@@ -43,6 +48,15 @@ export type WidgetDefinition = {
    */
   hideWhenEmpty?: (roles: AppRole[] | undefined) => boolean;
 };
+
+export const NOTE_WIDGET: WidgetDefinition = {
+  id: 'note', icon: StickyNote, label: 'Note',
+  description: 'A private Markdown note.', size: 'half', Component: NoteWidget,
+};
+
+export function getWidget(id: string): WidgetDefinition | undefined {
+  return isDashboardNoteId(id) ? NOTE_WIDGET : WIDGETS[id];
+}
 
 export const WIDGETS: Record<string, WidgetDefinition> = {
   welcome: {
@@ -107,6 +121,10 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     size: 'half',
     Component: FunFactWidget,
   },
+  snake: {
+    id: 'snake', icon: Gamepad2, label: 'Snake',
+    description: 'A quick game of Snake.', size: 'half', Component: SnakeWidget,
+  },
 };
 
 /** Authored defaults keep first paint stable and phone order intentional. */
@@ -133,5 +151,5 @@ export function getAvailableWidgets(
 ): WidgetDefinition[] {
   return Object.values(WIDGETS).filter(
     (w) => !w.isFixed && isWidgetAllowed(w, roles),
-  );
+  ).concat(NOTE_WIDGET);
 }

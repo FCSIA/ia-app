@@ -18,7 +18,7 @@ import { clubChannelReactionValidator } from "../validators";
 import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
-import { normalizeDashboardColumns, normalizeDashboardLayout } from "./dashboardLayout";
+import { isDashboardNoteId, normalizeDashboardColumns, normalizeDashboardLayout } from "./dashboardLayout";
 import { moderatePreferredName } from "../moderation/preferredNames";
 import { contentRateLimiter } from "../rateLimits";
 import { MAX_WALLPAPER_BLUR } from "../../../shared/custom-theme";
@@ -104,6 +104,9 @@ export const updateDashboardLayout = mutation({
       throw new ConvexError("Dashboard layouts require two desktop columns.");
     }
     const layout = normalizeDashboardLayout(args.layout);
+    if (layout.filter(isDashboardNoteId).length > 50) {
+      throw new ConvexError("You can add up to 50 notes.");
+    }
     await ctx.db.patch(user._id, {
       dashboardLayout: layout,
       // Older clients send only an order; discard stale column membership.
@@ -116,6 +119,30 @@ export const updateDashboardLayout = mutation({
       throw new ConvexError("User not found.");
     }
     return toUserSelfProfile(updated);
+  },
+});
+
+export const updateDashboardNote = mutation({
+  args: { id: v.string(), title: v.string(), body: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { id, title, body }) => {
+    const user = await getCurrentAppUser(ctx);
+    if (!isDashboardNoteId(id) || !user.dashboardLayout.includes(id)) {
+      throw new ConvexError("Note is not in your home layout.");
+    }
+    if (title.length > 200 || body.length > 20_000) {
+      throw new ConvexError("Note is too long.");
+    }
+    const notes = user.dashboardNotes ?? [];
+    const next = [...notes.filter((note) => note.id !== id), { id, title, body }];
+    if (next.length > 200 || new TextEncoder().encode(JSON.stringify(next)).length > 500_000) {
+      throw new ConvexError("Your saved notes have reached their storage limit.");
+    }
+    await ctx.db.patch(user._id, {
+      dashboardNotes: next,
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 

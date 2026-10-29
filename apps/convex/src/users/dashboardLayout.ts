@@ -11,9 +11,14 @@ export const dashboardWidgetIds = [
   "flex-friday",
   "my-clubs",
   "fun-fact",
+  "snake",
 ] as const;
 
 const dashboardWidgetIdSet = new Set<string>(dashboardWidgetIds);
+
+export function isDashboardNoteId(id: string): boolean {
+  return /^note:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
 
 /**
  * Drops retired/unknown IDs and keeps the first occurrence of each widget,
@@ -23,7 +28,7 @@ export function normalizeDashboardLayout(layout: readonly string[]): string[] {
   const seen = new Set<string>();
 
   return layout.filter((id) => {
-    if (!dashboardWidgetIdSet.has(id) || seen.has(id)) return false;
+    if ((!dashboardWidgetIdSet.has(id) && !isDashboardNoteId(id)) || seen.has(id)) return false;
     seen.add(id);
     return true;
   });
