@@ -174,6 +174,7 @@ function Tooltip({
   };
 
   const slideOffset = getSlideOffset(side);
+  const plainText = typeof content === "string" || typeof content === "number";
 
   // An explicit delayDuration overrides the ambient provider's delay; left
   // undefined, the Root inherits it from the nearest provider.
@@ -193,11 +194,11 @@ function Tooltip({
             <motion.div style={followCursor === "y" ? { y: followOffset } : followCursor === "x" ? { x: followOffset } : undefined}>
             <motion.div
               className={cn(
-                // Trim recenters the label; the padding bump only applies
-                // where text-box is supported, keeping the same overall
-                // height (~26px) as untrimmed browsers.
+                // Text-box trimming belongs to a plain label. Rich content can
+                // include flex rows and keycaps taller than the text; trimming
+                // the outer surface would bias its visual top/bottom inset.
                 "bg-popover text-popover-foreground text-[12px] px-2 py-1",
-                "[text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both]:py-2",
+                plainText && "[text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both]:py-2",
                 shape.bg,
                 className
               )}
