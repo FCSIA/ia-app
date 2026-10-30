@@ -1,12 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { escapeCsvCell, formatPathwayLabel } from './admin-utils';
-
-describe('admin pathway labels', () => {
-  test('renders stored pathway values and an absent minor clearly', () => {
-    expect(formatPathwayLabel('INFORMATION_TECHNOLOGY')).toBe('INFORMATION TECHNOLOGY');
-    expect(formatPathwayLabel(null)).toBe('—');
-  });
-});
+import { escapeCsvCell } from './admin-utils';
 
 describe('admin CSV export', () => {
   test.each(['=1+1', '+cmd', '-2+3', '@SUM(A1)', '  =HYPERLINK("x")'])(

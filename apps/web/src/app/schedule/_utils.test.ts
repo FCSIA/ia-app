@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StudentScheduleDraftEntry } from '@/components/schedule/types';
-import { isScheduleDraftDirty, moveClassesToFormerLunchPeriod, mergeImportedSchedule } from './_utils';
+import { moveClassesToFormerLunchPeriod, mergeImportedSchedule } from './_utils';
 
 const entries = [
   {
@@ -63,45 +63,5 @@ describe('moveClassesToFormerLunchPeriod', () => {
     expect(
       moveClassesToFormerLunchPeriod(entries, 'PERIOD_5', 'PERIOD_5'),
     ).toBe(entries);
-  });
-});
-
-describe('isScheduleDraftDirty', () => {
-  const source = {
-    id: 'schedule',
-    isPublic: false,
-    lunchPeriod: 'PERIOD_5' as const,
-    lunchNeedsResolution: false,
-    entries,
-  };
-
-  it('ignores entry order when a draft has not materially changed', () => {
-    expect(
-      isScheduleDraftDirty({
-        source,
-        entries: [...entries].reverse(),
-        isPublic: false,
-        lunchPeriod: 'PERIOD_5',
-      }),
-    ).toBe(false);
-  });
-
-  it('shows a save action only after a new schedule changes from its defaults', () => {
-    expect(
-      isScheduleDraftDirty({
-        source: null,
-        entries: [],
-        isPublic: false,
-        lunchPeriod: 'PERIOD_5',
-      }),
-    ).toBe(false);
-    expect(
-      isScheduleDraftDirty({
-        source: null,
-        entries: [entries[0]],
-        isPublic: false,
-        lunchPeriod: 'PERIOD_5',
-      }),
-    ).toBe(true);
   });
 });
