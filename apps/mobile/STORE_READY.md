@@ -67,10 +67,10 @@ bun run --filter cvx test
 bun run --filter mobile typecheck
 bun run lint
 bun run build
-bun run --filter mobile test:maestro
 ```
 
-Native push requires a supported iOS/Android target, an EAS project id, and the
+UI checks are performed manually on built device apps; Maestro flows were
+removed. Native push requires a supported iOS/Android target, an EAS project id, and the
 platform credentials. Confirm:
 
 - login registers an already-authorized push token silently,

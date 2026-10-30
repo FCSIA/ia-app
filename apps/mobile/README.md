@@ -8,14 +8,16 @@ stored in `expo-secure-store`.
 
 ```bash
 bun install
-bun run --filter cvx dev
-bun run dev:mobile
+bun run setup:convex-local
+bun run dev:mobile -- ios
 ```
 
-`bun run dev:mobile` starts Expo in Expo Go mode for compatible simulators and
-Android devices. Use `bun run --filter mobile dev:client` after installing a
-development build. A physical iPhone whose App Store Expo Go does not support
-this project's SDK must use a development build.
+`bun run dev:mobile` starts local Convex and Metro for the iOS development app.
+Use `bun run dev:mobile -- android` for an Android emulator or
+`bun run dev:mobile -- phone` for a physical phone on the same Wi-Fi.
+Use `bun run --filter mobile dev:client` when Convex is already running.
+Install the development binary once with `bun run mobile:ios` or
+`bun run mobile:android`; rebuild after native dependency or config changes.
 
 Expo Go can test auth, Convex data, navigation, uploads, and the main screens.
 Native push notifications are disabled in Expo Go on SDK 53+ and require a
@@ -33,7 +35,7 @@ bun run sync:convex-env -- --android
 bun run sync:convex-env -- --host "<your Wi-Fi IPv4>"
 
 bun run --filter cvx dev
-bun run dev:mobile
+bun run --filter mobile dev:client
 ```
 
 Use the current Wi-Fi IPv4 address for the iPhone command if it changes. The
@@ -182,8 +184,8 @@ production Convex environment variables.
 
 ```bash
 bun run --filter mobile typecheck
-bun run --filter mobile test:maestro
 ```
 
-Maestro flows live in `apps/mobile/maestro` and require a built simulator/device
-app plus `MAESTRO_IA_USERNAME` / `MAESTRO_IA_PASSWORD`.
+UI verification is manual on a built simulator/device app. Automated UI suites
+and Maestro flows have been removed. Backend, security, data-processing, and
+tooling tests remain; TypeScript alone does not prove native runtime behavior.

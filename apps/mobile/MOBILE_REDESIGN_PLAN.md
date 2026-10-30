@@ -295,4 +295,5 @@ Run `npm run typecheck` after each phase (it's the `lint`/`test`/`build` script)
 
 **Candidate for removal:** `nativewind` + `tailwindcss` if the StyleSheet+tokens direction is kept and no classes are adopted.
 
-**Testing note:** Reanimated / gorhom animations need a **dev client**, not Expo Go — flag this to whoever QAs. Maestro flows in `apps/mobile/maestro` may need selector updates after the nav change.
+**Testing note:** Verify native interactions in a development build on a device.
+UI verification is manual; automated UI suites and Maestro flows were removed.

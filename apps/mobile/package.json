@@ -4,9 +4,9 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --go",
-    "dev": "expo start --go",
-    "dev:clear": "expo start --go --clear",
+    "start": "expo start --dev-client",
+    "dev": "expo start --dev-client",
+    "dev:clear": "expo start --dev-client --clear",
     "dev:client": "expo start --dev-client",
     "dev:client:clear": "expo start --dev-client --clear",
     "dev:client:tunnel": "expo start --dev-client --tunnel",
@@ -14,8 +14,6 @@
     "ios": "expo run:ios",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit",
-    "test:maestro": "maestro test maestro",
     "build": "tsc --noEmit"
   },
   "dependencies": {

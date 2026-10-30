@@ -241,6 +241,7 @@
     "unrs-resolver",
   ],
   "patchedDependencies": {
+    "@expo/plist@0.8.1": "patches/@expo%2Fplist@0.8.1.patch",
     "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
     "braces@3.0.3": "patches/braces@3.0.3.patch",
     "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch",

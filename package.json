@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "bun scripts/dev.mjs",
     "dev:phone": "node scripts/sync-convex-env.mjs --host auto && bun scripts/dev.mjs",
-    "dev:mobile": "bun run --filter mobile dev",
+    "dev:mobile": "node scripts/dev-mobile.mjs",
     "dev:mobile:tunnel": "bun run --filter mobile dev:client:tunnel",
     "build": "turbo run build",
     "lint": "turbo run lint",
@@ -22,9 +22,9 @@
     "db:studio": "bun run --cwd apps/convex convex dashboard",
     "setup:convex-local": "node scripts/setup-convex-local.mjs",
     "worktree:bootstrap": "node scripts/bootstrap-worktree.mjs",
-    "mobile:ios": "bun run --filter mobile ios",
+    "mobile:ios": "bash scripts/native-toolchain.sh bun run --filter mobile ios",
     "mobile:ios:refresh": "bash scripts/refresh-ios-personal-build.sh",
-    "mobile:android": "bun run --filter mobile android",
+    "mobile:android": "bash scripts/native-toolchain.sh bun run --filter mobile android",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
     "brand:check": "node scripts/generate-brand-assets.mjs --check",
     "devlog:check": "node scripts/devlog.mjs check",
@@ -101,6 +101,7 @@
   "patchedDependencies": {
     "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
     "braces@3.0.3": "patches/braces@3.0.3.patch",
-    "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch"
+    "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch",
+    "@expo/plist@0.8.1": "patches/@expo%2Fplist@0.8.1.patch"
   }
 }

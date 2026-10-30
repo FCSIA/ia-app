@@ -4,16 +4,63 @@ tags: [mobile, ios, expo, development]
 
 # iPhone Mobile Development
 
-The mobile app has one codebase and two ways to run it.
+The mobile app uses an installed Expo development build and Metro.
 
 | Use case | Command | Opens |
 | --- | --- | --- |
-| Quick, basic testing | `bun run dev:mobile` | Expo Go |
-| Normal iPhone development | `bun run --filter mobile dev:client` | The installed Innovation Academy development app |
+| iOS simulator | `bun run dev:mobile -- ios` | Local Convex and Metro |
+| Android emulator | `bun run dev:mobile -- android` | Local Convex and Metro with emulator-reachable URLs |
+| Physical phone on Wi-Fi | `bun run dev:mobile -- phone` | Local Convex and Metro using the Mac's Wi-Fi address |
+| Metro only, with Convex already running | `bun run --filter mobile dev:client` | Metro for the installed development app |
 
 Prefer the installed development app on iPhone. It includes this project's
 native configuration and libraries, while still loading JavaScript changes
 wirelessly from Metro. Expo Go is useful only for compatible, basic checks.
+
+The daily command requires this checkout's isolated local backend. On a fresh
+checkout, run `bun run setup:convex-local`. If Convex reports that no project is
+configured, first run `bun run --cwd apps/convex convex deployment create
+<team>:<project>:local --select`, then rerun setup. Do not copy another
+checkout's backend environment or local state. New local backends start empty;
+follow [Seed and reset](../backend/seed-and-reset.md) only when intentionally
+initializing disposable demo data.
+
+Prefix project commands with `direnv exec .` when the shell has not loaded
+direnv automatically. The daily command starts the development server; it
+does not compile or launch the native binary.
+
+## Simulator and Android setup
+
+For iOS, install Xcode and an iOS Simulator runtime. Build and install the
+development app with `bun run mobile:ios`. The root native commands remove
+Nix compiler flags and select Apple's toolchain before invoking Expo.
+
+For Android, this app's React Native version uses JDK 17, Android platform 36,
+build-tools 35.0.0 and 36.0.0, NDK 27.1.12297006, and CMake 3.22.1. Install the Android
+command-line tools, platform-tools, emulator, and one host-compatible Google
+APIs system image as well. On Apple Silicon, use `arm64-v8a`.
+
+This machine manages those packages in `~/config/pkgs/mobile-development.nix`
+and `~/config/home/mobile-development.nix`. Home Manager exposes the SDK at
+`~/Library/Android/sdk`, sets `ANDROID_HOME` and `JAVA_HOME`, and adds the native
+tools to PATH. Apply the Home Manager configuration and start a fresh shell
+after changing it. Android Studio is optional when Nix manages these tools.
+
+Create an Android virtual device once:
+
+```bash
+avdmanager create avd --name IA_Pixel_API_36 \
+  --package 'system-images;android-36;google_apis;arm64-v8a' --device pixel_8a
+```
+
+Open the simulator/emulator from the development environment's Device panel.
+Build and install Android with `bun run mobile:android`. Reuse the installed
+binary for JavaScript edits; rebuild after native dependency or config changes.
+
+UI behavior is reviewed manually on devices. Automated UI suites and Maestro
+flows have been removed; backend, security, data-processing, and tooling tests
+remain. `bun run --filter mobile typecheck` checks TypeScript only and does
+not establish that a native binary builds or runs.
 
 ## First iPhone setup
 
@@ -57,25 +104,26 @@ This setup requires a Mac with Xcode and the phone connected by cable.
 
 ## Daily development
 
-Start Convex too when working against a local development backend:
+Start the backend and Metro together for the iOS simulator:
 
 ```bash
-bun run --filter cvx dev
+bun run dev:mobile -- ios
 ```
 
-Start Metro for the installed development app:
+For a physical iPhone on the same Wi-Fi:
 
 ```bash
-bun run --filter mobile dev:client
+bun run dev:mobile -- phone
 ```
 
-Use this instead when the phone is not on the Mac's Wi-Fi:
+When a reachable backend is already running, Metro alone can use a tunnel:
 
 ```bash
 bun run --filter mobile dev:client:tunnel
 ```
 
-Open the installed **Innovation Academy** app, not Expo Go.
+The tunnel exposes Metro only; it does not expose a loopback Convex backend.
+Open the installed **Innovation Academy** app.
 
 ### After switching branches or updating dependencies
 
