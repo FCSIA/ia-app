@@ -29,6 +29,9 @@ Prefix project commands with `direnv exec .` when the shell has not loaded
 direnv automatically. The daily command starts the development server; it
 does not compile or launch the native binary.
 
+When stopping, Expo can consume the first `Ctrl+C`. Press `Ctrl+C` again if
+Convex is still running before restarting the daily command.
+
 ## Simulator and Android setup
 
 For iOS, install Xcode and an iOS Simulator runtime. Build and install the
