@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { generateKeyPairSync } from "node:crypto";
+import { generateKeyPairSync, verify } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
 import vm from "node:vm";
@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const forge = require("node-forge");
 const braces = require("braces");
 const deepmerge = require("deepmerge");
+const zod = require("zod");
 const { getAssetSize } = require("metro/private/Assets");
 const { privateKey: pem } = generateKeyPairSync("rsa", {
   modulusLength: 1024,
@@ -47,6 +48,87 @@ test("RSA verification rejects extra nested DigestAlgorithm children (GHSA-86w9-
       /valid RSASSA-PKCS1-v1_5 DigestInfo/,
     );
   }
+});
+
+test("upstream node-forge 1.4.2 retains Buffer PEM compatibility", () => {
+  assert.equal(require("node-forge/package.json").version, "1.4.2");
+  assert.equal(forge.pki.privateKeyFromPem(Buffer.from(pem)).n.toString(), privateKey.n.toString());
+});
+
+test("Expo code signing round-trips certificates and produces valid manifest signatures", () => {
+  const expoSigning = require("@expo/code-signing-certificates");
+  const certificate = expoSigning.generateSelfSignedCodeSigningCertificate({
+    keyPair: { privateKey, publicKey },
+    validityNotBefore: new Date(Date.now() - 60_000),
+    validityNotAfter: new Date(Date.now() + 60_000),
+    commonName: "dependency regression only",
+  });
+  const restored = expoSigning.convertCertificatePEMToCertificate(
+    expoSigning.convertCertificateToCertificatePEM(certificate),
+  );
+  expoSigning.validateSelfSignedCertificate(restored, { privateKey, publicKey });
+  const manifest = Buffer.from('{"id":"test-manifest"}');
+  const signature = Buffer.from(expoSigning.signBufferRSASHA256AndVerify(privateKey, restored, manifest), "base64");
+  const key = forge.pki.publicKeyToPem(publicKey);
+  assert.equal(verify("sha256", manifest, key, signature), true);
+  assert.equal(verify("sha256", Buffer.from("tampered"), key, signature), false);
+});
+
+test("fixed Zod rejects oversized collections before validating their elements", () => {
+  let visited = 0;
+  const element = zod.z.string().superRefine(() => { visited += 1; });
+  for (const [schema, input] of [
+    [zod.z.array(element).max(2), ["a", "b", "c"]],
+    [zod.z.set(element).max(2), new Set(["a", "b", "c"])],
+    [zod.z.map(element, element).max(2), new Map([["a", "a"], ["b", "b"], ["c", "c"]])],
+  ]) {
+    const result = schema.safeParse(input);
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues.map(({ code }) => code), ["too_big"]);
+  }
+  assert.equal(visited, 0);
+  assert.deepEqual(zod.z.array(element).max(2).parse(["a", "b"]), ["a", "b"]);
+  assert.equal(visited, 2);
+});
+
+test("audit exceptions expire and cover only the reviewed package versions", () => {
+  const lock = JSON.parse(readFileSync(new URL("../bun.lock", import.meta.url), "utf8").replace(/,\s*([}\]])/g, "$1"));
+  // OSV ignores an advisory globally. Guard every instance, including nested
+  // versions, so an update cannot silently inherit a reviewed exception.
+  const scopes = {
+    "node-forge": ["1.4.2"],
+    sandbox: ["4.4.0"],
+    deepmerge: ["4.3.1"],
+    zod: ["3.22.4", "3.25.76", "4.6.7"],
+    "better-auth": ["1.6.22"],
+    "@better-auth/core": ["1.6.22"],
+    "@better-auth/drizzle-adapter": ["1.6.22"],
+    "@better-auth/kysely-adapter": ["1.6.22"],
+    "@better-auth/expo": ["1.6.22"],
+    "@convex-dev/better-auth": ["0.12.2"],
+  };
+  for (const [name, versions] of Object.entries(scopes)) {
+    const ids = Object.values(lock.packages).map(([id]) => id).filter((id) => id.startsWith(`${name}@`));
+    assert.ok(ids.length > 0, `Missing reviewed package ${name}; remove its exception`);
+    assert.deepEqual([...new Set(ids)].sort(), versions.map((version) => `${name}@${version}`).sort());
+  }
+  const config = readFileSync(new URL("../osv-scanner.toml", import.meta.url), "utf8");
+  const blocks = config.split("[[IgnoredVulns]]").slice(1);
+  assert.deepEqual(blocks.map((block) => block.match(/id = "([^"]+)"/)[1]).sort(), [
+    "GHSA-fm4j-4xhm-xpwx", "GHSA-gc25-3vc5-2jf9", "GHSA-mrhx-c7xc-m3w5", "GHSA-gcqx-w48m-w2h4",
+    "GHSA-44jh-23m7-hpcf", "GHSA-965c-763c-88jm", "GHSA-q84f-53jg-9ppm", "GHSA-r4xp-prcw-77qf",
+  ].sort());
+  for (const block of blocks) {
+    assert.match(block, /owner @rebanto/);
+    assert.match(block, /Reviewed 2026-10-30/);
+    const expiry = block.match(/ignoreUntil = (\d{4}-\d{2}-\d{2})/)[1];
+    assert.equal(expiry, "2026-11-06");
+    assert.ok(Date.now() < Date.parse(`${expiry}T00:00:00Z`), `Expired audit exception: ${block}`);
+  }
+  assert.doesNotMatch(config, /\[\[PackageOverrides\]\]/);
+  const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(manifest.overrides["node-forge"], "1.4.2");
+  assert.equal(manifest.patchedDependencies["node-forge@1.4.0"], undefined);
 });
 
 test("Metro reads PNG and GIF dimensions after the image-size security upgrade", () => {
@@ -141,6 +223,13 @@ test("Better Auth audit exceptions remain limited to the pinned unused feature c
   }
   const source = readFileSync(new URL("../apps/convex/src/auth.ts", import.meta.url), "utf8");
   const ast = ts.createSourceFile("auth.ts", source, ts.ScriptTarget.Latest, true);
+  const pluginImports = ast.statements.filter((node) => ts.isImportDeclaration(node) && node.moduleSpecifier.text === "better-auth/plugins");
+  assert.equal(pluginImports.length, 1);
+  assert.deepEqual(pluginImports[0].importClause.namedBindings.elements.map((binding) => [
+    binding.propertyName?.text ?? binding.name.text, binding.name.text,
+  ]), [["admin", "admin"], ["username", "username"]]);
+  const integration = require("@convex-dev/better-auth/package.json");
+  assert.equal(integration.peerDependencies["better-auth"], ">=1.6.9 <1.7.0");
   let options;
   function visit(node) {
     if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "createAuthOptions") options = node.initializer.body;
