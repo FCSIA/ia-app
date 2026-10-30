@@ -15,7 +15,7 @@ read/unread entries remain available.
 - Shows who acted, what happened, the related record, and the exact time in everyday language.
 - Resolves related people, clubs, channels, workshops, and other named records without changing stored audit data. Saved names/titles take precedence; related names reflect current records. Deleted people remain distinguishable from automatic system activity, and their original IDs remain available.
 - Defaults to **All** activity. General and Flex & Events offer narrower views; both historical camel-case and uppercase categories are recognized.
-- Uses cursor pagination across the complete history, newest first. Empty matching batches retain an older-history control. Loaded record counts are not total match counts; continue until **End of history** to find every match.
+- Uses cursor pagination across the complete history, newest first by recorded time (with creation time and ID breaking ties). Filters apply before the page target. A bounded scan can still return a partial or empty batch; the older-history control continues from its cursor. Counts describe matching records loaded, not all matches, until **End of history**.
 - Keeps all original action codes, IDs, timestamps, and metadata in **Details → Original data and IDs**. Whiteboard snapshots and links remain available.
 - Places activity views, search, and a compact Filters trigger together on desktop. Filters expand inline into one, two, or four columns; advanced search stays inside that disclosure. Applied field filters remain visible when collapsed. The visible search value is not repeated underneath it.
 - Pairs the record category with a concise action, then shows the affected record beneath it. Existing `action` and `entityType` fields remove duplicate nouns without changing stored codes. Desktop rows keep bounded Person and When columns; narrower screens fold those values into the activity cell.
@@ -48,7 +48,8 @@ Supported fields: `person`, `action`, `type`, `record`, `text`, `source`, `after
 ## Convex Surface
 
 - `api.audit.events.list` (bounded legacy/mobile read)
-- `api.audit.events.listPage` (complete cursor history)
+- `api.audit.events.listFilteredPage` (bounded, pre-filtered cursor history)
+- `api.audit.events.listPage` (legacy native-cursor history for existing clients)
 - `api.audit.events.listFilterOptions` (suggestions from the latest 500 events)
 - `api.audit.events.get`
 
@@ -64,7 +65,7 @@ does not retain comment text or migrate older events that lack the relationship.
 
 ## Known Limits
 
-Full-name, metadata, category, and advanced filters run after each bounded indexed page is hydrated. Date controls range the timestamp index. This preserves access to all records without an unbounded scan, but sparse searches may need multiple older-history requests. Add dedicated indexed/search fields before large production audit search. Related records are read once per page via memoization; unavailable records retain the type and original ID.
+Full-name, metadata, category, and advanced filters run on hydrated rows during a bounded scan of the timestamp index. Date controls range that index; exact action and record-type checks run before hydration. Each query stops after at most 100 audit rows or once audit-document bytes reach 2 MiB (which may be exceeded by the last row), so sparse searches can still require multiple older-history requests. Related records are memoized within each query, but their reads and bytes are additional to those audit-row limits. Search cost grows with the history scanned; add dedicated indexed/search fields before large production audit search. Unavailable records retain the type and original ID.
 
 ## Related
 

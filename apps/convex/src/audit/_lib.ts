@@ -56,41 +56,41 @@ export async function toAuditEvents(
   ctx: QueryCtx,
   events: Doc<"auditEvents">[],
 ) {
-  const actorIds = Array.from(
-    new Set(events.flatMap((event) => (event.actorId ? [event.actorId] : []))),
-  );
-  const actorEntries = await Promise.all(
-    actorIds.map(
-      async (actorId) => [actorId, await ctx.db.get(actorId)] as const,
-    ),
-  );
-  const actors = new Map(actorEntries);
+  const resolve = auditEventResolver(ctx);
+  return await Promise.all(events.map(resolve));
+}
 
+/** Reuse related-document reads across all rows scanned in one query. */
+export function auditEventResolver(ctx: QueryCtx) {
+  const actors = new Map<Id<"users">, Promise<Doc<"users"> | null>>();
   const resolveContext = auditContextResolver(ctx);
-  return await Promise.all(
-    events.map(async (event) => {
-      const actor = event.actorId ? actors.get(event.actorId) : null;
-      return {
-        id: event._id,
-        actorId: event.actorId ?? null,
-        context: await resolveContext(event),
-        action: event.action,
-        entityType: event.entityType,
-        entityId: event.entityId ?? null,
-        createdAt: new Date(event.createdAt).toISOString(),
-        meta: event.meta ?? null,
-        actor: actor
-          ? {
-              id: actor._id,
-              firstName: actor.firstName,
-              lastName: actor.lastName,
-              preferredName: actor.preferredName,
-              uniqueId: actor.uniqueId,
-            }
-          : null,
-      };
-    }),
-  );
+  return async (event: Doc<"auditEvents">) => {
+    let actorPromise = event.actorId ? actors.get(event.actorId) : undefined;
+    if (event.actorId && !actorPromise) {
+      actorPromise = ctx.db.get(event.actorId);
+      actors.set(event.actorId, actorPromise);
+    }
+    const actor = actorPromise ? await actorPromise : null;
+    return {
+      id: event._id,
+      actorId: event.actorId ?? null,
+      context: await resolveContext(event),
+      action: event.action,
+      entityType: event.entityType,
+      entityId: event.entityId ?? null,
+      createdAt: new Date(event.createdAt).toISOString(),
+      meta: event.meta ?? null,
+      actor: actor
+        ? {
+            id: actor._id,
+            firstName: actor.firstName,
+            lastName: actor.lastName,
+            preferredName: actor.preferredName,
+            uniqueId: actor.uniqueId,
+          }
+        : null,
+    };
+  };
 }
 
 export function includes(value: string | null | undefined, needle: string) {

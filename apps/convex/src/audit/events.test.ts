@@ -1,11 +1,12 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test';
-import type { FunctionReturnType } from 'convex/server';
+import type { FunctionArgs, FunctionReturnType } from 'convex/server';
 import { describe, expect, test, vi } from 'vitest';
 import schema from '../schema';
 import { api } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
+import { listFilteredPage } from './events';
 import {
   auditActionLabel,
   auditActionSummary,
@@ -167,6 +168,106 @@ describe('audit search grammar', () => {
 });
 
 describe('audit history and context', () => {
+  test('fills matching pages across nonmatching rows and restarts when filters change', async () => {
+    const f = await fixture();
+    const expected = await f.t.run(async (ctx) => {
+      const ids: Id<'auditEvents'>[] = [];
+      for (let i = 8; i <= 19; i++) {
+        const id = await ctx.db.insert('auditEvents', {
+          action: i % 3 === 0 ? 'MATCH' : 'OTHER',
+          entityType: 'Example',
+          createdAt: i,
+        });
+        if (i % 3 === 0) ids.unshift(id);
+      }
+      return ids;
+    });
+    const first = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      action: 'MATCH', paginationOpts: { cursor: null, numItems: 2 },
+    });
+    const second = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      action: 'MATCH', paginationOpts: { cursor: first.continueCursor, numItems: 2 },
+    });
+    expect([...first.page, ...second.page].map((row) => row.id)).toEqual(expected);
+    const changed = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      action: 'OTHER', paginationOpts: { cursor: null, numItems: 2 },
+    });
+    expect(changed.page).toHaveLength(2);
+    expect(changed.page.every((row) => row.action === 'OTHER')).toBe(true);
+    expect(Date.parse(changed.page[0]!.createdAt)).toBe(19);
+  });
+  test('keeps split ranges contiguous even with equal timestamps and sparse matches', async () => {
+    const f = await fixture();
+    const expected = await f.t.run(async (ctx) => {
+      const ids: Id<'auditEvents'>[] = [];
+      for (let i = 0; i < 10; i++) {
+        const id = await ctx.db.insert('auditEvents', {
+          action: i % 2 ? 'MATCH' : 'OTHER', entityType: 'Example', createdAt: 100,
+        });
+        if (i % 2) ids.push(id);
+      }
+      return ids;
+    });
+    const filter = { action: 'MATCH' };
+    const whole = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      ...filter, paginationOpts: { cursor: null, numItems: 20, maximumRowsRead: 10 },
+    });
+    expect(whole.pageStatus).toBe('SplitRequired');
+    expect(whole.splitCursor).toBeTruthy();
+    const left = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      ...filter, paginationOpts: { cursor: null, endCursor: whole.splitCursor, numItems: 20 },
+    });
+    const right = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      ...filter, paginationOpts: { cursor: whole.splitCursor!, endCursor: whole.continueCursor, numItems: 20 },
+    });
+    const combined = [...left.page, ...right.page].map((row) => row.id);
+    expect(combined).toEqual(whole.page.map((row) => row.id));
+    expect(new Set(combined)).toEqual(new Set(expected));
+  });
+  test('bounds sparse exact-filter scans and avoids unnecessary related reads', async () => {
+    const f = await fixture();
+    await f.t.run(async (ctx) => {
+      for (let i = 0; i < 120; i++) {
+        await ctx.db.insert('auditEvents', {
+          action: 'OTHER', entityType: 'Example', actorId: f.admin, createdAt: 100 + i,
+        });
+      }
+    });
+    const { page, getCalls } = await f.adminClient.run(async (ctx) => {
+      let getCalls = 0;
+      const db = new Proxy(ctx.db, {
+        get(target, prop) {
+          const value = Reflect.get(target, prop, target);
+          if (prop === 'get') return (...args: Parameters<typeof ctx.db.get>) => {
+            getCalls++;
+            return (value as typeof ctx.db.get)(...args);
+          };
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+      const handler = (listFilteredPage as unknown as { _handler: (
+        context: QueryCtx,
+        args: FunctionArgs<typeof api.audit.events.listFilteredPage>,
+      ) => Promise<FunctionReturnType<typeof api.audit.events.listFilteredPage>> })._handler;
+      const page = await handler({ ...ctx, db }, {
+        action: 'NEVER', paginationOpts: { cursor: null, numItems: 10 },
+      });
+      return { page, getCalls };
+    });
+    const firstHundred = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      paginationOpts: { cursor: null, numItems: 100 },
+    });
+    expect(page.page).toEqual([]);
+    expect(page.isDone).toBe(false);
+    expect(page.continueCursor).toBe(firstHundred.continueCursor);
+    expect(firstHundred.page).toHaveLength(100);
+    expect(getCalls).toBe(1); // Viewer only; rejected rows need no hydration.
+    const oversized = await f.adminClient.query(api.audit.events.listFilteredPage, {
+      paginationOpts: { cursor: null, numItems: 10000, maximumRowsRead: 10000 },
+    });
+    expect(oversized.page).toHaveLength(100);
+    expect(oversized.isDone).toBe(false);
+  });
   test('displays preferred names while retaining regular-name and structured person searches', async () => {
     const f = await fixture();
     await f.t.run(async (ctx) => {
@@ -180,7 +281,7 @@ describe('audit history and context', () => {
         { advancedQuery: `person:"${name}"` },
       ]) {
         const listed = await f.adminClient.query(api.audit.events.list, filter);
-        const paged = await f.adminClient.query(api.audit.events.listPage, {
+        const paged = await f.adminClient.query(api.audit.events.listFilteredPage, {
           ...filter,
           paginationOpts: { cursor: null, numItems: 10 },
         });
@@ -202,13 +303,13 @@ describe('audit history and context', () => {
     const f = await fixture();
     let cursor: string | null = null;
     const matches: FunctionReturnType<
-      typeof api.audit.events.listPage
+      typeof api.audit.events.listFilteredPage
     >['page'] = [];
     let emptyPages = 0;
     for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
-      const result: FunctionReturnType<typeof api.audit.events.listPage> =
-        await f.adminClient.query(api.audit.events.listPage, {
-          paginationOpts: { cursor, numItems: 2 },
+      const result: FunctionReturnType<typeof api.audit.events.listFilteredPage> =
+        await f.adminClient.query(api.audit.events.listFilteredPage, {
+          paginationOpts: { cursor, numItems: 2, maximumRowsRead: 2 },
           advancedQuery: 'person:"Eniola Famakinwa" text:"room assignments"',
         });
       if (!result.page.length) emptyPages++;
@@ -233,17 +334,17 @@ describe('audit history and context', () => {
   });
   test('returns every record once and groups legacy and uppercase Flex entries', async () => {
     const f = await fixture();
-    const all = await f.adminClient.query(api.audit.events.listPage, {
+    const all = await f.adminClient.query(api.audit.events.listFilteredPage, {
       paginationOpts: { cursor: null, numItems: 10 },
     });
     expect(all.page).toHaveLength(7);
     expect(new Set(all.page.map((row) => row.id)).size).toBe(7);
-    const flex = await f.adminClient.query(api.audit.events.listPage, {
+    const flex = await f.adminClient.query(api.audit.events.listFilteredPage, {
       category: 'flex',
       paginationOpts: { cursor: null, numItems: 10 },
     });
     expect(flex.page).toHaveLength(6);
-    const general = await f.adminClient.query(api.audit.events.listPage, {
+    const general = await f.adminClient.query(api.audit.events.listFilteredPage, {
       category: 'general',
       paginationOpts: { cursor: null, numItems: 10 },
     });
@@ -266,9 +367,9 @@ describe('audit history and context', () => {
     expect(options.actions).not.toContain('CLUB_CHANNEL_MESSAGE_POSTED');
     let cursor: string | null = null;
     const ids: string[] = [];
-    for (let i = 0; i < 4; i++) {
-      const result: FunctionReturnType<typeof api.audit.events.listPage> =
-        await f.adminClient.query(api.audit.events.listPage, {
+    for (let i = 0; i < 10; i++) {
+      const result: FunctionReturnType<typeof api.audit.events.listFilteredPage> =
+        await f.adminClient.query(api.audit.events.listFilteredPage, {
           paginationOpts: { cursor, numItems: 250 },
         });
       ids.push(...result.page.map((row) => row.id));
@@ -278,7 +379,7 @@ describe('audit history and context', () => {
     expect(ids).toHaveLength(620);
     expect(new Set(ids).size).toBe(620);
     expect(ids.at(-1)).toBe(f.oldest);
-    const older = await f.adminClient.query(api.audit.events.listPage, {
+    const older = await f.adminClient.query(api.audit.events.listFilteredPage, {
       action: 'CLUB_CHANNEL_MESSAGE_POSTED',
       entityType: 'ClubChannelMessage',
       paginationOpts: { cursor, numItems: 250 },
@@ -309,8 +410,8 @@ describe('audit history and context', () => {
   });
   test('uses inclusive timestamp boundaries and rejects bad server-side syntax', async () => {
     const f = await fixture();
-    const result: FunctionReturnType<typeof api.audit.events.listPage> =
-      await f.adminClient.query(api.audit.events.listPage, {
+    const result: FunctionReturnType<typeof api.audit.events.listFilteredPage> =
+      await f.adminClient.query(api.audit.events.listFilteredPage, {
         startAt: 2,
         endAt: 4,
         paginationOpts: { cursor: null, numItems: 10 },
@@ -319,7 +420,7 @@ describe('audit history and context', () => {
       4, 3, 2,
     ]);
     await expect(
-      f.adminClient.query(api.audit.events.listPage, {
+      f.adminClient.query(api.audit.events.listFilteredPage, {
         advancedQuery: 'bad:query',
         paginationOpts: { cursor: null, numItems: 10 },
       }),
@@ -330,7 +431,7 @@ describe('audit history and context', () => {
     for (const client of [f.t, f.studentClient]) {
       expect(
         (
-          await client.query(api.audit.events.listPage, {
+          await client.query(api.audit.events.listFilteredPage, {
             paginationOpts: { cursor: null, numItems: 10 },
           })
         ).page,

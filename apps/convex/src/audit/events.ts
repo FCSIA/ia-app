@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -8,6 +10,7 @@ import {
 } from "../../lib/currentUser";
 import {
   auditEventValidator,
+  auditEventResolver,
   auditPageValidator,
   toAuditEvent,
   toAuditEvents,
@@ -135,6 +138,25 @@ export const listFilterOptions = query({
 });
 
 export const listPage = query({
+  // Existing clients use native Convex cursors; retain this endpoint while
+  // open browser sessions transition to the stream cursor protocol below.
+  args: { paginationOpts: paginationOptsValidator, ...auditFilters },
+  returns: auditPageValidator,
+  handler: async (ctx, args) => {
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]))
+      return { page: [], isDone: true, continueCursor: "" };
+    const matches = auditMatcher(args);
+    const result = await ctx.db.query("auditEvents")
+      .withIndex("by_createdAt", (q) => {
+        const lower = args.startAt === undefined ? q : q.gte("createdAt", args.startAt);
+        return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt);
+      }).order("desc").paginate(args.paginationOpts);
+    return { ...result, page: (await toAuditEvents(ctx, result.page)).filter(matches) };
+  },
+});
+
+export const listFilteredPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
@@ -145,8 +167,17 @@ export const listPage = query({
     )
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
+    const requestedRows = args.paginationOpts.maximumRowsRead;
+    const maxRows = Number.isFinite(requestedRows)
+      ? Math.max(2, Math.min(Math.floor(requestedRows!), 100))
+      : 100;
+    const requestedItems = args.paginationOpts.numItems;
+    const numItems = Number.isFinite(requestedItems)
+      ? Math.max(1, Math.min(Math.floor(requestedItems), 100))
+      : 50;
     // Date controls use the browser's local day boundaries, then range the index.
-    const result = await ctx.db
+    const resolve = auditEventResolver(ctx);
+    const result = await stream(ctx.db, schema)
       .query("auditEvents")
       .withIndex("by_createdAt", (q) => {
         const lower =
@@ -156,11 +187,20 @@ export const listPage = query({
           : lower.lte("createdAt", args.endAt);
       })
       .order("desc")
-      .paginate(args.paginationOpts);
-    return {
-      ...result,
-      page: (await toAuditEvents(ctx, result.page)).filter(matches),
-    };
+      .map(async (row) => {
+        // Reject inexpensive exact predicates before resolving related documents.
+        if (args.action && row.action !== args.action) return null;
+        if (args.entityType && row.entityType !== args.entityType) return null;
+        const event = await resolve(row);
+        return matches(event) ? event : null;
+      })
+      .paginate({
+        ...args.paginationOpts,
+        numItems,
+        maximumRowsRead: maxRows,
+        maximumBytesRead: 2 * 1024 * 1024,
+      });
+    return result;
   },
 });
 

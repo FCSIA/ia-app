@@ -7,7 +7,8 @@ import {
   auditRecordLabel,
   parseAuditSearch,
 } from '~/apps/shared/audit';
-import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
+import { usePaginatedQuery } from 'convex-helpers/react';
+import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
@@ -78,7 +79,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     status: auditStatus,
     loadMore: loadMoreAuditEvents,
   } = usePaginatedQuery(
-    api.audit.events.listPage,
+    api.audit.events.listFilteredPage,
     activeTab === 'audit' ? auditQueryParams : 'skip',
     { initialNumItems: AUDIT_FETCH_LIMIT },
   );

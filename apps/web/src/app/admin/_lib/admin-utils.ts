@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import type { AdminUserRecord, AdminUserRoleGroup } from './types';
 
-export const AUDIT_FETCH_LIMIT = 250;
+export const AUDIT_FETCH_LIMIT = 50;
 
 export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; emptyMessage: string }> = {
   students: {
