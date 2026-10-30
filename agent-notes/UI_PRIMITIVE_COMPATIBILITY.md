@@ -76,23 +76,136 @@ by a vertical panel stack, and verify actual panel and handle bounding boxes.
 For stable initial sizing, give the group and panels stable IDs and pass a
 matching `defaultLayout` map.
 
-## Concrete failure: calendar navigation and day metadata
+## Official Fluid Sidebar and workspace navigation
 
-The shadcn DayPicker adapter depends on `months` remaining positioned relative
-so its absolute navigation stays anchored to the month caption. Replacing the
-adapter's `classNames.months` value from a page removes that positioning and
-can place the previous/next buttons against an outer card or viewport. Use the
-adapter's existing width contract; do not replace its structural class names.
+The human explicitly requested the new official Fluid Sidebar for the main app
+navigation and nested workspaces on 2026-10-24. `ui/sidebar.tsx`,
+`sidebar-core.tsx`, `sidebar-menu.tsx`, `use-fluid-hover.ts`, and
+`fluid-hover-highlight.tsx` come from the current Radix registry. The old unused
+shadcn cookie/provider implementation has been replaced. `sidebar` is protected
+as an adapted primitive by the Fluid update script.
 
-The local Fluid `Button` also wraps button content, while upstream shadcn's
-calendar expects direct day-button children. `CalendarDayButton` therefore owns
-an explicit vertical content slot for the date numeral and optional metadata.
-Status content must remain in that slot's normal flow so it cannot overlap the
-date.
+Keep the official anatomy and behavior as the baseline: Provider, Sidebar,
+Header/Content/Footer, Group, Menu/Item/Button/Badge, and Trigger. Main navigation
+uses documented `variant="inset"` beside `SidebarInset`; the primitive owns the
+8px gutter, shape, elevation and collapsed margin. The main provider uses the
+documented click-peek mode: hover-peek opens over the header toggle before it can
+be clicked. The edge can still show a temporary preview; the header trigger pins
+the sidebar open. The default 16rem width, official off-canvas/resize rail,
+active and hover surfaces, roving keyboard focus, and bare `[` shortcut remain
+unchanged. Its mobile
+breakpoint is the app's existing 1024px tab-bar boundary. The existing mobile tab
+bar and More drawer remain the primary phone navigation. Do not recreate an
+icon rail, custom menu engine, spacing ladder, or resize/collapse behavior.
 
-Calendar day targets also use the adapter's `--cell-size` in touch mode. Fluid's
-generic 44px icon-button expansion would otherwise force a seven-column date
-grid beyond a narrow widget or date-picker popup.
+`WorkspaceSidebar` is a thin app composition of those official parts. Its
+supported `collapsible="none"` mode fills an externally bounded workspace;
+header/footer slots and feature children remain supported. Club's existing
+resizable layout and swipe-driven phone navigation remain their behavior
+owners. Admin's phone header trigger uses the existing Radix Sheet focus and
+dismissal lifecycle. Page links use SidebarMenuButton's native Link slot and
+`isActive`, so the primitive owns `aria-current`, hover, and keyboard selection.
+Club channel trees remain feature children with their own existing persistence,
+unread state, and actions. Main navigation's app-owned `pageNavigation` config
+composes native MenuSub links under the matching real destination. The same
+links appear in mobile More. Schedule's admin sections use this shared anatomy;
+Social groups Clubs, Friends and Friend Groups with existing role gates. The
+sidebar's Search command opens the existing palette; channel search stays in
+its conversation header. Content filters and form modes remain in context.
+
+The main frame lives once in root `Providers`, inside the existing authenticated
+boundary and navigation-loading provider. Per-page `AppShell` registers route
+configuration through stable actions; its header, banner and children stay
+inline under feature providers. Do not move those React nodes into frame state
+or portal the page content: Calendar's header relies on route-local context.
+The main SidebarProvider/Sidebar/SidebarInset are not keyed by route. Official
+`persist` writes collapse preference and root layout restores `sidebar_state`
+through the server cookie before initial rendering. Login/logout, password
+change and immersive Wrapped keep their shellless composition. Independent
+admin/club providers keep their existing boundaries and persistence rules.
+
+Every pane edge has one owner. A standalone sidebar owns its right border;
+`bordered={false}` yields it to a resize handle or enclosing Sheet. Club
+navigation/thread panes must not draw another border beside their existing
+handle. Admin's outer layout is flush to the app header; content padding belongs
+to the content pane.
+
+Registry dependency adaptations are deliberately narrow:
+
+- Use the installed `framer-motion` entry point for the same Motion APIs.
+- Map the new Sidebar's body/caption/micro classes to the existing local type
+  ladder instead of overwriting SizeContext or importing new global tokens.
+- Add only the two missing panel icon names to IconContext.
+- Merge Tooltip's upstream optional `followCursor` motion-value behavior for
+  the resize rail; retain existing grouped warm-up, portals, and themed surface.
+  Sidebar's shortcut chip inherits that surface's foreground.
+- Import only the required official scroll-fade/divider utilities from the
+  ScrollArea registry; use the existing `--color-border` theme bridge. Existing
+  global scrollbar styling remains local. Vertical-only Radix ScrollArea makes
+  its generated intrinsic table sizer a shrinkable block. Horizontal/both
+  scrollers retain intrinsic width. This is the exact containment issue called
+  out by official SidebarContent, also reproduced in admin's nested CSV table.
+
+Current Sidebar sources and dependencies were inspected through the shadcn CLI;
+its dry-run would create six files and overwrite ten adapters. Do not apply that
+wholesale update. Reviewed rendered, Code, and API examples:
+[Sidebar](https://www.fluidfunctionalism.com/docs/sidebar),
+[Card](https://www.fluidfunctionalism.com/docs/card), and
+[Scrollbars](https://www.fluidfunctionalism.com/docs/scrollbars), plus
+[Radix Sheet](https://ui.shadcn.com/docs/components/radix/sheet).
+Material visual changes still await the design owner; diagnostic screenshots
+must be re-critiqued after every capture and are not design approval.
+
+## Official Fluid Calendar and DatePicker
+
+The owner requested the latest official Calendar, DatePicker and CommandMenu
+on 2026-10-27. Calendar now uses `@daypicker/react` 10 and the exact current
+Fluid registry anatomy. DatePicker uses the Radix registry wrapper and shared
+DatePickerCore. The former DayPicker 9 adapter, `CalendarDayButton.meta`, and
+bespoke DateTimePicker are removed. Calendar, DatePicker and CommandMenu are
+protected adapted components in the selective update script.
+
+CommandMenu shortcut caps render arrow keys with the app's Lucide arrows and
+screen-reader labels, as requested by the owner; other shortcut glyphs retain
+the registry behavior. Keyboard handling and cap geometry remain unchanged.
+
+Keep native Calendar selection, month navigation/slides, measured hover,
+range behavior, focus and ARIA. School calendar status dots use its documented
+`dayDetail` callback with accessible descriptions, `fill`, and `cellSize={56}`;
+do not replace the DayButton or structural class names. The full agenda/week/
+month event calendar remains the feature calendar; Fluid Calendar owns its
+Go-to-date chooser, with native autofocus and the published padded popup frame.
+
+Native DatePicker owns date labels, optional clear, time parsing/editing,
+quarter-hour slots, responsive segments and popup interaction. `forms/DateField`
+and `DateTimeField` are app-owned serialization boundaries for existing local
+ISO strings. They use distinct names and do not add a parallel date/time UI.
+A required date remains selected when re-clicked; optional clear is explicit.
+Time can be drafted before selecting a date. Named groups distinguish multiple
+date/time fields for assistive technology.
+
+Registry adaptation is limited to installed `framer-motion`, the current local
+type ladder, equivalent ShapeContext values, the required calendar icon,
+upstream HoverHighlight's optional `fadeIn`, and official popup/keyboard/omit
+helpers. Do not overwrite global size/shape contexts or theme variables to
+install a component. Reviewed rendered, Code and API examples:
+[Calendar](https://www.fluidfunctionalism.com/docs/calendar),
+[DatePicker](https://www.fluidfunctionalism.com/docs/date-picker), and
+[CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu), plus exact
+`/r/calendar.json`, `/r/date-picker.json` and `/r/command-menu.json` registry items.
+See `docs/reference/ui-fluid-calendar-continuation-2026-10-27.md` for evidence.
+
+## Concrete failure: `Toggle` inside `Tooltip`
+
+`Tooltip` renders Radix `Trigger asChild`, which passes its own `data-state`
+(`closed`, `delayed-open`, `instant-open`) to the child. Radix `Toggle` spreads
+incoming props after its own attributes, so the tooltip's value replaced
+`data-state="on"` and every `data-[state=on]:` style silently stopped matching:
+the viewer's chat reactions and the announcement editor's B/I/U looked unpressed
+while `aria-pressed="true"`. The Toggle adapter therefore styles pressed state
+from `aria-pressed` as well as `data-state` (single-select `ToggleGroup` items
+expose `aria-checked`, so they still need `data-state`). Callers that restyle a
+pressed Toggle must use `aria-pressed:` variants, as `ReactionToggle` does.
 
 ## Counterexample: actual compounded spacing
 

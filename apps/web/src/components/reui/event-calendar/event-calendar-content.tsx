@@ -62,9 +62,9 @@ function EventCalendarContent({
       data-slot="event-calendar-content"
       data-view={view}
       data-loading={loading || undefined}
+      aria-busy={loading}
       className={cn(
         "relative flex min-h-0 min-w-0 flex-1 flex-col",
-        "data-loading:pointer-events-none data-loading:opacity-60",
         viewConfig.classNames?.content,
         className
       )}

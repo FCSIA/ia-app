@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
-import { TabPanel } from "@/components/ui/tabs";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
 export function MySchedulePanel() {
@@ -39,7 +38,7 @@ export function MySchedulePanel() {
 
   if (!isEditing) {
     return (
-      <TabPanel value="my" className="mt-5">
+      <section aria-label="My schedule">
         <section className={`max-w-2xl rounded-2xl border border-border bg-card p-4 ${CARD_SURFACE_FOREGROUND}`}>
           <header className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-foreground">My schedule</h2>
@@ -62,12 +61,12 @@ export function MySchedulePanel() {
             />
           ) : null}
         </section>
-      </TabPanel>
+      </section>
     );
   }
 
   return (
-    <TabPanel value="my" className="mt-5">
+    <section aria-label="My schedule">
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.7fr)] xl:items-start">
         {data?.resolvedDay ? (
           <div className="xl:sticky xl:top-4">
@@ -170,6 +169,6 @@ export function MySchedulePanel() {
           </div>
         </section>
       </div>
-    </TabPanel>
+    </section>
   );
 }

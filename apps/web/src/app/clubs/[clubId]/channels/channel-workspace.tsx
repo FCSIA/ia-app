@@ -2,33 +2,37 @@
 
 import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 
-import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import dynamic from 'next/dynamic';
-import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { format, isSameDay, isSameYear, isToday, isYesterday } from 'date-fns';
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from 'next/navigation';
+import { format, isSameDay } from 'date-fns';
+import { formatMessageTime } from '@/lib/message-time';
 
-function formatChatTimestamp(value: number | string | Date) {
-  const date = new Date(value);
-  const now = new Date();
-  if (isSameDay(date, now)) return format(date, 'h:mm a');
-  if (isSameYear(date, now)) return format(date, 'MMM d');
-  return format(date, 'MMM d, yyyy');
-}
-
-/** The full send time, for the message action sheet. */
-function formatSheetTimestamp(value: number | string | Date) {
-  const date = new Date(value);
-  if (isToday(date)) return `Today at ${format(date, 'h:mm a')}`;
-  if (isYesterday(date)) return `Yesterday at ${format(date, 'h:mm a')}`;
-  if (isSameYear(date, new Date())) return format(date, "EEE, MMM d 'at' h:mm a");
-  return format(date, "MMM d, yyyy 'at' h:mm a");
-}
-import { useAction, useMutation, usePaginatedQuery, useQuery } from '@/lib/convex-react';
+import {
+  useAction,
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+} from '@/lib/convex-react';
 import {
   BarChart3,
   Copy,
   FileText,
-  History,
   Link2,
   MessageSquareText,
   MoreHorizontal,
@@ -38,8 +42,10 @@ import {
   Reply,
   SmilePlus,
   Trash2,
-  AlertTriangle,
   Flag,
+  Search,
+  ArrowDown,
+  CircleAlert,
   X,
 } from 'lucide-react';
 import {
@@ -62,11 +68,15 @@ import {
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  DropdownContent,
+  DropdownTrigger,
+  DropdownSeparator,
+} from '@/components/ui/dropdown';
+import { MenuItem } from '@/components/ui/menu-item';
+import {
+  ReactionPicker,
+  ReactionToggle,
+} from '@/components/clubs/reaction-picker';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -79,7 +89,11 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
 import { ChannelWhiteboard } from '@/components/clubs/whiteboard/channel-whiteboard';
@@ -87,7 +101,6 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import { hapticTick } from '@/lib/haptics';
 import { useMessagePress } from '@/components/clubs/use-message-press';
@@ -95,7 +108,7 @@ import {
   MessageActionSheet,
   type MessageSheetAction,
 } from '@/components/clubs/message-action-sheet';
-import type { ViewerImage } from '@/components/clubs/image-viewer';
+import type { ViewerImage } from '@/components/media/image-viewer';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 import { latestVisibleChatActivity } from '~/apps/shared/chat/activity';
 import { firstUnreadChannelMessageId } from '~/apps/shared/chat/unread-boundary';
@@ -109,14 +122,14 @@ import {
   type ChannelMentionSuggestion,
   type ChannelMessageComposerHandle,
 } from '@/components/clubs/channel-message-composer';
-import {
-  ClubChannelVisibilityIcon,
-  getClubChannelVisibilityLabel,
-} from '@/components/clubs/channel-visibility';
+import { ClubChannelVisibilityIcon } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { PresenceAvatar, useMemberPresence } from '@/components/presence/club-presence';
-import { UserProfileContent, UserProfileDialog } from '@/components/clubs/user-profile-dialog';
+import { ClubPersonAvatar } from '@/components/clubs/club-person-avatar';
+import {
+  PresenceAvatar,
+  useMemberPresence,
+} from '@/components/presence/club-presence';
+import { PersonTrigger } from '@/components/users/person-trigger';
 import {
   MentionBody,
   type ClubChannelMessageRichBody,
@@ -131,9 +144,9 @@ import {
   AttachmentTitle,
   AttachmentTrigger,
 } from '@/components/ui/attachment';
-import { Badge } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardGroup } from '@/components/ui/card';
 import {
   Carousel,
   CarouselContent,
@@ -141,7 +154,9 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
-import { Bubble, BubbleContent } from '@/components/ui/bubble';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   MessageScroller,
@@ -151,6 +166,8 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
   useMessageScroller,
+  useMessageScrollerVisibility,
+  useMessageScrollerScrollable,
 } from '@/components/ui/message-scroller';
 import {
   Message,
@@ -159,14 +176,7 @@ import {
   MessageContent,
   MessageHeader,
 } from '@/components/ui/message';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { ChatGifLinks } from '@/components/clubs/chat-gif';
@@ -174,7 +184,7 @@ import { AnimatedGif } from '@/components/media/animated-gif';
 import { MediaPlaybackContext } from '@/hooks/use-media-visibility';
 import { isGifAttachment, messageGifUrls } from '~/apps/shared/chat/gifs';
 import { useCurrentUser } from '@/lib/auth';
-import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
+import { ConvexError } from 'convex/values';
 import { cn } from '@/lib/utils';
 import { copyText } from '@/lib/share';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
@@ -200,9 +210,10 @@ const REACTION_LABELS = Object.fromEntries(
 ) as Record<string, string>;
 
 type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
-type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
+type FriendshipStatus =
+  'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
-const MESSAGE_GROUP_WINDOW_MS = 30 * 60 * 1000;
+const MESSAGE_GROUP_WINDOW_MS = 7 * 60 * 1000;
 
 function isChannelReaction(value: string): value is ChannelReaction {
   return QUICK_REACTIONS.some((reaction) => reaction.value === value);
@@ -215,7 +226,6 @@ function shouldGroupMessages(
   if (!previous || previous.author._id !== current.author._id) return false;
   // A reply always shows its author, with the line naming what it answers.
   if (current.replyToMessageId) return false;
-  if (previous.isPinned || current.isPinned) return false;
   if ('deliveryState' in previous || 'deliveryState' in current) return false;
 
   const previousDate = new Date(previous.createdAt);
@@ -259,18 +269,6 @@ function isImageAttachment(attachment: ClubChannelMessageAttachment) {
   );
 }
 
-function getSearchableText(message: ClubChannelMessage) {
-  return [
-    message.body,
-    ...nameSearchValues(message.author),
-    message.author.uniqueId,
-    ...message.attachments.map((a) => a.fileName),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-}
-
 function hasStudentScheduleRole(roles?: AppRole[] | null) {
   return roles?.some((role) => STUDENT_SCHEDULE_ROLES.has(role)) ?? false;
 }
@@ -287,7 +285,10 @@ function getAttachmentDescription(attachment: ClubChannelMessageAttachment) {
 
 // Loaded on first open, so the viewer costs the chat nothing until then.
 const ImageViewer = dynamic(
-  () => import('@/components/clubs/image-viewer').then((module) => module.ImageViewer),
+  () =>
+    import('@/components/media/image-viewer').then(
+      (module) => module.ImageViewer,
+    ),
   { ssr: false },
 );
 
@@ -297,7 +298,9 @@ type ImageViewerRequest = { images: ViewerImage[]; index: number };
  * Opens the channel's single image viewer. It lives outside the message rows,
  * so their gestures and context menu never see its events.
  */
-const ImageViewerContext = createContext<(request: ImageViewerRequest) => void>(() => {});
+const ImageViewerContext = createContext<(request: ImageViewerRequest) => void>(
+  () => {},
+);
 
 function toViewerImage(attachment: ClubChannelMessageAttachment): ViewerImage {
   return {
@@ -356,12 +359,20 @@ function MessageAttachmentCard({
       )}
       <AttachmentContent>
         <AttachmentTitle>{attachment.fileName}</AttachmentTitle>
-        <AttachmentDescription>{getAttachmentDescription(attachment)}</AttachmentDescription>
+        <AttachmentDescription>
+          {getAttachmentDescription(attachment)}
+        </AttachmentDescription>
       </AttachmentContent>
       {isImage && onOpenImage ? (
-        <AttachmentTrigger aria-label={`View ${attachment.fileName}`} onClick={onOpenImage} />
+        <AttachmentTrigger
+          aria-label={`View ${attachment.fileName}`}
+          onClick={onOpenImage}
+        />
       ) : (
-        <AttachmentTrigger asChild aria-label={`Open ${attachment.fileName} in a new tab`}>
+        <AttachmentTrigger
+          asChild
+          aria-label={`Open ${attachment.fileName} in a new tab`}
+        >
           <a href={href} target="_blank" rel="noreferrer" />
         </AttachmentTrigger>
       )}
@@ -369,7 +380,11 @@ function MessageAttachmentCard({
   );
 }
 
-function MessageAttachments({ attachments }: { attachments: ClubChannelMessageAttachment[] }) {
+function MessageAttachments({
+  attachments,
+}: {
+  attachments: ClubChannelMessageAttachment[];
+}) {
   const openImageViewer = useContext(ImageViewerContext);
   if (attachments.length === 0) return null;
 
@@ -387,12 +402,17 @@ function MessageAttachments({ attachments }: { attachments: ClubChannelMessageAt
   if (attachments.length === 1) {
     return (
       <AttachmentGroup className="mt-2 max-w-full gap-2 py-0">
-        <MessageAttachmentCard attachment={attachments[0]} onOpenImage={openImage(attachments[0])} />
+        <MessageAttachmentCard
+          attachment={attachments[0]}
+          onOpenImage={openImage(attachments[0])}
+        />
       </AttachmentGroup>
     );
   }
 
-  return <MessageAttachmentGallery attachments={attachments} openImage={openImage} />;
+  return (
+    <MessageAttachmentGallery attachments={attachments} openImage={openImage} />
+  );
 }
 
 function MessageAttachmentGallery({
@@ -400,7 +420,9 @@ function MessageAttachmentGallery({
   openImage,
 }: {
   attachments: ClubChannelMessageAttachment[];
-  openImage: (attachment: ClubChannelMessageAttachment) => (() => void) | undefined;
+  openImage: (
+    attachment: ClubChannelMessageAttachment,
+  ) => (() => void) | undefined;
 }) {
   return (
     // Swiping the gallery pages through attachments; it never starts a reply
@@ -460,7 +482,7 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
             ? (message.bodyRich as ClubChannelMessageRichBody)
             : null
         }
-        className="!text-[13px] !leading-normal"
+        className="max-w-[75ch]"
       />
       <ChatGifLinks text={message.bodyMarkdown || message.body} />
     </>
@@ -469,22 +491,17 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
 
 function PinnedMessagesButton({
   messages,
-  onClearSearch,
+  onJump,
+  hasMore = false,
 }: {
   messages: ClubChannelMessage[];
-  onClearSearch: () => void;
+  onJump: (messageId: string) => void;
+  hasMore?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { scrollToMessage } = useMessageScroller();
-
   const jumpToMessage = (messageId: string) => {
-    onClearSearch();
     setOpen(false);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollToMessage(messageId, { align: 'center', behavior: 'smooth' });
-      });
-    });
+    onJump(messageId);
   };
 
   return (
@@ -495,32 +512,31 @@ function PinnedMessagesButton({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="relative"
-            aria-label={`${messages.length} pinned ${messages.length === 1 ? 'message' : 'messages'}`}
+            badge={
+              messages.length
+                ? `${messages.length}${hasMore ? '+' : ''}`
+                : undefined
+            }
+            aria-label={`${messages.length}${hasMore ? '+' : ''} pinned ${messages.length === 1 ? 'message' : 'messages'}`}
           >
             <Pin className="size-4" />
-            {messages.length > 0 ? (
-              <span className="absolute right-0 top-0 flex min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-semibold leading-[14px] text-primary-foreground">
-                {messages.length > 9 ? '9+' : messages.length}
-              </span>
-            ) : null}
           </Button>
         </PopoverTrigger>
       </Tooltip>
       <PopoverContent
         side="bottom"
         align="start"
-        className="w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg p-0"
+        className="w-96 max-w-[calc(100vw-2rem)] overflow-hidden p-0"
       >
         <div className="flex items-center justify-between border-b px-3 py-2.5">
           <p className="text-sm font-semibold">Pinned messages</p>
-          <span className="text-xs tabular-nums text-muted-foreground">{messages.length}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {messages.length}
+          </span>
         </div>
         {messages.length > 0 ? (
-          <ScrollArea
-            viewportClassName="max-h-80"
-          >
-            <div className="divide-y divide-border/70">
+          <ScrollArea viewportClassName="max-h-80">
+            <CardGroup orientation="inline" corners="compact">
               {messages.map((message) => {
                 const preview =
                   message.poll?.question ||
@@ -528,13 +544,16 @@ function PinnedMessagesButton({
                   message.attachments[0]?.fileName ||
                   'Attachment';
                 return (
-                  <button
+                  <Card
                     key={message._id}
-                    type="button"
-                    className="flex w-full gap-3 px-3 py-3 text-left outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+                    label={`Jump to pinned message by ${fullName(message.author)}`}
+                    className="gap-3 px-3 py-3"
                     onClick={() => jumpToMessage(message._id)}
                   >
-                    <Pin className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <ClubPersonAvatar
+                      person={message.author}
+                      className="size-7 shrink-0"
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
                         <span className="truncate text-sm font-semibold">
@@ -542,23 +561,136 @@ function PinnedMessagesButton({
                         </span>
                         <DeveloperBadge user={message.author} size={13} />
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {formatChatTimestamp(message.createdAt)}
+                          {formatMessageTime(message.createdAt)}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 block break-words text-sm leading-5 text-muted-foreground">
+                      <span className="mt-0.5 line-clamp-2 break-words text-sm leading-5 text-muted-foreground">
                         {preview}
                       </span>
                     </span>
-                  </button>
+                  </Card>
                 );
               })}
-            </div>
+            </CardGroup>
           </ScrollArea>
         ) : (
           <p className="px-3 py-6 text-center text-sm text-muted-foreground">
             No pinned messages yet.
           </p>
         )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ChannelSearch({
+  clubId,
+  channelId,
+  channelName,
+  onJump,
+}: {
+  clubId: Id<'clubs'>;
+  channelId: Id<'clubChannels'>;
+  channelName: string;
+  onJump: (messageId: string, threadId?: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const query = useDeferredValue(search.trim());
+  const results = useQuery(
+    api.clubs.channels.searchMessages,
+    open && query.length >= 2 ? { clubId, channelId, search: query } : 'skip',
+  );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip content={`Search #${channelName}`}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Search #${channelName}`}
+          >
+            <Search />
+          </Button>
+        </PopoverTrigger>
+      </Tooltip>
+      {/* Opens toward the conversation: the trigger now follows the channel name. */}
+      <PopoverContent
+        align="start"
+        className="w-96 max-w-[calc(100vw-2rem)] p-2"
+      >
+        <Input
+          aria-label={`Search messages in #${channelName}`}
+          placeholder={`Search #${channelName}`}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          autoFocus
+        />
+        <div className="max-h-80 overflow-y-auto pt-2" aria-live="polite">
+          {query.length === 0 ? null : query.length < 2 ? (
+            <p className="p-2 text-sm text-muted-foreground">
+              Type at least two characters.
+            </p>
+          ) : results === undefined ? (
+            <Skeleton className="h-16 w-full" />
+          ) : results.length === 0 ? (
+            <p className="p-2 text-sm text-muted-foreground">
+              No messages in #{channelName} match “{query}”.
+            </p>
+          ) : (
+            <>
+              <p className="px-2 pb-1 text-xs text-muted-foreground">
+                {results.length}
+                {results.length === 30 ? '+' : ''}{' '}
+                {results.length === 1 ? 'result' : 'results'}
+              </p>
+              {results.map((message) => (
+                <button
+                  key={message._id}
+                  className="flex w-full gap-2 rounded-lg p-2 text-left hover:bg-hover focus-visible:bg-hover"
+                  onClick={() => {
+                    setOpen(false);
+                    onJump(
+                      message._id,
+                      message.parentMessageId
+                        ? message.threadRootId
+                        : undefined,
+                    );
+                  }}
+                >
+                  <ClubPersonAvatar
+                    person={message.author}
+                    className="size-7"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs text-muted-foreground">
+                      {fullName(message.author)} ·{' '}
+                      {formatMessageTime(message.createdAt)}
+                    </span>
+                    {/* Inside typeset so <mark> uses the shared highlight,
+                        not the browser's yellow-on-black default. */}
+                    <span className="typeset typeset-chat line-clamp-2 whitespace-pre-wrap break-words">
+                      {message.body
+                        .split(
+                          new RegExp(
+                            `(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+                            'gi',
+                          ),
+                        )
+                        .map((part, index) =>
+                          part.toLowerCase() === query.toLowerCase() ? (
+                            <mark key={index}>{part}</mark>
+                          ) : (
+                            part
+                          ),
+                        )}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -586,8 +718,6 @@ function MessageAuthorPreview({
   const name = fullName(author);
   const isCurrentUser = author._id === currentUserId;
   const isPending = friendRequestPendingId === author._id;
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [hoverOpen, setHoverOpen] = useState(false);
   const presence = useMemberPresence(author._id);
 
   const trigger =
@@ -596,10 +726,6 @@ function MessageAuthorPreview({
         type="button"
         aria-label={`View ${name} profile`}
         className="inline-flex min-w-0 items-center gap-1 rounded-sm py-0.5 text-[13px] font-semibold text-foreground outline-none hover:underline hover:underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        onClick={() => {
-          setHoverOpen(false);
-          setProfileOpen(true);
-        }}
       >
         <span className="truncate">{name}</span>
         <DeveloperBadge user={author} size={13} />
@@ -609,13 +735,9 @@ function MessageAuthorPreview({
         type="button"
         aria-label={`View ${name} profile`}
         className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
-        onClick={() => {
-          setHoverOpen(false);
-          setProfileOpen(true);
-        }}
       >
         <PresenceAvatar status={presence}>
-          <ClubAvatar
+          <ClubPersonAvatar
             person={author}
             className={compact ? 'size-7' : 'size-9'}
             fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
@@ -625,39 +747,35 @@ function MessageAuthorPreview({
     );
 
   return (
-    <>
-      <HoverCard open={hoverOpen} onOpenChange={setHoverOpen} openDelay={150} closeDelay={100}>
-        <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
-        <HoverCardContent
-          side={triggerVariant === 'avatar' ? 'left' : 'top'}
-          align="start"
-          sideOffset={8}
-          collisionPadding={12}
-          className="w-[min(23rem,calc(100vw-1.5rem))] rounded-lg p-0"
-        >
-          <UserProfileContent
-            active={hoverOpen}
-            person={author}
-            isCurrentUser={isCurrentUser}
-            canSendFriendRequest={canSendFriendRequest}
-            friendshipStatus={friendshipStatus}
-            friendRequestPending={isPending}
-            onSendFriendRequest={onSendFriendRequest}
-            variant="preview"
-          />
-        </HoverCardContent>
-      </HoverCard>
-      <UserProfileDialog
-        open={profileOpen}
-        onOpenChange={setProfileOpen}
-        person={author}
-        isCurrentUser={isCurrentUser}
-        canSendFriendRequest={canSendFriendRequest}
-        friendshipStatus={friendshipStatus}
-        friendRequestPending={isPending}
-        onSendFriendRequest={onSendFriendRequest}
-      />
-    </>
+    <PersonTrigger
+      person={author}
+      roleName={author.clubRole?.name}
+      trigger={trigger}
+      actions={
+        canSendFriendRequest &&
+        !isCurrentUser &&
+        hasStudentScheduleRole(author.roles) ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={
+              isPending || (!!friendshipStatus && friendshipStatus !== 'NONE')
+            }
+            onClick={() => onSendFriendRequest(author._id)}
+          >
+            {isPending
+              ? 'Sending…'
+              : friendshipStatus === 'FRIENDS'
+                ? 'Friends'
+                : friendshipStatus === 'REQUEST_SENT'
+                  ? 'Request sent'
+                  : friendshipStatus === 'REQUEST_RECEIVED'
+                    ? 'Request received'
+                    : 'Add friend'}
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -699,7 +817,9 @@ function PollCard({
               />
               <span className="relative flex items-center justify-between gap-3">
                 <span>{option.label}</span>
-                <span className="text-xs text-muted-foreground">{option.count} · {percent}%</span>
+                <span className="text-xs text-muted-foreground">
+                  {option.count} · {percent}%
+                </span>
               </span>
             </button>
           );
@@ -707,6 +827,126 @@ function PollCard({
       </div>
     </div>
   );
+}
+
+/**
+ * An unsent message keeps its place and anatomy in the conversation: same
+ * gutter, same text column, muted body, and the reason with Retry beside it.
+ */
+function FailedSendRow({
+  author,
+  grouped,
+  payload,
+  reason,
+  retrying,
+  onRetry,
+  onDiscard,
+}: {
+  author: Parameters<typeof ClubPersonAvatar>[0]['person'];
+  grouped: boolean;
+  payload: Pick<
+    ComposerSubmitArgs,
+    'body' | 'bodyMarkdown' | 'bodyRich' | 'files' | 'pollQuestion'
+  >;
+  reason: string;
+  retrying: boolean;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <Message grouped={grouped} className="gap-3 rounded-md px-3">
+      <MessageAvatar>
+        {grouped ? null : (
+          <ClubPersonAvatar
+            person={author}
+            className="size-9"
+            fallbackClassName="text-[11px]"
+          />
+        )}
+      </MessageAvatar>
+      <MessageContent className="gap-0">
+        {grouped ? null : (
+          <MessageHeader className="gap-2 px-0 text-[13px]">
+            <span className="truncate font-semibold text-foreground">
+              {fullName(author)}
+            </span>
+          </MessageHeader>
+        )}
+        <div className={cn('min-w-0 max-w-[75ch]', !grouped && 'mt-1')}>
+          {payload.body ? (
+            <MentionBody
+              body={payload.body}
+              bodyMarkdown={payload.bodyMarkdown}
+              bodyRich={payload.bodyRich}
+              className="text-muted-foreground"
+            />
+          ) : payload.pollQuestion ? (
+            <p className="text-sm text-muted-foreground">
+              {payload.pollQuestion}
+            </p>
+          ) : null}
+          {payload.files.map((file, index) => (
+            <p key={index} className="text-xs text-muted-foreground">
+              {file.name}
+            </p>
+          ))}
+        </div>
+        <div
+          role="alert"
+          className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-destructive"
+        >
+          <span className="flex min-w-0 items-start gap-1">
+            <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            <span>Couldn’t send · {reason}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={retrying}
+              onClick={onRetry}
+            >
+              Retry
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={retrying}
+              onClick={onDiscard}
+            >
+              Discard
+            </Button>
+          </span>
+        </div>
+      </MessageContent>
+    </Message>
+  );
+}
+
+/** "You, Mary Jones and 2 others reacted with 👍" — the viewer is always "You". */
+function describeReactors({
+  count,
+  label,
+  viewerReacted,
+  names,
+}: {
+  count: number;
+  label: string;
+  viewerReacted: boolean;
+  names: string[];
+}) {
+  const shown = [...(viewerReacted ? ['You'] : []), ...names].slice(0, 3);
+  if (shown.length === 0)
+    return `${count} ${count === 1 ? 'person' : 'people'} reacted with ${label}`;
+  const remaining = Math.max(0, count - shown.length);
+  const parts = remaining
+    ? [...shown, `${remaining} ${remaining === 1 ? 'other' : 'others'}`]
+    : shown;
+  const list =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  return `${list} reacted with ${label}`;
 }
 
 function ReactionButton({
@@ -717,6 +957,7 @@ function ReactionButton({
   onToggleReaction,
   isReactionPending,
   openDetailsOnPress,
+  currentUserId,
 }: {
   clubId: Id<'clubs'>;
   channelId: Id<'clubChannels'>;
@@ -725,17 +966,30 @@ function ReactionButton({
   onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   isReactionPending: boolean;
   openDetailsOnPress: boolean;
+  currentUserId?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const reactionLabel = REACTION_LABELS[reaction.emoji] ?? reaction.emoji;
-  const reactionName =
-    QUICK_REACTIONS.find((candidate) => candidate.value === reaction.emoji)?.name ??
-    'Reaction';
-  const reactionCountLabel = `${reaction.count} ${reaction.count === 1 ? 'person' : 'people'}`;
-  const supportedReaction = isChannelReaction(reaction.emoji) ? reaction.emoji : null;
-  const { results: reactors, status, loadMore } = usePaginatedQuery(
+  const [hovered, setHovered] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const cancelHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+    },
+    [],
+  );
+  const {
+    results: reactors,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
     api.clubs.channels.listReactionUsers,
-    open
+    open || hovered
       ? {
           clubId,
           channelId,
@@ -745,120 +999,105 @@ function ReactionButton({
       : 'skip',
     { initialNumItems: 25 },
   );
-
-  const trigger = (
-    <Button
-      variant="tertiary"
-      size="sm"
-      className={cn(
-        '!h-6 !min-h-6 gap-1 rounded-full px-2 py-0 text-xs shadow-none',
-        reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-      )}
+  const label = REACTION_LABELS[reaction.emoji] ?? reaction.emoji;
+  const description = describeReactors({
+    count: reaction.count,
+    label,
+    viewerReacted: reaction.reactedByCurrentUser,
+    names: reactors
+      .filter((person) => person._id !== currentUserId)
+      .map(fullName),
+  });
+  const chip = (
+    <ReactionToggle
+      kind="chip"
+      pressed={reaction.reactedByCurrentUser}
       disabled={isReactionPending}
-      aria-label={
-        openDetailsOnPress
-          ? `View ${reactionName.toLowerCase()} reactions, ${reactionCountLabel}`
-          : `${reactionName} reaction, ${reactionCountLabel}${
-              supportedReaction
-                ? reaction.reactedByCurrentUser
-                  ? ', click to remove yours'
-                  : ', click to add yours'
-                : ''
-            }`
-      }
-      onClick={
-        !openDetailsOnPress && supportedReaction
-          ? () => onToggleReaction(messageId, supportedReaction)
-          : undefined
-      }
+      aria-label={`${label}, ${reaction.count} reactions${reaction.reactedByCurrentUser ? ', you reacted' : ''}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      onTouchStart={(event) => {
+        held.current = false;
+        const touch = event.touches[0];
+        touchStart.current = touch
+          ? { x: touch.clientX, y: touch.clientY }
+          : null;
+        cancelHold();
+        holdTimer.current = setTimeout(() => {
+          held.current = true;
+          hapticTick();
+          setOpen(true);
+        }, 420);
+      }}
+      onTouchMove={(event) => {
+        const touch = event.touches[0];
+        const start = touchStart.current;
+        if (
+          !touch ||
+          !start ||
+          Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8
+        )
+          cancelHold();
+      }}
+      onTouchEnd={cancelHold}
+      onTouchCancel={cancelHold}
+      onContextMenu={(event) => {
+        if (openDetailsOnPress) event.preventDefault();
+      }}
+      onClick={(event) => {
+        event.preventDefault();
+        if (held.current) {
+          held.current = false;
+          return;
+        }
+        if (isChannelReaction(reaction.emoji)) {
+          hapticTick();
+          onToggleReaction(messageId, reaction.emoji);
+        }
+      }}
     >
-      <span>{reactionLabel}</span>
-      {reaction.count}
-    </Button>
+      <span>{label}</span>
+      <span className="tabular-nums">{reaction.count}</span>
+    </ReactionToggle>
   );
-
-  const details = (
-    <>
-      {openDetailsOnPress ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-compact"
-          className="absolute right-2 top-2 !size-7 !min-h-7"
-          aria-label="Close reaction details"
-          onClick={() => setOpen(false)}
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span
+          className="inline-flex"
+          onClick={(event) => event.preventDefault()}
         >
-          <X />
-        </Button>
-      ) : null}
-      <p className={cn('text-sm font-semibold text-foreground', openDetailsOnPress && 'pr-8')}>
-        {reactionLabel} reactions
-      </p>
-      <div className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto pr-1">
+          {/* Beside the chip, not above it: above covers the message's last line. */}
+          <Tooltip content={description} side="right">
+            {chip}
+          </Tooltip>
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        side="top"
+        className="w-64 p-3"
+        aria-label={`People who reacted with ${label}`}
+      >
+        <p className="mb-2 text-sm font-medium">Reacted with {label}</p>
         {status === 'LoadingFirstPage' ? (
           <p className="text-sm text-muted-foreground">Loading people…</p>
-        ) : reactors.length > 0 ? (
-          reactors.map((reactor) => (
-            <p key={reactor._id} className="truncate text-sm text-foreground">
-              {fullName(reactor)}
+        ) : (
+          reactors.map((person) => (
+            <p key={person._id} className="py-1 text-sm">
+              {fullName(person)}
             </p>
           ))
-        ) : (
-          <p className="text-sm text-muted-foreground">No reactions yet.</p>
         )}
-      </div>
-      {status === 'CanLoadMore' ? (
-        <Button type="button" size="sm" variant="ghost" className="mt-2 w-full" onClick={() => loadMore(50)}>
-          Show more
-        </Button>
-      ) : null}
-      {openDetailsOnPress && supportedReaction ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          className="mt-2 w-full"
-          disabled={isReactionPending}
-          onClick={() => {
-            onToggleReaction(messageId, supportedReaction);
-            setOpen(false);
-          }}
-        >
-          {reaction.reactedByCurrentUser ? 'Remove your reaction' : 'Add reaction'}
-        </Button>
-      ) : null}
-    </>
-  );
-
-  if (openDetailsOnPress) {
-    return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="start"
-          collisionPadding={12}
-          className="w-64 rounded-lg p-3"
-          aria-label={`${reactionName} reactions`}
-        >
-          {details}
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  return (
-    <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={100}>
-      <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
-      <HoverCardContent
-        side="top"
-        align="start"
-        collisionPadding={12}
-        className="w-64 rounded-lg p-3"
-      >
-        {details}
-      </HoverCardContent>
-    </HoverCard>
+        {status === 'CanLoadMore' ? (
+          <Button variant="ghost" size="sm" onClick={() => loadMore(25)}>
+            Show more
+          </Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -877,6 +1116,120 @@ const TOUCH_TIMELINE_CLASS = 'select-none [-webkit-touch-callout:none]';
 const CHAT_SCROLL_BUTTON_CLASS =
   'inset-s-auto inset-e-3 translate-x-0 rtl:translate-x-0 shadow-md data-[direction=end]:bottom-3';
 
+function HistoryPagination({
+  status,
+  loadMore,
+}: {
+  status: string;
+  loadMore: (count: number) => void;
+}) {
+  const { visibleMessageIds } = useMessageScrollerVisibility();
+  useEffect(() => {
+    if (status === 'CanLoadMore' && visibleMessageIds.includes('history-start'))
+      loadMore(40);
+  }, [visibleMessageIds, status, loadMore]);
+  return null;
+}
+
+function NewMessagesButton({
+  messages,
+  viewerId,
+}: {
+  messages: ClubChannelMessage[];
+  viewerId?: string;
+}) {
+  const { end: scrolledUp } = useMessageScrollerScrollable();
+  const [newCount, setNewCount] = useState(0);
+  const newestSeenAt = useRef<number | null>(null);
+  useEffect(() => {
+    const newest = Math.max(
+      0,
+      ...messages
+        .filter((message) => !('deliveryState' in message))
+        .map((message) => new Date(message.createdAt).getTime()),
+    );
+    if (newestSeenAt.current !== null && scrolledUp)
+      setNewCount(
+        messages.filter(
+          (message) =>
+            !('deliveryState' in message) &&
+            message.authorId !== viewerId &&
+            new Date(message.createdAt).getTime() > newestSeenAt.current!,
+        ).length,
+      );
+    else {
+      newestSeenAt.current = newest;
+      setNewCount(0);
+    }
+  }, [messages, viewerId, scrolledUp]);
+  return (
+    <MessageScrollerButton
+      className={CHAT_SCROLL_BUTTON_CLASS}
+      size={newCount ? 'sm' : 'icon-sm'}
+    >
+      <ArrowDown />
+      {newCount ? (
+        `${newCount} new`
+      ) : (
+        <span className="sr-only">Jump to latest</span>
+      )}
+    </MessageScrollerButton>
+  );
+}
+
+function TypingPresence({
+  clubId,
+  channelId,
+  active,
+}: {
+  clubId: Id<'clubs'>;
+  channelId: Id<'clubChannels'>;
+  active: boolean;
+}) {
+  const heartbeat = useMutation(api.clubs.channels.typingHeartbeat);
+  const disconnect = useMutation(api.presence.status.disconnect);
+  const people = useQuery(api.clubs.channels.typingUsers, {
+    clubId,
+    channelId,
+  });
+  useEffect(() => {
+    if (!active) return;
+    const sessionId = crypto.randomUUID();
+    let stopped = false;
+    let token: string | null = null;
+    const ping = () => {
+      void heartbeat({ clubId, channelId, sessionId })
+        .then((result) => {
+          if (stopped) void disconnect(result);
+          else token = result.sessionToken;
+        })
+        .catch(() => {});
+    };
+    ping();
+    const timer = setInterval(ping, 2_000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      if (token) void disconnect({ sessionToken: token }).catch(() => {});
+    };
+  }, [active, clubId, channelId, heartbeat, disconnect]);
+  if (!people?.length) return null;
+  return (
+    <p className="px-3 pb-1 text-xs text-muted-foreground" aria-live="polite">
+      {people
+        .slice(0, 2)
+        .map((person) => person.name)
+        .join(' and ')}
+      {people.length > 2
+        ? ' and others are'
+        : people.length === 1
+          ? ' is'
+          : ' are'}{' '}
+      typing…
+    </p>
+  );
+}
+
 function ScrollToReplyTarget({
   messageId,
   requestKey,
@@ -890,7 +1243,12 @@ function ScrollToReplyTarget({
   const lastScrolledRequestKey = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!messageId || !targetPresent || lastScrolledRequestKey.current === requestKey) return;
+    if (
+      !messageId ||
+      !targetPresent ||
+      lastScrolledRequestKey.current === requestKey
+    )
+      return;
 
     const frame = requestAnimationFrame(() => {
       if (scrollToMessage(messageId, { align: 'center', behavior: 'smooth' })) {
@@ -931,7 +1289,9 @@ function MessageReplyReference({
   // has answered for a message sent from this device.
   const preview = message.replyPreview;
   const author = preview ? preview.author : replyTarget?.author;
-  const isDeleted = preview ? preview.isDeleted : (replyTarget?.isDeleted ?? preview === null);
+  const isDeleted = preview
+    ? preview.isDeleted
+    : (replyTarget?.isDeleted ?? preview === null);
   const text = preview ? preview.body : replyTarget?.body;
   const isMine = !!author && author._id === currentUserId;
 
@@ -948,9 +1308,18 @@ function MessageReplyReference({
     >
       <span className="sr-only">In reply to</span>
       {author ? (
-        <ClubAvatar person={author} className="size-4" fallbackClassName="text-[7px]" />
+        <ClubPersonAvatar
+          person={author}
+          className="size-4"
+          fallbackClassName="text-[7px]"
+        />
       ) : null}
-      <span className={cn('shrink-0 font-medium', isMine ? 'text-primary' : 'text-foreground/85')}>
+      <span
+        className={cn(
+          'shrink-0 font-medium',
+          isMine ? 'text-primary' : 'text-foreground',
+        )}
+      >
         {author ? (isMine ? 'You' : fullName(author)) : 'Original message'}
       </span>
       <span className={cn('truncate', isDeleted && 'italic')}>
@@ -977,7 +1346,6 @@ function MessageRow({
   onStartEdit,
   onDelete,
   onCopyText,
-  onShowHistory,
   onReport,
   doubleTapReaction,
   onChangeDoubleTapReaction,
@@ -990,7 +1358,8 @@ function MessageRow({
   isVotePending,
   isDeletePending,
   friendRequestPendingId,
-  highlighted,
+  replying,
+  editor,
   jumpedTo,
   permissions,
   currentUserId,
@@ -1010,7 +1379,6 @@ function MessageRow({
   onStartEdit: (messageId: string) => void;
   onDelete: (messageId: string) => void;
   onCopyText: (message: ClubChannelMessage) => void;
-  onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
   doubleTapReaction: ChannelReaction;
   onChangeDoubleTapReaction: (reaction: ChannelReaction) => void;
@@ -1023,7 +1391,8 @@ function MessageRow({
   isVotePending: boolean;
   isDeletePending: boolean;
   friendRequestPendingId?: string | null;
-  highlighted: boolean;
+  replying: boolean;
+  editor?: ReactNode;
   jumpedTo: boolean;
   permissions: MessagePermissions;
   currentUserId?: string;
@@ -1032,14 +1401,19 @@ function MessageRow({
   groupedWithPrevious?: boolean;
 }) {
   const isTouchPrimary = useTouchPrimary();
-  const { post: canPost, pin: canPinMessages, moderate: canModerateMessages } = permissions;
+  const {
+    post: canPost,
+    pin: canPinMessages,
+    moderate: canModerateMessages,
+  } = permissions;
   const { toast } = useToast();
   // Previewed GIF links and GIF uploads, copied from the message's own menu.
   const gifUrls = message.isDeleted ? [] : messageGifUrls(message);
   const copyGifUrl = (url: string) => {
     void copyText(url).then(
       () => toast({ title: 'GIF URL copied' }),
-      () => toast({ title: 'Could not copy the GIF URL', variant: 'destructive' }),
+      () =>
+        toast({ title: 'Could not copy the GIF URL', variant: 'destructive' }),
     );
   };
   // Thread replies are always compact; on touch-primary devices every row
@@ -1048,7 +1422,7 @@ function MessageRow({
   const dense = compact || isTouchPrimary;
   const isAuthor = message.author._id === currentUserId;
   const isDeleted = message.isDeleted;
-  const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
+  const isEdited = !isDeleted && !!message.editedAt;
   const isSending =
     'deliveryState' in message && message.deliveryState === 'sending';
   const hasBody = message.body.trim().length > 0;
@@ -1057,11 +1431,20 @@ function MessageRow({
   const canAct = !isDeleted && !isSending && !isEditing;
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
-  const [reactionBurst, setReactionBurst] = useState<{ key: number; x: number; y: number } | null>(null);
+  const [reactionBurst, setReactionBurst] = useState<{
+    key: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
-  const replySwipeStart = useRef<{ x: number; y: number; swiping: boolean } | null>(null);
+  const replySwipeStart = useRef<{
+    x: number;
+    y: number;
+    swiping: boolean;
+  } | null>(null);
   const [replySwipeOffset, setReplySwipeOffset] = useState(0);
   const [replySwipeSettling, setReplySwipeSettling] = useState(false);
   // Replies go to the channel composer, so they need a channel you can post in.
@@ -1073,14 +1456,20 @@ function MessageRow({
   const showReplyActionButton = canReply && !isTouchPrimary;
   const repliesToViewer =
     !!currentUserId &&
-    (message.replyPreview?.author._id ?? replyTarget?.author._id) === currentUserId;
+    (message.replyPreview?.author._id ?? replyTarget?.author._id) ===
+      currentUserId;
   // Discord-style: replies to you and mentions that reached you stand out.
   const pingsViewer =
-    !isAuthor && !isDeleted && !isSending && (repliesToViewer || !!message.mentionsViewer);
+    !isAuthor &&
+    !isDeleted &&
+    !isSending &&
+    (repliesToViewer || !!message.mentionsViewer);
   const doubleTapOption =
-    QUICK_REACTIONS.find((reaction) => reaction.value === doubleTapReaction) ?? QUICK_REACTIONS[0];
+    QUICK_REACTIONS.find((reaction) => reaction.value === doubleTapReaction) ??
+    QUICK_REACTIONS[0];
   const doubleTapReacted = message.reactions.some(
-    (reaction) => reaction.emoji === doubleTapOption.value && reaction.reactedByCurrentUser,
+    (reaction) =>
+      reaction.emoji === doubleTapOption.value && reaction.reactedByCurrentUser,
   );
 
   const pressHandlers = useMessagePress({
@@ -1092,9 +1481,16 @@ function MessageRow({
     onDoubleTap: (point) => {
       const rect = rowRef.current?.getBoundingClientRect();
       if (rect) {
-        setReactionBurst({ key: Date.now(), x: point.x - rect.left, y: point.y - rect.top });
+        setReactionBurst({
+          key: Date.now(),
+          x: point.x - rect.left,
+          y: point.y - rect.top,
+        });
       }
       hapticTick();
+      try {
+        localStorage.setItem('chat-double-tap-learned', 'true');
+      } catch {}
       // Like a double-tap like elsewhere: it adds, and never takes back.
       if (!doubleTapReacted && !isReactionPending) {
         onToggleReaction(message._id, doubleTapOption.value);
@@ -1109,10 +1505,24 @@ function MessageRow({
     requestAnimationFrame(() => setReplySwipeSettling(false));
   };
 
+  const reactionOptions = QUICK_REACTIONS.map((reaction) => ({
+    ...reaction,
+    selected: message.reactions.some(
+      (existing) =>
+        existing.emoji === reaction.value && existing.reactedByCurrentUser,
+    ),
+  }));
   const sheetActionGroups: MessageSheetAction[][] = [
     [
       ...(canReply
-        ? [{ key: 'reply', label: 'Reply', icon: Reply, onSelect: () => onStartReply(message._id) }]
+        ? [
+            {
+              key: 'reply',
+              label: 'Reply',
+              icon: Reply,
+              onSelect: () => onStartReply(message._id),
+            },
+          ]
         : []),
       ...(!compact
         ? [
@@ -1125,17 +1535,32 @@ function MessageRow({
           ]
         : []),
       ...(isAuthor
-        ? [{ key: 'edit', label: 'Edit message', icon: Pencil, onSelect: () => onStartEdit(message._id) }]
+        ? [
+            {
+              key: 'edit',
+              label: 'Edit message',
+              icon: Pencil,
+              onSelect: () => onStartEdit(message._id),
+            },
+          ]
         : []),
     ],
     [
       ...(hasBody
-        ? [{ key: 'copy', label: 'Copy text', icon: Copy, onSelect: () => onCopyText(message) }]
+        ? [
+            {
+              key: 'copy',
+              label: 'Copy text',
+              icon: Copy,
+              onSelect: () => onCopyText(message),
+            },
+          ]
         : []),
       // The hold sheet replaces the right-click menu on touch, GIF links included.
       ...gifUrls.map((url, index) => ({
         key: `gif-${url}`,
-        label: gifUrls.length === 1 ? 'Copy GIF URL' : `Copy GIF ${index + 1} URL`,
+        label:
+          gifUrls.length === 1 ? 'Copy GIF URL' : `Copy GIF ${index + 1} URL`,
         icon: Link2,
         onSelect: () => copyGifUrl(url),
       })),
@@ -1151,7 +1576,14 @@ function MessageRow({
           ]
         : []),
       ...(!isAuthor
-        ? [{ key: 'report', label: 'Report message', icon: Flag, onSelect: () => onReport?.(message._id) }]
+        ? [
+            {
+              key: 'report',
+              label: 'Report message',
+              icon: Flag,
+              onSelect: () => onReport?.(message._id),
+            },
+          ]
         : []),
     ],
     isAuthor || canModerateMessages
@@ -1170,546 +1602,548 @@ function MessageRow({
 
   return (
     <>
-    <ContextMenu>
-      {/* Touch-first devices use the hold sheet below instead of this menu. */}
-      <ContextMenuTrigger asChild disabled={!canAct || isTouchPrimary}>
-        <div
-          ref={rowRef}
-          data-selected={actionSheetOpen ? '' : undefined}
-          className={cn(
-            'group/row relative touch-pan-y',
-            // On touch, a hold opens the actions; it never selects text, shows
-            // the iOS callout, or lifts a link or image to drag. Copy text is
-            // in the sheet. Pointers keep normal text selection.
-            isTouchPrimary &&
-              'select-none [-webkit-touch-callout:none] [&_a]:[-webkit-user-drag:none] [&_img]:[-webkit-user-drag:none]',
-          )}
-          {...pressHandlers}
-        >
+      <ContextMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
+        {/* Touch-first devices use the hold sheet below instead of this menu. */}
+        <ContextMenuTrigger asChild disabled={!canAct || isTouchPrimary}>
           <div
-            aria-hidden="true"
+            ref={rowRef}
+            data-selected={
+              actionSheetOpen ||
+              actionsMenuOpen ||
+              contextMenuOpen ||
+              reactionPickerOpen
+                ? ''
+                : undefined
+            }
             className={cn(
-              'pointer-events-none absolute inset-y-0 end-3 flex items-center text-primary transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none',
-              replySwipeOffset ? 'translate-x-0 opacity-100' : 'translate-x-1 opacity-0',
+              'group/row relative touch-pan-y',
+              // On touch, a hold opens the actions; it never selects text, shows
+              // the iOS callout, or lifts a link or image to drag. Copy text is
+              // in the sheet. Pointers keep normal text selection.
+              isTouchPrimary &&
+                'select-none [-webkit-touch-callout:none] [&_a]:[-webkit-user-drag:none] [&_img]:[-webkit-user-drag:none]',
             )}
+            {...pressHandlers}
           >
-            <Reply className="size-4" />
-          </div>
-          <div
-            className={cn(
-              'relative will-change-transform',
-              replySwipeSettling && 'transition-transform duration-200 ease-out motion-reduce:transition-none',
-            )}
-            style={replySwipeOffset ? { transform: `translateX(${replySwipeOffset}px)` } : undefined}
-            onTouchStart={(event) => {
-              if (!canSwipeToReply || event.touches.length !== 1) return;
-              // Touches inside a dialog opened from this row are not swipes on it.
-              if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target)) return;
-              if (event.target.closest('button, a, input, textarea, [contenteditable=true], [data-message-gallery]')) return;
-              const touch = event.touches[0];
-              replySwipeStart.current = { x: touch.clientX, y: touch.clientY, swiping: false };
-            }}
-            onTouchMove={(event) => {
-              const start = replySwipeStart.current;
-              if (!start || event.touches.length !== 1) return;
-              const touch = event.touches[0];
-              const deltaX = touch.clientX - start.x;
-              const deltaY = Math.abs(touch.clientY - start.y);
-              if (!start.swiping) {
-                if (Math.max(Math.abs(deltaX), deltaY) < 8) return;
-                if (deltaX >= 0 || Math.abs(deltaX) < deltaY * 1.25) {
-                  replySwipeStart.current = null;
+            <div
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none absolute inset-y-0 end-3 flex items-center text-primary transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none',
+                replySwipeOffset
+                  ? 'translate-x-0 opacity-100'
+                  : 'translate-x-1 opacity-0',
+              )}
+            >
+              <Reply className="size-4" />
+            </div>
+            <div
+              className={cn(
+                'relative will-change-transform',
+                replySwipeSettling &&
+                  'transition-transform duration-200 ease-out motion-reduce:transition-none',
+              )}
+              style={
+                replySwipeOffset
+                  ? { transform: `translateX(${replySwipeOffset}px)` }
+                  : undefined
+              }
+              onTouchStart={(event) => {
+                if (!canSwipeToReply || event.touches.length !== 1) return;
+                // Touches inside a dialog opened from this row are not swipes on it.
+                if (
+                  !(event.target instanceof Element) ||
+                  !event.currentTarget.contains(event.target)
+                )
                   return;
+                if (
+                  event.target.closest(
+                    'button, a, input, textarea, [contenteditable=true], [data-message-gallery]',
+                  )
+                )
+                  return;
+                const touch = event.touches[0];
+                replySwipeStart.current = {
+                  x: touch.clientX,
+                  y: touch.clientY,
+                  swiping: false,
+                };
+              }}
+              onTouchMove={(event) => {
+                const start = replySwipeStart.current;
+                if (!start || event.touches.length !== 1) return;
+                const touch = event.touches[0];
+                const deltaX = touch.clientX - start.x;
+                const deltaY = Math.abs(touch.clientY - start.y);
+                if (!start.swiping) {
+                  if (Math.max(Math.abs(deltaX), deltaY) < 8) return;
+                  if (deltaX >= 0 || Math.abs(deltaX) < deltaY * 1.25) {
+                    replySwipeStart.current = null;
+                    return;
+                  }
+                  start.swiping = true;
                 }
-                start.swiping = true;
-              }
-              // Right swipes belong to the workspace navigation gesture. Replies
-              // deliberately use the opposite direction so the two never compete.
-              event.preventDefault();
-              setReplySwipeSettling(false);
-              setReplySwipeOffset(Math.max(-48, Math.min(0, deltaX)));
-            }}
-            onTouchEnd={(event) => {
-              const start = replySwipeStart.current;
-              const touch = event.changedTouches[0];
-              if (start?.swiping && touch && start.x - touch.clientX >= 48) {
-                setReplySwipeOffset(-48);
-                hapticTick();
-                onStartReply(message._id);
-              }
-              resetReplySwipe();
-            }}
-            onTouchCancel={resetReplySwipe}
-          >
-          <Message
-            className={cn(
-              'rounded-md gap-3 px-3 transition-colors duration-200 hover:bg-hover',
-              // Pressed (set by the press handlers) and selected (sheet open).
-              'group-data-[pressed]/row:bg-active group-data-[pressed]/row:duration-75 group-data-[selected]/row:bg-active',
-              groupedWithPrevious ? 'py-0' : dense ? 'py-1.5' : 'py-2.5',
-              pingsViewer &&
-                'bg-amber-500/[0.09] hover:bg-amber-500/[0.13] before:pointer-events-none before:absolute before:inset-y-0 before:start-0 before:w-0.5 before:rounded-full before:bg-amber-500',
-              jumpedTo && 'bg-primary/10 ring-1 ring-primary/25 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300',
-              pingsViewer &&
-                'group-data-[pressed]/row:bg-amber-500/[0.18] group-data-[selected]/row:bg-amber-500/[0.18]',
-              isSending &&
-                'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
-            )}
-          >
-      <MessageAvatar
-        className={cn(
-          'self-start overflow-visible bg-transparent',
-          // Level with the author's name below the reply line.
-          message.replyToMessageId && !groupedWithPrevious && 'mt-6',
-        )}
-      >
-        {!groupedWithPrevious ? (
-          <MessageAuthorPreview
-            author={message.author}
-            compact={dense}
-            currentUserId={currentUserId}
-            canSendFriendRequest={canSendFriendRequest}
-            friendshipStatus={friendshipStatus}
-            friendRequestPendingId={friendRequestPendingId}
-            onSendFriendRequest={onSendFriendRequest}
-          />
-        ) : null}
-      </MessageAvatar>
-      <MessageContent className="gap-0">
-        {message.replyToMessageId ? (
-          <MessageReplyReference
-            message={message}
-            replyTarget={replyTarget}
-            currentUserId={currentUserId}
-            dense={dense}
-            onJump={() => onJumpToReply(message.replyToMessageId!)}
-          />
-        ) : null}
-        {!groupedWithPrevious ? (
-          <MessageHeader className="gap-2 px-0 text-[13px]">
-            <MessageAuthorPreview
-              author={message.author}
-              compact={dense}
-              triggerVariant="name"
-              currentUserId={currentUserId}
-              canSendFriendRequest={canSendFriendRequest}
-              friendshipStatus={friendshipStatus}
-              friendRequestPendingId={friendRequestPendingId}
-              onSendFriendRequest={onSendFriendRequest}
-            />
-            <span className="text-xs text-muted-foreground">
-              {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
-            </span>
-            {message.isPinned ? (
-              <Badge variant="solid" color="amber" className="h-5 text-[10px]">
-                Pinned
-              </Badge>
-            ) : null}
-            {isEdited ? (
-              <button
-                type="button"
-                className="group/history flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary"
-                onClick={() => onShowHistory?.(message._id)}
-              >
-                <History className="size-3" />
-                <span>(edited)</span>
-              </button>
-            ) : null}
-          </MessageHeader>
-        ) : null}
-
-        {isEditing ? (
-          <div className="mt-2" />
-        ) : (
-          <Bubble
-            variant="ghost"
-            align="start"
-            className={cn(!groupedWithPrevious && 'mt-1')}
-          >
-            {isDeleted || hasBody ? (
-              <BubbleContent
+                // Right swipes belong to the workspace navigation gesture. Replies
+                // deliberately use the opposite direction so the two never compete.
+                setReplySwipeSettling(false);
+                setReplySwipeOffset(Math.max(-48, Math.min(0, deltaX)));
+              }}
+              onTouchEnd={(event) => {
+                const start = replySwipeStart.current;
+                const touch = event.changedTouches[0];
+                if (start?.swiping && touch && start.x - touch.clientX >= 48) {
+                  setReplySwipeOffset(-48);
+                  hapticTick();
+                  onStartReply(message._id);
+                }
+                resetReplySwipe();
+              }}
+              onTouchCancel={resetReplySwipe}
+            >
+              <Message
+                grouped={groupedWithPrevious}
+                data-replying={replying || undefined}
                 className={cn(
-                  'text-[13px] leading-normal',
-                  highlighted && 'rounded-md bg-primary/10 px-1.5 py-0.5 ring-1 ring-primary/25',
+                  'rounded-md gap-3 px-3 transition-colors duration-200 hover:bg-hover',
+                  // Pressed (set by the press handlers) and selected (sheet open).
+                  'group-data-[pressed]/row:bg-active group-data-[pressed]/row:duration-75 group-data-[selected]/row:bg-active',
+                  pingsViewer &&
+                    'bg-[hsl(var(--mention-surface))] shadow-[inset_2px_0_0_hsl(var(--mention))]',
+                  jumpedTo &&
+                    'bg-primary/10 ring-1 ring-primary/25 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300',
+                  replying &&
+                    'bg-primary/5 shadow-[inset_2px_0_0_hsl(var(--primary))]',
+                  isSending &&
+                    'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
                 )}
               >
-                {isDeleted ? (
-                  <p className="text-[13px] italic text-muted-foreground">Message deleted</p>
-                ) : (
-                  <MessageBody message={message} />
-                )}
-              </BubbleContent>
-            ) : null}
-            {!isDeleted ? (
-              <>
-                <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
-                <MessageAttachments attachments={message.attachments} />
-              </>
-            ) : null}
-            {hasReactions ? (
-              <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                {message.reactions.map((reaction) => (
-                  <ReactionButton
-                    key={`${message._id}-${reaction.emoji}`}
-                    clubId={clubId}
-                    channelId={message.channelId}
-                    messageId={message._id}
-                    reaction={reaction}
-                    onToggleReaction={onToggleReaction}
-                    isReactionPending={isReactionPending}
-                    openDetailsOnPress={openReactionDetailsOnPress}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </Bubble>
-        )}
-
-        {!isEditing && (
-          <>
-            {/* Touch devices use the hold sheet: on a phone a tap leaves
-                this bar stuck open, and its hidden buttons caught taps. */}
-            {!isDeleted && !isSending && !isTouchPrimary ? (
-              <>
-                <MessageActions
+                <MessageAvatar
                   className={cn(
-                    'pointer-events-none translate-y-1 rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:pointer-events-auto group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
-                    (reactionPickerOpen || actionsMenuOpen || deleteDialogOpen) &&
-                      'pointer-events-auto translate-y-0 opacity-100',
+                    'self-start overflow-visible bg-transparent',
+                    // Level with the author's name below the reply line.
+                    message.replyToMessageId && !groupedWithPrevious && 'mt-6',
                   )}
                 >
-                  <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
-                    <Tooltip content="Add reaction">
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="size-7"
-                          disabled={isReactionPending}
-                          aria-label="Add reaction"
-                        >
-                          <SmilePlus className="size-3.5" />
-                        </Button>
-                      </PopoverTrigger>
-                    </Tooltip>
-                    <PopoverContent
-                      side="top"
-                      align="end"
-                      className="flex w-auto gap-0.5 rounded-lg p-1"
+                  {!groupedWithPrevious ? (
+                    <MessageAuthorPreview
+                      author={message.author}
+                      compact={dense}
+                      currentUserId={currentUserId}
+                      canSendFriendRequest={canSendFriendRequest}
+                      friendshipStatus={friendshipStatus}
+                      friendRequestPendingId={friendRequestPendingId}
+                      onSendFriendRequest={onSendFriendRequest}
+                    />
+                  ) : (
+                    <time
+                      dateTime={message.createdAt}
+                      className="block pt-0.5 text-center text-[11px] tabular-nums text-muted-foreground opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100 pointer-coarse:opacity-100"
                     >
-                      {QUICK_REACTIONS.map((reaction) => (
-                        <Tooltip key={reaction.value} content={reaction.name}>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="size-8 text-base"
-                            disabled={isReactionPending}
-                            aria-label={reaction.name}
-                            onClick={() => onToggleReaction(message._id, reaction.value)}
-                          >
-                            {reaction.label}
-                          </Button>
-                        </Tooltip>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                  {showReplyActionButton ? (
-                    <Tooltip content="Reply">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-7"
-                        aria-label="Reply"
-                        onClick={() => onStartReply(message._id)}
-                      >
-                        <Reply className="size-3.5" />
-                      </Button>
-                    </Tooltip>
-                  ) : null}
-                  {!compact && !isTouchPrimary ? (
-                    <Tooltip content="Open thread">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-7"
-                        aria-label="Open thread"
-                        onClick={() => onOpenThread(message.threadRootId)}
-                      >
-                        <MessageSquareText className="size-3.5" />
-                      </Button>
-                    </Tooltip>
-                  ) : null}
-                  {isAuthor && (
-                    <Tooltip content="Edit">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-7"
-                        aria-label="Edit"
-                        onClick={() => onStartEdit(message._id)}
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                    </Tooltip>
+                      {format(new Date(message.createdAt), 'h:mm')}
+                    </time>
                   )}
-                  <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
-                    <Tooltip content="More">
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="size-7"
-                          aria-label="More message actions"
-                        >
-                          <MoreHorizontal className="size-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </Tooltip>
-                    <DropdownMenuContent
-                      align="end"
-                      className="min-w-0 w-[7.5rem] rounded-2xl"
-                    >
-                      {!isAuthor ? (
-                        <DropdownMenuItem
-                          className="rounded-xl"
-                          onSelect={() => onReport?.(message._id)}
-                        >
-                          <Flag />
-                          Report
-                        </DropdownMenuItem>
+                </MessageAvatar>
+                <MessageContent className="gap-0">
+                  {message.replyToMessageId ? (
+                    <MessageReplyReference
+                      message={message}
+                      replyTarget={replyTarget}
+                      currentUserId={currentUserId}
+                      dense={dense}
+                      onJump={() => onJumpToReply(message.replyToMessageId!)}
+                    />
+                  ) : null}
+                  {!groupedWithPrevious ? (
+                    <MessageHeader className="gap-2 px-0 text-[13px]">
+                      <MessageAuthorPreview
+                        author={message.author}
+                        compact={dense}
+                        triggerVariant="name"
+                        currentUserId={currentUserId}
+                        canSendFriendRequest={canSendFriendRequest}
+                        friendshipStatus={friendshipStatus}
+                        friendRequestPendingId={friendRequestPendingId}
+                        onSendFriendRequest={onSendFriendRequest}
+                      />
+                      {message.author.clubRole ? (
+                        <span className="text-xs text-muted-foreground">
+                          · {message.author.clubRole.name}
+                        </span>
                       ) : null}
-                      {canPinMessages && !compact ? (
-                        <DropdownMenuItem
-                          className="rounded-xl"
-                          disabled={isPinPending}
-                          onSelect={() => onTogglePin(message._id, !message.isPinned)}
+                      <span className="text-xs text-muted-foreground">
+                        {isSending
+                          ? 'Sending…'
+                          : formatMessageTime(message.createdAt)}
+                      </span>
+                      {message.isPinned ? (
+                        <Tooltip content="Pinned message">
+                          <span className="text-muted-foreground">
+                            <Pin
+                              className="size-3"
+                              aria-label="Pinned message"
+                            />
+                          </span>
+                        </Tooltip>
+                      ) : null}
+                      {isEdited ? (
+                        <Tooltip
+                          content={`Edited ${formatMessageTime(message.editedAt!, 'full')}`}
                         >
-                          {message.isPinned ? <PinOff /> : <Pin />}
-                          {message.isPinned ? 'Unpin' : 'Pin'}
-                        </DropdownMenuItem>
+                          <span className="text-xs text-muted-foreground">
+                            (edited)
+                          </span>
+                        </Tooltip>
                       ) : null}
-                      {(isAuthor || canModerateMessages) && (!isAuthor || ((canPinMessages || canModerateMessages) && !compact)) ? (
-                        <DropdownMenuSeparator />
-                      ) : null}
-                      {(isAuthor || canModerateMessages) ? (
-                        <DropdownMenuItem
-                          disabled={isDeletePending}
-                          className="rounded-xl text-destructive focus:text-destructive"
-                          onSelect={() => setDeleteDialogOpen(true)}
-                        >
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </MessageActions>
-              </>
-            ) : null}
+                    </MessageHeader>
+                  ) : null}
 
-            {!compact && !isTouchPrimary && message.hasReplies ? (
-              <button
-                type="button"
-                className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 w-fit"
-                onClick={() => onOpenThread(message.threadRootId)}
+                  {isEditing ? (
+                    editor
+                  ) : (
+                    <div
+                      className={cn('min-w-0', !groupedWithPrevious && 'mt-1')}
+                    >
+                      {isDeleted || hasBody ? (
+                        <div className="max-w-[75ch]">
+                          {isDeleted ? (
+                            <p className="text-[13px] italic text-muted-foreground">
+                              Message deleted
+                            </p>
+                          ) : (
+                            <MessageBody message={message} />
+                          )}
+                        </div>
+                      ) : null}
+                      {!isDeleted ? (
+                        <>
+                          <PollCard
+                            message={message}
+                            onVote={onVotePoll}
+                            isPending={isVotePending}
+                          />
+                          <MessageAttachments
+                            attachments={message.attachments}
+                          />
+                        </>
+                      ) : null}
+                      {hasReactions ? (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                          {message.reactions.map((reaction) => (
+                            <ReactionButton
+                              key={`${message._id}-${reaction.emoji}`}
+                              clubId={clubId}
+                              channelId={message.channelId}
+                              messageId={message._id}
+                              reaction={reaction}
+                              onToggleReaction={onToggleReaction}
+                              isReactionPending={isReactionPending}
+                              openDetailsOnPress={openReactionDetailsOnPress}
+                              currentUserId={currentUserId}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {!isEditing && (
+                    <>
+                      {/* Touch devices use the hold sheet: on a phone a tap leaves
+                this bar stuck open, and its hidden buttons caught taps. */}
+                      {!isDeleted && !isSending && !isTouchPrimary ? (
+                        <>
+                          <MessageActions
+                            className={cn(
+                              'pointer-events-none translate-y-1 rounded-xl bg-surface-3 p-0.5 opacity-0 shadow-surface-3 transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:pointer-events-auto group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
+                              (reactionPickerOpen ||
+                                actionsMenuOpen ||
+                                deleteDialogOpen) &&
+                                'pointer-events-auto translate-y-0 opacity-100',
+                            )}
+                          >
+                            <Popover
+                              open={reactionPickerOpen}
+                              onOpenChange={setReactionPickerOpen}
+                            >
+                              <Tooltip content="Add reaction">
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-compact"
+                                    disabled={isReactionPending}
+                                    aria-label="Add reaction"
+                                  >
+                                    <SmilePlus />
+                                  </Button>
+                                </PopoverTrigger>
+                              </Tooltip>
+                              <PopoverContent
+                                side="top"
+                                align="end"
+                                className="w-auto p-1"
+                              >
+                                <ReactionPicker
+                                  reactions={reactionOptions}
+                                  disabled={isReactionPending}
+                                  onPick={(value, keepOpen) => {
+                                    if (isChannelReaction(value))
+                                      onToggleReaction(message._id, value);
+                                    if (!keepOpen) setReactionPickerOpen(false);
+                                  }}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            {showReplyActionButton ? (
+                              <Tooltip content="Reply">
+                                <Button
+                                  variant="ghost"
+                                  size="icon-compact"
+                                  aria-label="Reply"
+                                  onClick={() => onStartReply(message._id)}
+                                >
+                                  <Reply />
+                                </Button>
+                              </Tooltip>
+                            ) : null}
+                            {!compact && !isTouchPrimary ? (
+                              <Tooltip content="Open thread">
+                                <Button
+                                  variant="ghost"
+                                  size="icon-compact"
+                                  aria-label="Open thread"
+                                  onClick={() =>
+                                    onOpenThread(message.threadRootId)
+                                  }
+                                >
+                                  <MessageSquareText />
+                                </Button>
+                              </Tooltip>
+                            ) : null}
+                            {isAuthor && (
+                              <Tooltip content="Edit">
+                                <Button
+                                  variant="ghost"
+                                  size="icon-compact"
+                                  aria-label="Edit"
+                                  onClick={() => onStartEdit(message._id)}
+                                >
+                                  <Pencil />
+                                </Button>
+                              </Tooltip>
+                            )}
+                            <DropdownMenu
+                              open={actionsMenuOpen}
+                              onOpenChange={setActionsMenuOpen}
+                            >
+                              <Tooltip content="More">
+                                <DropdownTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-compact"
+                                      aria-label="More message actions"
+                                    >
+                                      <MoreHorizontal />
+                                    </Button>
+                                  }
+                                />
+                              </Tooltip>
+                              <DropdownContent
+                                align="end"
+                                onCloseAutoFocus={(event) =>
+                                  event.preventDefault()
+                                }
+                              >
+                                {sheetActionGroups
+                                  .filter((group) => group.length)
+                                  .map((group, groupIndex) => (
+                                    <div key={groupIndex}>
+                                      {groupIndex ? (
+                                        <DropdownSeparator />
+                                      ) : null}
+                                      {group.map((action, index) => (
+                                        <MenuItem
+                                          key={action.key}
+                                          index={groupIndex * 20 + index}
+                                          label={action.label}
+                                          icon={action.icon}
+                                          disabled={action.disabled}
+                                          className={cn(
+                                            action.destructive &&
+                                              'text-destructive',
+                                          )}
+                                          onClick={(event) => {
+                                            if (
+                                              action.key === 'delete' &&
+                                              event.shiftKey
+                                            ) {
+                                              event.preventDefault();
+                                              setActionsMenuOpen(false);
+                                              onDelete(message._id);
+                                            } else action.onSelect();
+                                          }}
+                                        />
+                                      ))}
+                                    </div>
+                                  ))}
+                              </DropdownContent>
+                            </DropdownMenu>
+                          </MessageActions>
+                        </>
+                      ) : null}
+
+                      {!compact && !isTouchPrimary && message.hasReplies ? (
+                        <button
+                          type="button"
+                          className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 w-fit"
+                          onClick={() => onOpenThread(message.threadRootId)}
+                        >
+                          <Reply className="size-3" />
+                          {message.replyCountIsExact
+                            ? `${message.replyCount} ${message.replyCount === 1 ? 'reply' : 'replies'}`
+                            : 'View thread'}
+                        </button>
+                      ) : null}
+                    </>
+                  )}
+                </MessageContent>
+              </Message>
+            </div>
+            {reactionBurst ? (
+              <span
+                key={reactionBurst.key}
+                aria-hidden="true"
+                className="pointer-events-none absolute z-30 text-4xl leading-none drop-shadow-sm animate-reaction-burst motion-reduce:hidden"
+                style={{ left: reactionBurst.x, top: reactionBurst.y }}
+                onAnimationEnd={() => setReactionBurst(null)}
               >
-                <Reply className="size-3" />
-                {message.replyCountIsExact
-                  ? `${message.replyCount} ${message.replyCount === 1 ? 'reply' : 'replies'}`
-                  : 'View thread'}
-              </button>
+                {doubleTapOption.label}
+              </span>
             ) : null}
-          </>
-        )}
-      </MessageContent>
-          </Message>
-        </div>
-          {reactionBurst ? (
-            <span
-              key={reactionBurst.key}
-              aria-hidden="true"
-              className="pointer-events-none absolute z-30 text-4xl leading-none drop-shadow-sm animate-reaction-burst motion-reduce:hidden"
-              style={{ left: reactionBurst.x, top: reactionBurst.y }}
-              onAnimationEnd={() => setReactionBurst(null)}
-            >
-              {doubleTapOption.label}
-            </span>
-          ) : null}
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent
-        className="w-48"
-        // Leave focus where the action put it, e.g. the composer after Reply.
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
-        <ContextMenuLabel>
-          Sent {format(new Date(message.createdAt), 'PPPP \'at\' h:mm:ss a')}
-        </ContextMenuLabel>
-        <ContextMenuSeparator />
-        <ContextMenuGroup>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent
+          className="w-48"
+          // Leave focus where the action put it, e.g. the composer after Reply.
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
+          <ContextMenuLabel className="text-xs font-normal text-muted-foreground">
+            {formatMessageTime(message.createdAt, 'full')}
+          </ContextMenuLabel>
+          <ContextMenuSeparator />
           <ContextMenuSub>
             <ContextMenuSubTrigger>
               <SmilePlus />
               Add reaction
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-44">
-              <ContextMenuGroup>
-                {QUICK_REACTIONS.map((reaction) => (
+            <ContextMenuSubContent className="w-auto p-2">
+              <ReactionPicker
+                reactions={reactionOptions}
+                disabled={isReactionPending}
+                onPick={(value, keepOpen) => {
+                  if (isChannelReaction(value))
+                    onToggleReaction(message._id, value);
+                  if (!keepOpen) setContextMenuOpen(false);
+                }}
+              />
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          {sheetActionGroups
+            .filter((group) => group.length)
+            .map((group, index) => (
+              <ContextMenuGroup key={index}>
+                {index ? <ContextMenuSeparator /> : null}
+                {group.map((action) => (
                   <ContextMenuItem
-                    key={reaction.value}
-                    disabled={isReactionPending}
-                    onSelect={() => onToggleReaction(message._id, reaction.value)}
+                    key={action.key}
+                    disabled={action.disabled}
+                    className={cn(action.destructive && 'text-destructive')}
+                    onSelect={action.onSelect}
+                    onClick={(event) => {
+                      if (action.key === 'delete' && event.shiftKey) {
+                        event.preventDefault();
+                        setContextMenuOpen(false);
+                        onDelete(message._id);
+                      }
+                    }}
                   >
-                    <span className="text-base">{reaction.label}</span>
-                    {reaction.name}
+                    <action.icon />
+                    {action.label}
                   </ContextMenuItem>
                 ))}
               </ContextMenuGroup>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          {canReply ? (
-            <ContextMenuItem onSelect={() => onStartReply(message._id)}>
-              <Reply />
-              Reply
-            </ContextMenuItem>
-          ) : null}
-          {!compact ? (
-            <>
-              <ContextMenuItem onSelect={() => onOpenThread(message.threadRootId)}>
-                <MessageSquareText />
-                Open thread
-              </ContextMenuItem>
-            </>
-          ) : null}
-          {hasBody ? (
-            <ContextMenuItem onSelect={() => onCopyText(message)}>
-              <Copy />
-              Copy text
-            </ContextMenuItem>
-          ) : null}
-          {isAuthor ? (
-            <ContextMenuItem onSelect={() => onStartEdit(message._id)}>
-              <Pencil />
-              Edit
-            </ContextMenuItem>
-          ) : (
-            <ContextMenuItem onSelect={() => onReport?.(message._id)}>
-              <Flag />
-              Report
-            </ContextMenuItem>
-          )}
-          {canPinMessages && !compact ? (
-            <ContextMenuItem
-              disabled={isPinPending}
-              onSelect={() => onTogglePin(message._id, !message.isPinned)}
-            >
-              {message.isPinned ? <PinOff /> : <Pin />}
-              {message.isPinned ? 'Unpin' : 'Pin'}
-            </ContextMenuItem>
-          ) : null}
-          {gifUrls.length === 1 ? (
-            <ContextMenuItem onSelect={() => copyGifUrl(gifUrls[0]!)}>
-              <Link2 />
-              Copy GIF URL
-            </ContextMenuItem>
-          ) : gifUrls.length > 1 ? (
-            <ContextMenuSub>
-              <ContextMenuSubTrigger>
-                <Link2 />
-                Copy GIF URL
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-36">
-                <ContextMenuGroup>
-                  {gifUrls.map((url, index) => (
-                    <ContextMenuItem key={url} onSelect={() => copyGifUrl(url)}>
-                      GIF {index + 1}
-                    </ContextMenuItem>
-                  ))}
-                </ContextMenuGroup>
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-          ) : null}
-        </ContextMenuGroup>
-        {isAuthor || canModerateMessages ? <ContextMenuSeparator /> : null}
-        {isAuthor || canModerateMessages ? (
-          <ContextMenuGroup>
-            <ContextMenuItem
-              disabled={isDeletePending}
-              className="text-destructive focus:text-destructive"
-              onSelect={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 />
-              Delete
-            </ContextMenuItem>
-          </ContextMenuGroup>
-        ) : null}
-      </ContextMenuContent>
-    </ContextMenu>
-    {isTouchPrimary ? (
-      <MessageActionSheet
-        open={actionSheetOpen}
-        onOpenChange={setActionSheetOpen}
-        preview={{
-          avatar: <ClubAvatar person={message.author} className="size-9" fallbackClassName="text-[11px]" />,
-          authorName: fullName(message.author),
-          sentAt: formatSheetTimestamp(message.createdAt),
-          text: message.body.trim()
-            ? message.body
-            : message.poll
-              ? `Poll: ${message.poll.question}`
-              : message.attachments.length > 0
-                ? `${message.attachments.length} ${message.attachments.length === 1 ? 'attachment' : 'attachments'}`
-                : '',
-        }}
-        reactions={QUICK_REACTIONS.map((reaction) => ({
-          value: reaction.value,
-          label: reaction.label,
-          name: reaction.name,
-          selected: message.reactions.some(
-            (existing) => existing.emoji === reaction.value && existing.reactedByCurrentUser,
-          ),
-        }))}
-        doubleTap={{
-          value: doubleTapOption.value,
-          onChange: (value) => {
-            if (isChannelReaction(value)) onChangeDoubleTapReaction(value);
-          },
-        }}
-        onReact={(value) => {
-          if (isChannelReaction(value)) onToggleReaction(message._id, value);
-        }}
-        actionGroups={sheetActionGroups}
-      />
-    ) : null}
-    {/* Outside the row, so touches in the dialog never reach the row's gestures. */}
-    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete message?</AlertDialogTitle>
-          <AlertDialogDescription asChild>
-            <div className="text-sm text-muted-foreground">
-              This removes the message content for everyone in the channel.
-              <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
-                <AlertTriangle className="size-5 shrink-0 text-amber-500" />
-                <div className="text-xs">
-                  Deletions are logged for school administrators. Threads keep a
-                  content-free placeholder when replies exist.
-                </div>
+            ))}
+        </ContextMenuContent>
+      </ContextMenu>
+      {isTouchPrimary ? (
+        <MessageActionSheet
+          open={actionSheetOpen}
+          onOpenChange={setActionSheetOpen}
+          preview={{
+            avatar: (
+              <ClubPersonAvatar
+                person={message.author}
+                className="size-9"
+                fallbackClassName="text-[11px]"
+              />
+            ),
+            authorName: fullName(message.author),
+            sentAt: formatMessageTime(message.createdAt, 'full'),
+            text: message.body.trim()
+              ? message.body
+              : message.poll
+                ? `Poll: ${message.poll.question}`
+                : message.attachments.length > 0
+                  ? `${message.attachments.length} ${message.attachments.length === 1 ? 'attachment' : 'attachments'}`
+                  : '',
+          }}
+          reactions={reactionOptions}
+          doubleTap={{
+            value: doubleTapOption.value,
+            onChange: (value) => {
+              if (isChannelReaction(value)) onChangeDoubleTapReaction(value);
+            },
+          }}
+          onReact={(value) => {
+            if (isChannelReaction(value)) onToggleReaction(message._id, value);
+          }}
+          actionGroups={sheetActionGroups}
+        />
+      ) : null}
+      {/* Outside the row, so touches in the dialog never reach the row's gestures. */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
+            <div className="my-2 flex gap-3 rounded-lg bg-muted/60 p-3">
+              <ClubPersonAvatar person={message.author} className="size-9" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">
+                  {fullName(message.author)}
+                </p>
+                <p className="line-clamp-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                  {message.body ||
+                    message.poll?.question ||
+                    message.attachments
+                      .map((attachment) => attachment.fileName)
+                      .join(', ')}
+                </p>
               </div>
             </div>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={() => onDelete(message._id)}
-          >
-            Delete for everyone
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+            <AlertDialogDescription>
+              This deletes the message for everyone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => onDelete(message._id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -1722,7 +2156,6 @@ export function ChannelWorkspace() {
   }
   const clubId = useClubId();
   const channelId = useRouteChannelId(channelIdParam);
-  const isMobile = useIsMobile();
   const isTouchPrimary = useTouchPrimary();
   const { toast } = useToast();
   const router = useRouter();
@@ -1736,29 +2169,64 @@ export function ChannelWorkspace() {
     if (view === 'whiteboard') next.set('view', 'whiteboard');
     else next.delete('view');
     const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : (pathname ?? ''), { scroll: false });
+    router.replace(query ? `${pathname}?${query}` : (pathname ?? ''), {
+      scroll: false,
+    });
   };
 
-  const [rootComposerResetKey, setRootComposerResetKey] = useState(0);
-  const [replyComposerResetKey, setReplyComposerResetKey] = useState(0);
-  const [editingMessageId, setEditingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
-  const [search, setSearch] = useState('');
-  const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
-  const [replyingToMessageId, setReplyingToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
-  const [jumpedToMessageId, setJumpedToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [editingMessageId, setEditingMessageId] =
+    useState<Id<'clubChannelMessages'> | null>(null);
+  const [selectedThreadId, setSelectedThreadId] =
+    useState<Id<'clubChannelMessages'> | null>(null);
+  const [replyingToMessageId, setReplyingToMessageId] =
+    useState<Id<'clubChannelMessages'> | null>(null);
+  const [jumpedToMessageId, setJumpedToMessageId] =
+    useState<Id<'clubChannelMessages'> | null>(null);
   const [jumpRequestKey, setJumpRequestKey] = useState(0);
-  const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [reportingMessageId, setReportingMessageId] =
+    useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
-  const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
-  const [sendingMode, setSendingMode] = useState<'root' | 'thread' | null>(null);
+  const [friendRequestPendingId, setFriendRequestPendingId] = useState<
+    string | null
+  >(null);
+  const [sendingMode, setSendingMode] = useState<'root' | 'thread' | null>(
+    null,
+  );
   const [mentionContextRequested, setMentionContextRequested] = useState(false);
+  const [typingActive, setTypingActive] = useState(false);
+  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onTypingActivity = useCallback((hasText: boolean) => {
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    setTypingActive(hasText);
+    if (hasText)
+      typingTimeout.current = setTimeout(() => setTypingActive(false), 4_000);
+  }, []);
+  useEffect(
+    () => () => {
+      if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    },
+    [],
+  );
   const rootComposerRef = useRef<ChannelMessageComposerHandle>(null);
-  const [imageViewer, setImageViewer] = useState<(ImageViewerRequest & { open: boolean }) | null>(null);
+  const replyComposerRef = useRef<ChannelMessageComposerHandle>(null);
+  const [failedSends, setFailedSends] = useState<
+    Array<{
+      channelId: Id<'clubChannels'>;
+      payload: ComposerSubmitArgs;
+      identity: ReturnType<typeof createClientMessageIdentity>;
+      reason: string;
+      retrying: boolean;
+    }>
+  >([]);
+  const [imageViewer, setImageViewer] = useState<
+    (ImageViewerRequest & { open: boolean }) | null
+  >(null);
 
   // The workspace is intentionally persistent across channel navigation. Clear
   // state that belongs to the previous conversation without remounting the
   // navigation, panel layout, or outer composer surface.
   useEffect(() => {
+    setTypingActive(false);
     setEditingMessageId(null);
     setSelectedThreadId(null);
     setReplyingToMessageId(null);
@@ -1769,21 +2237,39 @@ export function ChannelWorkspace() {
     setFriendRequestPendingId(null);
     setSendingMode(null);
     setMentionContextRequested(false);
-    setSearch('');
     setImageViewer(null);
   }, [channelId]);
-  const deferredSearch = useDeferredValue(search);
-  const normalizedSearch = useMemo(
-    () => normalizeSearchQuery(deferredSearch),
-    [deferredSearch],
-  );
 
   const user = useCurrentUser();
 
-  const conversationContext = useQuery(api.clubs.channels.getConversationContext, {
+  const conversationContext = useQuery(
+    api.clubs.channels.getConversationContext,
+    {
+      clubId,
+      channelId,
+    },
+  );
+  const pinnedResult = useQuery(api.clubs.channels.listPinned, {
     clubId,
     channelId,
   });
+  const linkedMessageId = searchParams?.get('message');
+  useEffect(() => {
+    if (linkedMessageId) {
+      setJumpedToMessageId(linkedMessageId as Id<'clubChannelMessages'>);
+      setJumpRequestKey((key) => key + 1);
+    }
+  }, [channelId, linkedMessageId]);
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (replyingToMessageId) setReplyingToMessageId(null);
+      else if (editingMessageId) setEditingMessageId(null);
+      else setSelectedThreadId(null);
+    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [replyingToMessageId, editingMessageId]);
   // Clubs can turn whiteboards off; a stale whiteboard link then shows chat.
   const whiteboardsEnabled = conversationContext?.whiteboardsEnabled ?? false;
   const showWhiteboard = whiteboardRequested && whiteboardsEnabled;
@@ -1804,7 +2290,8 @@ export function ChannelWorkspace() {
     () =>
       [...messageResults].sort(
         (left, right) =>
-          new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+          new Date(left.createdAt).getTime() -
+          new Date(right.createdAt).getTime(),
       ),
     [messageResults],
   );
@@ -1832,8 +2319,14 @@ export function ChannelWorkspace() {
   );
   const jumpedToMessage = useQuery(
     api.clubs.channels.getMessage,
-    jumpedToMessageId ? { clubId, channelId, messageId: jumpedToMessageId } : 'skip',
+    jumpedToMessageId
+      ? { clubId, channelId, messageId: jumpedToMessageId }
+      : 'skip',
   );
+  useEffect(() => {
+    if (jumpedToMessage?.parentMessageId)
+      setSelectedThreadId(jumpedToMessage.threadRootId);
+  }, [jumpedToMessage]);
   const selectedThreadResult = useQuery(
     api.clubs.channels.getThread,
     selectedThreadId
@@ -1843,43 +2336,54 @@ export function ChannelWorkspace() {
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const markChannelRead = useMutation(api.clubs.channels.markRead);
-  const finalizeChatAttachment = useAction(api.uploads.files.finalizeChatAttachment);
-  const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
-  const postMessage = useMutation(api.clubs.channels.postMessage).withOptimisticUpdate(
-    (localStore, args) => {
-      if (!user) return;
-      optimisticallyInsertPostedMessage(localStore, args, {
-        clubId,
-        author: user,
-      });
-    },
+  const finalizeChatAttachment = useAction(
+    api.uploads.files.finalizeChatAttachment,
   );
+  const discardChatAttachment = useMutation(
+    api.uploads.files.discardChatAttachment,
+  );
+  const postMessage = useMutation(
+    api.clubs.channels.postMessage,
+  ).withOptimisticUpdate((localStore, args) => {
+    if (!user) return;
+    optimisticallyInsertPostedMessage(localStore, args, {
+      clubId,
+      author: user,
+    });
+  });
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
-  const toggleReaction = useMutation(api.clubs.channels.toggleReaction).withOptimisticUpdate(
-    (localStore, args) => {
-      if (!user) return;
-      optimisticallyToggleMessageReaction(localStore, args, {
-        clubId,
-        channelId,
-        currentUserId: user._id,
-        threadId: selectedThreadId,
-      });
-    },
-  );
+  const toggleReaction = useMutation(
+    api.clubs.channels.toggleReaction,
+  ).withOptimisticUpdate((localStore, args) => {
+    if (!user) return;
+    optimisticallyToggleMessageReaction(localStore, args, {
+      clubId,
+      channelId,
+      currentUserId: user._id,
+      threadId: selectedThreadId,
+    });
+  });
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const updateDoubleTapReaction = useMutation(
     api.users.me.updateChatDoubleTapReaction,
   ).withOptimisticUpdate((localStore, args) => {
     const me = localStore.getQuery(api.users.me.me, {});
-    if (me) localStore.setQuery(api.users.me.me, {}, { ...me, chatDoubleTapReaction: args.reaction });
+    if (me)
+      localStore.setQuery(
+        api.users.me.me,
+        {},
+        { ...me, chatDoubleTapReaction: args.reaction },
+      );
   });
   const doubleTapReaction =
     user?.chatDoubleTapReaction && isChannelReaction(user.chatDoubleTapReaction)
       ? user.chatDoubleTapReaction
       : DEFAULT_DOUBLE_TAP_REACTION;
   const votePoll = useMutation(api.clubs.channels.votePoll);
-  const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
+  const submitReport = useMutation(
+    api.moderation.reports.submitClubChannelMessage,
+  );
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const lastMarkedActivityRef = useRef(0);
@@ -1897,18 +2401,27 @@ export function ChannelWorkspace() {
 
     const markVisibleActivityRead = () => {
       if (document.visibilityState !== 'visible') return;
-      if (latestVisibleActivity.occurredAt <= lastMarkedActivityRef.current) return;
+      if (latestVisibleActivity.occurredAt <= lastMarkedActivityRef.current)
+        return;
 
       const previousActivity = lastMarkedActivityRef.current;
       lastMarkedActivityRef.current = latestVisibleActivity.occurredAt;
       lastReadAttemptAtRef.current = Date.now();
       void markChannelRead({
         channelId,
-        throughMessageId: latestVisibleActivity.messageId as Id<'clubChannelMessages'>,
+        throughMessageId:
+          latestVisibleActivity.messageId as Id<'clubChannelMessages'>,
       })
-        .then(() => dismissReadChannelWebNotifications(channelId, latestVisibleActivity.occurredAt))
+        .then(() =>
+          dismissReadChannelWebNotifications(
+            channelId,
+            latestVisibleActivity.occurredAt,
+          ),
+        )
         .catch(() => {
-          if (lastMarkedActivityRef.current === latestVisibleActivity.occurredAt) {
+          if (
+            lastMarkedActivityRef.current === latestVisibleActivity.occurredAt
+          ) {
             lastMarkedActivityRef.current = previousActivity;
           }
         });
@@ -1926,13 +2439,26 @@ export function ChannelWorkspace() {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [channelId, latestVisibleActivity, markChannelRead, showWhiteboard, unreadBoundary]);
+  }, [
+    channelId,
+    latestVisibleActivity,
+    markChannelRead,
+    showWhiteboard,
+    unreadBoundary,
+  ]);
 
-  const [savingEditId, setSavingEditId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [savingEditId, setSavingEditId] =
+    useState<Id<'clubChannelMessages'> | null>(null);
 
   const saveEdit = async (
     messageId: Id<'clubChannelMessages'>,
-    { body, bodyMarkdown, bodyRich, files, removedAttachmentIds }: {
+    {
+      body,
+      bodyMarkdown,
+      bodyRich,
+      files,
+      removedAttachmentIds,
+    }: {
       body: string;
       bodyMarkdown: string;
       bodyRich: ClubChannelMessageRichBody | null;
@@ -1946,19 +2472,29 @@ export function ChannelWorkspace() {
       const uploads = await Promise.allSettled(
         files.map(async (file) => {
           const { storageId, uploadIntentId } = await uploadFileToConvex(
-            { generateUploadUrl: () => generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }) },
+            {
+              generateUploadUrl: () =>
+                generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }),
+            },
             file,
           );
-          return finalizeChatAttachment({ uploadIntentId, storageId, fileName: file.name });
+          return finalizeChatAttachment({
+            uploadIntentId,
+            storageId,
+            fileName: file.name,
+          });
         }),
       );
       stagedIds.push(
         ...uploads.flatMap((result) =>
-          result.status === 'fulfilled' ? [result.value.attachmentUploadId] : [],
+          result.status === 'fulfilled'
+            ? [result.value.attachmentUploadId]
+            : [],
         ),
       );
       const failed = uploads.find(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
       );
       if (failed) throw failed.reason;
       await updateMessage({
@@ -1974,7 +2510,9 @@ export function ChannelWorkspace() {
       setEditingMessageId(null);
     } catch {
       await Promise.allSettled(
-        stagedIds.map((attachmentUploadId) => discardChatAttachment({ attachmentUploadId })),
+        stagedIds.map((attachmentUploadId) =>
+          discardChatAttachment({ attachmentUploadId }),
+        ),
       );
       toast({ title: "Couldn't save your changes", variant: 'destructive' });
     } finally {
@@ -1982,24 +2520,44 @@ export function ChannelWorkspace() {
     }
   };
 
-  const submitMessage = async ({
-    body,
-    bodyMarkdown,
-    bodyRich,
-    parentMessageId,
-    replyToMessageId,
-    files,
-    pollQuestion,
-    pollOptions,
-    mode,
-  }: ComposerSubmitArgs) => {
+  const submitMessage = async (
+    payload: ComposerSubmitArgs,
+    retryIdentity?: ReturnType<typeof createClientMessageIdentity>,
+  ) => {
+    const {
+      body,
+      bodyMarkdown,
+      bodyRich,
+      parentMessageId,
+      replyToMessageId,
+      files,
+      pollQuestion,
+      pollOptions,
+      mode,
+    } = payload;
+    const identity = retryIdentity ?? createClientMessageIdentity();
+    const destinationChannelId = channelId;
     const attachmentUploadIds: Id<'clubChannelAttachmentUploads'>[] = [];
-    setSendingMode(mode);
+    if (!retryIdentity) {
+      (mode === 'thread' ? replyComposerRef : rootComposerRef).current?.clear();
+      if (mode === 'root') setReplyingToMessageId(null);
+    }
+    setFailedSends((current) =>
+      current.map((item) =>
+        item.identity.clientGeneratedId === identity.clientGeneratedId
+          ? { ...item, retrying: true }
+          : item,
+      ),
+    );
+    if (files.length) setSendingMode(mode);
     try {
-      const uploadResults = await Promise.allSettled(
+      const uploads = await Promise.allSettled(
         files.map(async (file) => {
           const { storageId, uploadIntentId } = await uploadFileToConvex(
-            { generateUploadUrl: () => generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }) },
+            {
+              generateUploadUrl: () =>
+                generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }),
+            },
             file,
           );
           return finalizeChatAttachment({
@@ -2010,46 +2568,120 @@ export function ChannelWorkspace() {
         }),
       );
       attachmentUploadIds.push(
-        ...uploadResults.flatMap((result) =>
+        ...uploads.flatMap((result) =>
           result.status === 'fulfilled'
             ? [result.value.attachmentUploadId]
             : [],
         ),
       );
-      const failedUpload = uploadResults.find(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      const failure = uploads.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
       );
-      if (failedUpload) throw failedUpload.reason;
-      const messageIdentity = createClientMessageIdentity();
-      const postPromise = postMessage({
-        channelId,
+      if (failure) throw failure.reason;
+      if (files.length) setSendingMode(null);
+      await postMessage({
+        channelId: destinationChannelId,
         body: body.trim(),
         bodyMarkdown: bodyMarkdown.trim() || undefined,
-        bodyRich: body.trim() ? bodyRich ?? undefined : undefined,
-        parentMessageId: parentMessageId as Id<'clubChannelMessages'> | undefined,
-        replyToMessageId: replyToMessageId as Id<'clubChannelMessages'> | undefined,
+        bodyRich: body.trim() ? (bodyRich ?? undefined) : undefined,
+        parentMessageId: parentMessageId as
+          Id<'clubChannelMessages'> | undefined,
+        replyToMessageId: replyToMessageId as
+          Id<'clubChannelMessages'> | undefined,
         pollQuestion,
         pollOptions,
         attachments: attachmentUploadIds,
-        ...messageIdentity,
+        ...identity,
       });
-      if (mode === 'thread') {
-        setReplyComposerResetKey((current) => current + 1);
-      } else {
-        setReplyingToMessageId(null);
-        setRootComposerResetKey((current) => current + 1);
-      }
-      await postPromise;
-    } catch {
       await Promise.allSettled(
         attachmentUploadIds.map((attachmentUploadId) =>
           discardChatAttachment({ attachmentUploadId }),
         ),
       );
-      toast({ title: 'Failed to send message', variant: 'destructive' });
+      setFailedSends((current) =>
+        current.filter(
+          (item) =>
+            item.identity.clientGeneratedId !== identity.clientGeneratedId,
+        ),
+      );
+    } catch (error) {
+      await Promise.allSettled(
+        attachmentUploadIds.map((attachmentUploadId) =>
+          discardChatAttachment({ attachmentUploadId }),
+        ),
+      );
+      const reason =
+        error instanceof ConvexError && typeof error.data === 'string'
+          ? error.data
+          : error instanceof Error
+            ? error.message
+            : 'Check your connection and try again.';
+      setFailedSends((current) => [
+        ...current.filter(
+          (item) =>
+            item.identity.clientGeneratedId !== identity.clientGeneratedId,
+        ),
+        {
+          channelId: destinationChannelId,
+          payload,
+          identity,
+          reason,
+          retrying: false,
+        },
+      ]);
     } finally {
-      setSendingMode(null);
+      if (files.length) setSendingMode(null);
     }
+  };
+
+  const renderFailedSends = (parentMessageId?: string) => {
+    if (!user) return null;
+    const items = failedSends.filter(
+      (item) =>
+        item.channelId === channelId &&
+        item.payload.parentMessageId === parentMessageId,
+    );
+    if (items.length === 0) return null;
+    // The first unsent row joins the viewer's run when the conversation
+    // already ends with the viewer's own recent message.
+    const delivered = parentMessageId ? threadReplies : timelineMessages;
+    const last = delivered[delivered.length - 1];
+    const joinsRun =
+      !!last &&
+      last.authorId === user._id &&
+      !last.isDeleted &&
+      Date.now() - new Date(last.createdAt).getTime() <=
+        MESSAGE_GROUP_WINDOW_MS;
+    // Retry and Discard unmount their own buttons; keep typing where it was.
+    const refocusComposer = () =>
+      (parentMessageId ? replyComposerRef : rootComposerRef).current?.focus();
+    const author = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      preferredName: user.preferredName,
+      avatarUrl: user.avatarUrl ?? null,
+    };
+    return items.map((item, index) => (
+      <FailedSendRow
+        key={item.identity.clientGeneratedId}
+        author={author}
+        grouped={index > 0 || joinsRun}
+        payload={item.payload}
+        reason={item.reason}
+        retrying={item.retrying}
+        onRetry={() => {
+          refocusComposer();
+          void submitMessage(item.payload, item.identity);
+        }}
+        onDiscard={() => {
+          refocusComposer();
+          setFailedSends((current) =>
+            current.filter((entry) => entry !== item),
+          );
+        }}
+      />
+    ));
   };
 
   const channel = conversationContext?.channel;
@@ -2060,30 +2692,39 @@ export function ChannelWorkspace() {
     const canUseAll = !!mentionContext?.canMentionEveryone;
     const builtIns: ChannelMentionSuggestion[] = [
       ...(canUseAll
-        ? [{ token: 'all', label: 'Everyone', detail: '', kind: 'built-in' as const }]
+        ? [
+            {
+              token: 'all',
+              label: 'Everyone',
+              detail: '',
+              kind: 'built-in' as const,
+            },
+          ]
         : []),
       { token: 'sponsors', label: 'Sponsors', detail: '', kind: 'built-in' },
     ];
-    const tags = mentionContext?.tags.map((tag) => ({
-      token: tag.slug,
-      label: tag.name,
-      detail: '',
-      kind: 'tag' as const,
-    })) ?? [];
-    const groups = mentionContext?.groups.map((group) => ({
-      token: group.token,
-      label: group.label,
-      detail: group.detail,
-      kind: group.kind,
-    })) ?? [];
-    const people = (mentionContext?.members ?? [])
-      .map((person) => ({
-        token: person.uniqueId,
-        label: displayName(person),
-        searchNames: nameSearchValues(person),
+    const tags =
+      mentionContext?.tags.map((tag) => ({
+        token: tag.slug,
+        label: tag.name,
         detail: '',
-        kind: 'person' as const,
-      }));
+        kind: 'tag' as const,
+      })) ?? [];
+    const groups =
+      mentionContext?.groups.map((group) => ({
+        token: group.token,
+        label: group.label,
+        detail: group.detail,
+        kind: group.kind,
+      })) ?? [];
+    const people = (mentionContext?.members ?? []).map((person) => ({
+      token: person.uniqueId,
+      label: displayName(person),
+      searchNames: nameSearchValues(person),
+      detail: person.clubRole ?? '',
+      avatarUrl: person.avatarUrl,
+      kind: 'person' as const,
+    }));
     return [...builtIns, ...groups, ...tags, ...people];
   }, [mentionContext]);
 
@@ -2095,10 +2736,13 @@ export function ChannelWorkspace() {
 
   const timelineMessages = useMemo(
     () =>
-      jumpedToMessage && !messages.some((message) => message._id === jumpedToMessage._id)
+      jumpedToMessage &&
+      !jumpedToMessage.parentMessageId &&
+      !messages.some((message) => message._id === jumpedToMessage._id)
         ? [...messages, jumpedToMessage].sort(
             (left, right) =>
-              new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+              new Date(left.createdAt).getTime() -
+              new Date(right.createdAt).getTime(),
           )
         : messages,
     [jumpedToMessage, messages],
@@ -2109,12 +2753,14 @@ export function ChannelWorkspace() {
   );
   const friendshipTargetIds = useMemo(
     () =>
-      [...new Set(
-        flattenedMessages
-          .filter((message) => hasStudentScheduleRole(message.author.roles))
-          .map((message) => message.author._id)
-          .filter((userId) => userId !== user?._id),
-      )].slice(0, 100),
+      [
+        ...new Set(
+          flattenedMessages
+            .filter((message) => hasStudentScheduleRole(message.author.roles))
+            .map((message) => message.author._id)
+            .filter((userId) => userId !== user?._id),
+        ),
+      ].slice(0, 100),
     [flattenedMessages, user?._id],
   );
   const friendshipStatuses = useQuery(
@@ -2124,7 +2770,10 @@ export function ChannelWorkspace() {
       : 'skip',
   );
   const friendshipStatusByUserId = useMemo(
-    () => new Map(friendshipStatuses?.map(({ userId, status }) => [userId, status])),
+    () =>
+      new Map(
+        friendshipStatuses?.map(({ userId, status }) => [userId, status]),
+      ),
     [friendshipStatuses],
   );
   const messagesById = useMemo(
@@ -2132,29 +2781,20 @@ export function ChannelWorkspace() {
     [flattenedMessages],
   );
   const replyingToMessage = replyingToMessageId
-    ? messagesById.get(replyingToMessageId) ?? null
+    ? (messagesById.get(replyingToMessageId) ?? null)
     : null;
 
-  const matchingIds = useMemo(() => {
-    if (!normalizedSearch) return new Set<string>();
-    return new Set(
-      filterBySearchQuery(flattenedMessages, normalizedSearch, (message) => [
-        getSearchableText(message),
-      ]).map((message) => message._id),
-    );
-  }, [flattenedMessages, normalizedSearch]);
-
-  const visibleMessages = useMemo(() => {
-    if (!normalizedSearch) return timelineMessages;
-    return timelineMessages.filter((message) => matchingIds.has(message._id));
-  }, [matchingIds, normalizedSearch, timelineMessages]);
-
-  const firstUnreadMessageId = normalizedSearch
-    ? null
-    : firstUnreadChannelMessageId(timelineMessages, unreadBoundary);
+  const visibleMessages = timelineMessages;
+  const firstUnreadMessageId = firstUnreadChannelMessageId(
+    timelineMessages,
+    unreadBoundary,
+    user?._id,
+  );
 
   const reportingMessage = useMemo(
-    () => flattenedMessages.find((message) => message._id === reportingMessageId) ?? null,
+    () =>
+      flattenedMessages.find((message) => message._id === reportingMessageId) ??
+      null,
     [flattenedMessages, reportingMessageId],
   );
 
@@ -2177,7 +2817,8 @@ export function ChannelWorkspace() {
   const copyMessageText = (message: ClubChannelMessage) => {
     copyText(message.body).then(
       () => toast({ title: 'Copied to clipboard' }),
-      () => toast({ title: "Couldn't copy the message", variant: 'destructive' }),
+      () =>
+        toast({ title: "Couldn't copy the message", variant: 'destructive' }),
     );
   };
 
@@ -2189,7 +2830,10 @@ export function ChannelWorkspace() {
       toast({ title: 'Friend request sent' });
     } catch (error) {
       toast({
-        title: error instanceof Error ? error.message : 'Failed to send friend request',
+        title:
+          error instanceof Error
+            ? error.message
+            : 'Failed to send friend request',
         variant: 'destructive',
       });
     } finally {
@@ -2252,73 +2896,99 @@ export function ChannelWorkspace() {
             setEditingMessageId(messageId as Id<'clubChannelMessages'>)
           }
           onDelete={(messageId) =>
-            void deleteMessage({ messageId: messageId as Id<'clubChannelMessages'> }).then(() =>
-              toast({ title: 'Message deleted' }),
-            )
+            void deleteMessage({
+              messageId: messageId as Id<'clubChannelMessages'>,
+            }).then(() => toast({ title: 'Message deleted' }))
           }
-          onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
+          onReport={(messageId) =>
+            setReportingMessageId(messageId as Id<'clubChannelMessages'>)
+          }
           onCopyText={copyMessageText}
           doubleTapReaction={doubleTapReaction}
           onChangeDoubleTapReaction={(reaction) =>
             void updateDoubleTapReaction({ reaction }).catch(() =>
-              toast({ title: "Couldn't save your double-tap reaction", variant: 'destructive' }),
+              toast({
+                title: "Couldn't save your double-tap reaction",
+                variant: 'destructive',
+              }),
             )
           }
           canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
           friendshipStatus={friendshipStatusByUserId.get(message.author._id)}
-          onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
+          onSendFriendRequest={(friendId) =>
+            void handleSendFriendRequest(friendId)
+          }
+          editor={
+            isEditing ? (
+              <div className="select-text">
+                {' '}
+                <ChannelMessageComposer
+                  key={`edit-${message._id}`}
+                  mode="edit"
+                  onCancel={() => {
+                    setEditingMessageId(null);
+                    (message.parentMessageId
+                      ? replyComposerRef
+                      : rootComposerRef
+                    ).current?.focus();
+                  }}
+                  suggestionEntries={suggestionEntries}
+                  placeholder="Edit message..."
+                  submitLabel="Save changes"
+                  isPending={savingEditId === message._id}
+                  canAttach
+                  existingAttachments={message.attachments}
+                  onMentionIntent={() => setMentionContextRequested(true)}
+                  initialBody={message.body}
+                  initialBodyMarkdown={message.bodyMarkdown}
+                  initialBodyRich={
+                    Array.isArray(message.bodyRich)
+                      ? (message.bodyRich as ClubChannelMessageRichBody)
+                      : null
+                  }
+                  onSubmit={(args) => void saveEdit(message._id, args)}
+                />
+              </div>
+            ) : null
+          }
           isEditing={isEditing}
           isReactionPending={false}
           isPinPending={false}
           isVotePending={false}
           isDeletePending={false}
           friendRequestPendingId={friendRequestPendingId}
-          highlighted={matchingIds.has(message._id)}
+          replying={replyingToMessageId === message._id}
           jumpedTo={jumpedToMessageId === message._id}
           permissions={{
             post: channel?.viewerCanPost ?? true,
             pin: canPinMessages,
             moderate: canModerateMessages,
           }}
-          openReactionDetailsOnPress={isMobile || isTouchPrimary}
+          openReactionDetailsOnPress={isTouchPrimary}
           compact={compact}
           groupedWithPrevious={groupedWithPrevious}
         />
-        {isEditing && (
-          // Editable even inside the touch timeline, which turns selection off.
-          <div className="ml-12 mr-3 mt-1 select-text">
-            <ChannelMessageComposer
-              key={`edit-${message._id}`}
-              suggestionEntries={suggestionEntries}
-              placeholder="Edit message..."
-              submitLabel="Save Changes"
-              isPending={savingEditId === message._id}
-              canAttach
-              existingAttachments={message.attachments}
-              onMentionIntent={() => setMentionContextRequested(true)}
-              initialBody={message.body}
-              initialBodyMarkdown={message.bodyMarkdown}
-              initialBodyRich={
-                Array.isArray(message.bodyRich)
-                  ? (message.bodyRich as ClubChannelMessageRichBody)
-                  : null
-              }
-              onSubmit={(args) => void saveEdit(message._id, args)}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 h-7 px-2 text-xs text-muted-foreground"
-              onClick={() => setEditingMessageId(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
       </div>
     );
   };
 
+  if (conversationContext === undefined) {
+    return (
+      <ClubWorkspace title={<Skeleton className="h-5 w-28" />}>
+        <div className="space-y-5 p-5">
+          {[0, 1, 2].map((index) => (
+            <div key={index} className="flex gap-3">
+              <Skeleton className="size-9 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </ClubWorkspace>
+    );
+  }
   if (!conversationContext || !channel) {
     return (
       <ClubWorkspace>
@@ -2330,31 +3000,106 @@ export function ChannelWorkspace() {
   }
 
   const canPost = channel.viewerCanPost ?? true;
-  const pinnedMessages = messages.filter((message) => message.isPinned);
+  const pinnedMessages = pinnedResult?.messages ?? [];
+  const jumpToMessage = (messageId: string, threadId?: string) => {
+    setChannelView('chat');
+    setJumpedToMessageId(messageId as Id<'clubChannelMessages'>);
+    setJumpRequestKey((key) => key + 1);
+    if (threadId) setSelectedThreadId(threadId as Id<'clubChannelMessages'>);
+  };
 
+  // The channel's own controls follow its name, so they keep one edge with
+  // the title instead of drifting against the global search (their old
+  // position moved with the width of the account name).
   const title: ReactNode = (
-    <div className="flex min-w-0 items-center gap-2">
-      <ClubChannelVisibilityIcon visibility={channel.visibility} className="text-muted-foreground" />
-      <h1 className="truncate text-base font-semibold text-foreground">{channel.name}</h1>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <ClubChannelVisibilityIcon
+          visibility={channel.visibility}
+          className="shrink-0 text-muted-foreground"
+        />
+        <h1 className="truncate text-base font-semibold text-foreground">
+          {channel.name}
+        </h1>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <div className="hidden items-center gap-1 sm:flex">
+          {whiteboardsEnabled ? (
+            <TabsSubtle
+              selectedIndex={showWhiteboard ? 1 : 0}
+              onSelect={(index) =>
+                setChannelView(index === 1 ? 'whiteboard' : 'chat')
+              }
+            >
+              <TabsSubtleItem index={0} label="Chat" />
+              <TabsSubtleItem index={1} label="Whiteboards" />
+            </TabsSubtle>
+          ) : null}
+          <ChannelNotificationSettings
+            clubId={clubId}
+            channelId={channelId}
+            channelName={channel.name}
+          />
+          <PinnedMessagesButton
+            messages={pinnedMessages}
+            hasMore={pinnedResult?.hasMore}
+            onJump={jumpToMessage}
+          />
+        </div>
+        <ChannelSearch
+          clubId={clubId}
+          channelId={channelId}
+          channelName={channel.name}
+          onJump={jumpToMessage}
+        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              className="sm:hidden"
+              variant="ghost"
+              size="icon-sm"
+              badge={pinnedMessages.length ? '·' : undefined}
+              aria-label="Channel options"
+            >
+              <MoreHorizontal />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-3">
+            <div className="flex items-center gap-2">
+              <ChannelNotificationSettings
+                clubId={clubId}
+                channelId={channelId}
+                channelName={channel.name}
+              />
+              <PinnedMessagesButton
+                messages={pinnedMessages}
+                hasMore={pinnedResult?.hasMore}
+                onJump={jumpToMessage}
+              />
+              {whiteboardsEnabled ? (
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    setChannelView(showWhiteboard ? 'chat' : 'whiteboard')
+                  }
+                >
+                  {showWhiteboard ? 'Chat' : 'Whiteboards'}
+                </Button>
+              ) : null}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 
   const rightPane = selectedThread ? (
     <div className="flex size-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b py-2 pl-3 pr-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Thread
-          </p>
-          <p className="flex min-w-0 items-center gap-1 text-sm font-medium">
-            <span className="truncate">{fullName(selectedThread.author)}</span>
-            <DeveloperBadge user={selectedThread.author} size={13} />
-          </p>
-        </div>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b px-3">
+        <p className="text-sm font-semibold">Thread</p>
         <Button
           variant="ghost"
           size="icon-sm"
-          className="size-7"
           aria-label="Close thread"
           onClick={() => setSelectedThreadId(null)}
         >
@@ -2368,28 +3113,63 @@ export function ChannelWorkspace() {
         defaultScrollPosition="end"
         scrollEdgeThreshold={CHAT_SCROLL_EDGE_THRESHOLD}
       >
-        <MessageScroller className={cn('min-h-0 flex-1', isTouchPrimary && TOUCH_TIMELINE_CLASS)}>
+        <ScrollToReplyTarget
+          messageId={jumpedToMessageId}
+          requestKey={jumpRequestKey}
+          targetPresent={threadReplies.some(
+            (message) => message._id === jumpedToMessageId,
+          )}
+        />
+        <MessageScroller
+          className={cn(
+            'min-h-0 flex-1',
+            isTouchPrimary && TOUCH_TIMELINE_CLASS,
+          )}
+        >
           <MessageScrollerViewport>
             <MessageScrollerContent className="gap-0 p-2">
               <MessageScrollerItem messageId={selectedThread._id}>
                 {renderMessageRow(selectedThread)}
               </MessageScrollerItem>
+              {threadReplies.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-muted-foreground">
+                  No replies yet.
+                </p>
+              ) : null}
               {threadReplies.map((reply, index) => (
                 <MessageScrollerItem key={reply._id} messageId={reply._id}>
-                  {renderMessageRow(reply, true, shouldGroupMessages(threadReplies[index - 1], reply))}
+                  {renderMessageRow(
+                    reply,
+                    true,
+                    shouldGroupMessages(threadReplies[index - 1], reply),
+                  )}
                 </MessageScrollerItem>
               ))}
+              {renderFailedSends(selectedThread._id)}
             </MessageScrollerContent>
           </MessageScrollerViewport>
           <MessageScrollerButton className={CHAT_SCROLL_BUTTON_CLASS} />
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className={cn("channel-thread-dock shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
+      <div
+        className={cn(
+          'channel-thread-dock min-h-16 shrink-0 p-2',
+          CARD_SURFACE_FOREGROUND,
+        )}
+      >
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
-            key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
-            onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
+            key={`reply-${selectedThread._id}`}
+            handleRef={replyComposerRef}
+            onTypingActivity={onTypingActivity}
+            onSubmit={(args) =>
+              void submitMessage({
+                ...args,
+                parentMessageId: selectedThread._id,
+                mode: 'thread',
+              })
+            }
             isPending={sendingMode === 'thread'}
             suggestionEntries={suggestionEntries}
             placeholder="Reply in thread…"
@@ -2398,14 +3178,13 @@ export function ChannelWorkspace() {
             onMentionIntent={() => setMentionContextRequested(true)}
           />
         ) : selectedThread.isDeleted ? (
-          <div className="rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
+          <p className="px-3 py-2 text-sm text-muted-foreground">
             Replies are closed because the original message was deleted.
-          </div>
+          </p>
         ) : (
-          <div className="rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
-            {getClubChannelVisibilityLabel(channel.visibility)} channel. Only club leaders, sponsors,
-            and admins can reply here.
-          </div>
+          <p className="px-3 py-2 text-sm text-muted-foreground">
+            Only leaders, sponsors and admins can reply in #{channel.name}.
+          </p>
         )}
       </div>
     </div>
@@ -2413,244 +3192,255 @@ export function ChannelWorkspace() {
 
   return (
     <ImageViewerContext.Provider value={openImageViewer}>
-    <MediaPlaybackContext.Provider value={!imageViewer?.open}>
-    <ClubWorkspace
-      title={title}
-      rightPane={rightPane}
-      resizableRightPane
-      mobileRightPane={{
-        title: 'Thread',
-        onClose: () => setSelectedThreadId(null),
-      }}
-      contentClassName={cn("channel-chat-surface relative flex h-full min-h-0 flex-col bg-card", CARD_SURFACE_FOREGROUND)}
-      scrollOwner="content"
-      channelSearch={{
-        channelName: channel.name,
-        value: search,
-        onValueChange: setSearch,
-      }}
-    >
-      <MessageScrollerProvider
-        autoScroll
-        defaultScrollPosition="end"
-        scrollEdgeThreshold={CHAT_SCROLL_EDGE_THRESHOLD}
-      >
-        <ScrollToReplyTarget
-          messageId={jumpedToMessageId}
-          requestKey={jumpRequestKey}
-          targetPresent={timelineMessages.some((message) => message._id === jumpedToMessageId)}
-        />
-        <div className={cn("channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5", CARD_SURFACE_FOREGROUND)}>
-          <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
-            {whiteboardsEnabled ? (
-              <TabsSubtle
-                selectedIndex={showWhiteboard ? 1 : 0}
-                onSelect={(index) => setChannelView(index === 1 ? 'whiteboard' : 'chat')}
-                className="mr-1"
-              >
-                <TabsSubtleItem index={0} label="Chat" className="py-1" />
-                <TabsSubtleItem index={1} label="Whiteboards" className="py-1" />
-              </TabsSubtle>
-            ) : null}
-            <ChannelNotificationSettings
-              key={channelId}
-              clubId={clubId}
-              channelId={channelId}
-              channelName={channel.name}
+      <MediaPlaybackContext.Provider value={!imageViewer?.open}>
+        <ClubWorkspace
+          title={title}
+          rightPane={rightPane}
+          resizableRightPane
+          mobileRightPane={{
+            title: 'Thread',
+            onClose: () => setSelectedThreadId(null),
+          }}
+          contentClassName={cn(
+            'channel-chat-surface relative flex h-full min-h-0 flex-col bg-card',
+            CARD_SURFACE_FOREGROUND,
+          )}
+          scrollOwner="content"
+        >
+          <MessageScrollerProvider
+            autoScroll
+            defaultScrollPosition="end"
+            scrollEdgeThreshold={CHAT_SCROLL_EDGE_THRESHOLD}
+          >
+            <HistoryPagination
+              status={messagePageStatus}
+              loadMore={loadMoreMessages}
             />
-            {showWhiteboard ? null : (
-              <PinnedMessagesButton
-                messages={pinnedMessages}
-                onClearSearch={() => setSearch('')}
-              />
-            )}
-          </div>
-        </div>
+            <ScrollToReplyTarget
+              messageId={jumpedToMessageId}
+              requestKey={jumpRequestKey}
+              targetPresent={timelineMessages.some(
+                (message) => message._id === jumpedToMessageId,
+              )}
+            />
 
-        {showWhiteboard ? (
-          <div className="min-h-0 flex-1">
-            <ChannelWhiteboard key={channelId} channelId={channelId} channelName={channel.name} />
-          </div>
-        ) : (
-        <MessageScroller className={cn('min-h-0 flex-1', isTouchPrimary && TOUCH_TIMELINE_CLASS)}>
-          <MessageScrollerViewport preserveScrollOnPrepend>
-            <MessageScrollerContent
+            {showWhiteboard ? (
+              <div className="min-h-0 flex-1">
+                <ChannelWhiteboard
+                  key={channelId}
+                  channelId={channelId}
+                  channelName={channel.name}
+                />
+              </div>
+            ) : (
+              <MessageScroller
+                className={cn(
+                  'min-h-0 flex-1',
+                  isTouchPrimary && TOUCH_TIMELINE_CLASS,
+                )}
+              >
+                <MessageScrollerViewport preserveScrollOnPrepend>
+                  <MessageScrollerContent
+                    className={cn('w-full gap-0 px-4 py-2')}
+                  >
+                    {messagePageStatus === 'CanLoadMore' ||
+                    messagePageStatus === 'LoadingMore' ? (
+                      <MessageScrollerItem messageId="history-start">
+                        <div className="flex justify-center py-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            loading={messagePageStatus === 'LoadingMore'}
+                            onClick={() => loadMoreMessages(50)}
+                          >
+                            Load older messages
+                          </Button>
+                        </div>
+                      </MessageScrollerItem>
+                    ) : null}
+                    {visibleMessages.length > 0 ? (
+                      visibleMessages.map((message, index) => (
+                        <MessageScrollerItem
+                          key={message._id}
+                          messageId={message._id}
+                        >
+                          {message._id === firstUnreadMessageId && (
+                            <Marker
+                              variant="separator"
+                              role="separator"
+                              aria-label="Unread messages"
+                              className="my-2 text-destructive before:bg-destructive after:bg-destructive"
+                            >
+                              <MarkerContent>Unread</MarkerContent>
+                            </Marker>
+                          )}
+                          {renderMessageRow(
+                            message,
+                            false,
+                            message._id !== firstUnreadMessageId &&
+                              shouldGroupMessages(
+                                visibleMessages[index - 1],
+                                message,
+                              ),
+                          )}
+                        </MessageScrollerItem>
+                      ))
+                    ) : messagePageStatus === 'LoadingFirstPage' ? (
+                      <Skeleton className="mx-3 my-4 h-20 w-2/3" />
+                    ) : (
+                      <MessageScrollerItem>
+                        <div className="px-3 py-8">
+                          <h2 className="text-xl font-semibold">
+                            #{channel.name}
+                          </h2>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            This is the start of #{channel.name}.
+                          </p>
+                          {channel.description ? (
+                            <p className="mt-2 max-w-[75ch] text-sm">
+                              {channel.description}
+                            </p>
+                          ) : null}
+                        </div>
+                      </MessageScrollerItem>
+                    )}
+                    {renderFailedSends()}
+                  </MessageScrollerContent>
+                </MessageScrollerViewport>
+                <NewMessagesButton messages={messages} viewerId={user?._id} />
+              </MessageScroller>
+            )}
+          </MessageScrollerProvider>
+
+          {showWhiteboard ? null : (
+            <div
               className={cn(
-                'mx-auto w-full max-w-4xl p-2',
-                isTouchPrimary ? 'gap-0.5 py-1.5' : 'gap-1',
+                'channel-composer-dock min-h-16 shrink-0 bg-card px-4 pb-2 pt-1.5',
+                CARD_SURFACE_FOREGROUND,
               )}
             >
-              {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
-                <MessageScrollerItem>
-                  <div className="flex justify-center py-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      loading={messagePageStatus === 'LoadingMore'}
-                      onClick={() => loadMoreMessages(50)}
-                    >
-                      Load older messages
-                    </Button>
+              <div className="w-full">
+                <TypingPresence
+                  clubId={clubId}
+                  channelId={channelId}
+                  active={typingActive && canPost}
+                />
+                {canPost ? (
+                  <div className="flex flex-col gap-1.5">
+                    <ChannelMessageComposer
+                      key={channelId}
+                      replyTo={
+                        replyingToMessageId
+                          ? {
+                              author: replyingToMessage
+                                ? fullName(replyingToMessage.author)
+                                : 'an earlier message',
+                              excerpt: replyingToMessage?.body ?? '',
+                              onCancel: () => setReplyingToMessageId(null),
+                            }
+                          : undefined
+                      }
+                      onEditLast={() => {
+                        const last = [...messages]
+                          .reverse()
+                          .find(
+                            (message) =>
+                              message.authorId === user?._id &&
+                              !message.isDeleted &&
+                              !('deliveryState' in message),
+                          );
+                        if (last) setEditingMessageId(last._id);
+                      }}
+                      handleRef={rootComposerRef}
+                      onTypingActivity={onTypingActivity}
+                      onSubmit={(args) =>
+                        void submitMessage({
+                          ...args,
+                          replyToMessageId: replyingToMessageId ?? undefined,
+                          mode: 'root',
+                        })
+                      }
+                      isPending={sendingMode === 'root'}
+                      suggestionEntries={suggestionEntries}
+                      placeholder={
+                        replyingToMessage
+                          ? `Reply to ${fullName(replyingToMessage.author)}`
+                          : `Message #${channel.name}`
+                      }
+                      submitLabel="Send"
+                      canCreatePoll={conversationContext.canCreatePolls}
+                      onMentionIntent={() => setMentionContextRequested(true)}
+                    />
                   </div>
-                </MessageScrollerItem>
-              ) : null}
-              {visibleMessages.length > 0 ? (
-                visibleMessages.map((message, index) => (
-                  <MessageScrollerItem key={message._id} messageId={message._id}>
-                    {message._id === firstUnreadMessageId && (
-                      <Marker
-                        variant="separator"
-                        role="separator"
-                        aria-label="Unread messages"
-                        className="my-2 text-destructive before:bg-destructive after:bg-destructive"
-                      >
-                        <MarkerContent>Unread</MarkerContent>
-                      </Marker>
-                    )}
-                    {renderMessageRow(
-                      message,
-                      false,
-                      message._id !== firstUnreadMessageId && shouldGroupMessages(visibleMessages[index - 1], message),
-                    )}
-                  </MessageScrollerItem>
-                ))
-              ) : messagePageStatus === 'LoadingFirstPage' ? null : (
-                <MessageScrollerItem>
-                  <Empty className="mt-8 border border-dashed">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <MessageSquareText />
-                      </EmptyMedia>
-                      <EmptyTitle>
-                        {deferredSearch.trim() ? 'No matches' : 'No messages yet'}
-                      </EmptyTitle>
-                      <EmptyDescription>
-                        {deferredSearch.trim()
-                          ? 'No messages match this search.'
-                          : canPost
-                            ? `Start the conversation in ${channel.name}.`
-                            : `No posts have been shared in #${channel.name} yet.`}
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                </MessageScrollerItem>
-              )}
-            </MessageScrollerContent>
-          </MessageScrollerViewport>
-          <MessageScrollerButton className={CHAT_SCROLL_BUTTON_CLASS} />
-        </MessageScroller>
-        )}
-      </MessageScrollerProvider>
-
-      {showWhiteboard ? null : (
-      <div className={cn("channel-composer-dock shrink-0 border-t bg-card px-2 pb-2 pt-1.5", CARD_SURFACE_FOREGROUND)}>
-        <div className="mx-auto max-w-4xl">
-          {canPost ? (
-            <div className="flex flex-col gap-1.5">
-              {replyingToMessageId ? (
-                <div className="flex min-w-0 items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
-                  <div className="min-w-0 truncate">
-                    Replying to{' '}
-                    <span className="font-medium text-foreground">
-                      {replyingToMessage
-                        ? fullName(replyingToMessage.author)
-                        : 'an earlier message'}
-                    </span>
-                    {replyingToMessage?.body ? ` · ${replyingToMessage.body}` : ''}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-7 shrink-0"
-                    aria-label="Cancel reply"
-                    onClick={() => setReplyingToMessageId(null)}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              ) : null}
-              <ChannelMessageComposer
-                key={`root-${rootComposerResetKey}`}
-                handleRef={rootComposerRef}
-                onSubmit={(args) =>
-                  void submitMessage({
-                    ...args,
-                    replyToMessageId: replyingToMessageId ?? undefined,
-                    mode: 'root',
-                  })
-                }
-                isPending={sendingMode === 'root'}
-                suggestionEntries={suggestionEntries}
-                placeholder={`Message #${channel.name}`}
-                submitLabel="Send"
-                canCreatePoll={conversationContext.canCreatePolls}
-                onMentionIntent={() => setMentionContextRequested(true)}
-              />
-            </div>
-          ) : (
-            <div className="rounded-lg border bg-background/95 px-3 py-2">
-              <p className="text-sm font-medium text-foreground">
-                {getClubChannelVisibilityLabel(channel.visibility)} channel
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Only leaders, sponsors, and admins can post.
-              </p>
+                ) : (
+                  <p className="flex min-h-12 items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <ClubChannelVisibilityIcon
+                      visibility={channel.visibility}
+                    />
+                    Only leaders, sponsors and admins can post in #
+                    {channel.name}.
+                  </p>
+                )}
+              </div>
             </div>
           )}
-        </div>
-      </div>
-      )}
-      <Dialog
-        open={!!reportingMessageId}
-        onOpenChange={(open) => {
-          if (!open) {
-            setReportingMessageId(null);
-            setReportReason('');
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report message</DialogTitle>
-            <DialogDescription>
-              Reports go to school staff for review. Include enough context to understand the issue.
-            </DialogDescription>
-          </DialogHeader>
-          <textarea
-            value={reportReason}
-            onChange={(event) => setReportReason(event.target.value)}
-            className="min-h-28 w-full rounded-xl border bg-background px-3 py-2 text-sm pointer-coarse:text-base outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Why are you reporting this message?"
-          />
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
+          <Dialog
+            open={!!reportingMessageId}
+            onOpenChange={(open) => {
+              if (!open) {
                 setReportingMessageId(null);
                 setReportReason('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="button" onClick={() => void handleSubmitReport()} disabled={!reportReason.trim()}>
-              Submit report
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </ClubWorkspace>
-    </MediaPlaybackContext.Provider>
-    {imageViewer ? (
-      <ImageViewer
-        images={imageViewer.images}
-        index={imageViewer.index}
-        open={imageViewer.open}
-        onClose={() => setImageViewer((current) => current && { ...current, open: false })}
-      />
-    ) : null}
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Report message</DialogTitle>
+                <DialogDescription>
+                  Reports go to school staff for review. Include enough context
+                  to understand the issue.
+                </DialogDescription>
+              </DialogHeader>
+              <Textarea
+                value={reportReason}
+                onChange={(event) => setReportReason(event.target.value)}
+                className="min-h-28"
+                placeholder="Why are you reporting this message?"
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setReportingMessageId(null);
+                    setReportReason('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSubmitReport()}
+                  disabled={!reportReason.trim()}
+                >
+                  Submit report
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </ClubWorkspace>
+      </MediaPlaybackContext.Provider>
+      {imageViewer ? (
+        <ImageViewer
+          images={imageViewer.images}
+          index={imageViewer.index}
+          open={imageViewer.open}
+          onClose={() =>
+            setImageViewer((current) => current && { ...current, open: false })
+          }
+        />
+      ) : null}
     </ImageViewerContext.Provider>
-        );
-        }
+  );
+}

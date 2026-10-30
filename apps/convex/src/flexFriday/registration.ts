@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -196,12 +197,11 @@ export const register = mutation({
       createdAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_WORKSHOP_REGISTERED",
       entityId: registrationId,
       entityType: "FLEX_REGISTRATION",
-      createdAt: Date.now(),
     });
 
     return registrationId;
@@ -224,12 +224,11 @@ export const unregister = mutation({
 
     await ctx.db.delete(registration._id);
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_REGISTRATION_REMOVED",
       entityId: registration._id,
       entityType: "FLEX_REGISTRATION",
-      createdAt: Date.now(),
     });
   },
 });
@@ -332,12 +331,11 @@ export const assign = mutation({
       createdAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_WORKSHOP_ASSIGNED",
       entityId: assignmentId,
       entityType: "FLEX_ASSIGNMENT",
-      createdAt: Date.now(),
     });
 
     return assignmentId;

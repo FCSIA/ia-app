@@ -92,7 +92,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "flex size-8 shrink-0 items-center justify-center rounded-md text-foreground/60 transition-colors hover:text-foreground focus:outline-none focus:ring-1 pointer-coarse:size-11 [&_svg]:size-4 group-[.destructive]:text-red-200 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      "flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-1 pointer-coarse:size-11 [&_svg]:size-4 group-[.destructive]:text-red-200 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
       className
     )}
     aria-label={ariaLabel}

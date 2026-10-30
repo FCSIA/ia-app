@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History } from 'lucide-react';
 import { format } from 'date-fns';
+import { auditPersonName, type SearchableAuditEvent } from '~/apps/shared/audit';
 
 interface Props {
-  auditEvents: any[];
+  auditEvents: SearchableAuditEvent[];
   isLoading: boolean;
 }
 
@@ -45,13 +46,13 @@ export function AuditView({ auditEvents, isLoading }: Props) {
         ) : (
           <div className="divide-y divide-border">
             {auditEvents.map((event) => (
-              <div key={event._id} className="p-4 flex items-center justify-between">
+              <div key={event.id} className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Badge variant="solid" color={auditActionClass(event.action) as any} className="text-[10px] uppercase">
                     {AUDIT_ACTION_LABELS[event.action] || event.action.replace(/_/g, ' ')}
                   </Badge>
                   <div>
-                    <p className="text-sm font-medium">{event.actorName || 'System'}</p>
+                    <p className="text-sm font-medium">{auditPersonName(event)}</p>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(event.createdAt), 'MMM d, h:mm a')}
                     </p>

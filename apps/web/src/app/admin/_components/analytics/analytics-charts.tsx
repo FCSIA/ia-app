@@ -85,7 +85,7 @@ export function ChartBlock({
   const isEmpty = table.rows.length === 0;
 
   return (
-    <section className={cn('flex min-w-0 flex-col gap-3 rounded-lg border bg-background p-4', className)}>
+    <section className={cn('flex min-w-0 flex-col gap-3 py-3', className)}>
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-medium text-foreground">{title}</h3>
@@ -97,7 +97,7 @@ export function ChartBlock({
             size="sm"
             variant="ghost"
             leadingIcon={showTable ? ChartLine : Table2}
-            aria-pressed={showTable}
+            aria-label={`Show ${showTable ? 'chart' : 'table'} for ${title}`}
             onClick={() => setShowTable((value) => !value)}
           >
             {showTable ? 'Chart' : 'Table'}

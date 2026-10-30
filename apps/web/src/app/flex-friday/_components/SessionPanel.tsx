@@ -51,7 +51,7 @@ export function SessionPanel({
 
       <div>
         {sessions.length === 0 ? (
-          <Empty className="border border-border/60 py-8">
+          <Empty size="inline" frame="panel">
             <EmptyHeader>
               <EmptyTitle>No sessions found</EmptyTitle>
               <EmptyDescription>Try a different search or add a session.</EmptyDescription>

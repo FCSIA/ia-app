@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { hashPassword } from "better-auth/crypto";
 import { components, internal } from "./_generated/api";
 import {
   internalAction,
@@ -6,10 +7,10 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { seedProfileValidator, type SeedProfile } from "./validators";
-import { isLocalDemoSeedEnabled } from "./seed";
+import { isLocalDemoSeedEnabled, LOCAL_DEMO_PASSWORD } from "./seed";
 import { createLinkedUser } from "./users/_lib";
 
-const USER_BATCH_SIZE = 1;
+const USER_BATCH_SIZE = 8;
 const SCHEDULE_BATCH_SIZE = 20;
 const SEED_RUN_KEY = "demo-reset";
 const SEED_CREDENTIAL_BATCH_SIZE = 50;
@@ -60,6 +61,7 @@ export const resetAndSeedStep = internalMutation({
     phase: v.union(
       v.literal("start"),
       v.literal("users"),
+      v.literal("announcement-cleanup"),
       v.literal("clubs"),
       v.literal("announcements"),
       v.literal("schedules"),
@@ -68,6 +70,7 @@ export const resetAndSeedStep = internalMutation({
     profile: v.optional(seedProfileValidator),
     reset: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
+    passwordHash: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -118,6 +121,7 @@ export const resetAndSeedStep = internalMutation({
       try {
         const maintenanceSecret = process.env.BETTER_AUTH_MAINTENANCE_SECRET;
         if (!maintenanceSecret) throw new Error("BETTER_AUTH_MAINTENANCE_SECRET is required for reset");
+        const passwordHash = await hashPassword(LOCAL_DEMO_PASSWORD);
         await ctx.runMutation(internal.courses.seed.run, { reset: true });
         await ctx.runMutation(components.betterAuth.dev.clearAuthData, { maintenanceSecret });
         await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
@@ -126,6 +130,7 @@ export const resetAndSeedStep = internalMutation({
           profile,
           reset: true,
           cursor: "0",
+          passwordHash,
         });
       } catch (error) {
         const current = await ctx.db
@@ -162,6 +167,9 @@ export const resetAndSeedStep = internalMutation({
 
     try {
       if (args.phase === "users") {
+        if (!args.passwordHash) {
+          throw new Error("Restart the demo seed to prepare its password hash.");
+        }
         const result: {
           deleted: number;
           upserted: number;
@@ -176,6 +184,7 @@ export const resetAndSeedStep = internalMutation({
           cursor: args.cursor ?? "0",
           batchSize: USER_BATCH_SIZE,
           profile,
+          passwordHash: args.passwordHash,
         });
 
         for (const credential of result.generatedCredentials) {
@@ -194,6 +203,7 @@ export const resetAndSeedStep = internalMutation({
             profile,
             reset: result.deleted > 0,
             cursor: result.nextCursor ?? "0",
+            passwordHash: args.passwordHash,
           });
           return null;
         }
@@ -206,10 +216,23 @@ export const resetAndSeedStep = internalMutation({
         return null;
       }
 
+      if (args.phase === "announcement-cleanup") {
+        const result: { deleted: number; isDone: boolean } = await ctx.runMutation(
+          internal.announcements.seed.clearBatch,
+          {},
+        );
+        await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
+          phase: result.isDone ? "announcements" : "announcement-cleanup",
+          runId: args.runId,
+          profile,
+        });
+        return null;
+      }
+
       if (args.phase === "clubs") {
         await ctx.runMutation(internal.clubs.seed.run, { reset: true });
         await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
-          phase: "announcements",
+          phase: "announcement-cleanup",
           runId: args.runId,
           profile,
         });
@@ -217,7 +240,7 @@ export const resetAndSeedStep = internalMutation({
       }
 
       if (args.phase === "announcements") {
-        await ctx.runMutation(internal.announcements.seed.run, { reset: true });
+        await ctx.runMutation(internal.announcements.seed.run, {});
         await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
           phase: "schedules",
           runId: args.runId,

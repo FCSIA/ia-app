@@ -1,71 +1,140 @@
-'use client';
+"use client";
+import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  CalendarCheck,
+  ClipboardCheck,
+  Flag,
+  Mail,
+  MessageSquare,
+  Pencil,
+  Users,
+} from "lucide-react";
+import { useMutation, useQuery } from "@/lib/convex-react";
+import { api } from "~/apps/convex/src/_generated/api";
+import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import { Panel } from "@/components/layout/page-frame";
+import {
+  Card,
+  CardGroup,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+  CardMedia,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { useToast } from "@/hooks/use-toast";
+import { useDashboardWidgetEmpty } from "../widget-visibility";
 
-import Link from 'next/link';
-import { format } from 'date-fns';
-import { useQuery } from '@/lib/convex-react';
-import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
-import { Panel } from '@/components/layout/page-frame';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { api } from '~/apps/convex/src/_generated/api';
-
+const labels = {
+  announcement: "Announcement approval",
+  event: "Event approval",
+  invite: "Calendar invitation",
+  "club-invite": "Club invitation",
+  changes: "Needs changes",
+  reports: "Moderation report",
+  feedback: "Feedback",
+};
+const icons = {
+  announcement: ClipboardCheck,
+  event: CalendarCheck,
+  invite: Mail,
+  "club-invite": Users,
+  changes: Pencil,
+  reports: Flag,
+  feedback: MessageSquare,
+};
 export function PendingApprovalsWidget() {
-  const pending = useQuery(api.events.approvals.listPendingForSponsor, {}) ?? [];
-  const items = pending.slice(0, 5);
-
+  const data = useQuery(api.dashboard.needsYou.list, {});
+  const approvePost = useMutation(api.announcements.feed.approve);
+  const approveEvent = useMutation(api.events.approvals.approveEvent);
+  const acceptClub = useMutation(api.clubs.invitations.respondToInvite);
+  const accept = useMutation(api.events.calendar.respondToInvite);
+  const [pending, setPending] = useState<string | null>(null);
+  const { toast } = useToast();
+  useDashboardWidgetEmpty(
+    data === undefined
+      ? undefined
+      : data.items.length === 0 && !data.hasMore,
+  );
+  const act = async (item: NonNullable<typeof data>["items"][number]) => {
+    setPending(item.id);
+    const id = item.id.slice(item.id.indexOf(":") + 1);
+    try {
+      if (item.kind === "announcement")
+        await approvePost({ announcementId: id as Id<"announcements"> });
+      else if (item.kind === "event")
+        await approveEvent({ eventId: id as Id<"events"> });
+      else if (item.kind === "club-invite") {
+        const result = await acceptClub({
+          inviteId: id as Id<"clubInvites">,
+          accept: true,
+        });
+        if (result.kind === "memberLimitReached")
+          throw new Error("This club has reached its member limit.");
+      } else if (item.kind === "invite")
+        await accept({ inviteId: id as Id<"calendarInvites">, accept: true });
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error ? error.message : "Could not complete action",
+        variant: "destructive",
+      });
+    } finally {
+      setPending(null);
+    }
+  };
   return (
     <Panel
-      title="Pending approvals"
-      action={
-        <Button asChild variant="ghost" className="rounded-2xl">
-          <Link href="/events">
-            Open events
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
-      }
+      title="Needs you"
+      count={data?.total}
+      countHasMore={data?.hasMore}
+      loading={!data}
+      loadingRows={1}
+      flush
     >
-      {items.length > 0 ? (
-        <div className="space-y-3">
-          {items.map((event) => (
-            <Link
-              key={event._id}
-              href="/events"
-              className="block rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge
-                      variant="solid"
-                      className="border-transparent bg-amber-500/15 text-amber-500"
-                    >
-                      Pending
-                    </Badge>
-                    {event.club?.name && (
-                      <Badge
-                        variant="solid"
-                        className="text-blue-500 border-blue-500/30 bg-blue-500/10"
-                      >
-                        {event.club.name}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="truncate text-sm font-semibold text-foreground">{event.title}</p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="size-3" />
-                    {format(new Date(event.startAt), 'EEE, MMM d · h:mm a')}
-                  </p>
-                </div>
-              </div>
-            </Link>
+      {data?.items.length ? (
+        <CardGroup orientation="inline" corners="compact">
+          {data.items.map((item) => (
+            <Card key={item.id} href={item.href} label={`Review ${item.title}`}>
+              <CardMedia icon={icons[item.kind]} />
+              <CardHeader>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>
+                  {labels[item.kind]} ·{" "}
+                  {formatDistanceToNow(item.createdAt, { addSuffix: true })}
+                </CardDescription>
+              </CardHeader>
+              {["announcement", "event", "invite", "club-invite"].includes(
+                item.kind,
+              ) ? (
+                <CardFooter>
+                  <Button
+                    size="sm"
+                    variant="tertiary"
+                    loading={pending === item.id}
+                    disabled={pending !== null}
+                    onClick={() => void act(item)}
+                  >
+                    {item.kind === "invite" || item.kind === "club-invite"
+                      ? "Accept"
+                      : "Approve"}
+                  </Button>
+                </CardFooter>
+              ) : null}
+            </Card>
           ))}
-        </div>
+        </CardGroup>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-border/70 bg-muted/20 px-5 py-10 text-center">
-          <CheckCircle2 className="mb-2 size-6 text-muted-foreground/60" />
-          <p className="text-sm text-muted-foreground">All caught up — nothing pending.</p>
-        </div>
+        <Empty size="inline">
+          <EmptyDescription>
+            {data?.hasMore
+              ? "More work may be available in your review queues."
+              : "Nothing needs you."}
+          </EmptyDescription>
+        </Empty>
       )}
     </Panel>
   );

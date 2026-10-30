@@ -1,13 +1,12 @@
 "use node";
 
-import ICAL from "ical.js";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { validateIcsFeedUrl } from "./externalCalendars";
+import { parseIcs } from "./externalCalendarIcs";
 
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
-const MAX_EVENTS_PER_FEED = 300;
 
 async function fetchIcs(url: string): Promise<string> {
   let current = validateIcsFeedUrl(url);
@@ -35,38 +34,6 @@ async function fetchIcs(url: string): Promise<string> {
     return new TextDecoder().decode(Buffer.concat(chunks));
   }
   throw new Error("Calendar feed redirected too many times.");
-}
-
-function parseIcs(text: string) {
-  const component = new ICAL.Component(ICAL.parse(text));
-  const lowerBound = new Date();
-  lowerBound.setDate(lowerBound.getDate() - 31);
-  const upperBound = new Date();
-  upperBound.setFullYear(upperBound.getFullYear() + 1);
-  const events: Array<{ externalId: string; title: string; description?: string; location?: string; startAt: number; endAt?: number }> = [];
-  for (const vevent of component.getAllSubcomponents("vevent")) {
-    const event = new ICAL.Event(vevent);
-    const occurrences = event.isRecurring() ? event.iterator() : null;
-    let occurrence: ICAL.Time | null = occurrences ? occurrences.next() : event.startDate;
-    while (occurrence && events.length < MAX_EVENTS_PER_FEED) {
-      const details = event.getOccurrenceDetails(occurrence);
-      const startAt = details.item.startDate.toJSDate().getTime();
-      if (startAt > upperBound.getTime()) break;
-      if (startAt >= lowerBound.getTime()) {
-        const endAt = details.item.endDate?.toJSDate().getTime();
-        events.push({
-          externalId: `${event.uid}:${occurrence.toString()}`,
-          title: (details.item.summary || "Untitled event").slice(0, 160),
-          description: details.item.description?.slice(0, 2_000),
-          location: details.item.location?.slice(0, 300),
-          startAt,
-          ...(endAt ? { endAt } : {}),
-        });
-      }
-      occurrence = occurrences ? occurrences.next() : null;
-    }
-  }
-  return events;
 }
 
 export const refresh = internalAction({

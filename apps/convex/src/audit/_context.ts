@@ -69,6 +69,14 @@ function recordName(value: Record<string, unknown>): string | null {
   }
   return null;
 }
+/** Messages and comments are named by their text, as their own events record it. */
+const TEXT_RECORD_TABLES = new Set<TableNames>(['clubChannelMessages', 'comments']);
+const TEXT_RECORD_PREVIEW_CHARACTERS = 240;
+function recordText(table: TableNames, value: Record<string, unknown>): string | null {
+  return TEXT_RECORD_TABLES.has(table) && typeof value.body === 'string' && value.body.trim()
+    ? value.body.trim().slice(0, TEXT_RECORD_PREVIEW_CHARACTERS)
+    : null;
+}
 /** Per-page memoization keeps repeated people, clubs, and channels to one read. */
 export function auditContextResolver(ctx: QueryCtx) {
   const reads = new Map<string, Promise<Record<string, unknown> | null>>();
@@ -92,10 +100,16 @@ export function auditContextResolver(ctx: QueryCtx) {
     const table = ENTITY_TABLES[type];
     const entity =
       table && event.entityId ? await read(table, event.entityId) : null;
-    // Historical labels take precedence; current names fill in missing context.
+    // A soft-deleted message keeps its row but is no longer a destination.
+    // Only a real record ID can be deleted (bulk rows record e.g. "bulk").
+    const live = !!entity && !entity.deletedAt;
+    const deleted = !live && !!table && !!event.entityId && ctx.db.normalizeId(table, event.entityId) !== null;
+    // Historical labels take precedence; current names fill in missing context
+    // (e.g. a reaction names the message it was added to).
     const title =
       recordName(meta) ??
       (entity ? recordName(entity) : null) ??
+      (live && table && entity ? recordText(table, entity) : null) ??
       auditRecordLabel(event.entityType);
     const references = (
       await Promise.all(
@@ -119,6 +133,26 @@ export function auditContextResolver(ctx: QueryCtx) {
       contextNames
         .map((ref) => (ref.label === 'Channel' ? `#${ref.name}` : ref.name))
         .join(' · ') || null;
-    return { title, subtitle, references };
+    const clubId = typeof meta.clubId === 'string' ? meta.clubId : typeof entity?.clubId === 'string' ? entity.clubId : null;
+    const channelId = typeof meta.channelId === 'string' ? meta.channelId : typeof entity?.channelId === 'string' ? entity.channelId : null;
+    const href = (targetTable: TableNames | undefined, id: string): string | null => {
+      if (targetTable === 'users') return `/admin/users?user=${id}`;
+      if (targetTable === 'clubs') return `/clubs/${id}`;
+      if (targetTable === 'clubChannels' && clubId) return `/clubs/${clubId}/channels/${id}`;
+      if (targetTable === 'clubChannelMessages' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?message=${id}`;
+      if (targetTable === 'clubWhiteboards' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?view=whiteboard&board=${id}`;
+      if (targetTable === 'announcements') return `/announcements/${id}`;
+      if (targetTable === 'comments' && typeof (meta.announcementId ?? entity?.announcementId) === 'string') return `/announcements/${meta.announcementId ?? entity?.announcementId}`;
+      if (targetTable === 'events') return `/events/${id}`;
+      if (targetTable?.startsWith('flex')) return '/flex-friday';
+      if (targetTable === 'moderationReports' || targetTable === 'moderationKeywordRules') return '/admin/moderation';
+      if (targetTable?.startsWith('club') && clubId) return `/clubs/${clubId}`;
+      return null;
+    };
+    const links = [
+      ...(event.entityId ? [{ id: event.entityId, label: 'Record', name: title, href: live ? href(table, event.entityId) : null }] : []),
+      ...references.map((ref) => ({ ...ref, href: href(REFERENCE_TABLES[Object.keys(REFERENCE_TABLES).find((key) => auditLabel(key.replace(/Id$/, '')) === ref.label) ?? ''], ref.id) })),
+    ];
+    return { title, subtitle, references, links, deleted };
   };
 }

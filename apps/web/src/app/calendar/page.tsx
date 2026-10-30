@@ -1,29 +1,58 @@
 'use client';
 
-import { displayName } from '~/apps/shared/user-name';
-
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import {
+  Component,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
+import { addDays, format, isValid } from 'date-fns';
+import {
+  Mail,
+  MoreHorizontal,
+  Plus,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { displayName, type PersonName } from '~/apps/shared/user-name';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useMutation, useQuery } from '@/lib/convex-react';
-import { format } from 'date-fns';
-import { MapPin, Plus } from 'lucide-react';
-
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
 import { EditCalendarEntryDialog } from '@/components/calendar/EditCalendarEntryDialog';
 import { ExternalCalendarSettingsDialog } from '@/components/calendar/ExternalCalendarSettingsDialog';
+import {
+  CalendarDaySummary,
+  CalendarSchoolDayBands,
+} from '@/components/calendar/calendar-school-day';
+import {
+  calendarDate,
+  calendarInputDate,
+  CALENDAR_TIME_ZONE,
+} from '@/components/calendar/calendar-date';
+import {
+  CALENDAR_SOURCES,
+  CalendarEventRow,
+  type CalendarSource,
+} from '@/components/calendar/calendar-event-row';
 import { AppShell } from '@/components/layout/AppShell';
 import { FILL_MAIN_CLASS } from '@/components/layout/app-main';
-import { EventCalendar } from '@/components/reui/event-calendar/event-calendar';
+import {
+  EventCalendar,
+  useEventCalendarNavigation,
+} from '@/components/reui/event-calendar/event-calendar';
 import { EventCalendarContent } from '@/components/reui/event-calendar/event-calendar-content';
 import {
-  EventCalendarNav,
+  EventCalendarDatePicker,
   EventCalendarNavNext,
   EventCalendarNavPrev,
   EventCalendarNavToday,
-  EventCalendarTitle,
-  EventCalendarToolbar,
-  EventCalendarViewSwitcher,
 } from '@/components/reui/event-calendar/event-calendar-nav';
 import type {
   CalendarEvent,
@@ -39,287 +68,759 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Empty } from '@/components/ui/empty';
+import {
+  FilterToggleGroup,
+  FilterToggleItem,
+} from '@/components/ui/filter-toggle-group';
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { defaultCalendarRange } from '@/lib/calendar-range';
 import { useToast } from '@/hooks/use-toast';
+import { defaultCalendarRange } from '@/lib/calendar-range';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
-import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
-type CalendarEntry = FunctionReturnType<typeof api.events.calendar.list>[number];
-
-const SOURCE_COLORS: Record<CalendarEntry['source'], string> = {
-  PERSONAL: 'var(--color-violet-500)',
-  SCHOOL: 'var(--color-blue-500)',
-  DISTRICT: 'var(--color-rose-500)',
-  CLUB: 'var(--color-amber-500)',
-  FLEX_FRIDAY: 'var(--color-emerald-500)',
-  EXTERNAL: 'var(--color-teal-500)',
+type CalendarEntry = FunctionReturnType<
+  typeof api.events.calendar.list
+>[number] & { inviteId?: Id<'calendarInvites'>; sharedBy?: PersonName };
+const SOURCES = Object.keys(CALENDAR_SOURCES) as CalendarSource[];
+const DESKTOP_VIEWS: CalendarView[] = ['month', 'week', 'day', 'agenda'];
+const MOBILE_VIEWS: CalendarView[] = ['agenda', 'day', 'days'];
+const VIEW_LABELS: Partial<Record<CalendarView, string>> = {
+  month: 'Month',
+  week: 'Week',
+  day: 'Day',
+  agenda: 'Agenda',
+  days: '3 days',
 };
 
-function CalendarInviteStrip() {
+class InviteBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <span role="status" className="text-xs text-muted-foreground">
+        Invites unavailable
+      </span>
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+function CalendarInvites() {
+  const user = useCurrentUser();
+  const isMobile = useIsMobile();
+  const isStudent =
+    !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const invites =
+    useQuery(api.events.calendar.listPendingInvites, isStudent ? {} : 'skip') ??
+    [];
+  const respond = useMutation(api.events.calendar.respondToInvite);
+  const [pending, setPending] = useState<string>();
   const { toast } = useToast();
-  const invites = useQuery(api.events.calendar.listPendingInvites) ?? [];
-  const respondToInvite = useMutation(api.events.calendar.respondToInvite);
-  const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
-
-  if (invites.length === 0) return null;
-
-  const respond = async (inviteId: Id<'calendarInvites'>, accept: boolean) => {
-    setPendingInviteId(inviteId);
+  async function answer(inviteId: Id<'calendarInvites'>, accept: boolean) {
+    setPending(inviteId);
     try {
-      await respondToInvite({ inviteId, accept });
+      await respond({ inviteId, accept });
       toast({ title: accept ? 'Added to your calendar' : 'Invite declined' });
-    } catch (error) {
+    } catch (cause) {
       toast({
-        title: error instanceof Error ? error.message : 'Could not respond to invite',
+        title:
+          cause instanceof Error
+            ? cause.message
+            : 'Could not respond to the invite.',
         variant: 'destructive',
       });
     } finally {
-      setPendingInviteId(null);
+      setPending(undefined);
     }
-  };
-
+  }
+  if (!isStudent) return null;
   return (
-    <div className="flex shrink-0 gap-3 overflow-x-auto bg-muted/20 px-3 py-3 md:px-4">
-      {invites.map((invite) => (
-        <div
-          key={invite._id}
-          className={`flex min-w-[17rem] items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 ${CARD_SURFACE_FOREGROUND}`}
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="tertiary"
+          size={isMobile ? 'icon-sm' : 'md'}
+          leadingIcon={isMobile ? undefined : Mail}
+          badge={invites.length || undefined}
+          aria-label={`Calendar invites, ${invites.length} pending`}
         >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{invite.entry.title}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {format(new Date(invite.entry.startAt), 'MMM d, h:mm a')} ·{' '}
-              {displayName(invite.sender)}
-            </p>
-          </div>
-          <Button
-            size="sm"
-            disabled={pendingInviteId === invite._id}
-            onClick={() => void respond(invite._id, true)}
-          >
-            Accept
-          </Button>
-          <Button
-            variant="tertiary"
-            size="sm"
-            disabled={pendingInviteId === invite._id}
-            onClick={() => void respond(invite._id, false)}
-          >
-            Decline
-          </Button>
-        </div>
-      ))}
+          {isMobile ? <Mail /> : 'Invites'}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 space-y-4">
+        <p className="text-sm font-semibold">Calendar invites</p>
+        {!invites.length ? (
+          <p className="text-sm text-muted-foreground">No pending invites.</p>
+        ) : (
+          invites.map((invite) => (
+            <div key={invite._id} className="space-y-2">
+              <p className="truncate text-sm font-medium">
+                {invite.entry.title}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {format(calendarDate(invite.entry.startAt), 'MMM d, h:mm a')} ·{' '}
+                {displayName(invite.sender)}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={!!pending}
+                  loading={pending === invite._id}
+                  onClick={() => void answer(invite._id, true)}
+                >
+                  Accept
+                </Button>
+                <Button
+                  size="sm"
+                  variant="tertiary"
+                  disabled={!!pending}
+                  onClick={() => void answer(invite._id, false)}
+                >
+                  Decline
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function PeriodHeader({
+  isMobile,
+  view,
+}: {
+  isMobile: boolean;
+  view: CalendarView;
+}) {
+  const { title, date, activeRange } = useEventCalendarNavigation();
+  const lastDay = calendarDate(activeRange.end.getTime() - 1);
+  const compactTitle =
+    view === 'days'
+      ? `${format(calendarDate(activeRange.start), 'MMM d')}–${format(lastDay, calendarDate(activeRange.start).getMonth() === lastDay.getMonth() ? 'd' : 'MMM d')}`
+      : format(calendarDate(date), 'MMM d');
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <div className="flex shrink-0">
+        <EventCalendarNavPrev />
+        <EventCalendarNavNext />
+      </div>
+      <h1 className="min-w-0">
+        <EventCalendarDatePicker
+          className="max-w-full"
+          aria-label={`Go to date, ${title}`}
+        >
+          <span className="truncate text-lg font-semibold tracking-tight text-foreground">
+            {isMobile ? compactTitle : title}
+          </span>
+        </EventCalendarDatePicker>
+      </h1>
+      <span className="hidden sm:contents">
+        <EventCalendarNavToday />
+      </span>
     </div>
   );
 }
 
-// Reading the query string bails the whole route out of static rendering unless
-// it sits behind its own Suspense boundary, so the reader stays isolated here.
-function ExternalCalendarSettingsLauncher() {
-  const searchParams = useSearchParams();
+function CalendarFallback() {
   return (
-    <ExternalCalendarSettingsDialog
-      defaultOpen={searchParams?.get('connect') === 'canvas'}
-    />
+    <AppShell
+      headerSlot={<h1 className="text-lg font-semibold">Calendar</h1>}
+      mainClassName={FILL_MAIN_CLASS}
+      viewportMode="visual"
+    >
+      <Skeleton className="h-full min-h-64 w-full" />
+    </AppShell>
   );
 }
 
 export default function CalendarPage() {
+  return (
+    <Suspense fallback={<CalendarFallback />}>
+      <CalendarMounted />
+    </Suspense>
+  );
+}
+
+function CalendarMounted() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
-  const [view, setView] = useState<CalendarView>('month');
-  const [range, setRange] = useState(defaultCalendarRange);
-  const [activeEntry, setActiveEntry] = useState<CalendarEntry | null>(null);
-  const [createSlot, setCreateSlot] = useState<EventCalendarSlotDraft | null>(null);
-
   useEffect(() => setMounted(true), []);
-  useEffect(() => {
-    if (isMobile && view !== 'agenda' && view !== 'day') setView('agenda');
-  }, [isMobile, view]);
+  return mounted ? (
+    <CalendarWorkspace isMobile={isMobile} />
+  ) : (
+    <CalendarFallback />
+  );
+}
 
+function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
+  const search = useSearchParams();
+  const router = useRouter();
+  const availableViews = isMobile ? MOBILE_VIEWS : DESKTOP_VIEWS;
+  const requestedView = search?.get('view') as CalendarView | null;
+  const initialDate = calendarInputDate(search?.get('date') ?? '');
+  const [date, setDate] = useState(() =>
+    isValid(initialDate) ? initialDate : new Date(),
+  );
+  const [view, setView] = useState<CalendarView>(() =>
+    requestedView && availableViews.includes(requestedView)
+      ? requestedView
+      : isMobile
+        ? 'agenda'
+        : 'month',
+  );
+  const [range, setRange] = useState(defaultCalendarRange);
+  const [sources, setSources] = useState<CalendarSource[]>(SOURCES);
+  const [active, setActive] = useState<{
+    entry: CalendarEntry;
+    rect: DOMRect;
+  } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [createSlot, setCreateSlot] = useState<EventCalendarSlotDraft | null>(
+    null,
+  );
+  const [feedsOpen, setFeedsOpen] = useState(
+    search?.get('connect') === 'canvas',
+  );
   const entries = useQuery(api.events.calendar.list, {
     startDate: range.start,
     endDate: range.end,
+    sources,
   });
+  const previous = useRef<CalendarEntry[]>([]);
+  useEffect(() => {
+    if (entries) previous.current = entries;
+  }, [entries]);
+  const displayed = entries ?? previous.current;
 
+  // URL navigation, including browser Back, restores the same period and view.
+  useEffect(() => {
+    const nextDate = calendarInputDate(search?.get('date') ?? '');
+    if (isValid(nextDate)) setDate(nextDate);
+    const nextView = search?.get('view') as CalendarView | null;
+    if (nextView && availableViews.includes(nextView)) setView(nextView);
+    else
+      setView((current) =>
+        availableViews.includes(current)
+          ? current
+          : isMobile
+            ? 'agenda'
+            : 'month',
+      );
+  }, [search, isMobile, availableViews]);
+
+  function navigate(nextView: CalendarView, nextDate: Date) {
+    setView(nextView);
+    setDate(nextDate);
+    const params = new URLSearchParams(search?.toString());
+    params.set('view', nextView);
+    params.set('date', format(calendarDate(nextDate), 'yyyy-MM-dd'));
+    router.replace(`/calendar?${params}`, { scroll: false });
+  }
+  // View shortcuts (M/W/D/A/3, T for today) listen on the document while the
+  // calendar is mounted, so they keep working after a dialog or popover
+  // closes and returns focus to the page body. Typing targets, open overlays
+  // and navigation controls are left alone.
+  const onShortcut = useRef<(event: KeyboardEvent) => void>(undefined);
+  onShortcut.current = (event) => {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        'input,textarea,select,[contenteditable=true],[role=tab],[role=dialog],[role=alertdialog],[role=menu],[role=listbox],[data-slot=popover-content]',
+      ) ||
+      document.querySelector('[role=dialog][data-state=open],[role=alertdialog][data-state=open]')
+    )
+      return;
+    const key = event.key.toLowerCase();
+    const shortcut: Record<string, CalendarView> = {
+      m: 'month',
+      w: 'week',
+      d: 'day',
+      a: 'agenda',
+      '3': 'days',
+    };
+    if (key === 't') {
+      event.preventDefault();
+      navigate(view, new Date());
+    } else if (shortcut[key] && availableViews.includes(shortcut[key])) {
+      event.preventDefault();
+      navigate(shortcut[key], date);
+    }
+  };
+  useEffect(() => {
+    if (isMobile) return;
+    const listener = (event: KeyboardEvent) => onShortcut.current?.(event);
+    document.addEventListener('keydown', listener);
+    return () => document.removeEventListener('keydown', listener);
+  }, [isMobile]);
   const events = useMemo<CalendarEvent<CalendarEntry>[]>(
     () =>
-      (entries ?? []).map((entry) => {
-        const start = new Date(entry.startAt);
-        const requestedEnd = entry.endAt ? new Date(entry.endAt) : null;
-        const end =
-          requestedEnd && requestedEnd.getTime() > start.getTime()
-            ? requestedEnd
-            : new Date(start.getTime() + 60 * 60 * 1000);
-        const allDay =
-          start.getHours() === 0 &&
-          start.getMinutes() === 0 &&
-          end.getTime() - start.getTime() >= 24 * 60 * 60 * 1000;
-
-        return {
-          id: entry._id,
-          title: entry.title,
-          start,
-          end,
-          allDay,
-          color: SOURCE_COLORS[entry.source],
-          readOnly: true,
-          data: entry,
-        };
-      }),
-    [entries],
+      displayed
+        .filter((entry) => sources.includes(entry.source))
+        .map((entry) => {
+          const start = new Date(entry.startAt);
+          const end =
+            entry.endAt && entry.endAt > entry.startAt
+              ? new Date(entry.endAt)
+              : new Date(entry.startAt + 3_600_000);
+          return {
+            id: entry._id,
+            title: entry.title,
+            start,
+            end,
+            allDay: entry.allDay ?? false,
+            color: CALENDAR_SOURCES[entry.source].color,
+            readOnly: true,
+            data: entry,
+          };
+        }),
+    [displayed, sources],
   );
-
-  const handleRangeChange = (info: EventCalendarRangeInfo) => {
-    const next = { start: info.range.start.getTime(), end: info.range.end.getTime() };
+  function rangeChanged(info: EventCalendarRangeInfo) {
+    const next = {
+      start: info.range.start.getTime(),
+      end: info.range.end.getTime(),
+    };
     setRange((current) =>
       current.start === next.start && current.end === next.end ? current : next,
     );
-  };
+  }
+  function openSlot(start: Date, allDay: boolean) {
+    setCreateSlot({
+      start,
+      end: allDay ? addDays(start, 1) : new Date(start.getTime() + 3_600_000),
+      allDay,
+      view,
+    });
+  }
+  const owned =
+    active?.entry.source === 'PERSONAL' &&
+    !('inviteId' in active.entry && active.entry.inviteId)
+      ? active.entry
+      : null;
+  const detail = active && !editing ? active.entry : null;
+  const emptyContent = (
+    <>
+      <p>Nothing scheduled.</p>
+      <div className="flex gap-2">
+        <Button
+          variant="tertiary"
+          size="sm"
+          onClick={() => openSlot(date, false)}
+        >
+          Add a reminder
+        </Button>
+        <Button variant="tertiary" size="sm" onClick={() => setFeedsOpen(true)}>
+          Connect a calendar
+        </Button>
+      </div>
+    </>
+  );
+  const empty = <Empty size="inline">{emptyContent}</Empty>;
 
-  const availableViews: CalendarView[] = isMobile
-    ? ['agenda', 'day']
-    : ['month', 'week', 'day', 'agenda'];
-  const editableEntry = activeEntry?.source === 'EXTERNAL' ? null : activeEntry;
-  const externalEntry = activeEntry?.source === 'EXTERNAL' ? activeEntry : null;
-
-  if (!mounted) {
-    return (
+  return (
+    <EventCalendar<CalendarEntry>
+      className="flex-1"
+      events={events}
+      view={view}
+      date={date}
+      timeZone={CALENDAR_TIME_ZONE}
+      // Weekends are non-school days; ReUI's off-day surface recedes them.
+      offDays={{ className: 'bg-muted/40' }}
+      dayCount={3}
+      dayCountPresets={[3]}
+      onViewChange={(next) => navigate(next, date)}
+      onDateChange={(next) => navigate(view, next)}
+      views={availableViews}
+      onRangeChange={rangeChanged}
+      loading={entries === undefined}
+      interactions={{ drag: false, resize: false, selectSlot: false }}
+      onSlotClick={(slot) => openSlot(slot.date, slot.allDay)}
+      onMoreClick={(day) => {
+        navigate('day', day);
+        return false;
+      }}
+      onEventClick={(occurrence, event) => {
+        event.preventDefault();
+        setEditing(false);
+        if (occurrence.event.data)
+          setActive({
+            entry: occurrence.event.data,
+            rect: event.currentTarget.getBoundingClientRect(),
+          });
+      }}
+      eventTooltip={false}
+      showDayAddButton
+      enableShortcuts={!isMobile}
+      scrollbars="native"
+      scrollToHour={Math.min(
+        7,
+        ...events
+          .filter((event) => !event.allDay)
+          .map((event) => calendarDate(event.start).getHours()),
+      )}
+      renderAgendaEvent={({ occurrence }) =>
+        occurrence.event.data ? (
+          <CalendarEventRow
+            entry={occurrence.event.data}
+            start={occurrence.start}
+            end={occurrence.end}
+            allDay={occurrence.allDay}
+          />
+        ) : null
+      }
+      renderDayColumnBackground={(props) => (
+        <CalendarSchoolDayBands {...props} />
+      )}
+      renderNoEvents={() => empty}
+      // On wide screens the Day rail lists all-day items, so the lane would
+      // only repeat them.
+      classNames={{ allDaySection: view === 'day' ? 'xl:hidden' : undefined }}
+    >
+      <Tabs
+        value={view}
+        onValueChange={(next) => navigate(next as CalendarView, date)}
+        className="flex min-h-0 flex-1 flex-col"
+      >
       <AppShell
-        headerSlot={
-          <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-            Calendar
-          </h1>
-        }
+        headerSlot={<PeriodHeader isMobile={isMobile} view={view} />}
         mainClassName={FILL_MAIN_CLASS}
         pageTransitionClassName="flex min-h-0 flex-1 flex-col"
         viewportMode="visual"
       >
-        <div className="flex min-h-0 flex-1 items-center justify-center md:rounded-xl md:border md:border-border md:bg-card md:text-card-foreground md:[--foreground:var(--card-foreground)]">
-          <Skeleton className="h-5 w-32" />
-        </div>
-      </AppShell>
-    );
-  }
-
-  return (
-    <AppShell
-      headerSlot={
-        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-          Calendar
-        </h1>
-      }
-      mainClassName={FILL_MAIN_CLASS}
-      pageTransitionClassName="flex min-h-0 flex-1 flex-col"
-      viewportMode="visual"
-    >
-      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border bg-card text-foreground md:rounded-xl md:border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
-        <EventCalendar<CalendarEntry>
-          events={events}
-          view={view}
-          onViewChange={setView}
-          views={availableViews}
-          loading={entries === undefined}
-          interactions={{ drag: false, resize: false, selectSlot: isMobile }}
-          slotDuration={isMobile ? 60 : undefined}
-          onRangeChange={handleRangeChange}
-          onSelectSlot={(slot) => {
-            if (!slot.allDay && isMobile) setCreateSlot(slot);
-          }}
-          onEventClick={(occurrence) => setActiveEntry(occurrence.event.data ?? null)}
-          eventTooltip={!isMobile}
-          enableShortcuts={!isMobile}
-          scrollbars="native"
-          className="min-h-0 flex-1"
+        <section
+          aria-label="Calendar"
+          tabIndex={0}
+          className={`flex min-h-0 flex-1 flex-col bg-card md:overflow-hidden md:rounded-xl md:border md:border-border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}
         >
-          <div className="shrink-0">
-            <EventCalendarNav className="flex-col items-stretch gap-2 px-3 py-3 md:px-4">
-              <div className="flex items-center gap-1">
-                <EventCalendarNavToday />
-                <EventCalendarViewSwitcher />
-                <div className="flex items-center">
-                  <EventCalendarNavPrev />
-                  <EventCalendarNavNext />
-                </div>
+            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 px-2 py-2 sm:px-3">
+              <TabsList aria-label="Calendar view">
+                {availableViews.map((item) => (
+                  <TabItem key={item} value={item} label={VIEW_LABELS[item] ?? item} />
+                ))}
+              </TabsList>
+
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="tertiary"
+                      size={isMobile ? 'icon-sm' : 'md'}
+                      leadingIcon={isMobile ? undefined : SlidersHorizontal}
+                      aria-label={`Calendar sources, ${sources.length} visible`}
+                    >
+                      {isMobile ? (
+                        <SlidersHorizontal />
+                      ) : (
+                        `Sources${sources.length !== SOURCES.length ? ` (${sources.length})` : ''}`
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end">
+                    <FilterToggleGroup
+                      aria-label="Visible calendar sources"
+                      value={sources}
+                      onValueChange={(next) =>
+                        setSources(next as CalendarSource[])
+                      }
+                    >
+                      {SOURCES.map((source) => (
+                        <FilterToggleItem key={source} value={source}>
+                          <span
+                            aria-hidden="true"
+                            className="size-2 rounded-full"
+                            style={{
+                              backgroundColor: CALENDAR_SOURCES[source].color,
+                            }}
+                          />
+                          {CALENDAR_SOURCES[source].label}
+                        </FilterToggleItem>
+                      ))}
+                    </FilterToggleGroup>
+                  </PopoverContent>
+                </Popover>
+                <InviteBoundary>
+                  <CalendarInvites />
+                </InviteBoundary>
+                <AddCalendarEntryDialog
+                  trigger={
+                    <Button size="md" leadingIcon={Plus}>
+                      Reminder
+                    </Button>
+                  }
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Calendar options"
+                    >
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setFeedsOpen(true)}>
+                      Calendar feeds
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => navigate(view, new Date())}
+                    >
+                      Go to today
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <div className="flex min-w-0 items-center gap-2">
-                <EventCalendarTitle className="text-base" />
-                <div className="min-w-0 flex-1" />
-                <EventCalendarToolbar>
-                  <Suspense fallback={<ExternalCalendarSettingsDialog />}>
-                    <ExternalCalendarSettingsLauncher />
-                  </Suspense>
-                  <AddCalendarEntryDialog
-                    trigger={
-                      <Button
-                        size="icon"
-                        aria-label="New reminder"
-                        title="New reminder"
-                        className="rounded-full"
-                      >
-                        <Plus />
-                      </Button>
-                    }
-                  />
-                </EventCalendarToolbar>
-              </div>
-            </EventCalendarNav>
-          </div>
-          <CalendarInviteStrip />
-          <EventCalendarContent />
-        </EventCalendar>
-      </div>
-
-      {editableEntry ? (
-        <EditCalendarEntryDialog
-          entry={editableEntry}
-          trigger={null}
-          open
-          onOpenChange={(open) => {
-            if (!open) setActiveEntry(null);
-          }}
-        />
-      ) : null}
-
-      <AddCalendarEntryDialog
-        initialDate={createSlot?.start}
-        durationMinutes={60}
-        open={createSlot !== null}
-        onOpenChange={(open) => {
-          if (!open) setCreateSlot(null);
-        }}
-        trigger={null}
-      />
-
-      <Dialog
-        open={externalEntry !== null}
-        onOpenChange={(open) => {
-          if (!open) setActiveEntry(null);
-        }}
-      >
-        {externalEntry ? (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{externalEntry.title}</DialogTitle>
-              <DialogDescription>
-                {format(new Date(externalEntry.startAt), 'EEEE, MMMM d · h:mm a')}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 text-sm">
-              {externalEntry.location ? (
-                <p className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="size-4" aria-hidden="true" />
-                  {externalEntry.location}
-                </p>
-              ) : null}
-              {externalEntry.description ? <p>{externalEntry.description}</p> : null}
             </div>
-          </DialogContent>
+            <div
+              className="h-0.5 shrink-0"
+              role={entries === undefined ? 'progressbar' : undefined}
+              aria-label={
+                entries === undefined ? 'Updating calendar' : undefined
+              }
+            >
+              {entries === undefined ? (
+                <div className="h-full w-full animate-pulse bg-primary motion-reduce:animate-none" />
+              ) : null}
+            </div>
+            <TabPanel value={view} className="flex min-h-0 flex-1 flex-col">
+                <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+                  {/* An empty range is still a calendar: keep the dates, slots
+                      and school bands, and float the hint above them. The
+                      agenda renders the same hint through renderNoEvents. */}
+                  <EventCalendarContent />
+                  {view !== 'agenda' &&
+                  entries !== undefined &&
+                  events.length === 0 ? (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                      <Empty
+                        size="inline"
+                        frame="panel"
+                        className="pointer-events-auto flex-none px-6"
+                      >
+                        {emptyContent}
+                      </Empty>
+                    </div>
+                  ) : null}
+                </div>
+                {view === 'day' ? (
+                  <CalendarDaySummary
+                    day={date}
+                    entries={displayed.filter(
+                      (entry) =>
+                        entry.allDay === true &&
+                        sources.includes(entry.source) &&
+                        format(calendarDate(entry.startAt), 'yyyy-MM-dd') <=
+                          format(calendarDate(date), 'yyyy-MM-dd') &&
+                        format(
+                          calendarDate(
+                            (entry.endAt ?? entry.startAt) -
+                              (entry.endAt ? 1 : 0),
+                          ),
+                          'yyyy-MM-dd',
+                        ) >= format(calendarDate(date), 'yyyy-MM-dd'),
+                    )}
+                    onOpen={(entry, target) =>
+                      setActive({ entry, rect: target.getBoundingClientRect() })
+                    }
+                    onCreate={() => openSlot(date, false)}
+                  />
+                ) : null}
+            </TabPanel>
+        </section>
+        {owned && editing ? (
+          <EditCalendarEntryDialog
+            key={owned._id}
+            entry={owned}
+            trigger={null}
+            open
+            onOpenChange={(open) => {
+              if (!open) { setActive(null); setEditing(false); }
+            }}
+          />
         ) : null}
-      </Dialog>
-    </AppShell>
+        <AddCalendarEntryDialog
+          initialDate={createSlot?.start}
+          allDay={createSlot?.allDay}
+          durationMinutes={60}
+          open={!!createSlot}
+          onOpenChange={(open) => {
+            if (!open) setCreateSlot(null);
+          }}
+          trigger={null}
+        />
+        <ExternalCalendarSettingsDialog
+          trigger={null}
+          open={feedsOpen}
+          onOpenChange={setFeedsOpen}
+        />
+        <CalendarDetails
+          entry={detail}
+          rect={active?.rect}
+          isMobile={isMobile}
+          onEdit={owned ? () => setEditing(true) : undefined}
+          onClose={() => setActive(null)}
+        />
+      </AppShell>
+      </Tabs>
+    </EventCalendar>
+  );
+}
+
+function CalendarDetails({
+  entry,
+  rect,
+  isMobile,
+  onEdit,
+  onClose,
+}: {
+  entry: CalendarEntry | null;
+  rect?: DOMRect;
+  isMobile: boolean;
+  onEdit?: () => void;
+  onClose: () => void;
+}) {
+  const anchor = useRef({ getBoundingClientRect: () => rect ?? new DOMRect() });
+  const removeShared = useMutation(api.events.calendar.removeSharedEntry);
+  const [pending, setPending] = useState(false);
+  const { toast } = useToast();
+  anchor.current.getBoundingClientRect = () => rect ?? new DOMRect();
+  if (!entry) return null;
+  const href =
+    entry.source === 'EXTERNAL'
+      ? entry.url
+      : entry.eventId
+        ? `/events/${entry.eventId}`
+        : entry.flexFridayId
+          ? '/flex-friday'
+          : null;
+  const date = format(
+    calendarDate(entry.startAt),
+    entry.allDay ? "EEEE, MMMM d · 'All day'" : 'EEEE, MMMM d · h:mm a',
+  );
+  const end = entry.endAt ? calendarDate(entry.endAt - (entry.allDay ? 1 : 0)) : null;
+  const sameDay = end && format(calendarDate(entry.startAt), 'yyyy-MM-dd') === format(end, 'yyyy-MM-dd');
+  const when = end ? entry.allDay
+    ? sameDay ? date : `${format(calendarDate(entry.startAt), 'EEEE, MMMM d')} – ${format(end, 'EEEE, MMMM d')} · All day`
+    : `${date} – ${format(end, sameDay ? 'h:mm a' : 'EEEE, MMMM d · h:mm a')}` : date;
+  const body = (
+    <div className="space-y-3 text-sm">
+      <p className="text-xs text-muted-foreground">
+        {entry.sharedBy
+          ? `Shared by ${displayName(entry.sharedBy)}`
+          : CALENDAR_SOURCES[entry.source].label}
+        {entry.location ? ` · ${entry.location}` : ''}
+      </p>
+      {entry.description ? (
+        <p className="whitespace-pre-line break-words">
+          {href
+            ? entry.description.replace(href, '').trim()
+            : entry.description}
+        </p>
+      ) : null}
+      {href ? (
+        <Button asChild variant="tertiary" size="sm">
+          <Link
+            href={href}
+            target={entry.source === 'EXTERNAL' ? '_blank' : undefined}
+            rel={
+              entry.source === 'EXTERNAL' ? 'noopener noreferrer' : undefined
+            }
+          >
+            {entry.source === 'EXTERNAL'
+              ? 'Open in source'
+              : entry.flexFridayId
+                ? 'Open Flex Friday'
+                : 'Open event'}
+          </Link>
+        </Button>
+      ) : null}
+      {onEdit ? (
+        <Button variant="tertiary" size="sm" onClick={onEdit}>
+          Edit reminder
+        </Button>
+      ) : null}
+      {entry.inviteId ? (
+        <Button
+          variant="tertiary"
+          size="sm"
+          loading={pending}
+          onClick={() => {
+            const inviteId = entry.inviteId;
+            if (!inviteId) return;
+            setPending(true);
+            void removeShared({ inviteId })
+              .then(() => {
+                onClose();
+                toast({ title: 'Removed from your calendar' });
+              })
+              .catch((cause: unknown) =>
+                toast({
+                  title:
+                    cause instanceof Error
+                      ? cause.message
+                      : 'Could not remove the shared entry.',
+                  variant: 'destructive',
+                }),
+              )
+              .finally(() => setPending(false));
+          }}
+        >
+          Remove from my calendar
+        </Button>
+      ) : null}
+    </div>
+  );
+  return isMobile ? (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{entry.title}</DialogTitle>
+          <DialogDescription>{when}</DialogDescription>
+        </DialogHeader>
+        {body}
+      </DialogContent>
+    </Dialog>
+  ) : (
+    <Popover
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <PopoverAnchor virtualRef={anchor} />
+      <PopoverContent align="start" className="w-80 space-y-3">
+        <h2 className="text-base font-semibold">{entry.title}</h2>
+        <p className="text-sm text-muted-foreground">{when}</p>
+        {body}
+      </PopoverContent>
+    </Popover>
   );
 }

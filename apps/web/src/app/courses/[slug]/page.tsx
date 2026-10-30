@@ -25,7 +25,7 @@ export default function CourseDetailPage({
     return (
       <AppShell>
         <PageFrame>
-          <Empty className="rounded-[1.75rem] border border-dashed border-border/70 bg-muted/20">
+          <Empty frame="dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <BookOpen />
@@ -86,7 +86,7 @@ export default function CourseDetailPage({
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       Summary
                     </h3>
-                    <p className="text-sm leading-7 text-foreground/90">
+                    <p className="text-sm leading-7 text-foreground">
                       {course.summary || 'No summary is currently available for this class.'}
                     </p>
                   </section>
@@ -94,7 +94,7 @@ export default function CourseDetailPage({
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       Major topics
                     </h3>
-                    <p className="text-sm leading-7 text-foreground/90">
+                    <p className="text-sm leading-7 text-foreground">
                       {course.majorTopics || 'No major-topics summary is currently available.'}
                     </p>
                   </section>
@@ -102,7 +102,7 @@ export default function CourseDetailPage({
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       Prerequisites
                     </h3>
-                    <p className="text-sm leading-7 text-foreground/90">
+                    <p className="text-sm leading-7 text-foreground">
                       {course.prerequisitesText || 'No prerequisite text is listed for this class.'}
                     </p>
                   </section>
@@ -111,13 +111,13 @@ export default function CourseDetailPage({
 
               <div className="space-y-6">
                 <Panel title="Essential skills">
-                  <p className="text-sm leading-7 text-foreground/90">
+                  <p className="text-sm leading-7 text-foreground">
                     {course.essentialSkills ||
                       'This catalog entry does not list a separate essential-skills section.'}
                   </p>
                 </Panel>
                 <Panel title="Workload">
-                  <div className="space-y-3 text-sm text-foreground/90">
+                  <div className="space-y-3 text-sm text-foreground">
                     <p>
                       <span className="font-medium text-foreground">Student reported:</span>{' '}
                       {course.studentWorkload || 'Not listed'}
@@ -132,7 +132,7 @@ export default function CourseDetailPage({
             </div>
           </>
         ) : (
-          <Empty className="rounded-[1.75rem] border border-dashed border-border/70 bg-muted/20">
+          <Empty frame="dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <BookOpen />

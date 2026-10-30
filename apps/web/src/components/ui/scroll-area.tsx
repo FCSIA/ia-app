@@ -177,7 +177,13 @@ const ScrollArea = forwardRef<
               <ScrollAreaPrimitive.Viewport
                 ref={setViewportRef}
                 data-slot="scroll-area-viewport"
-                className={viewportClasses}
+                className={cn(
+                  viewportClasses,
+                  // Radix's intrinsic table sizer prevents a vertical-only
+                  // viewport from shrinking around a nested horizontal table.
+                  // Horizontal/both viewports retain intrinsic content width.
+                  orientation === "vertical" && "[&>div]:!block [&>div]:!min-w-0",
+                )}
                 onScroll={handleScroll}
               >
                 {children}

@@ -3,17 +3,19 @@ import { convexTest } from 'convex-test';
 import type { FunctionReturnType } from 'convex/server';
 import { describe, expect, test, vi } from 'vitest';
 import schema from '../schema';
-import { api } from '../_generated/api';
+import { api, internal } from '../_generated/api';
+import { logAuditEvent } from './_lib';
 import type { Id } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
 import {
   auditActionLabel,
-  auditActionSummary,
+  auditMetaFields,
   auditPersonName,
   auditLabel,
   isFlexAudit,
   matchesAuditSearch,
   parseAuditSearch,
+  AUDIT_ACTIONS,
 } from '../../../shared/audit';
 
 vi.mock('../../lib/currentUser', async (importOriginal) => ({
@@ -83,20 +85,36 @@ async function fixture() {
 }
 
 describe('audit search grammar', () => {
+  test('opens an exact user target safely and only for staff', async () => {
+    const { adminClient, studentClient, t, admin, student } = await fixture();
+    const paginationOpts = { numItems: 20, cursor: null };
+    const exact = await adminClient.query(api.users.admin.list, { userId: admin, roleGroup: 'students', search: 'does not match', paginationOpts });
+    expect(exact.page.map((person) => person._id)).toEqual([admin]);
+    expect(exact.isDone).toBe(true);
+    expect((await adminClient.query(api.users.admin.list, { userId: 'invalid-id', paginationOpts })).page).toEqual([]);
+    expect((await studentClient.query(api.users.admin.list, { userId: student, paginationOpts })).page).toEqual([]);
+    expect((await t.query(api.users.admin.list, { userId: admin, paginationOpts })).page).toEqual([]);
+  });
   test.each([
-    ['ANNOUNCEMENT_READ', 'Announcement', 'Marked read'],
-    ['ANNOUNCEMENT_UNREAD', 'ANNOUNCEMENT', 'Marked unread'],
-    ['ANNOUNCEMENT_COMMENT_DELETED', 'Comment', 'Deleted'],
-    ['CLUB_CHANNEL_MESSAGE_POSTED', 'ClubChannelMessage', 'Posted'],
-    ['CLUB_CHANNEL_MESSAGE_REACTION_REMOVED', 'ClubChannelMessage', 'Reaction removed'],
-    ['CLUB_MEMBER_ROLE_SET', 'Club', 'Member role set'],
-    ['schedule.updated', 'StudentSchedule', 'Updated'],
-    ['schoolDayBlock.created', 'SchoolDayBlock', 'Created'],
-    ['FLEX_WORKSHOP_CREATED', 'FLEX_WORKSHOP', 'Created'],
-    ['FLEX_WORKSHOP_REGISTERED', 'FlexRegistration', 'Registered for a workshop'],
-    ['FUTURE_ACTION', 'Announcement', 'Future action'],
-  ])('summarizes %s beside its record type without losing qualifiers', (action, type, expected) => {
-    expect(auditActionSummary(action, type)).toBe(expected);
+    ['ANNOUNCEMENT_COMMENT_DELETED', 'Deleted announcement comment'],
+    ['CLUB_CHANNEL_MESSAGE_POSTED', 'Posted a message'],
+    ['CLUB_CHANNEL_MESSAGE_REACTION_REMOVED', 'Removed a reaction'],
+    ['CLUB_MEMBER_ROLE_SET', 'Set a club member role'],
+    ['schedule.updated', 'Updated a schedule'],
+    ['schoolDayBlock.created', 'Created school day block'],
+    ['FLEX_WORKSHOP_CREATED', 'Created a workshop'],
+    ['FLEX_WORKSHOP_REGISTERED', 'Registered for a workshop'],
+    ['FUTURE_ACTION', 'Future action'],
+  ])('labels %s consistently in rows, filters, and Details', (action, expected) => {
+    expect(auditActionLabel(action)).toBe(expected);
+  });
+  test('keeps snapshots and changes human while retaining technical data separately', () => {
+    const event = { id: 'message', action: 'CLUB_CHANNEL_MESSAGE_UPDATED', entityType: 'ClubChannelMessage', createdAt: new Date().toISOString(), meta: { previousBodyPreview: 'Old text', bodyPreview: 'New text', bodyLength: 8, attachmentCount: 0, clubId: 'opaque' } };
+    expect(auditMetaFields(event)).toEqual([
+      { key: 'previousBodyPreview', label: 'Before', value: 'Old text' },
+      { key: 'bodyPreview', label: 'After', value: 'New text' },
+    ]);
+    expect(auditMetaFields({ ...event, action: 'CLUB_CHANNEL_MESSAGE_DELETED' })).toEqual([]);
   });
   test.each(['person:"unfinished', '-person:"unfinished', String.raw`text:"say \"hello`])(
     'identifies the missing closing quote in %s',
@@ -198,7 +216,7 @@ describe('audit history and context', () => {
       name: 'Countess Ada',
     });
   });
-  test('finds older matches after empty batches, preserving cursor and original data', async () => {
+  test('fills filtered pages with older matches, preserving original data', async () => {
     const f = await fixture();
     let cursor: string | null = null;
     const matches: FunctionReturnType<
@@ -217,7 +235,7 @@ describe('audit history and context', () => {
       expect(result.continueCursor).not.toBe(cursor);
       cursor = result.continueCursor;
     }
-    expect(emptyPages).toBeGreaterThan(0);
+    expect(emptyPages).toBe(0);
     expect(matches.map((row) => row.id)).toEqual([f.oldest]);
     expect(matches[0]!.context.references).toEqual(
       expect.arrayContaining([
@@ -263,7 +281,7 @@ describe('audit history and context', () => {
       api.audit.events.listFilterOptions,
       {},
     );
-    expect(options.actions).not.toContain('CLUB_CHANNEL_MESSAGE_POSTED');
+    expect(options.actions).toContain('CLUB_CHANNEL_MESSAGE_POSTED');
     let cursor: string | null = null;
     const ids: string[] = [];
     for (let i = 0; i < 4; i++) {
@@ -281,7 +299,7 @@ describe('audit history and context', () => {
     const older = await f.adminClient.query(api.audit.events.listPage, {
       action: 'CLUB_CHANNEL_MESSAGE_POSTED',
       entityType: 'ClubChannelMessage',
-      paginationOpts: { cursor, numItems: 250 },
+      paginationOpts: { cursor: null, numItems: 250 },
     });
     expect(older.page.map((row) => row.id)).toEqual([f.oldest]);
   });
@@ -344,4 +362,140 @@ describe('audit history and context', () => {
       expect(await client.query(api.audit.events.list, {})).toEqual([]);
     }
   });
+});
+
+describe('audit index integrity', () => {
+  test('backfills historical counts idempotently and keeps new logs atomic', async () => {
+    const f = await fixture();
+    expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBeNull();
+    await f.t.mutation(internal.audit.migrations.backfill, {});
+    await f.t.mutation(internal.audit.migrations.backfill, {});
+    expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBe(7);
+    await f.t.run(async (ctx) => {
+      await logAuditEvent(ctx, { actorId: f.admin, action: 'CLUB_CHANNEL_CREATED', entityType: 'ClubChannel', meta: { title: 'A channel' } });
+    });
+    expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBe(8);
+    const person = await f.adminClient.query(api.audit.events.counts, { actorId: f.admin, category: 'clubs-chat' });
+    expect(person).toMatchObject({ total: 2, exact: true });
+    const filtered = await f.adminClient.query(api.audit.events.listPage, { actorId: f.admin, category: 'clubs-chat', paginationOpts: { cursor: null, numItems: 2 } });
+    expect(filtered.page).toHaveLength(2);
+    expect(filtered.page.every((event) => event.actorId === f.admin)).toBe(true);
+    expect((await f.studentClient.query(api.audit.events.counts, {})).total).toBeNull();
+  });
+  test('counts a history written only by the logger exactly, without a backfill', async () => {
+    const t = convexTest(schema, modules);
+    const admin = await t.run((ctx) => ctx.db.insert('users', {
+      uniqueId: 'ADMIN', firstName: 'Eniola', lastName: 'Famakinwa', roles: ['ADMIN'], isStudent: false, isTeacherStaff: false,
+      isStudentAdmin: false, isOtherRole: false, isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: '', createdAt: 0, updatedAt: 0,
+    }));
+    const adminClient = t.withIdentity({ subject: admin });
+    expect(await adminClient.query(api.audit.events.counts, {})).toMatchObject({ total: 0, exact: true });
+    await t.run(async (ctx) => {
+      await logAuditEvent(ctx, { actorId: admin, action: 'CLUB_CHANNEL_CREATED', entityType: 'ClubChannel', meta: { title: 'A channel' } });
+      await logAuditEvent(ctx, { actorId: 'system', action: 'KEYWORD_ADDED', entityType: 'KeywordRule', meta: { keyword: 'example' } });
+    });
+    expect(await adminClient.query(api.audit.events.counts, {})).toMatchObject({ total: 2, exact: true });
+    expect(await adminClient.query(api.audit.events.counts, { actorId: admin })).toMatchObject({ total: 1, exact: true });
+  });
+  test('keeps totals unavailable while a backfill is part-way through history', async () => {
+    vi.useFakeTimers();
+    try {
+      const f = await fixture();
+      await f.t.run(async (ctx) => {
+        for (let i = 0; i < 100; i++) await ctx.db.insert('auditEvents', { action: 'FLEX_WORKSHOP_CREATED', entityType: 'FlexWorkshop', createdAt: 100 + i });
+      });
+      // The first batch backfills the oldest 100 rows and schedules the rest.
+      await f.t.mutation(internal.audit.migrations.backfill, {});
+      expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBeNull();
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect((await f.adminClient.query(api.audit.events.counts, {})).total).toBe(107);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  test('server context exposes live record routes without linking deleted records', async () => {
+    const f = await fixture();
+    const detail = await f.adminClient.query(api.audit.events.get, { auditEventId: f.oldest });
+    expect(detail?.context.links).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: f.club, href: `/clubs/${f.club}` }),
+      expect.objectContaining({ id: 'removed-message', href: null }),
+    ]));
+  });
+  test('names a reaction by its message and marks removed records deleted, not bulk rows', async () => {
+    const f = await fixture();
+    const ids = await f.t.run(async (ctx) => {
+      const channel = await ctx.db.insert('clubChannels', { clubId: f.club, name: 'general', visibility: 'PUBLIC', createdById: f.admin, createdAt: 0, updatedAt: 0 });
+      const message = await ctx.db.insert('clubChannelMessages', { channelId: channel, authorId: f.student, body: '  Bring safety goggles on Friday  ', isPinned: false, createdAt: 0, updatedAt: 0 });
+      const removed = await ctx.db.insert('clubChannelMessages', { channelId: channel, authorId: f.student, body: 'Removed text', isPinned: false, deletedAt: 5, createdAt: 0, updatedAt: 5 });
+      const react = (entityId: string) => logAuditEvent(ctx, { actorId: f.student, action: 'CLUB_CHANNEL_MESSAGE_REACTION_ADDED', entityType: 'ClubChannelMessage', entityId, meta: { clubId: f.club, channelId: channel, emoji: 'LIKE' } });
+      return {
+        channel, message,
+        live: await react(message),
+        removed: await react(removed),
+        bulk: await logAuditEvent(ctx, { actorId: f.admin, action: 'USER_CSV_BULK_UPDATED', entityType: 'User', entityId: 'bulk', meta: { updated: 2 } }),
+      };
+    });
+    const live = await f.adminClient.query(api.audit.events.get, { auditEventId: ids.live });
+    expect(live?.context).toMatchObject({ title: 'Bring safety goggles on Friday', deleted: false });
+    expect(live?.context.links[0]).toMatchObject({ label: 'Record', href: `/clubs/${f.club}/channels/${ids.channel}?message=${ids.message}` });
+    const removed = await f.adminClient.query(api.audit.events.get, { auditEventId: ids.removed });
+    expect(removed?.context).toMatchObject({ title: 'Message', deleted: true });
+    expect(removed?.context.links[0]?.href).toBeNull();
+    expect((await f.adminClient.query(api.audit.events.get, { auditEventId: ids.bulk }))?.context.deleted).toBe(false);
+  });
+  test('application writers cannot bypass audit provenance and counts', () => {
+    const sources = import.meta.glob('../**/*.ts', { eager: true, query: '?raw', import: 'default' });
+    const bypasses = Object.entries(sources).filter(([path, source]) => !path.endsWith('.test.ts') && path !== './_lib.ts' && /\.insert\(\s*['"]auditEvents['"]/.test(String(source))).map(([path]) => path);
+    expect(bypasses).toEqual([]);
+    const unregistered = Object.entries(sources).filter(([path]) => !path.endsWith('.test.ts')).flatMap(([path, source]) =>
+      [...String(source).matchAll(/logAuditEvent\(ctx,\s*\{([\s\S]*?)\n\s*\}\)/g)].flatMap((call) => {
+        const action = call[1]?.match(/\baction:\s*['"]([^'"]+)['"]/)?.[1];
+        return action && !AUDIT_ACTIONS[action] ? [`${path}: ${action}`] : [];
+      }));
+    expect(unregistered).toEqual([]);
+  });
+  test('distinguishes missing historical actors from explicit automation and tolerates malformed URL person IDs', async () => {
+    const f = await fixture();
+    const unknown = { id: 'historical', action: 'CLUB_CREATED', entityType: 'Club', createdAt: new Date().toISOString() };
+    expect(auditPersonName(unknown)).toBe('Unknown (not recorded)');
+    expect(matchesAuditSearch(unknown, parseAuditSearch('source:system').terms)).toBe(false);
+    expect(auditPersonName({ ...unknown, meta: { auditSource: 'system' } })).toBe('System');
+    const result = await f.adminClient.query(api.audit.events.listPage, { actorId: 'invalid-id', paginationOpts: { numItems: 10, cursor: null } });
+    expect(result).toMatchObject({ page: [], isDone: true });
+  });
+  test('merges legacy record spellings through indexed pagination without changing history', async () => {
+    const f = await fixture();
+    const ids = await f.t.run(async (ctx) => {
+      const first = await ctx.db.insert('auditEvents', { actorId: f.admin, action: 'FLEX_FRIDAY_CREATED', entityType: 'FLEX_FRIDAY', entityId: 'friday', createdAt: 8 });
+      const second = await ctx.db.insert('auditEvents', { actorId: f.admin, action: 'FLEX_FRIDAY_CREATED', entityType: 'FlexFriday', entityId: 'friday', createdAt: 9 });
+      return [second, first];
+    });
+    const first = await f.adminClient.query(api.audit.events.listPage, { entityType: 'FlexFriday', recordId: 'friday', paginationOpts: { numItems: 1, cursor: null } });
+    const second = await f.adminClient.query(api.audit.events.listPage, { entityType: 'FlexFriday', recordId: 'friday', paginationOpts: { numItems: 1, cursor: first.continueCursor } });
+    expect([...first.page, ...second.page].map((row) => row.id)).toEqual(ids);
+    expect(second.page[0]?.entityType).toBe('FLEX_FRIDAY');
+  });
+  test('combines categories and actions with OR within each dimension before pagination', async () => {
+    const f = await fixture();
+    await f.t.mutation(internal.audit.migrations.backfill, {});
+    const args = { categories: ['clubs-chat', 'flex-events'] as ('clubs-chat' | 'flex-events')[], actions: ['CLUB_CHANNEL_MESSAGE_POSTED', 'FLEX_WORKSHOP_CREATED'] };
+    const all: FunctionReturnType<typeof api.audit.events.listPage>['page'] = [];
+    let cursor: string | null = null;
+    let done = false;
+    while (!done) {
+      const result: FunctionReturnType<typeof api.audit.events.listPage> = await f.adminClient.query(api.audit.events.listPage, { ...args, paginationOpts: { numItems: 2, cursor } });
+      all.push(...result.page);
+      cursor = result.continueCursor;
+      done = result.isDone;
+    }
+    expect(all).toHaveLength(7);
+    expect(new Set(all.map((row) => row.id)).size).toBe(7);
+    expect(all.map((row) => Date.parse(row.createdAt))).toEqual([7, 6, 5, 4, 3, 2, 1]);
+    expect(await f.adminClient.query(api.audit.events.counts, { categories: ['clubs-chat', 'flex-events'] })).toMatchObject({ total: 7, exact: true });
+    const narrowed = await f.adminClient.query(api.audit.events.listPage, { ...args, categories: ['clubs-chat'], paginationOpts: { numItems: 10, cursor: null } });
+    expect(narrowed.page).toHaveLength(1);
+    expect(narrowed.page[0]?.id).toBe(f.oldest);
+    expect(await f.adminClient.query(api.audit.events.counts, args)).toMatchObject({ total: 7, exact: false });
+  });
+
 });

@@ -16,6 +16,9 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { ListFilter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // ── Context ──────────────────────────────────────────────
 
@@ -136,10 +139,12 @@ TableBody.displayName = "TableBody";
 
 interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
   index?: number;
+  interactive?: boolean;
+  selected?: boolean;
 }
 
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ index, className, style, ...props }, ref) => {
+  ({ index, interactive = false, selected = false, className, style, ...props }, ref) => {
     const internalRef = useRef<HTMLTableRowElement>(null);
     const ctx = useContext(TableContext);
 
@@ -164,10 +169,14 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLTableRowElement | null>).current = node;
         }}
         data-proximity-index={index}
+        data-selected={selected || undefined}
+        aria-selected={selected || undefined}
         className={cn(
           "group/row relative z-10 border-b transition-[border-color] duration-80",
-          hideBorder ? "border-transparent" : "border-accent/40",
+          hideBorder ? "border-transparent" : isBodyRow ? "border-border/60" : "border-border",
           isBodyRow && activeIdx === index && "is-active",
+          interactive && "cursor-pointer",
+          selected && "bg-active",
           className
         )}
         style={{
@@ -194,7 +203,7 @@ const TableHead = forwardRef<
   <th
     ref={ref}
     className={cn(
-      "px-3 py-2 text-left text-foreground",
+      "h-9 px-3 py-1 text-left text-foreground pointer-coarse:h-11",
       className
     )}
     {...props}
@@ -212,7 +221,7 @@ const TableCell = forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-3 py-2 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
+      "h-9 px-3 py-1 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground pointer-coarse:h-11",
       className
     )}
     {...props}
@@ -221,6 +230,39 @@ const TableCell = forwardRef<
 
 TableCell.displayName = "TableCell";
 
+/** A column's filter belongs to its header, including in an empty table. */
+function TableHeadFilter({ label, active = false, children }: {
+  label: string;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span>{label}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="ghost" size="icon-compact" active={active} aria-label={`Filter ${label.toLowerCase()}`}>
+            <ListFilter aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" aria-label={`${label} filters`}>
+          {children}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function TableGroupRow({ children, colSpan }: { children: ReactNode; colSpan: number }) {
+  return (
+    <tr className="border-b border-border/60">
+      <th colSpan={colSpan} scope="rowgroup" className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+        {children}
+      </th>
+    </tr>
+  );
+}
+
 // ── Exports ──────────────────────────────────────────────
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableHeadFilter, TableGroupRow };

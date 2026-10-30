@@ -220,6 +220,9 @@ function EventCalendarEvent<TData = unknown>({
       {occurrence.isRecurring && (
         <RepeatIcon className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
       )}
+      {!occurrence.allDay && segment.isStart && view === "month" && (
+        <span className="shrink-0 text-muted-foreground tabular-nums">{format(toZoned(occurrence.start, settings.timeZone), toZoned(occurrence.start, settings.timeZone).getMinutes() ? "h:mma" : "ha", { locale: settings.locale }).toLowerCase().replace(/am$/, "a").replace(/pm$/, "p")}</span>
+      )}
       <span
         className={cn(
           "font-medium",
@@ -228,33 +231,11 @@ function EventCalendarEvent<TData = unknown>({
       >
         {event.title}
       </span>
-      {/* month cells are narrow: a compact never-shrinking start time keeps
-          the title readable; grids show the full range */}
-      {!occurrence.allDay &&
-        segment.isStart &&
-        (view === "month" ? (
-          <span className="text-muted-foreground shrink-0">
-            {format(
-              toZoned(occurrence.start, settings.timeZone),
-              settings.i18n.formats.eventTime,
-              { locale: settings.locale }
-            )}
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "text-muted-foreground hidden @[8rem]:inline",
-              stackedBlock ? EVENT_CALENDAR_FADE_TRUNCATE : "truncate"
-            )}
-          >
-            {settings.i18n.functions.formatEventTime(
-              toZoned(occurrence.start, settings.timeZone),
-              toZoned(occurrence.end, settings.timeZone),
-              occurrence.allDay,
-              { locale: settings.locale }
-            )}
-          </span>
-        ))}
+      {!occurrence.allDay && segment.isStart && view !== "month" && (
+        <span className={cn("text-muted-foreground hidden @[8rem]:inline", stackedBlock ? EVENT_CALENDAR_FADE_TRUNCATE : "truncate")}>
+          {settings.i18n.functions.formatEventTime(toZoned(occurrence.start, settings.timeZone), toZoned(occurrence.end, settings.timeZone), false, { locale: settings.locale })}
+        </span>
+      )}
     </>
   )
 
@@ -467,7 +448,7 @@ function EventCalendarEvent<TData = unknown>({
       }
       // A background tint alone conveys selection, so the chip is a real toggle
       // wherever it is interactive (agenda rows never select, previews are inert).
-      aria-pressed={interactive ? isSelected : undefined}
+      aria-pressed={interactive && !event.readOnly ? isSelected : undefined}
       aria-hidden={preview || undefined}
       tabIndex={preview ? -1 : undefined}
       // merged, not spread: every tint, ring and dot reads --ec-event-color,
@@ -494,7 +475,7 @@ function EventCalendarEvent<TData = unknown>({
         // consumer first: e.preventDefault() opts out of built-in selection
         settings.onEventClick?.(occurrence, e)
         // the agenda is a read-only list: a click never selects/focuses a row
-        if (e.defaultPrevented || view === "agenda") return
+        if (e.defaultPrevented || view === "agenda" || event.readOnly) return
         instance.api.selectEvent(occurrence.key)
       }}
       onDoubleClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -505,6 +486,10 @@ function EventCalendarEvent<TData = unknown>({
       className={cn(
         "group/ec-event text-foreground relative flex w-full min-w-0 cursor-pointer touch-none items-center overflow-hidden text-start select-none",
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
+        // Past entries recede through text and tint, never transparency:
+        // a see-through chip lets grid lines and schedule bands print
+        // through its title.
+        "data-past:text-muted-foreground",
         preview && "pointer-events-none",
         view === "agenda"
           ? // plain list row: color lives in the dot badge, not a tinted pill;
@@ -513,15 +498,17 @@ function EventCalendarEvent<TData = unknown>({
           : cn(
               // @container removes intrinsic sizing; only grid chips are containers
               // py-1: room above/below inline badges (attendee pill etc.)
-              "@container gap-1.5 rounded-sm px-1.5 py-1 leading-normal",
-              // soft tint + inset ring, not an accent border: legible on both themes
-              "bg-(--ec-event-color)/15 hover:bg-(--ec-event-color)/25",
-              // a flat tint reads darker on a dark surface, so lift it there
-              "dark:bg-(--ec-event-color)/20 dark:hover:bg-(--ec-event-color)/30",
+              "@container gap-1.5 rounded-sm px-1.5 py-0.5",
+              // Month chips use one 16px text line so a cell fits three rows.
+              view === "month" ? "leading-4" : "leading-normal",
+              // Opaque source tint mixed into the card surface, plus an inset
+              // ring: legible on both themes and above any grid texture.
+              "[--ec-event-mix:20%] hover:[--ec-event-mix:30%] data-selected:[--ec-event-mix:30%] data-past:[--ec-event-mix:8%]",
+              "bg-[color-mix(in_oklab,var(--ec-event-color)_var(--ec-event-mix),hsl(var(--card)))]",
               "inset-ring inset-ring-(--ec-event-color)/15",
               "transition-[background-color,box-shadow] duration-150",
               "data-dragging:opacity-40",
-              "data-selected:bg-(--ec-event-color)/30 data-selected:inset-ring-(--ec-event-color)/40",
+              "data-selected:inset-ring-(--ec-event-color)/40",
               segment.continuesBefore && "rounded-s-none",
               segment.continuesAfter && "rounded-e-none"
             ),

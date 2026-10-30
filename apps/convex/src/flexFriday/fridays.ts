@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -6,6 +7,7 @@ import { flexSessionTypeValidator } from "../validators";
 import { deliverMany, flexFridayAudience } from "../notifications/delivery";
 import { canCreateFlexFriday } from "./permissions";
 import { countFlexSessions } from "./counts";
+import { schoolDaySpan } from "../../lib/schoolTime";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -87,20 +89,19 @@ export const create = mutation({
       flexFridayId: fridayId,
       title: "Flex Friday",
       description: args.notes?.trim(),
-      startAt: date,
-      endAt: date,
+      ...schoolDaySpan(date),
+      allDay: true,
       tags: ["flex-friday"],
-      source: "SCHOOL",
+      source: "FLEX_FRIDAY",
       createdById: user._id,
       createdAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_FRIDAY_CREATED",
       entityId: fridayId,
       entityType: "FLEX_FRIDAY",
-      createdAt: Date.now(),
     });
 
     const friday = await ctx.db.get(fridayId);

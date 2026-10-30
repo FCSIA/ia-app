@@ -1,9 +1,15 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 
 type AdminPanelProps = {
@@ -22,15 +28,19 @@ export function AdminPanel({
   contentClassName,
 }: AdminPanelProps) {
   return (
-    <CardGroup proximityHover={false} border="outlined" className={cn('overflow-hidden', className)}>
-      <Card>
-        <CardHeader className="flex flex-col gap-3 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/40">
-          <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
-          {actions ? <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div> : null}
-        </CardHeader>
-        <CardContent className={cn('px-4 pb-4 pt-3', contentClassName)}>{children}</CardContent>
-      </Card>
-    </CardGroup>
+    <Card className={className}>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle className="text-sm font-semibold text-foreground">
+          {title}
+        </CardTitle>
+        {actions ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+            {actions}
+          </div>
+        ) : null}
+      </CardHeader>
+      <CardContent className={contentClassName}>{children}</CardContent>
+    </Card>
   );
 }
 
@@ -41,17 +51,27 @@ type AdminMetricProps = {
   compact?: boolean;
 };
 
-export function AdminMetric({ label, value, detail, compact }: AdminMetricProps) {
+export function AdminMetric({
+  label,
+  value,
+  detail,
+  compact,
+}: AdminMetricProps) {
   return (
-    <CardGroup proximityHover={false} border="outlined" className="overflow-hidden">
-      <Card className="bg-muted/20 p-4">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className={cn('mt-2 font-bold text-foreground', compact ? 'text-lg' : 'text-3xl')}>
-          {value}
-        </p>
-        {detail ? <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p> : null}
-      </Card>
-    </CardGroup>
+    <dl className="min-w-0 py-2">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          'mt-1 font-semibold tabular-nums text-foreground',
+          compact ? 'text-base' : 'text-2xl',
+        )}
+      >
+        {value}
+      </dd>
+      {detail ? (
+        <dd className="mt-1.5 text-xs text-muted-foreground">{detail}</dd>
+      ) : null}
+    </dl>
   );
 }
 
@@ -76,34 +96,31 @@ export function AdminNotice({
   const isSuccess = tone === 'success';
 
   return (
-    <CardGroup proximityHover={false} border="outlined" className="overflow-hidden">
-      <Card
-        className={cn(
-          'flex flex-col items-center justify-center px-6 py-10 text-center',
-          isDanger && 'bg-destructive/5 border-destructive/20',
-          isSuccess && 'bg-emerald/5 border-emerald/20',
-          !isDanger && !isSuccess && 'bg-muted/20 border-border/40',
-          className,
-        )}
-      >
-        {isDanger ? <AlertCircle className="mb-3 size-5 text-destructive" /> : isSuccess ? (
-          <svg className="mb-3 size-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        ) : null}
-        {title ? (
-          <p className={cn('text-base font-semibold', isDanger && 'text-destructive', isSuccess && 'text-emerald-700', (!isDanger && !isSuccess) && 'text-foreground')}>
-            {title}
-          </p>
-        ) : null}
-        <div className="mt-2 text-sm text-muted-foreground max-w-md">{message}</div>
-        {actionLabel && onAction ? (
-          <Button type="button" variant={isDanger || isSuccess ? 'primary' : 'ghost'} size="sm" onClick={onAction} className="mt-4">
-            {actionLabel}
-          </Button>
-        ) : null}
-      </Card>
-    </CardGroup>
+    <Empty
+      size="inline"
+      className={className}
+      role={isDanger ? 'alert' : undefined}
+    >
+      {isDanger ? (
+        <AlertCircle className="size-5 text-destructive" />
+      ) : isSuccess ? (
+        <Check className="size-5 text-success" />
+      ) : null}
+      <EmptyHeader>
+        {title ? <EmptyTitle className="text-sm">{title}</EmptyTitle> : null}
+        <EmptyDescription>{message}</EmptyDescription>
+      </EmptyHeader>
+      {actionLabel && onAction ? (
+        <Button
+          type="button"
+          variant={isDanger || isSuccess ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={onAction}
+          className="mt-4"
+        >
+          {actionLabel}
+        </Button>
+      ) : null}
+    </Empty>
   );
 }

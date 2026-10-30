@@ -267,7 +267,7 @@ function ValueDisplay({
         {isRange ? (
           <>
             {renderValue(0)}
-            <span className="mx-1 text-muted-foreground/50">—</span>
+            <span className="mx-1 text-muted-foreground">—</span>
             {renderValue(1)}
           </>
         ) : (

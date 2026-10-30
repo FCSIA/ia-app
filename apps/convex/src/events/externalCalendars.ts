@@ -179,6 +179,8 @@ export const applySync = internalMutation({
       location: v.optional(v.string()),
       startAt: v.number(),
       endAt: v.optional(v.number()),
+      allDay: v.boolean(),
+      url: v.optional(v.string()),
     })),
   },
   returns: v.null(),

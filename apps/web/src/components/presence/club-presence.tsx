@@ -13,7 +13,12 @@ export const presenceLabels: Record<PresenceStatus, string> = {
   doNotDisturb: 'Do not disturb',
 };
 
-const ClubPresenceContext = createContext<ReadonlyMap<string, PresenceStatus>>(new Map());
+type ClubPresence = {
+  byUser: ReadonlyMap<string, PresenceStatus>;
+  loaded: boolean;
+};
+
+const ClubPresenceContext = createContext<ClubPresence>({ byUser: new Map(), loaded: false });
 
 /**
  * One presence subscription per club, shared by everything on the club's
@@ -25,17 +30,27 @@ export function ClubPresenceProvider({ clubId, children }: { clubId: string; chi
     api.presence.status.clubStatuses,
     isAuthenticated ? { clubId: clubId as Id<'clubs'> } : 'skip',
   );
-  const byUser = useMemo(
-    () => new Map((statuses ?? []).map((entry) => [entry.userId as string, entry.status])),
+  const value = useMemo(
+    () => ({
+      byUser: new Map((statuses ?? []).map((entry) => [entry.userId as string, entry.status])),
+      loaded: statuses !== undefined,
+    }),
     [statuses],
   );
-  return <ClubPresenceContext.Provider value={byUser}>{children}</ClubPresenceContext.Provider>;
+  return <ClubPresenceContext.Provider value={value}>{children}</ClubPresenceContext.Provider>;
 }
 
 /** This person's status in the current club, or undefined while offline. */
 export function useMemberPresence(userId: string | undefined) {
-  const byUser = useContext(ClubPresenceContext);
+  const { byUser } = useContext(ClubPresenceContext);
   return userId ? byUser.get(userId) : undefined;
+}
+
+/** Count a roster's online people without opening another subscription. */
+export function useOnlineMemberCount(userIds: readonly string[]) {
+  const { byUser, loaded } = useContext(ClubPresenceContext);
+  if (!loaded) return undefined;
+  return new Set(userIds.filter((userId) => byUser.has(userId))).size;
 }
 
 /**
@@ -49,7 +64,7 @@ export function PresenceBadge({ status, className }: { status: PresenceStatus; c
       aria-label={presenceLabels[status]}
       title={presenceLabels[status]}
       className={cn(
-        'absolute bottom-0 right-0 flex size-2.5 items-center justify-center rounded-full ring-2 ring-background',
+        'absolute bottom-0 right-0 flex size-2.5 items-center justify-center rounded-full ring-2 ring-card',
         status === 'online' ? 'bg-emerald-500' : 'bg-red-500',
         className,
       )}

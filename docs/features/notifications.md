@@ -80,12 +80,19 @@ preference until explicitly set, preserving opt-outs and delivery levels.
 
 ## Settings surfaces
 
-`NotificationSettingsPanel` is shared by the Settings tab on `/notifications`
+`NotificationSettingsPanel` is shared by the Settings destination on `/notifications`
 and the Notifications section on `/profile`. Both expose browser push, global
 categories, and club/channel preferences through the same implementation. Compact
 option rows sit in a rounded group with quiet separators, and club headers use
 a distinct surface. These inner groups define the bounded column without an
 additional outer frame.
+
+Inbox and Settings are nested destinations under Notifications in the main
+sidebar and mobile More navigation, rather than a page-top tab strip. Their
+URLs are `/notifications?tab=inbox` and `/notifications?tab=settings`; browser
+Back/Forward selects the matching content section. The default and unknown
+values select Inbox. Switching between these destinations preserves the inbox's
+in-memory search text; only the active Inbox can acknowledge deliveries.
 
 Club settings use an inline Radix `Collapsible` with a separate Fluid button
 containing the channel count and chevron beside the club switch. Expanding a

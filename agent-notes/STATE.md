@@ -2,6 +2,15 @@
 
 ## Active Focus
 
+- **PR #187 seed optimization (2026-10-29)**: `perf/seed-benchmark-report`
+  in `.worktrees/seed-benchmark-report` is stacked on `ui/restore-audit` (#186).
+  Its separate local backend uses 3214/3215 and retains disposable development
+  fixtures; do not share its state or environment files with another worktree.
+  The work covers per-run demo password hashing, sequential batches of eight,
+  bounded announcement cleanup, and the measured performance report. The owner
+  authorized full-send through merging #187 into its UI base; production and
+  merging #186 into main remain outside this task.
+
 - **PR #171 OCR review (2026-10-28)**: `.worktrees/pr-171-review` uses
   `codex/pr-171-ocr-accuracy`, based on PR head `eed55c75`. Generalized local OCR,
   relative row/column parsing, conservative catalog matching, Google word-box
@@ -56,8 +65,7 @@
   reconciled with their squash commits so final CI validates the combined source.
   Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
-- **Goal**: Land verified changes and complete the authorized release. Native
-  iPhone swipe verification remains outstanding.
+- Native iPhone swipe verification from the preceding UI work remains outstanding.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.

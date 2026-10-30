@@ -38,7 +38,7 @@ const buttonVariants = cva(
         "icon-compact":
           "h-7 w-7 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
         "icon-sm":
-          "h-8 w-8 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
+          "h-8 w-8 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-4 [&_svg]:w-4",
         icon: "h-9 w-9 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-4 [&_svg]:w-4",
         "icon-lg": "h-11 w-11 p-0 [&_svg]:h-5 [&_svg]:w-5",
       },
@@ -50,6 +50,11 @@ const buttonVariants = cva(
   },
 );
 
+/** Glyph geometry shared by labeled and icon controls on the 28/32/36 scale. */
+export function iconSizeFor(size: VariantProps<typeof buttonVariants>["size"] = "md") {
+  return size === "sm" || size === "icon-compact" ? 14 : size === "icon-lg" ? 20 : 16;
+}
+
 interface ButtonProps
   extends
     ButtonHTMLAttributes<HTMLButtonElement>,
@@ -58,6 +63,8 @@ interface ButtonProps
   loading?: boolean;
   leadingIcon?: IconComponent;
   trailingIcon?: IconComponent;
+  /** Count or status anchored to the control, outside its content wrapper. */
+  badge?: ReactNode;
   /** Force the visual pressed/held state. Useful when the button drives an
    *  external open piece of UI (a popover, dropdown, etc.) so it reads as
    *  engaged while the menu is showing. */
@@ -93,6 +100,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       leadingIcon: LeadingIcon,
       trailingIcon: TrailingIcon,
+      badge,
       active = false,
       disabled,
       children,
@@ -117,7 +125,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size === "icon-compact" ||
       size === "icon-sm" ||
       size === "icon-lg";
-    const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
+    const iconSize = iconSizeFor(size);
     // Spinner box tracks the button height (sm is h-7, lg/icon are h-9, …) so
     // the loading glyph stays proportionate across sizes.
     const spinnerSizeClass =
@@ -209,6 +217,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </>
           )}
         </span>
+        {badge != null ? (
+          <span className="pointer-events-none absolute -right-1 -top-1 z-10 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 tabular-nums text-primary-foreground">
+            {badge}
+          </span>
+        ) : null}
       </>
     );
 

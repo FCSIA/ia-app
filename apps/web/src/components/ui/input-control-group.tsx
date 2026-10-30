@@ -19,7 +19,7 @@ function InputControl({ className, ...props }: React.ComponentProps<"div">) {
       className={cn(
         "group/input-control border-input dark:bg-input/30 shadow-xs relative flex w-full items-center border outline-none transition-[color,box-shadow]",
         shape.input,
-        "h-9 pointer-coarse:min-h-11 has-[>textarea]:h-auto",
+        "h-8 pointer-coarse:min-h-11 has-[>textarea]:h-auto",
         "has-[>[data-align=inline-start]]:[&>input]:pl-2",
         "has-[>[data-align=inline-end]]:[&>input]:pr-2",
         "has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3",
@@ -75,36 +75,19 @@ function InputControlAddon({
   );
 }
 
-const inputControlButtonVariants = cva(
-  "flex items-center gap-2 text-sm shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
-  {
-    variants: {
-      size: {
-        xs: "h-6 gap-1 rounded-[calc(var(--radius)-5px)] px-2 [&_svg]:size-3.5",
-        sm: "h-8 gap-1.5 rounded-md px-2.5 [&_svg]:size-4",
-        "icon-xs":
-          "size-6 rounded-[calc(var(--radius)-5px)] p-0 [&_svg]:size-3.5",
-        "icon-sm": "size-8 p-0 [&_svg]:size-4",
-      },
-    },
-    defaultVariants: { size: "xs" },
-  },
-);
-
 function InputControlButton({
   className,
   type = "button",
   variant = "ghost",
-  size,
+  size = "sm",
   ...props
-}: Omit<React.ComponentProps<typeof Button>, "size"> &
-  VariantProps<typeof inputControlButtonVariants>) {
+}: React.ComponentProps<typeof Button>) {
   return (
     <Button
       type={type}
-      data-size={size}
+      size={size}
       variant={variant}
-      className={cn(inputControlButtonVariants({ size }), className)}
+      className={cn("shadow-none", className)}
       {...props}
     />
   );
@@ -128,7 +111,7 @@ function InputControlText({
 function InputControlInput({
   className,
   ...props
-}: React.ComponentProps<"input">) {
+}: React.ComponentProps<typeof Input>) {
   return (
     <Input
       data-slot="input-control-field"

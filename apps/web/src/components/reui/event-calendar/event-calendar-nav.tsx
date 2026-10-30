@@ -15,6 +15,7 @@ import {
 import { toZoned } from "@/components/reui/event-calendar/event-calendar-lib"
 import type { CalendarView } from "@/components/reui/event-calendar/event-calendar-types"
 import { addDays, format } from "date-fns"
+import { TZDate } from "@date-fns/tz"
 import { Slot } from "@/components/ui/slot"
 
 import { cn } from "@/lib/utils"
@@ -44,14 +45,14 @@ import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CalendarIcon } from
 function useNavButtonProps(): {
   variant: "ghost" | "tertiary" | "secondary" | "primary"
   size: "sm" | "md"
-  iconSize: "icon-sm" | "icon"
+  iconSize: "icon-compact" | "icon-sm"
   className: string | undefined
 } {
   const viewConfig = useEventCalendarViewConfig()
   return {
     variant: viewConfig.navButtonVariant,
     size: viewConfig.navButtonSize,
-    iconSize: viewConfig.navButtonSize === "sm" ? "icon-sm" : "icon",
+    iconSize: viewConfig.navButtonSize === "sm" ? "icon-compact" : "icon-sm",
     className: viewConfig.classNames?.navButton,
   }
 }
@@ -142,6 +143,7 @@ function EventCalendarNavToday({
     settings.i18n.formats.dayTitle,
     { locale: settings.locale }
   )
+  if (isToday) return null
   return (
     <NavTooltip content={tooltip === undefined ? defaultTooltip : tooltip}>
       <Button
@@ -301,18 +303,14 @@ function EventCalendarViewSwitcher({
         <Button
           variant={nav.variant}
           size={nav.size}
+          trailingIcon={children ? undefined : ChevronDownIcon}
           data-slot="event-calendar-view-switcher"
           aria-label={labels.selectView}
           title={typeof tooltip === "string" ? tooltip : undefined}
           className={cn("gap-1", nav.className, className)}
           asChild={asChild}
         >
-          {children ?? (
-            <>
-              {viewLabel(view)}
-              <ChevronDownIcon className="size-4 opacity-60" aria-hidden="true" />
-            </>
-          )}
+          {children ?? viewLabel(view)}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -435,7 +433,7 @@ function EventCalendarDatePicker({
 
   const pick = (next: Date | undefined) => {
     if (!next) return
-    goTo(next)
+    goTo(TZDate.tz(settings.timeZone, next.getFullYear(), next.getMonth(), next.getDate()))
     setOpen(false)
   }
 
@@ -445,10 +443,11 @@ function EventCalendarDatePicker({
         <PopoverTrigger asChild {...props}>
           <Button
             variant={nav.variant}
-            size={nav.iconSize}
+            size={children ? nav.size : nav.iconSize}
+            trailingIcon={children && !asChild ? ChevronDownIcon : undefined}
             data-slot="event-calendar-date-picker"
             data-mode={resolved}
-            aria-label={settings.i18n.labels.goToDate}
+            aria-label={props["aria-label"] ?? settings.i18n.labels.goToDate}
             className={cn(nav.className, className)}
             asChild={asChild}
           >
@@ -460,11 +459,15 @@ function EventCalendarDatePicker({
       </NavTooltip>
       <PopoverContent
         align="start"
-        className={cn("w-auto p-0!", viewConfig.classNames?.datePickerContent)}
+        aria-label={settings.i18n.labels.goToDate}
+        // Match Fluid DatePicker's padded calendar frame; the old DayPicker
+        // popup assumed a transparent grid flush against its outer surface.
+        className={cn("w-auto p-1", viewConfig.classNames?.datePickerContent)}
       >
         {resolved === "range" ? (
           <Calendar
             mode="range"
+            autoFocus
             selected={{
               from: toZoned(activeRange.start, settings.timeZone),
               to: toZoned(addDays(activeRange.end, -1), settings.timeZone),
@@ -477,6 +480,8 @@ function EventCalendarDatePicker({
         ) : (
           <Calendar
             mode="single"
+            autoFocus
+            required
             selected={zoned}
             defaultMonth={zoned}
             onSelect={pick}

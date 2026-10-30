@@ -1,22 +1,17 @@
 "use client";
 
 import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
   useState,
-  type RefObject,
   type ReactNode,
   type Ref,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
   CalendarRange,
   ClipboardList,
-  Ellipsis,
+  CalendarDays,
   Home,
   MessageSquareText,
   Menu,
@@ -24,9 +19,14 @@ import {
   Settings,
   Shield,
   Presentation,
+  LayoutTemplate,
+  School,
+  Search,
   Star,
   Ticket,
   UsersRound,
+  Users,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,27 +42,36 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Tooltip } from "@/components/ui/tooltip";
 import { useNavIntent, usePrewarmRoute } from "@/lib/route-prewarm";
 import {
-  DropdownContent,
-  DropdownLabel,
-  DropdownMenu,
-  DropdownTrigger,
-} from "@/components/ui/dropdown";
-import { MenuItem } from "@/components/ui/menu-item";
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+} from "@/components/ui/sidebar";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { CommandMenuDialogTrigger } from "@/components/ui/command-menu";
 
-export type MobileTabId =
-  | "announcements"
-  | "clubs"
-  | "schedule"
-  | "calendar"
-  | "events"
-  | "flex-friday"
-  | "wrapped";
-
-export const MOBILE_TAB_DESTINATION_MIN = 4;
-export const MOBILE_TAB_DESTINATION_MAX = 5;
+import { MobileTabEditor } from "./mobile-tab-editor";
+import { Button } from "@/components/ui/button";
+import {
+  normalizeMobileTabLayout,
+  type MobileTabId,
+} from "./mobile-tab-layout";
+export {
+  MOBILE_TAB_DESTINATION_MIN,
+  MOBILE_TAB_DESTINATION_MAX,
+  type MobileTabId,
+} from "./mobile-tab-layout";
 
 type NavItem = {
   href: string;
@@ -71,15 +80,57 @@ type NavItem = {
   mobileTabId?: MobileTabId;
 };
 
+export type AppPageNavigation = {
+  parentHref: string;
+  label: string;
+  items: Array<{
+    href: string;
+    label: string;
+    icon?: LucideIcon;
+    isActive: boolean;
+  }>;
+};
+
 const primaryNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/announcements", label: "Announcements", icon: Megaphone, mobileTabId: "announcements" },
-  { href: "/clubs", label: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true' ? "Community" : "Clubs", icon: UsersRound, mobileTabId: "clubs" },
-  { href: "/schedule", label: "Schedule", icon: ClipboardList, mobileTabId: "schedule" },
+  {
+    href: "/announcements",
+    label: "Announcements",
+    icon: Megaphone,
+    mobileTabId: "announcements",
+  },
+  {
+    href: "/schedule",
+    label: "Schedule",
+    icon: ClipboardList,
+    mobileTabId: "schedule",
+  },
   { href: "/events", label: "Events", icon: Ticket, mobileTabId: "events" },
-  { href: "/calendar", label: "Calendar", icon: CalendarRange, mobileTabId: "calendar" },
-  { href: "/flex-friday", label: "Flex Friday", icon: Presentation, mobileTabId: "flex-friday" },
+  {
+    href: "/calendar",
+    label: "Calendar",
+    icon: CalendarRange,
+    mobileTabId: "calendar",
+  },
+  {
+    href: "/flex-friday",
+    label: "Flex Friday",
+    icon: Presentation,
+    mobileTabId: "flex-friday",
+  },
   { href: "/wrapped", label: "Wrapped", icon: Star, mobileTabId: "wrapped" },
+];
+
+const socialNav: NavItem[] = [
+  { href: "/clubs", label: process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === "true" ? "Community" : "Clubs", icon: UsersRound, mobileTabId: "clubs" },
+  { href: "/schedule?tab=friends", label: "Friends", icon: UserRound },
+  { href: "/schedule?tab=groups", label: "Friend Groups", icon: Users },
+];
+
+const dayPlanNav: Array<NavItem & { section: string }> = [
+  { href: "/schedule?tab=admin&section=dates", label: "Calendar dates", icon: CalendarDays, section: "dates" },
+  { href: "/schedule?tab=admin&section=templates", label: "Templates", icon: LayoutTemplate, section: "templates" },
+  { href: "/schedule?tab=admin&section=config", label: "School config", icon: School, section: "config" },
 ];
 
 const accountNav: NavItem[] = [
@@ -97,151 +148,51 @@ type AppShellNavigationProps = {
   unreadBadge?: string;
   showAdmin: boolean;
   showSchedule: boolean;
+  showFriends?: boolean;
+  showDayPlans?: boolean;
+  scheduleTab?: string;
+  scheduleSection?: string;
+  pageNavigation?: AppPageNavigation;
   showWrapped: boolean;
   mobileTabLayout?: string[];
 };
 
-const NAV_ICON_SIZE = 44;
-const NAV_ICON_GAP = 6;
-const COMPACT_RAIL_HEIGHT = 208;
-const NORMAL_RAIL_FIXED_HEIGHT = 156;
-const COMPACT_RAIL_FIXED_HEIGHT = 68;
-const PINNED_AUXILIARY_FIXED_HEIGHT = 332;
-
-/**
- * Returns the number of overflow-eligible destinations that can remain in the
- * desktop rail. Browser zoom changes the rail's CSS-pixel height, so this
- * intentionally measures available height instead of relying on viewport
- * breakpoint guesses. A rail tall enough to pin auxiliary controls reserves
- * their full height before allocating primary destinations.
- */
-export function getDesktopNavigationCapacity({
-  railHeight,
-  itemCount,
-  reserveAuxiliaryControls = false,
-}: {
-  railHeight: number;
-  itemCount: number;
-  reserveAuxiliaryControls?: boolean;
-}) {
-  if (!Number.isFinite(railHeight) || railHeight <= 0 || itemCount <= 0) {
-    return 0;
-  }
-
-  const fixedHeight = reserveAuxiliaryControls
-    ? PINNED_AUXILIARY_FIXED_HEIGHT
-    : railHeight <= COMPACT_RAIL_HEIGHT
-      ? COMPACT_RAIL_FIXED_HEIGHT
-      : NORMAL_RAIL_FIXED_HEIGHT;
-  const slotHeight = NAV_ICON_SIZE + NAV_ICON_GAP;
-  const capacity = Math.floor(
-    (railHeight - fixedHeight + NAV_ICON_GAP) / slotHeight,
-  );
-
-  return Math.max(0, Math.min(itemCount, capacity));
-}
-
-const useIsomorphicLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-function useDesktopNavigationRailHeight(
-  railRef: RefObject<HTMLElement | null>,
-) {
-  const [railHeight, setRailHeight] = useState<number | null>(null);
-
-  useIsomorphicLayoutEffect(() => {
-    const rail = railRef.current;
-    if (!rail) return;
-
-    const desktopQuery = window.matchMedia("(min-width: 1024px)");
-    const syncCapacity = () => {
-      setRailHeight(desktopQuery.matches ? rail.clientHeight : null);
-    };
-
-    syncCapacity();
-    const resizeObserver =
-      typeof ResizeObserver === "undefined"
-        ? null
-        : new ResizeObserver(syncCapacity);
-    resizeObserver?.observe(rail);
-    desktopQuery.addEventListener("change", syncCapacity);
-    window.addEventListener("resize", syncCapacity);
-
-    return () => {
-      resizeObserver?.disconnect();
-      desktopQuery.removeEventListener("change", syncCapacity);
-      window.removeEventListener("resize", syncCapacity);
-    };
-  }, [railRef]);
-
-  return railHeight;
-}
-
 function getNavigationItems({
   showSchedule,
   showWrapped,
+  showFriends,
 }: AppShellNavigationProps) {
-  return primaryNav.filter((item) => {
+  return [...primaryNav, ...getSocialItems({ showFriends })].filter((item) => {
     if (item.href === "/schedule" && !showSchedule) return false;
     if (item.href === "/wrapped" && !showWrapped) return false;
     return true;
   });
 }
 
-function isActive(pathname: string, href: string) {
-  return (
-    pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
-  );
+function getSocialItems({ showFriends }: Pick<AppShellNavigationProps, "showFriends">) {
+  return socialNav.filter((item) => item.href === "/clubs" || showFriends);
 }
 
-function NavIcon({
-  item,
-  active,
-  badge,
-}: {
-  item: NavItem;
-  active: boolean;
-  badge?: ReactNode;
-}) {
-  const { icon: Icon, label, href } = item;
-  const intent = useNavIntent(href);
-
-  return (
-    <Tooltip side="right" sideOffset={10} content={label}>
-      <Link
-        href={href}
-        prefetch={true}
-        {...intent}
-        aria-label={label}
-        className={cn(
-          "group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
-          active
-            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-            : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        )}
-      >
-        <Icon
-          className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]"
-          strokeWidth={active ? 2.25 : 1.75}
-        />
-        {badge ? (
-          <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-            {badge}
-          </span>
-        ) : null}
-      </Link>
-    </Tooltip>
-  );
+function isActive(pathname: string, href: string, scheduleTab?: string) {
+  const [target, query] = href.split("?");
+  if (target === "/schedule" && pathname.startsWith("/schedule")) {
+    const tab = pathname.startsWith("/schedule/groups/") ? "groups" : scheduleTab;
+    const targetTab = new URLSearchParams(query).get("tab");
+    return targetTab ? tab === targetTab : tab !== "friends" && tab !== "groups";
+  }
+  return pathname === target || (target !== "/dashboard" && pathname.startsWith(`${target}/`));
 }
 
 function MobileNavLink({
   item,
   active,
   badge,
+  onNavigate,
 }: {
-  item: NavItem;
+  item: Pick<NavItem, "href" | "label"> & Partial<Pick<NavItem, "icon">>;
   active: boolean;
   badge?: ReactNode;
+  onNavigate?: () => void;
 }) {
   const { icon: Icon, label, href } = item;
   const intent = useNavIntent(href);
@@ -249,6 +200,7 @@ function MobileNavLink({
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       prefetch={true}
       {...intent}
       className={cn(
@@ -258,7 +210,7 @@ function MobileNavLink({
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
       )}
     >
-      <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+      {Icon ? <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} /> : null}
       <span className="flex-1">{label}</span>
       {badge ? (
         <span className="flex min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
@@ -269,146 +221,138 @@ function MobileNavLink({
   );
 }
 
-function AppShellDesktopNavigation(props: AppShellNavigationProps) {
-  const primary = getNavigationItems(props);
-  const router = useRouter();
-  const railRef = useRef<HTMLElement>(null);
-  const railHeight = useDesktopNavigationRailHeight(railRef);
-  const profile = accountNav.find((item) => item.href === "/profile")!;
-  const auxiliaryItems = [
-    ...accountNav.filter((item) => item.href !== profile.href),
-    ...(props.showAdmin ? adminNav : []),
-  ];
-  const pinAuxiliaryControls =
-    railHeight !== null && railHeight >= PINNED_AUXILIARY_FIXED_HEIGHT;
-  const overflowCandidates = pinAuxiliaryControls
-    ? primary
-    : [...primary, ...auxiliaryItems];
-  const capacity = railHeight === null
-    ? overflowCandidates.length
-    : getDesktopNavigationCapacity({
-        railHeight,
-        itemCount: overflowCandidates.length,
-        reserveAuxiliaryControls: pinAuxiliaryControls,
-      });
-  const hasOverflow = capacity < overflowCandidates.length;
-  // The ellipsis occupies one of the available control slots when anything
-  // moves into it, so reserve that slot before choosing direct destinations.
-  const directItems = hasOverflow
-    ? overflowCandidates.slice(0, Math.max(0, capacity - 1))
-    : overflowCandidates;
-  const overflowItems = overflowCandidates.slice(directItems.length);
-  const overflowActive = overflowItems.some((item) =>
-    isActive(props.pathname, item.href),
-  );
-
+function DesktopNavLink({ item, active, badge, subNavigation }: {
+  item: NavItem;
+  active: boolean;
+  badge?: string;
+  subNavigation?: AppPageNavigation["items"];
+}) {
+  const intent = useNavIntent(item.href);
   return (
-    <aside
-      ref={railRef}
-      className="sticky top-0 z-40 hidden h-[100dvh] w-[72px] shrink-0 flex-col items-center overflow-hidden bg-sidebar py-3 text-sidebar-foreground lg:flex [@media(max-height:13rem)]:py-2"
-      aria-label="Primary navigation"
-    >
-      <AppLogo className="size-11 [@media(max-height:13rem)]:hidden" />
-
-      <nav
-        className="mt-3 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-hidden px-0 [@media(max-height:13rem)]:mt-0"
-        aria-label="Primary navigation destinations"
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href={item.href} prefetch {...intent} aria-label={badge ? `${item.label}, ${badge} unread` : item.label} />}
+        icon={item.icon}
+        isActive={active && !subNavigation?.some((child) => child.isActive)}
       >
-        {directItems.map((item) => (
-          <NavIcon
-            key={item.href}
-            item={item}
-            active={isActive(props.pathname, item.href)}
-            badge={
-              item.href === "/notifications" ? props.unreadBadge : undefined
-            }
-          />
-        ))}
-      </nav>
-
-      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-2">
-        {hasOverflow ? (
-          <DesktopNavigationOverflow
-            items={overflowItems}
-            active={overflowActive}
-            pathname={props.pathname}
-            unreadBadge={props.unreadBadge}
-            onNavigate={(href) => router.push(href)}
-          />
-        ) : null}
-        {pinAuxiliaryControls
-          ? auxiliaryItems.map((item) => (
-              <NavIcon
-                key={item.href}
-                item={item}
-                active={isActive(props.pathname, item.href)}
-                badge={item.href === "/notifications" ? props.unreadBadge : undefined}
-              />
-            ))
-          : null}
-        <NavIcon item={profile} active={isActive(props.pathname, profile.href)} />
-      </div>
-    </aside>
+        {item.label}
+      </SidebarMenuButton>
+      {badge ? <SidebarMenuBadge aria-hidden>{badge}</SidebarMenuBadge> : null}
+      {subNavigation ? (
+        <SidebarMenuSub>
+          {subNavigation.map((child) => (
+            <DesktopSubNavigationLink key={child.href} item={child} />
+          ))}
+        </SidebarMenuSub>
+      ) : null}
+    </SidebarMenuItem>
   );
 }
 
-function DesktopNavigationOverflow({
-  items,
-  active,
-  pathname,
-  unreadBadge,
-  onNavigate,
-}: {
-  items: NavItem[];
-  active: boolean;
-  pathname: string;
-  unreadBadge?: string;
-  onNavigate: (href: string) => void;
-}) {
+function DesktopSubNavigationLink({ item }: { item: AppPageNavigation["items"][number] }) {
+  const intent = useNavIntent(item.href);
   return (
-    <DropdownMenu>
-      <Tooltip side="right" sideOffset={10} content="More navigation">
-        <DropdownTrigger
-          render={
-            <button
-              type="button"
-              aria-label="Open more navigation"
-              className={cn(
-                "group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
-                active
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <Ellipsis
-                className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]"
-                strokeWidth={active ? 2.25 : 1.75}
-              />
-              {unreadBadge && items.some((item) => item.href === "/notifications") ? (
-                <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                  {unreadBadge}
+    <SidebarMenuSubItem>
+      <SidebarMenuSubButton
+        render={<Link href={item.href} prefetch {...intent} />}
+        icon={item.icon}
+        isActive={item.isActive}
+      >
+        {item.label}
+      </SidebarMenuSubButton>
+    </SidebarMenuSubItem>
+  );
+}
+
+function isDayPlanActive(props: AppShellNavigationProps, section: string) {
+  return props.pathname === "/schedule" && props.scheduleTab === "admin" &&
+    (props.scheduleSection ?? "dates") === section;
+}
+
+function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] {
+  return [
+    ...(props.showDayPlans && props.pageNavigation?.parentHref !== "/schedule" ? [{
+      parentHref: "/schedule",
+      label: "Day plans",
+      items: dayPlanNav.map(({ href, label, section }) => ({ href, label, isActive: isDayPlanActive(props, section) })),
+    }] : []),
+    ...(props.pageNavigation ? [props.pageNavigation] : []),
+  ];
+}
+
+function AppShellDesktopNavigation(props: AppShellNavigationProps & {
+  commandHint: boolean;
+}) {
+  const primary = getNavigationItems(props).filter((item) => !socialNav.some((social) => social.href === item.href));
+  const social = getSocialItems(props);
+  const pageNavigation = getPageNavigation(props);
+  const getSubNavigation = (href: string) => pageNavigation.find((group) => group.parentHref === href)?.items;
+  const profile = accountNav.find((item) => item.href === "/profile")!;
+  const account = [
+    ...accountNav.filter((item) => item.href !== profile.href),
+    ...(props.showAdmin ? adminNav : []),
+  ];
+
+  return (
+    <Sidebar variant="inset" role="navigation" aria-label="Primary navigation" className="z-40">
+      <SidebarHeader>
+        <Link href="/dashboard" aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
+          <IaOrbitMark alt="" width={16} height={16} className="size-4 shrink-0" />
+          <span className="truncate text-sm font-semibold">IA App</span>
+        </Link>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <CommandMenuDialogTrigger asChild>
+              <SidebarMenuButton icon={Search}>
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span>Search</span>
+                  <KbdGroup aria-hidden>
+                    <Kbd>{props.commandHint ? "⌘" : "Ctrl"}</Kbd>
+                    <Kbd>K</Kbd>
+                  </KbdGroup>
                 </span>
-              ) : null}
-            </button>
-          }
-        />
-      </Tooltip>
-      <DropdownContent side="right" align="end" className="w-56">
-        <DropdownLabel>More navigation</DropdownLabel>
-        {items.map((item, index) => (
-          <MenuItem
-            key={item.href}
-            index={index}
-            icon={item.icon}
-            label={item.label}
-            onSelect={() => onNavigate(item.href)}
-            className={cn(
-              isActive(pathname, item.href) && "bg-active",
-            )}
-          />
-        ))}
-      </DropdownContent>
-    </DropdownMenu>
+              </SidebarMenuButton>
+            </CommandMenuDialogTrigger>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            {primary.map((item) => (
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} subNavigation={getSubNavigation(item.href)} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup collapsible>
+          <SidebarGroupLabel>Social</SidebarGroupLabel>
+          <SidebarMenu>
+            {social.map((item) => (
+              <DesktopNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} subNavigation={getSubNavigation(item.href)} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup collapsible>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarMenu>
+            {account.map((item) => (
+              <DesktopNavLink
+                key={item.href}
+                item={item}
+                active={isActive(props.pathname, item.href, props.scheduleTab)}
+                badge={item.href === "/notifications" ? props.unreadBadge : undefined}
+                subNavigation={getSubNavigation(item.href)}
+              />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <DesktopNavLink item={profile} active={isActive(props.pathname, profile.href, props.scheduleTab)} />
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
 
@@ -420,38 +364,40 @@ function AppShellMobileNavigation({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [editorOpen, setEditorOpen] = useState(false);
   const primary = getNavigationItems(props);
   const directPaths = new Set(
     getMobileTabItems(props)
       .filter((item) => item.href !== "#more")
       .map((item) => item.href),
   );
-  const overflowPrimary = primary.filter((item) => !directPaths.has(item.href));
+  const overflowPrimary = primary.filter((item) => !directPaths.has(item.href) && !socialNav.some((social) => social.href === item.href));
+  const overflowSocial = getSocialItems(props).filter((item) => !directPaths.has(item.href));
 
   return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      shouldScaleBackground={false}
-    >
-      <DrawerContent
-        className="max-h-[min(82dvh,42rem)] border-sidebar-border bg-sidebar text-sidebar-foreground"
+    <>
+      <Drawer
+        open={open}
+        onOpenChange={onOpenChange}
+        shouldScaleBackground={false}
       >
-        <DrawerHeader className="border-b border-sidebar-border px-4 pb-3 pt-1 text-left">
-          <DrawerTitle className="text-base text-sidebar-foreground">
-            More
-          </DrawerTitle>
-          <DrawerDescription className="text-xs text-sidebar-foreground/65">
-            Events, feedback, account tools, and additional app areas.
-          </DrawerDescription>
-        </DrawerHeader>
-        <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
-          <nav className="flex flex-col gap-1 p-3 pb-2">
+        <DrawerContent className="max-h-[min(82dvh,42rem)] border-sidebar-border bg-sidebar text-sidebar-foreground">
+          <DrawerHeader className="border-b border-sidebar-border px-4 pb-3 pt-1 text-left">
+            <DrawerTitle className="text-base text-sidebar-foreground">
+              More
+            </DrawerTitle>
+            <DrawerDescription className="text-xs text-sidebar-foreground/65">
+              Events, feedback, account tools, and additional app areas.
+            </DrawerDescription>
+          </DrawerHeader>
+          <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
+            <nav className="flex flex-col gap-1 p-3 pb-2">
               {overflowPrimary.map((item) => (
                 <MobileNavLink
                   key={item.href}
                   item={item}
-                  active={isActive(props.pathname, item.href)}
+                  onNavigate={() => onOpenChange(false)}
+                  active={isActive(props.pathname, item.href, props.scheduleTab)}
                   badge={
                     item.href === "/notifications"
                       ? props.unreadBadge
@@ -459,14 +405,31 @@ function AppShellMobileNavigation({
                   }
                 />
               ))}
-              {overflowPrimary.length ? (
+              {getPageNavigation(props).map((group) => (
+                <section key={group.parentHref} aria-label={group.label}>
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">{group.label}</p>
+                  {group.items.map((item) => (
+                    <MobileNavLink key={item.href} item={item} active={item.isActive} onNavigate={() => onOpenChange(false)} />
+                  ))}
+                </section>
+              ))}
+              {overflowSocial.length ? (
+                <section aria-label="Social">
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">Social</p>
+                  {overflowSocial.map((item) => (
+                    <MobileNavLink key={item.href} item={item} active={isActive(props.pathname, item.href, props.scheduleTab)} onNavigate={() => onOpenChange(false)} />
+                  ))}
+                </section>
+              ) : null}
+              {overflowPrimary.length || overflowSocial.length ? (
                 <div className="my-2 h-px bg-sidebar-border" />
               ) : null}
               {accountNav.map((item) => (
                 <MobileNavLink
                   key={item.href}
                   item={item}
-                  active={isActive(props.pathname, item.href)}
+                  onNavigate={() => onOpenChange(false)}
+                  active={isActive(props.pathname, item.href, props.scheduleTab)}
                   badge={
                     item.href === "/notifications"
                       ? props.unreadBadge
@@ -479,43 +442,56 @@ function AppShellMobileNavigation({
                     <MobileNavLink
                       key={item.href}
                       item={item}
-                      active={isActive(props.pathname, item.href)}
+                      onNavigate={() => onOpenChange(false)}
+                      active={isActive(props.pathname, item.href, props.scheduleTab)}
                     />
                   ))
                 : null}
-          </nav>
-        </ScrollArea>
-      </DrawerContent>
-    </Drawer>
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => {
+                  onOpenChange(false);
+                  setEditorOpen(true);
+                }}
+              >
+                Edit tab bar
+              </Button>
+            </nav>
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
+      <MobileTabEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        options={getMobileTabEditorItems(props)}
+        savedLayout={props.mobileTabLayout}
+        showSchedule={props.showSchedule}
+      />
+    </>
   );
 }
 
-type MobileTabItem = NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
+type MobileTabItem =
+  NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
 
 function getMobileTabEditorItems(props: AppShellNavigationProps) {
   return getNavigationItems(props).filter(
-    (item): item is NavItem & { mobileTabId: MobileTabId } => item.mobileTabId !== undefined,
+    (item): item is NavItem & { mobileTabId: MobileTabId } =>
+      item.mobileTabId !== undefined,
   );
 }
 
 function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   const availableItems = getMobileTabEditorItems(props);
-  const availableById = new Map(availableItems.map((item) => [item.mobileTabId, item]));
-  const defaults: MobileTabId[] = [
-    "announcements",
-    "clubs",
-    props.showSchedule ? "schedule" : "calendar",
-    "events",
-  ];
-  const savedIds = (props.mobileTabLayout ?? []).filter(
-    (id): id is MobileTabId => availableById.has(id as MobileTabId),
+  const availableById = new Map(
+    availableItems.map((item) => [item.mobileTabId, item]),
   );
-  const selectedIds = [
-    ...savedIds,
-    ...defaults,
-  ].filter(
-    (id, index, ids) => availableById.has(id) && ids.indexOf(id) === index,
-  ).slice(0, MOBILE_TAB_DESTINATION_MAX);
+  const selectedIds = normalizeMobileTabLayout(
+    props.mobileTabLayout,
+    availableItems.map((item) => item.mobileTabId),
+    props.showSchedule,
+  );
 
   return [
     { href: "/dashboard", label: "Home", icon: Home },
@@ -540,20 +516,28 @@ function AppShellMobileTabBar({
   const prewarm = usePrewarmRoute();
   const items = getMobileTabItems(props);
   const directItems = items.filter((item) => item.href !== "#more");
-  const moreActive = !directItems.some((item) => isActive(props.pathname, item.href));
+  const moreActive = !directItems.some((item) =>
+    isActive(props.pathname, item.href, props.scheduleTab),
+  );
 
   return (
     <nav
       ref={tabBarRef}
       aria-label="Primary mobile navigation"
-      className={cn("app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card px-1 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden", CARD_SURFACE_FOREGROUND)}
+      className={cn(
+        "app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card px-1 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden",
+        CARD_SURFACE_FOREGROUND,
+      )}
       style={{
         gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
-        transform: 'translateY(var(--app-mobile-tabbar-viewport-offset, 0px))',
+        transform: "translateY(var(--app-mobile-tabbar-viewport-offset, 0px))",
       }}
     >
       {items.map((item) => {
-        const active = item.href === "#more" ? moreActive : isActive(props.pathname, item.href);
+        const active =
+          item.href === "#more"
+            ? moreActive
+            : isActive(props.pathname, item.href, props.scheduleTab);
         const Icon = item.icon;
         const content = (
           <>
@@ -562,7 +546,11 @@ function AppShellMobileTabBar({
                 layoutId="app-mobile-tab-active"
                 aria-hidden
                 className="absolute inset-x-1 inset-y-1 rounded-2xl bg-active"
-                transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.2, bounce: 0 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { type: "spring", duration: 0.2, bounce: 0 }
+                }
               />
             ) : null}
             <Icon
@@ -623,25 +611,6 @@ function AppShellMobileTabBar({
   );
 }
 
-function AppLogo({ className }: { className: string }) {
-  return (
-    <Link
-      href="/dashboard"
-      aria-label="Home"
-      className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-xl",
-        className,
-      )}
-    >
-      <IaOrbitMark
-        alt="IA Orbit"
-        width={64}
-        height={64}
-        className="size-full object-cover"
-      />
-    </Link>
-  );
-}
 
 export {
   AppShellDesktopNavigation,

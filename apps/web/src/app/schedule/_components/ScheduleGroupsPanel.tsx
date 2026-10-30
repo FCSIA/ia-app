@@ -21,7 +21,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TabPanel } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
@@ -59,7 +58,7 @@ export function ScheduleGroupsPanel() {
   };
 
   return (
-    <TabPanel value="groups" className="mt-5">
+    <section aria-label="Friend Groups">
       <section className="flex w-full max-w-3xl min-w-0 flex-col gap-4">
         <header className="flex min-h-9 items-center justify-end">
           <Popover open={open} onOpenChange={setOpen}>
@@ -136,6 +135,6 @@ export function ScheduleGroupsPanel() {
           </Empty>
         )}
       </section>
-    </TabPanel>
+    </section>
   );
 }

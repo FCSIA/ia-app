@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, type ComponentType, type ReactNode } from "react";
 
 import {
+  CalendarDays,
   ChevronRight,
   ChevronDown,
   X,
@@ -50,6 +51,8 @@ import {
   Pencil,
   SkipForward,
   CornerDownRight,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react";
 
 export interface IconComponentProps {
@@ -71,9 +74,13 @@ export type IconName =
   | "image" | "link" | "check" | "rotate-ccw"
   | "play" | "pause" | "pipette"
   | "home" | "message-circle" | "inbox"
-  | "pencil" | "skip-forward" | "corner-down-right";
+  | "pencil" | "skip-forward" | "corner-down-right"
+  | "panel-left" | "panel-right" | "calendar";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
+  "calendar": CalendarDays,
+  "panel-left": PanelLeft,
+  "panel-right": PanelRight,
   "chevron-right": ChevronRight,
   "chevron-down": ChevronDown,
   "pipette": Pipette,

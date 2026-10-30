@@ -44,7 +44,7 @@ Appearance and motion do not decide the primitive. Behavior does.
 | Visible value users should copy | `InputCopy` | Bespoke copy button |
 | Comparable records with meaningful columns | Fluid `Table` | Card rows posed as a table |
 | Flexible navigation or rich-action rows | Fluid `CardGroup` + `Card` | Semantic table |
-| Date choice | Current shadcn Radix `Calendar` adapter | Hand-styled calendar grid |
+| Date choice / date-time entry | Official Fluid `Calendar` / Radix `DatePicker` | Hand-styled calendar grid or bespoke time popup |
 
 When a choice is ambiguous, state what activation does: submit or persist a
 value, navigate, switch content, or execute an action. Resolve that distinction

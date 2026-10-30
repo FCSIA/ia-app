@@ -1,11 +1,12 @@
 "use client";
 
-import { nameInitials, nameSearchValues } from '~/apps/shared/user-name';
+import { nameInitials, nameSearchValues } from "~/apps/shared/user-name";
 
 import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -24,29 +25,42 @@ import {
   UserPlus,
   UserPen,
   UserRoundCheck,
-  Users,
-  UsersRound,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { useClubId } from "../../club-route";
 import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
-import { ClubAvatar } from "@/components/clubs/club-avatar";
-import { PresenceAvatar, useMemberPresence } from "@/components/presence/club-presence";
+import { ClubPersonAvatar } from "@/components/clubs/club-person-avatar";
+import {
+  PresenceAvatar,
+  useMemberPresence,
+} from "@/components/presence/club-presence";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
-import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
+import { PersonTrigger } from "@/components/users/person-trigger";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
 import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
 import { PeopleFilterPopover } from "@/components/clubs/people-filter-popover";
 import type { PeopleKindFilter } from "@/components/clubs/people-filter-popover";
 import { fullName } from "@/components/clubs/types";
 import { IaQrCode } from "@/components/ui/ia-qr-code";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardGroup, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardGroup,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  type CardProps,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -553,7 +567,11 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
       const memberByName = new Map<string, ClubDirectoryEntry[]>();
       for (const person of club.directory) {
         if (person.kind !== "MEMBER") continue;
-        const keys = new Set(nameSearchValues(person).map(normalizeAssignmentMatch).filter(Boolean));
+        const keys = new Set(
+          nameSearchValues(person)
+            .map(normalizeAssignmentMatch)
+            .filter(Boolean),
+        );
         for (const key of keys) {
           const matches = memberByName.get(key) ?? [];
           matches.push(person);
@@ -1143,11 +1161,8 @@ export default function ClubPeoplePage() {
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
         <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
-            <Card className="bg-transparent">
-              <CardContent className="p-4 sm:p-5">
-                <div className="flex shrink-0 flex-col gap-3">
-                  <Tabs
+          <div className="flex shrink-0 flex-col gap-3">
+            <Tabs
               value={visibleFilter}
               onValueChange={setFilter}
               className="min-w-0 w-full"
@@ -1228,143 +1243,47 @@ export default function ClubPeoplePage() {
                 </Button>
               ) : null}
               {club && canManageStructure ? (
-                <div className="order-3 flex min-w-0 sm:order-none">
+                <div className="order-3 flex min-w-0 justify-end sm:order-none sm:justify-start">
                   <BulkUnitAssignmentDialog club={club} />
                 </div>
               ) : null}
             </div>
           </div>
-        </CardContent>
-        </Card>
-        </CardGroup>
 
-        <div
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
-          >
-            {visibleFilter.startsWith("group:") ? (
-              selectedGroup ? (
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="border-b border-border/60 px-3 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">
-                        {selectedGroup.name}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {selectedGroup.description ||
-                          "People matching this group’s rules"}
-                      </p>
-                    </div>
-                  </div>
-                  {groupPeople.length > 0 ? (
-                    <ScrollArea className="min-h-0 flex-1">
-                      <div className="divide-y divide-border/60">
-                        {groupPeople.map((person) => (
-                          <PersonRow
-                            key={person._id}
-                            person={person}
-                            isCurrentUser={person._id === user?._id}
-                            isFriend={
-                              friendshipStatusByUserId.get(person._id) ===
-                              "FRIENDS"
-                            }
-                            canSendFriendRequest={
-                              friendshipStatusByUserId.get(person._id) ===
-                              "NONE"
-                            }
-                            friendshipStatus={friendshipStatusByUserId.get(
-                              person._id,
-                            )}
-                            friendRequestPending={
-                              friendRequestPendingId === person._id
-                            }
-                            onSendFriendRequest={handleSendFriendRequest}
-                            canAssignRole={
-                              canAssignRoles && person.kind === "MEMBER"
-                            }
-                            canManageUnits={
-                              canManageStructure && person.kind === "MEMBER"
-                            }
-                            canRemove={
-                              canRemoveMembers && person.kind === "MEMBER"
-                            }
-                            canImpersonate={Boolean(
-                              user &&
-                              hasRole(user, "SUPER_ADMIN") &&
-                              !person.roles.some(
-                                (role) =>
-                                  role === "ADMIN" || role === "SUPER_ADMIN",
-                              ),
-                            )}
-                            onRemove={setRemoveTarget}
-                          />
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  ) : (
-                    <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
-                      <UsersRound className="mb-2 size-5 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-foreground">
-                        {hasActivePopoverFilters
-                          ? "No people match the current filters"
-                          : "No people in this group"}
-                      </h3>
-                      <p className="mt-1 max-w-72 text-xs text-muted-foreground">
-                        {hasActivePopoverFilters
-                          ? "No one in this group matches the selected filters."
-                          : "Add roles, people, or structure branches to change who appears here."}
-                      </p>
-                      {hasActivePopoverFilters ? (
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedUnitId(null);
-                            setSelectedRoleIds(new Set());
-                            setKindFilter("all");
-                          }}
-                          className="mt-2 text-primary font-semibold"
-                        >
-                          Clear filters
-                        </Button>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
-                  <UsersRound className="mb-2 size-5 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold text-foreground">
-                    No people groups yet
-                  </h3>
-                  <p className="mt-1 max-w-72 text-xs text-muted-foreground">
-                    Create a group to organize people independently from roles
-                    and units.
+          <div className="flex min-h-0 flex-1 flex-col">
+            {selectedGroup ? (
+              <div className="pb-3">
+                <h2 className="truncate text-sm font-semibold">
+                  {selectedGroup.name}
+                </h2>
+                {selectedGroup.description ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {selectedGroup.description}
                   </p>
-                </div>
-              )
-            ) : visibleFilter === "requests" ? (
-              pendingJoinRequests.length > 0 ? (
+                ) : null}
+              </div>
+            ) : null}
+            {visibleFilter === "requests" ? (
+              club === undefined ? (
+                <PeopleLoading />
+              ) : pendingJoinRequests.length > 0 ? (
                 <ScrollArea className="min-h-0 flex-1">
-                  <div className="divide-y divide-border/60">
+                  <CardGroup orientation="inline" proximityHover={false}>
                     {pendingJoinRequests.map((request) => {
                       const processing = requestInFlight === request._id;
                       return (
-                        <div
-                          key={request._id}
-                          className="flex flex-col gap-3 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-foreground">
-                              {fullName(request.requester)}
-                            </p>
-                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        <Card key={request._id}>
+                          <CardHeader>
+                            <PersonTrigger person={request.requester} />
+                            <p className="text-xs text-muted-foreground">
                               Requested{" "}
                               {formatDistanceToNow(
                                 new Date(request.createdAt),
                                 { addSuffix: true },
                               )}
                             </p>
-                          </div>
-                          <div className="flex shrink-0 gap-2">
+                          </CardHeader>
+                          <CardFooter>
                             <Button
                               type="button"
                               size="sm"
@@ -1387,21 +1306,28 @@ export default function ClubPeoplePage() {
                             >
                               {processing ? "Updating…" : "Approve"}
                             </Button>
-                          </div>
-                        </div>
+                          </CardFooter>
+                        </Card>
                       );
                     })}
-                  </div>
+                  </CardGroup>
                 </ScrollArea>
               ) : (
-                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-                  No join requests are waiting for review.
-                </div>
+                <Empty size="inline">
+                  <EmptyHeader>
+                    <EmptyTitle>No pending requests</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
               )
-            ) : filtered.length > 0 ? (
+            ) : club === undefined ||
+              (selectedGroupId !== null &&
+                (peopleGroups === undefined ||
+                  groupMemberIds === undefined)) ? (
+              <PeopleLoading />
+            ) : visiblePeople.length > 0 ? (
               <ScrollArea className="min-h-0 flex-1">
-                <div className="divide-y divide-border/60">
-                  {filtered.map((person) => (
+                <CardGroup orientation="inline" corners="compact">
+                  {visiblePeople.map((person) => (
                     <PersonRow
                       key={person._id}
                       person={person}
@@ -1434,20 +1360,21 @@ export default function ClubPeoplePage() {
                       onRemove={setRemoveTarget}
                     />
                   ))}
-                </div>
+                </CardGroup>
               </ScrollArea>
             ) : (
-              <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
-                <Users className="mb-2 size-5 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">
-                  No people found
-                </h3>
-                <p className="mt-1 max-w-64 text-xs text-muted-foreground">
-                  {deferredSearch || hasActivePopoverFilters
-                    ? "No people match the current filters."
-                    : "No one is in this group yet."}
-                </p>
-                {(deferredSearch || hasActivePopoverFilters) && (
+              <Empty size="inline">
+                <EmptyHeader>
+                  <EmptyTitle>No people found</EmptyTitle>
+                  <EmptyDescription>
+                    {deferredSearch || hasActivePopoverFilters
+                      ? "No people match the current filters."
+                      : selectedGroupId
+                        ? "No people are assigned to this group."
+                        : "No people are in this view yet."}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {deferredSearch || hasActivePopoverFilters ? (
                   <Button
                     variant="ghost"
                     onClick={() => {
@@ -1456,12 +1383,11 @@ export default function ClubPeoplePage() {
                       setSelectedRoleIds(new Set());
                       setKindFilter("all");
                     }}
-                    className="mt-2 text-primary font-semibold"
                   >
                     Clear filters
                   </Button>
-                )}
-              </div>
+                ) : null}
+              </Empty>
             )}
           </div>
         </div>
@@ -1512,8 +1438,29 @@ export default function ClubPeoplePage() {
   );
 }
 
+function PeopleLoading() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading people"
+      className="flex flex-col gap-4 py-3"
+    >
+      {[0, 1, 2].map((index) => (
+        <div key={index} className="flex items-center gap-3">
+          <Skeleton className="size-10 shrink-0 rounded-full" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PersonRow({
   person,
+  index,
   isCurrentUser,
   isFriend,
   canAssignRole,
@@ -1527,6 +1474,7 @@ function PersonRow({
   onRemove,
 }: {
   person: ClubDirectoryEntry;
+  index?: CardProps["index"];
   isCurrentUser: boolean;
   isFriend: boolean;
   canAssignRole: boolean;
@@ -1547,93 +1495,65 @@ function PersonRow({
   const [primaryUnitName, ...otherUnitNames] = person.unitNames;
   const unitMembershipLabel = person.unitNames.join(", ");
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileOpener = useRef<HTMLButtonElement | null>(null);
   const presence = useMemberPresence(person._id);
 
   return (
     <>
-      <div className="group/person flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
-        <button
-          type="button"
-          aria-label={`View ${fullName(person)} profile`}
-          onClick={() => setProfileOpen(true)}
-          className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
-        >
-          <PresenceAvatar status={presence}>
-            <ClubAvatar
-              person={person}
-              className="size-9"
-              fallbackClassName="text-[11px]"
-            />
-          </PresenceAvatar>
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground">
-            <span className="truncate">{fullName(person)}</span>
+      <Card
+        index={index}
+        onClickCapture={(event) => {
+          if (event.target instanceof Element) {
+            profileOpener.current = event.target.closest("button");
+          }
+        }}
+        onClick={() => setProfileOpen(true)}
+        label={`View ${fullName(person)} profile`}
+      >
+        <PresenceAvatar status={presence}>
+          <ClubPersonAvatar person={person} />
+        </PresenceAvatar>
+        <CardHeader>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <CardTitle className="min-w-0 truncate">
+              {fullName(person)}
+            </CardTitle>
             <DeveloperBadge user={person} size={13} />
-          </p>
-          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {isCurrentUser ? (
-              <span
-                className="inline-flex size-1.5 shrink-0 rounded-full bg-primary"
-                role="img"
-                aria-label="You"
-                title="You"
-              />
-            ) : null}
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+            {isCurrentUser ? <span>You</span> : null}
             {isFriend ? (
-              <span
-                className="inline-flex shrink-0 text-primary"
-                role="img"
-                aria-label="Friend"
-                title="Friend"
-              >
+              <span className="inline-flex items-center gap-1">
                 <UserRoundCheck className="size-3.5" aria-hidden />
+                Friend
               </span>
             ) : null}
             {isSponsor ? (
-              <Badge
-                variant="solid"
-                className="h-5 shrink-0 gap-1 border-primary/20 bg-primary/5 px-1.5 py-0 text-primary hover:bg-primary/10"
-              >
-                <ShieldCheck className="size-3" />
-                Sponsor
-              </Badge>
+              <span>Sponsor</span>
             ) : person.roleName ? (
-              <Badge
-                variant="solid"
-                className="h-5 shrink-0 border-border/70 bg-muted/60 px-1.5 py-0 text-muted-foreground"
-              >
-                {person.roleName}
-              </Badge>
+              <span>{person.roleName}</span>
             ) : null}
             {primaryUnitName ? (
-              <Badge
-                variant="solid"
-                size="sm"
-                className="shrink-0 bg-muted/60 text-muted-foreground"
+              <span
+                className="inline-flex min-w-0 items-center gap-1"
                 title={unitMembershipLabel}
               >
-                <GitBranch />
-                {primaryUnitName}
-              </Badge>
-            ) : null}
-            {otherUnitNames.length ? (
-              <Badge
-                variant="solid"
-                size="sm"
-                className="shrink-0 bg-muted/60 text-muted-foreground"
-                title={unitMembershipLabel}
-                aria-label={`${otherUnitNames.length} more unit ${
-                  otherUnitNames.length === 1 ? "membership" : "memberships"
-                }`}
-              >
-                +{otherUnitNames.length}
-              </Badge>
+                <GitBranch className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{primaryUnitName}</span>
+                {otherUnitNames.length ? (
+                  <span
+                    className="shrink-0"
+                    aria-label={`${otherUnitNames.length} more unit memberships`}
+                  >
+                    +{otherUnitNames.length}
+                  </span>
+                ) : null}
+              </span>
             ) : null}
           </div>
-        </div>
+        </CardHeader>
         {showManage ? (
-          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <CardFooter className="opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100 [@media(pointer:coarse)]:opacity-100">
             {canAssignRole ? <SetRoleDialog person={person} /> : null}
             {canManageUnits ? <UnitMembershipPopover person={person} /> : null}
             {canImpersonate ? (
@@ -1650,15 +1570,21 @@ function PersonRow({
                 aria-label={`Remove ${fullName(person)} from club`}
                 onClick={() => onRemove(person)}
               >
-                <UserMinus className="size-4" />
+                <UserMinus />
               </Button>
             ) : null}
-          </div>
+          </CardFooter>
         ) : null}
-      </div>
+      </Card>
       <UserProfileDialog
         open={profileOpen}
         onOpenChange={setProfileOpen}
+        onCloseAutoFocus={(event) => {
+          if (profileOpener.current?.isConnected) {
+            event.preventDefault();
+            profileOpener.current.focus();
+          }
+        }}
         person={person}
         roleName={person.roleName}
         unitNames={person.unitNames}

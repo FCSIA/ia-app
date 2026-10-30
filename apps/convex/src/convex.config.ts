@@ -25,6 +25,8 @@ app.use(betterAuth, {
 app.use(migrations);
 app.use(rateLimiter);
 app.use(presence);
+app.use(aggregate, { name: "auditByCategory" });
+app.use(aggregate, { name: "auditByActor" });
 app.use(aggregate, { name: "volunteerHours" });
 
 export default app;

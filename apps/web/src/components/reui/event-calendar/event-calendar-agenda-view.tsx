@@ -148,10 +148,7 @@ function EventCalendarAgendaView({
                       isToday(day) && "text-primary"
                     )}
                   >
-                    {weekday}
-                  </span>
-                  <span className="text-muted-foreground font-medium tabular-nums">
-                    {dayDate}
+                    {format(zoned, "EEE, MMM d", { locale: settings.locale })}{isToday(day) ? ` · ${settings.i18n.labels.today}` : ''}
                   </span>
                 </div>
                 {items.map((segment) => (
@@ -220,7 +217,7 @@ function EventCalendarAgendaItem({
     <EventCalendarEvent
       segment={segment}
       className={cn(
-        "hover:bg-accent/40 gap-3 rounded-none border-b px-4 py-2.5 transition-colors",
+        "hover:bg-accent/40 gap-3 rounded-none border-b border-border/50 px-4 py-2.5 transition-colors",
         viewConfig.classNames?.agendaItem
       )}
     />

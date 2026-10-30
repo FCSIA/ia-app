@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DateField } from '@/components/forms/date-field';
 import { parseISO } from 'date-fns';
 import { FridayForm as FridayFormType, PATHWAY_OPTIONS } from '../_types';
 import { useToast } from '@/hooks/use-toast';
@@ -72,7 +72,8 @@ export function FridayForm({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Date *</Label>
-              <DatePicker 
+              <DateField
+                aria-label="Flex Friday date"
                 value={form.date}
                 onChange={(date) => setForm({ ...form, date })}
               />

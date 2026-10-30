@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
@@ -47,6 +48,20 @@ export const list = query({
 
     events.sort((a, b) => a.startAt - b.startAt);
 
+    return serializeEvents(ctx, events);
+  },
+});
+
+/** Small ascending preview for dashboard/agenda consumers. */
+export const upcoming = query({
+  args: { from: v.number(), to: v.number(), limit: v.number() },
+  returns: v.array(serializedEventValidator),
+  handler: async (ctx, args) => {
+    await getCurrentAppUser(ctx);
+    if (args.to < args.from) return [];
+    const events = await ctx.db.query("events")
+      .withIndex("by_status_and_startAt", (q) => q.eq("status", "PUBLISHED").gte("startAt", args.from).lte("startAt", args.to))
+      .order("asc").take(Math.max(1, Math.min(20, Math.floor(args.limit))));
     return serializeEvents(ctx, events);
   },
 });
@@ -179,12 +194,11 @@ export const create = mutation({
       }
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "EVENT_CREATED",
       entityId: eventId,
       entityType: "EVENT",
-      createdAt: Date.now(),
     });
 
     return eventId;
@@ -217,12 +231,11 @@ export const cancel = mutation({
       await ctx.db.delete(row._id);
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "EVENT_CANCELLED",
       entityId: args.eventId,
       entityType: "EVENT",
-      createdAt: Date.now(),
     });
     return null;
   },

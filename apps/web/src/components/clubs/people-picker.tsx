@@ -14,7 +14,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { ClubAvatar } from './club-avatar';
+import { ClubPersonAvatar } from './club-person-avatar';
 import { ClubDirectoryEntry, ClubUserRef, fullName } from './types';
 import { nameSearchValues } from '~/apps/shared/user-name';
 
@@ -111,7 +111,7 @@ export function PeoplePicker({
                       onSelect={() => togglePerson(person._id)}
                       className="min-h-11"
                     >
-                      <ClubAvatar person={person} className="size-8" fallbackClassName="text-[10px]" />
+                      <ClubPersonAvatar person={person} className="size-8" fallbackClassName="text-[10px]" />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{fullName(person)}</span>
                         {person.roleName ? <span className="block truncate text-xs text-muted-foreground">{person.roleName}</span> : null}

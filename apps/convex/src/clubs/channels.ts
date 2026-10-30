@@ -15,6 +15,7 @@ import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
+import { presence } from "../presence/_status";
 import { channelValidator } from "./_lib";
 import {
   getClubContext,
@@ -167,6 +168,10 @@ const messagePollValidator = v.union(
   }),
   v.null(),
 );
+const messageAuthorValidator = v.object({
+  ...clubUserRefValidator.fields,
+  clubRole: v.optional(v.union(v.object({ name: v.string(), isSponsor: v.boolean() }), v.null())),
+});
 const messageSummaryValidator = v.object({
   _id: v.id("clubChannelMessages"),
   _creationTime: v.number(),
@@ -183,8 +188,9 @@ const messageSummaryValidator = v.object({
   deletedAt: v.union(v.string(), v.null()),
   createdAt: v.string(),
   updatedAt: v.string(),
+  editedAt: v.optional(v.union(v.string(), v.null())),
   threadRootId: v.id("clubChannelMessages"),
-  author: clubUserRefValidator,
+  author: messageAuthorValidator,
   mentions: v.array(v.string()),
   attachments: v.array(messageAttachmentValidator),
   attachmentsTruncated: v.boolean(),
@@ -651,11 +657,11 @@ export const create = mutation({
       });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_CHANNEL_CREATED",
       entityType: "ClubChannel",
       entityId: channelId,
-      createdAt: Date.now(),
     });
 
     return channelId;
@@ -765,11 +771,6 @@ export const postMessage = mutation({
   returns: v.id("clubChannelMessages"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const messageRate = await contentRateLimiter.limit(ctx, "messagesByUser", {
-      key: user._id,
-    });
-    if (!messageRate.ok)
-      throw new ConvexError("You are sending messages too quickly");
     const channel = await ctx.db.get(args.channelId);
 
     if (!channel) throw new ConvexError("Channel not found");
@@ -786,6 +787,19 @@ export const postMessage = mutation({
     if (!access.canPost) {
       throw new ConvexError("Cannot post in this channel");
     }
+
+    if (args.clientGeneratedId) {
+      const existing = await ctx.db.query("clubChannelMessages")
+        .withIndex("by_authorId_and_clientGeneratedId", (q) =>
+          q.eq("authorId", user._id).eq("clientGeneratedId", args.clientGeneratedId),
+        ).unique();
+      if (existing) {
+        if (existing.channelId !== channel._id) throw new ConvexError("Message retry belongs to another channel");
+        return existing._id;
+      }
+    }
+    const messageRate = await contentRateLimiter.limit(ctx, "messagesByUser", { key: user._id });
+    if (!messageRate.ok) throw new ConvexError("You are sending messages too quickly — try again in a few seconds");
 
     const { body: trimmedBody, bodyMarkdown } = normalizePortableMessageBody(
       args.body,
@@ -873,6 +887,10 @@ export const postMessage = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    const receipt = await ctx.db.query("clubChannelReadReceipts")
+      .withIndex("by_userId_and_channelId", (q) => q.eq("userId", user._id).eq("channelId", channel._id)).unique();
+    if (receipt) await ctx.db.patch(receipt._id, { lastReadAt: Math.max(receipt.lastReadAt, now) });
+    else await ctx.db.insert("clubChannelReadReceipts", { clubId: channel.clubId, channelId: channel._id, userId: user._id, lastReadAt: now });
     await consumeStagedChatAttachments(ctx, {
       attachmentUploadIds,
       uploaderId: user._id,
@@ -1405,11 +1423,11 @@ async function serializeMessageSummary(
   message: Doc<"clubChannelMessages">,
   currentUserId: Id<"users">,
   includeLatestReply: boolean,
-  authorsById?: ReadonlyMap<Id<"users">, Doc<"users"> | null>,
+  authorsById?: ReadonlyMap<Id<"users">, MessageAuthor | null>,
 ) {
   const author =
     authorsById === undefined
-      ? await ctx.db.get(message.authorId)
+      ? (await loadMessageAuthors(ctx, [message])).get(message.authorId) ?? null
       : (authorsById.get(message.authorId) ?? null);
   if (!author) return null;
   const isDeleted = !!message.deletedAt;
@@ -1542,8 +1560,9 @@ async function serializeMessageSummary(
       : null,
     createdAt: new Date(message.createdAt).toISOString(),
     updatedAt: new Date(message.updatedAt).toISOString(),
+    editedAt: message.editedAt ? new Date(message.editedAt).toISOString() : null,
     threadRootId: message.parentMessageId ?? message._id,
-    author: toClubUserRef(author),
+    author: { ...toClubUserRef(author), clubRole: author.clubRole ?? null },
     mentions: [],
     replyPreview,
     mentionsViewer,
@@ -1581,7 +1600,7 @@ async function serializeMessageSummary(
 async function loadReplyPreview(
   ctx: QueryCtx,
   message: Doc<"clubChannelMessages">,
-  authorsById?: ReadonlyMap<Id<"users">, Doc<"users"> | null>,
+  authorsById?: ReadonlyMap<Id<"users">, MessageAuthor | null>,
 ) {
   if (!message.replyToMessageId) return null;
   const target = await ctx.db.get(message.replyToMessageId);
@@ -1630,20 +1649,28 @@ async function messageMentionsUser(
   return directMention !== null;
 }
 
-async function loadMessageAuthors(
-  ctx: QueryCtx,
-  messages: Doc<"clubChannelMessages">[],
-) {
-  const authorIds = Array.from(
-    new Set(messages.map((message) => message.authorId)),
-  );
-  return new Map(
-    await Promise.all(
-      authorIds.map(
-        async (authorId) => [authorId, await ctx.db.get(authorId)] as const,
-      ),
-    ),
-  );
+type MessageAuthor = Doc<"users"> & { clubRole?: { name: string; isSponsor: boolean } | null };
+
+async function loadClubRole(ctx: QueryCtx, clubId: Id<"clubs">, userId: Id<"users">) {
+  const [sponsor, member] = await Promise.all([
+    ctx.db.query("clubSponsors").withIndex("by_clubId_and_userId", (q) => q.eq("clubId", clubId).eq("userId", userId)).first(),
+    ctx.db.query("clubMembers").withIndex("by_clubId_and_userId", (q) => q.eq("clubId", clubId).eq("userId", userId)).first(),
+  ]);
+  if (sponsor) return { name: "Sponsor", isSponsor: true };
+  const role = member?.roleId ? await ctx.db.get(member.roleId) : null;
+  return role ? { name: role.name, isSponsor: false } : member ? { name: member.role === "LEADER" ? "Leader" : "Member", isSponsor: false } : null;
+}
+
+async function loadMessageAuthors(ctx: QueryCtx, messages: Doc<"clubChannelMessages">[]) {
+  const channel = messages[0] ? await ctx.db.get(messages[0].channelId) : null;
+  const authorIds = Array.from(new Set(messages.map((message) => message.authorId)));
+  return new Map<Id<"users">, MessageAuthor | null>(await Promise.all(authorIds.map(async (authorId) => {
+    const [author, clubRole] = await Promise.all([
+      ctx.db.get(authorId),
+      channel ? loadClubRole(ctx, channel.clubId, authorId) : null,
+    ]);
+    return [authorId, author ? { ...author, clubRole } : null] as const;
+  })));
 }
 
 async function getReadableChannel(
@@ -1663,6 +1690,8 @@ async function getReadableChannel(
 }
 
 const channelContextMemberValidator = v.object({
+  avatarUrl: v.union(v.string(), v.null()),
+  clubRole: v.union(v.string(), v.null()),
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
@@ -1799,6 +1828,51 @@ function mentionGroupSuggestions(
   ];
 }
 
+export const typingHeartbeat = mutation({
+  args: { clubId: v.id("clubs"), channelId: v.id("clubChannels"), sessionId: v.string() },
+  returns: v.object({ sessionToken: v.string() }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable?.access.canPost) throw new ConvexError("Cannot post in this channel");
+    if (!args.sessionId || args.sessionId.length > 64) throw new ConvexError("Invalid typing session");
+    const { sessionToken } = await presence.heartbeat(ctx, `channel-typing:${args.channelId}`, user._id, args.sessionId, 2_000);
+    return { sessionToken };
+  },
+});
+
+export const typingUsers = query({
+  args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
+  returns: v.array(v.object({ _id: v.id("users"), name: v.string() })),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !(await getReadableChannel(ctx, user, args.clubId, args.channelId))) return [];
+    const people = await presence.listRoom(ctx, `channel-typing:${args.channelId}`, true, 6);
+    const others = await Promise.all(people.filter((person) => person.userId !== user._id).slice(0, 5).map(async (person) => {
+      const id = ctx.db.normalizeId("users", person.userId);
+      const author = id ? await ctx.db.get(id) : null;
+      return author ? { _id: author._id, name: `${author.preferredName || author.firstName} ${author.lastName}` } : null;
+    }));
+    return others.filter((person): person is NonNullable<typeof person> => person !== null);
+  },
+});
+
+export const listPinned = query({
+  args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
+  returns: v.object({ messages: v.array(messageSummaryValidator), hasMore: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !(await getReadableChannel(ctx, user, args.clubId, args.channelId))) return { messages: [], hasMore: false };
+    const rows = await ctx.db.query("clubChannelMessages")
+      .withIndex("by_channelId_and_isPinned_and_pinnedAt", (q) => q.eq("channelId", args.channelId).eq("isPinned", true))
+      .order("desc").take(101);
+    const authors = await loadMessageAuthors(ctx, rows.slice(0, 100));
+    const messages = (await Promise.all(rows.slice(0, 100).map((row) => serializeMessageSummary(ctx, row, user._id, false, authors))))
+      .filter((message): message is NonNullable<typeof message> => message !== null && !message.isDeleted);
+    return { messages, hasMore: rows.length > 100 };
+  },
+});
+
 export const getMentionContext = query({
   args: {
     clubId: v.id("clubs"),
@@ -1844,6 +1918,8 @@ export const getMentionContext = query({
           const member = await ctx.db.get(userId);
           if (!member) return null;
           return {
+            avatarUrl: member.avatarUrl ?? null,
+            clubRole: (await loadClubRole(ctx, channel.clubId, userId))?.name ?? null,
             uniqueId: member.uniqueId,
             firstName: member.firstName,
             lastName: member.lastName,
@@ -2077,7 +2153,7 @@ export const searchMessages = query({
       ),
     );
     return serialized.filter(
-      (message): message is NonNullable<typeof message> => !!message,
+      (message): message is NonNullable<typeof message> => !!message && !message.isDeleted,
     );
   },
 });
@@ -2478,6 +2554,7 @@ export const updateMessage = mutation({
       body,
       bodyMarkdown,
       bodyRich: args.bodyRich,
+      editedAt: Date.now(),
       updatedAt: Date.now(),
     });
     await logAuditEvent(ctx, {
@@ -2689,7 +2766,6 @@ export const setPinned = mutation({
     await ctx.db.patch(args.messageId, {
       isPinned: args.pinned,
       pinnedAt: args.pinned ? Date.now() : undefined,
-      updatedAt: Date.now(),
     });
   },
 });

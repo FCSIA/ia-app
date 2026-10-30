@@ -71,6 +71,32 @@ export const list = query({
   },
 });
 
+/** Dashboard projection: serialize only preview rows; never serve drafts as news. */
+export const unreadPreview = query({
+  args: { now: v.number(), limit: v.number() },
+  returns: v.object({ items: v.array(announcementListItemValidator), total: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { items: [], total: 0, hasMore: false };
+    const limit = Math.min(10, Math.max(1, Math.floor(args.limit)));
+    const [viewer, clubs] = await Promise.all([getViewerAudience(ctx, user._id), getAccessibleClubIds(ctx, user._id)]);
+    const candidates = await ctx.db.query("announcements")
+      .withIndex("by_status_and_createdAt", (q) => q.eq("status", "ACTIVE").gt("createdAt", args.now - ANNOUNCEMENT_PAST_AGE_MS))
+      .order("desc").take(501);
+    const unread: Doc<"announcements">[] = [];
+    for (const post of candidates.slice(0, 500)) {
+      if (isEffectivelyExpired(post, args.now) || !canViewAnnouncement(post, user._id, user.roles, clubs, viewer)) continue;
+      const read = await ctx.db.query("announcementReads").withIndex("by_announcementId_and_userId", (q) => q.eq("announcementId", post._id).eq("userId", user._id)).first();
+      if (!read) unread.push(post);
+    }
+    // Pins and publisher importance retain the feed's order without sending the full feed.
+    const pins = await ctx.db.query("announcementPins").withIndex("by_userId", (q) => q.eq("userId", user._id)).take(500);
+    const pinnedIds = new Set(pins.map((pin) => pin.announcementId));
+    unread.sort((a, b) => Number(pinnedIds.has(b._id)) - Number(pinnedIds.has(a._id)) || Number((b.promotedUntil ?? 0) > args.now) - Number((a.promotedUntil ?? 0) > args.now) || b.createdAt - a.createdAt);
+    return { items: await serializeAnnouncements(ctx, unread.slice(0, limit), user._id, args.now), total: unread.length, hasMore: candidates.length > 500 };
+  },
+});
+
 export const listPinned = query({
   args: { now: v.number(), limit: v.optional(v.number()) },
   returns: v.array(announcementListItemValidator),

@@ -21,7 +21,6 @@ import {
   InputControlInput,
 } from "@/components/ui/input-control-group";
 import { Spinner } from "@/components/ui/spinner";
-import { TabPanel } from "@/components/ui/tabs";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { FriendCollaborationTools } from "./FriendCollaborationTools";
@@ -48,7 +47,7 @@ export function FriendSchedulesPanel() {
   } = useScheduleWorkspace();
 
   return (
-    <TabPanel value="friends" className="mt-5">
+    <section aria-label="Friends">
       <div className="flex flex-col gap-5">
         <div className="grid min-w-0 gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
           <aside className={`flex flex-col gap-4 rounded-xl bg-surface-2 p-3 shadow-surface-1 lg:sticky lg:top-4 ${CARD_SURFACE_FOREGROUND}`}>
@@ -71,7 +70,7 @@ export function FriendSchedulesPanel() {
                   <Spinner />
                 ) : search ? (
                   <InputControlButton
-                    size="icon-xs"
+                    size="icon-compact"
                     aria-label="Clear search"
                     onClick={() => setSearch("")}
                   >
@@ -296,6 +295,6 @@ export function FriendSchedulesPanel() {
           </section>
         </div>
       </div>
-    </TabPanel>
+    </section>
   );
 }

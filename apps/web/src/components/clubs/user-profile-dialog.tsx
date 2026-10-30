@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type ReactElement } from 'react';
+import { useId, useRef, useState, type ComponentProps, type ReactElement } from 'react';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { ClubPersonAvatar } from '@/components/clubs/club-person-avatar';
 import { ClubMark } from '@/components/clubs/club-mark';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { fullName, formatClubRole } from '@/components/clubs/types';
@@ -112,7 +112,7 @@ export function UserProfileContent({
       )}
     >
       <div className={cn('flex min-w-0 items-start gap-3', isPreview ? 'p-3' : 'pr-8')}>
-        <ClubAvatar
+        <ClubPersonAvatar
           person={{ ...person, avatarUrl: person.avatarUrl ?? null }}
           className={isPreview ? 'size-12' : 'size-14'}
           fallbackClassName="text-sm"
@@ -176,7 +176,7 @@ export function UserProfileContent({
                       label={`Open ${fullName(friend)}'s profile`}
                       onClick={() => onOpenPerson?.(friend)}
                     >
-                      <ClubAvatar person={friend} className="size-8" fallbackClassName="text-[10px]" />
+                      <ClubPersonAvatar person={friend} className="size-8" fallbackClassName="text-[10px]" />
                       <CardHeader>
                         <CardTitle className="truncate">{fullName(friend)}</CardTitle>
                       </CardHeader>
@@ -189,7 +189,7 @@ export function UserProfileContent({
             <div className="mt-2 flex flex-col gap-1.5">
               {profileContext.mutualFriends.map((friend) => (
                 <div key={friend._id} className="flex min-w-0 items-center gap-2">
-                  <ClubAvatar person={friend} className="size-7" fallbackClassName="text-[10px]" />
+                  <ClubPersonAvatar person={friend} className="size-7" fallbackClassName="text-[10px]" />
                   <span className="truncate text-xs text-foreground">{fullName(friend)}</span>
                 </div>
               ))}
@@ -269,9 +269,10 @@ type UserProfileDialogProps = Omit<UserProfileContentProps, 'active' | 'variant'
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger?: ReactElement;
+  onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus'];
 };
 
-export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps }: UserProfileDialogProps) {
+export function UserProfileDialog({ open, onOpenChange, trigger, onCloseAutoFocus, ...contentProps }: UserProfileDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   // Profiles opened from inside this one (mutual friends), newest last. The
   // trail belongs to the person the dialog was opened for and clears on close.
@@ -298,6 +299,7 @@ export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps
         ref={contentRef}
         size="lg"
         className="gap-0"
+        onCloseAutoFocus={onCloseAutoFocus}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           contentRef.current?.focus();

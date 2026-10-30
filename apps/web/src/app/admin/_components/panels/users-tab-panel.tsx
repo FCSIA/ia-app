@@ -7,12 +7,13 @@ import { useSearchParams } from 'next/navigation';
 export function UsersTabPanel() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get('search') ?? '';
+  const initialUserId = searchParams?.get('user') ?? '';
 
-  return <UsersTabPanelContent key={initialSearch} initialSearch={initialSearch} />;
+  return <UsersTabPanelContent key={`${initialSearch}:${initialUserId}`} initialSearch={initialSearch} initialUserId={initialUserId} />;
 }
 
-function UsersTabPanelContent({ initialSearch }: { initialSearch: string }) {
-  const users = useAdminUsers('users', initialSearch);
+function UsersTabPanelContent({ initialSearch, initialUserId }: { initialSearch: string; initialUserId: string }) {
+  const users = useAdminUsers('users', initialSearch, initialUserId);
 
   return (
     <AdminUsersTab
