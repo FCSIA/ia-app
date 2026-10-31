@@ -1603,6 +1603,8 @@ function CommandMenuDialogContent({
       container={container}
       showCloseButton={false}
       padding="none"
+      // Summoned by a global shortcut: no open/close motion (Raycast-style).
+      animated={false}
       // Opens centered at its cap and keeps that top edge: the top is where
       // a panel at the cap height, min(440px, 76dvh), sits centered, so
       // the field stays put while the rows under it filter down. Below

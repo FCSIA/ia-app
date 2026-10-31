@@ -24,6 +24,22 @@ import { Button } from '@/components/ui/button';
 import { api } from '~/apps/convex/src/_generated/api';
 import { DEFAULT_WALLPAPER_BLUR } from '~/apps/shared/custom-theme';
 
+function ThemeChrome() {
+  useEffect(() => {
+    const update = () => {
+      const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+      const background = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+      if (meta && background) meta.content = `hsl(${background})`;
+    };
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    update();
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+
 /**
  * On mount, restore the user's saved custom background image from their account
  * and palette from localStorage by setting CSS variables on <html>.
@@ -135,6 +151,7 @@ export function Providers({ children, defaultSidebarOpen = true }: { children: R
           themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'bubblegum-dark', 'custom']}
         >
           <ThemeFavicon />
+          <ThemeChrome />
           <CustomThemeBootstrap />
           <PushSubscriptionSync />
           <PresenceHeartbeat />

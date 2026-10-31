@@ -15,14 +15,20 @@ import {
   type HTMLAttributes,
   type ComponentPropsWithoutRef,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
 import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import {
+  FluidHoverHighlight,
+  resolveHighlightTransition,
+  toTarget,
+} from "@/components/ui/fluid-hover-highlight";
 import { Elevated } from "@/lib/elevated";
 import { popupShape as shape } from "@/components/ui/popup-shape";
+import { popupMotionClass } from "@/lib/popup";
 import {
   DropdownContext,
   useDropdown,
@@ -76,6 +82,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       measureItems();
     }, [measureItems, children]);
 
+    const reduceMotion = useReducedMotion() ?? false;
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
@@ -143,74 +150,43 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           )}
           {...props}
         >
-          {/* Selected background */}
+          {/* Selected background — travels on a transform (left-0/top-0 +
+              x/y) instead of top/left; reduced motion keeps the fade only. */}
           <AnimatePresence>
             {checkedRect && (
               <motion.div
-                className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
                 initial={false}
-                animate={{
-                  top: checkedRect.top,
-                  left: checkedRect.left,
-                  width: checkedRect.width,
-                  height: checkedRect.height,
-                  opacity: 1,
-                }}
+                animate={{ ...toTarget(checkedRect), opacity: 1 }}
                 exit={{ opacity: 0, transition: spring.moderate.exit }}
-                transition={{
-                  ...spring.moderate,
-                  opacity: { duration: 0.08 },
-                }}
+                transition={resolveHighlightTransition(spring.moderate, reduceMotion)}
               />
             )}
           </AnimatePresence>
 
-          {/* Hover background */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-                initial={{
-                  opacity: 0,
-                  top: checkedRect?.top ?? activeRect.top,
-                  left: checkedRect?.left ?? activeRect.left,
-                  width: checkedRect?.width ?? activeRect.width,
-                  height: checkedRect?.height ?? activeRect.height,
-                }}
-                animate={{
-                  opacity: 1,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={{
-                  ...spring.fast,
-                  opacity: { duration: 0.08 },
-                }}
-              />
-            )}
-          </AnimatePresence>
+          {/* Hover background — the shared transform-based highlight; a
+              fresh session fades in from the checked row, as before. */}
+          <FluidHoverHighlight
+            rect={activeRect ?? null}
+            session={sessionRef.current}
+            from={checkedRect ?? null}
+            className={shape.bg}
+          />
 
           {/* Focus ring */}
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+                className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
                 initial={false}
                 animate={{
-                  left: focusRect.left - 2,
-                  top: focusRect.top - 2,
+                  x: focusRect.left - 2,
+                  y: focusRect.top - 2,
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
                 exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={{
-                  ...spring.fast,
-                  opacity: { duration: 0.08 },
-                }}
+                transition={resolveHighlightTransition(spring.fast, reduceMotion)}
               />
             )}
           </AnimatePresence>
@@ -400,6 +376,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       measureItems,
     } = useProximityHover(containerRef);
 
+    const reduceMotion = useReducedMotion() ?? false;
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
     // Portal lifetime: mounts as soon as `open` flips true; on close it stays
@@ -503,15 +480,19 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           onCloseAutoFocus={onCloseAutoFocus}
         >
           <motion.div
-            className="z-50 outline-none"
-            initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
+            // popupMotionClass turns the resolved (post-flip) data-side into
+            // the origin and slide direction, so a menu that flips above its
+            // trigger grows from the trigger. Reduced motion keeps the fade.
+            className={cn("z-50 outline-none", popupMotionClass)}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
             animate={
               open
                 ? { opacity: 1, y: 0, scaleY: 1 }
-                : { opacity: 0, y: -4, scaleY: 0.96 }
+                : reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
             }
             transition={open ? spring.fast : spring.fast.exit}
-            style={{ transformOrigin: "top center" }}
             // Release the deferred unmount once the exit spring has finished
             // so the close animation fully plays.
             onAnimationComplete={() => {
@@ -566,74 +547,43 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                   className
                 )}
               >
-                {/* Selected background */}
+                {/* Selected background — travels on a transform (left-0/top-0 +
+                    x/y) instead of top/left; reduced motion keeps the fade only. */}
                 <AnimatePresence>
                   {checkedRect && (
                     <motion.div
-                      className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                      className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
                       initial={false}
-                      animate={{
-                        top: checkedRect.top,
-                        left: checkedRect.left,
-                        width: checkedRect.width,
-                        height: checkedRect.height,
-                        opacity: 1,
-                      }}
+                      animate={{ ...toTarget(checkedRect), opacity: 1 }}
                       exit={{ opacity: 0, transition: spring.moderate.exit }}
-                      transition={{
-                        ...spring.moderate,
-                        opacity: { duration: 0.08 },
-                      }}
+                      transition={resolveHighlightTransition(spring.moderate, reduceMotion)}
                     />
                   )}
                 </AnimatePresence>
 
-                {/* Hover background */}
-                <AnimatePresence>
-                  {activeRect && (
-                    <motion.div
-                      key={sessionRef.current}
-                      className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-                      initial={{
-                        opacity: 0,
-                        top: checkedRect?.top ?? activeRect.top,
-                        left: checkedRect?.left ?? activeRect.left,
-                        width: checkedRect?.width ?? activeRect.width,
-                        height: checkedRect?.height ?? activeRect.height,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        top: activeRect.top,
-                        left: activeRect.left,
-                        width: activeRect.width,
-                        height: activeRect.height,
-                      }}
-                      exit={{ opacity: 0, transition: spring.fast.exit }}
-                      transition={{
-                        ...spring.fast,
-                        opacity: { duration: 0.08 },
-                      }}
-                    />
-                  )}
-                </AnimatePresence>
+                {/* Hover background — the shared transform-based highlight; a
+                    fresh session fades in from the checked row, as before. */}
+                <FluidHoverHighlight
+                  rect={activeRect ?? null}
+                  session={sessionRef.current}
+                  from={checkedRect ?? null}
+                  className={shape.bg}
+                />
 
                 {/* Focus ring */}
                 <AnimatePresence>
                   {focusRect && (
                     <motion.div
-                      className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+                      className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
                       initial={false}
                       animate={{
-                        left: focusRect.left - 2,
-                        top: focusRect.top - 2,
+                        x: focusRect.left - 2,
+                        y: focusRect.top - 2,
                         width: focusRect.width + 4,
                         height: focusRect.height + 4,
                       }}
                       exit={{ opacity: 0, transition: spring.fast.exit }}
-                      transition={{
-                        ...spring.fast,
-                        opacity: { duration: 0.08 },
-                      }}
+                      transition={resolveHighlightTransition(spring.fast, reduceMotion)}
                     />
                   )}
                 </AnimatePresence>

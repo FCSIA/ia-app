@@ -119,7 +119,7 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
           >
             <button type="button" aria-label="Edit profile picture">
               {avatarUrl ? <AvatarImage src={avatarUrl} alt={alt} /> : null}
-              <AvatarFallback className="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white">
+              <AvatarFallback className="bg-primary/10 text-xl text-foreground">
                 {initials}
               </AvatarFallback>
             </button>
@@ -136,7 +136,7 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
             variant="inline"
             className="size-16"
             fallback={initials}
-            fallbackClassName="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white"
+            fallbackClassName="bg-primary/10 text-xl text-foreground"
             imageUrl={avatarUrl}
             loading={uploading}
             onRemove={() => {

@@ -6,7 +6,6 @@ import {
   type Ref,
 } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
   CalendarRange,
@@ -511,7 +510,6 @@ function AppShellMobileTabBar({
   onOpenMenu: () => void;
   tabBarRef?: Ref<HTMLElement>;
 }) {
-  const reduceMotion = useReducedMotion();
   const { getHref } = useMobileTabMemory();
   const prewarm = usePrewarmRoute();
   const items = getMobileTabItems(props);
@@ -525,7 +523,7 @@ function AppShellMobileTabBar({
       ref={tabBarRef}
       aria-label="Primary mobile navigation"
       className={cn(
-        "app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card px-1 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden",
+        "app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden",
         CARD_SURFACE_FOREGROUND,
       )}
       style={{
@@ -542,21 +540,15 @@ function AppShellMobileTabBar({
         const content = (
           <>
             {active ? (
-              <motion.span
-                layoutId="app-mobile-tab-active"
+              <span
                 aria-hidden
                 className="absolute inset-x-1 inset-y-1 rounded-2xl bg-active"
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: "spring", duration: 0.2, bounce: 0 }
-                }
               />
             ) : null}
             <Icon
               aria-hidden
               className={cn(
-                "relative size-[22px] transition-[stroke-width,transform] duration-150",
+                "relative size-[22px]",
                 active && "scale-105",
               )}
               strokeWidth={active ? 2.25 : 1.75}

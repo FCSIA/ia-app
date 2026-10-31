@@ -6,7 +6,7 @@ import {
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
 import { createDocLoader } from "../../lib/docLoader";
-import { schoolDaySpan } from "../../lib/schoolTime";
+import { schoolDaySpan, schoolTimestamp } from "../../lib/schoolTime";
 import { calendarSourceValidator } from "../validators";
 import { schema } from "../schema";
 import {
@@ -472,6 +472,49 @@ export const remove = mutation({
       .take(MAX_CALENDAR_INVITE_RECIPIENTS + 1);
     for (const invite of invites) await ctx.db.delete(invite._id);
     await ctx.db.delete(args.entryId);
+    return null;
+  },
+});
+
+/** Move an owned reminder without overwriting fields changed in another editor. */
+function schoolDateParts(timestamp: number) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(timestamp).map(({ type, value }) => [type, Number(value)]));
+  return { year: parts.year, month: parts.month, day: parts.day };
+}
+
+export const reschedule = mutation({
+  args: {
+    entryId: v.id("calendarEntries"),
+    expectedStartAt: v.number(),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.source !== "PERSONAL" || entry.createdById !== user._id) {
+      throw new ConvexError("You can only edit your own personal entries");
+    }
+    if (entry.startAt !== args.expectedStartAt) {
+      throw new ConvexError("This reminder changed. Please try again.");
+    }
+    if (!Number.isFinite(args.startAt)) throw new ConvexError("Choose a valid start time");
+    let endAt = entry.endAt === undefined ? undefined : args.startAt + entry.endAt - entry.startAt;
+    if (entry.allDay && entry.endAt !== undefined) {
+      const originalStart = schoolDateParts(entry.startAt);
+      const originalEnd = schoolDateParts(entry.endAt);
+      const target = schoolDateParts(args.startAt);
+      const days = (Date.UTC(originalEnd.year, originalEnd.month - 1, originalEnd.day) - Date.UTC(originalStart.year, originalStart.month - 1, originalStart.day)) / 86_400_000;
+      const expectedEnd = schoolTimestamp({ ...target, day: target.day + days });
+      if (days < 1 || schoolTimestamp(target) !== args.startAt || args.endAt !== expectedEnd) {
+        throw new ConvexError("Choose a valid end time");
+      }
+      endAt = expectedEnd;
+    }
+    await ctx.db.patch(args.entryId, { startAt: args.startAt, endAt });
     return null;
   },
 });

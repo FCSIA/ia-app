@@ -15,13 +15,12 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { shapeMap, useShape } from "@/lib/shape-context";
 import { useIcon, type IconComponent } from "@/lib/icon-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // ---------------------------------------------------------------------------
 // Card is shadcn/ui's compositional card — the same parts and `data-slot`
@@ -223,32 +222,14 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
           onMouseLeave={proximityHover ? handlers.onMouseLeave : undefined}
         >
           {/* Proximity highlight — a single magnetic layer that springs to the
-              card nearest the cursor, previewing where a click will land. */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                aria-hidden
-                className={cn("absolute bg-hover pointer-events-none z-0", containerShape)}
-                initial={{
-                  opacity: 0,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                animate={{
-                  opacity: 1,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={{ ...spring.fast, opacity: { duration: 0.08 } }}
-              />
-            )}
-          </AnimatePresence>
+              card nearest the cursor, previewing where a click will land. The
+              shared highlight travels on a transform (not top/left) and drops
+              the travel under reduced motion, keeping the same spring tiers. */}
+          <FluidHoverHighlight
+            rect={activeRect ?? null}
+            session={sessionRef.current}
+            className={cn("z-0", containerShape)}
+          />
 
           {indexed}
         </div>

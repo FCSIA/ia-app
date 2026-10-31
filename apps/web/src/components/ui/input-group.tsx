@@ -204,7 +204,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
             inputRef.current?.focus();
           }}
           className={cn(
-            `flex items-center gap-2 ${shape.input} px-3 py-2 ring-1 transition-all duration-80`,
+            `flex items-center gap-2 ${shape.input} px-3 py-2 ring-1 transition-[color,background-color,box-shadow] duration-80`,
             bgClass,
             bgClass === "bg-card" && CARD_SURFACE_FOREGROUND,
             ringClass

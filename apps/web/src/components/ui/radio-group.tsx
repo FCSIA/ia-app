@@ -12,12 +12,17 @@ import {
   type ReactNode,
   type HTMLAttributes,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import {
+  FluidHoverHighlight,
+  resolveHighlightTransition,
+  toTarget,
+} from "@/components/ui/fluid-hover-highlight";
 import { useShape } from "@/lib/shape-context";
 
 interface RadioGroupContextValue {
@@ -100,6 +105,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
     const selectedRect =
       resolvedSelectedIndex >= 0 ? itemRects[resolvedSelectedIndex] : null;
     const shape = useShape();
+    const reduceMotion = useReducedMotion() ?? false;
 
     const content = (
       <div
@@ -169,68 +175,35 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         {/* Selected background */}
         {selectedRect && (
           <motion.div
-            className={`absolute ${shape.bg} bg-active pointer-events-none`}
+            className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
             initial={false}
-            animate={{
-              top: selectedRect.top,
-              left: selectedRect.left,
-              width: selectedRect.width,
-              height: selectedRect.height,
-              opacity: 1,
-            }}
-            transition={{
-              ...spring.moderate,
-              opacity: { duration: 0.08 },
-            }}
+            animate={{ ...toTarget(selectedRect), opacity: 1 }}
+            transition={resolveHighlightTransition(spring.moderate, reduceMotion)}
           />
         )}
 
-        {/* Hover background */}
-        <AnimatePresence>
-          {activeRect && (
-            <motion.div
-              key={sessionRef.current}
-              className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-              initial={{
-                opacity: 0,
-                top: activeRect.top,
-                left: activeRect.left,
-                width: activeRect.width,
-                height: activeRect.height,
-              }}
-              animate={{
-                opacity: 1,
-                top: activeRect.top,
-                left: activeRect.left,
-                width: activeRect.width,
-                height: activeRect.height,
-              }}
-              exit={{ opacity: 0, transition: spring.fast.exit }}
-              transition={{
-                ...spring.fast,
-                opacity: { duration: 0.08 },
-              }}
-            />
-          )}
-        </AnimatePresence>
+        {/* Hover background — the shared transform-based highlight
+            (drops its travel under reduced motion). */}
+        <FluidHoverHighlight
+          rect={activeRect ?? null}
+          session={sessionRef.current}
+          className={shape.bg}
+        />
 
         {/* Focus ring */}
         <AnimatePresence>
           {focusRect && (
             <motion.div
-              className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+              className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
               initial={false}
               animate={{
-                left: focusRect.left - 2,
-                top: focusRect.top - 2,
+                x: focusRect.left - 2,
+                y: focusRect.top - 2,
                 width: focusRect.width + 4,
                 height: focusRect.height + 4,
               }}
               exit={{ opacity: 0, transition: spring.fast.exit }}
-              transition={{
-                ...spring.fast,
-                opacity: { duration: 0.08 },
-              }}
+              transition={resolveHighlightTransition(spring.fast, reduceMotion)}
             />
           )}
         </AnimatePresence>
@@ -378,7 +351,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           {/* Border */}
           <div
             className={cn(
-              "absolute inset-0 rounded-full border-solid transition-all duration-80",
+              "absolute inset-0 rounded-full border-solid transition-colors duration-80",
               isSelected
                 ? "border-[1.5px] border-transparent"
                 : isActive

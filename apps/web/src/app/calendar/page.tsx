@@ -12,7 +12,7 @@ import {
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
-import { addDays, format, isValid } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, isValid } from 'date-fns';
 import {
   Mail,
   MoreHorizontal,
@@ -277,6 +277,20 @@ function CalendarMounted() {
 function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
   const search = useSearchParams();
   const router = useRouter();
+  const user = useCurrentUser();
+  const { toast } = useToast();
+  const reschedule = useMutation(api.events.calendar.reschedule).withOptimisticUpdate(
+    (store, args) => {
+      for (const query of store.getAllQueries(api.events.calendar.list)) {
+        if (!query.value) continue;
+        store.setQuery(api.events.calendar.list, query.args, query.value.map((entry) =>
+          entry._id === args.entryId
+            ? { ...entry, startAt: args.startAt, endAt: entry.endAt === undefined ? undefined : args.endAt ?? args.startAt + entry.endAt - entry.startAt }
+            : entry,
+        ));
+      }
+    },
+  );
   const availableViews = isMobile ? MOBILE_VIEWS : DESKTOP_VIEWS;
   const requestedView = search?.get('view') as CalendarView | null;
   const initialDate = calendarInputDate(search?.get('date') ?? '');
@@ -392,11 +406,12 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
             end,
             allDay: entry.allDay ?? false,
             color: CALENDAR_SOURCES[entry.source].color,
-            readOnly: true,
+            readOnly: !(entry.source === 'PERSONAL' && !('inviteId' in entry && entry.inviteId) && entry.createdById === user?._id),
+            selectable: false,
             data: entry,
           };
         }),
-    [displayed, sources],
+    [displayed, sources, user?._id],
   );
   function rangeChanged(info: EventCalendarRangeInfo) {
     const next = {
@@ -456,7 +471,19 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       views={availableViews}
       onRangeChange={rangeChanged}
       loading={entries === undefined}
-      interactions={{ drag: false, resize: false, selectSlot: false }}
+      interactions={{ drag: true, resize: false, selectSlot: false }}
+      canDropEvent={(update) => update.allDay === !!update.event.allDay}
+      onEventUpdate={(update) => {
+        const entry = update.event.data;
+        if (!entry || entry.source !== 'PERSONAL' || entry.inviteId || entry.createdById !== user?._id || update.allDay !== !!entry.allDay) return false;
+        const endAt = entry.allDay && entry.endAt !== undefined
+          ? addDays(calendarDate(update.start), differenceInCalendarDays(calendarDate(entry.endAt), calendarDate(entry.startAt))).getTime()
+          : undefined;
+        void reschedule({ entryId: entry._id, expectedStartAt: entry.startAt, startAt: update.start.getTime(), endAt }).catch((error: unknown) => {
+          toast({ title: error instanceof Error ? error.message : 'Could not move reminder', variant: 'destructive' });
+        });
+        return true;
+      }}
       onSlotClick={(slot) => openSlot(slot.date, slot.allDay)}
       onMoreClick={(day) => {
         navigate('day', day);

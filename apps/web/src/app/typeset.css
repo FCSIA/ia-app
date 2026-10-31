@@ -18,6 +18,10 @@
     --typeset-leading: 1.6;
     --typeset-flow: 0.75em;
     --typeset-list-item-flow: 0.125em;
+
+    @media (max-width: 47.999rem) {
+      --typeset-leading: 1.4;
+    }
   }
 }
 
@@ -42,6 +46,12 @@
       --color-border,
       color-mix(in oklab, currentColor 20%, transparent)
     );
+  }
+
+  @media (max-width: 47.999rem) {
+    .typeset.typeset-chat {
+      font-size: calc(var(--typeset-size) * 0.9642857);
+    }
   }
 
   .typeset

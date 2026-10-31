@@ -390,6 +390,7 @@ export async function assertUniqueUserKeys(
 export async function createLinkedUser(
   ctx: MutationCtx,
   args: CreateLinkedUserArgs,
+  authApi?: Pick<ReturnType<typeof createAuth>["api"], "createUser">,
 ) {
   const uniqueId = normalizeUniqueId(args.uniqueId);
   const roles: AppRole[] = args.roles?.length ? args.roles : ["STUDENT"];
@@ -401,8 +402,7 @@ export async function createLinkedUser(
 
   await assertUniqueUserKeys(ctx, uniqueId, email);
 
-  const auth = createAuth(ctx);
-  const authUser = await auth.api.createUser({
+  const authUser = await (authApi ?? createAuth(ctx).api).createUser({
     body: {
       email,
       name: fullName(args.firstName, args.lastName),

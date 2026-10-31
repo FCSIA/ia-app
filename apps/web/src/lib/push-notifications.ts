@@ -1,4 +1,5 @@
 import { isIosDevice, isStandaloneDisplay } from '@/lib/pwa';
+import { randomId } from '@/lib/random-id';
 import {
   shouldDismissAcknowledgedNotification,
   shouldDismissReadChannelNotification,
@@ -266,7 +267,7 @@ export function getPushDeviceId() {
   try {
     const existing = localStorage.getItem(pushDeviceIdKey);
     if (existing) return existing;
-    const created = crypto.randomUUID();
+    const created = randomId();
     localStorage.setItem(pushDeviceIdKey, created);
     return created;
   } catch {

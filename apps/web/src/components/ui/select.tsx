@@ -20,8 +20,14 @@ import { cn } from "@/lib/utils";
 import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import {
+  FluidHoverHighlight,
+  resolveHighlightTransition,
+  toTarget,
+} from "@/components/ui/fluid-hover-highlight";
 import { useShape } from "@/lib/shape-context";
 import { popupShape } from "@/components/ui/popup-shape";
+import { popupMotionClass } from "@/lib/popup";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 
@@ -215,7 +221,7 @@ const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between outline-none cursor-pointer",
     "touch-manipulation pointer-coarse:min-h-11",
-    "transition-all duration-80",
+    "transition-[color,background-color,border-color,box-shadow] duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
   ],
@@ -455,14 +461,16 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           className="z-50"
         >
           <motion.div
-            initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
+            // popupMotionClass reads the resolved (post-flip) data-side on
+            // Content, so a list that flips above its trigger grows from it.
+            className={popupMotionClass}
+            initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
             animate={
               open
                 ? { opacity: 1, y: 0, scaleY: 1 }
-                : { opacity: 0, y: -4, scaleY: 0.96 }
+                : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
             }
             transition={shouldReduceMotion ? { duration: 0 } : open ? spring.fast : spring.fast.exit}
-            style={{ transformOrigin: "top center" }}
             // Radix unmounts the popup the moment its open state flips, so
             // that flip is held back (radixOpen in the root) until the exit
             // spring has finished.
@@ -536,7 +544,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     <AnimatePresence>
                       {checkedRect && (
                         <motion.div
-                          className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                          className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
                           // Position lives in `animate` so an in-session value
                           // change springs the marker to the picked row (the
                           // selection acknowledgment). Safe against the reopen
@@ -544,52 +552,24 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                           // survives a close, and a fresh mount with
                           // initial={false} renders snapped at these values.
                           initial={false}
-                          animate={{
-                            top: checkedRect.top,
-                            left: checkedRect.left,
-                            width: checkedRect.width,
-                            height: checkedRect.height,
-                            opacity: 1,
-                          }}
+                          // Travels on a transform, not top/left; reduced
+                          // motion keeps the fade and drops the travel.
+                          animate={{ ...toTarget(checkedRect), opacity: 1 }}
                           exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.moderate.exit }}
-                          transition={shouldReduceMotion ? { duration: 0 } : {
-                            ...spring.moderate,
-                            opacity: { duration: 0.08 },
-                          }}
+                          transition={resolveHighlightTransition(spring.moderate, !!shouldReduceMotion)}
                         />
                       )}
                     </AnimatePresence>
                   )}
 
-                  {/* Hover background */}
+                  {/* Hover background — the shared transform-based
+                      highlight (unmounted with the popup, as before). */}
                   {open && (
-                    <AnimatePresence>
-                      {activeRect && (
-                        <motion.div
-                          key={sessionRef.current}
-                          className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-                          initial={{
-                            opacity: 0,
-                            top: activeRect.top,
-                            left: activeRect.left,
-                            width: activeRect.width,
-                            height: activeRect.height,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            top: activeRect.top,
-                            left: activeRect.left,
-                            width: activeRect.width,
-                            height: activeRect.height,
-                          }}
-                          exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
-                          transition={shouldReduceMotion ? { duration: 0 } : {
-                            ...spring.fast,
-                            opacity: { duration: 0.08 },
-                          }}
-                        />
-                      )}
-                    </AnimatePresence>
+                    <FluidHoverHighlight
+                      rect={activeRect ?? null}
+                      session={sessionRef.current}
+                      className={shape.bg}
+                    />
                   )}
 
                   {/* Focus ring */}
@@ -597,19 +577,16 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     <AnimatePresence>
                       {focusRect && (
                         <motion.div
-                          className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+                          className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
                           initial={false}
                           animate={{
-                            left: focusRect.left - 2,
-                            top: focusRect.top - 2,
+                            x: focusRect.left - 2,
+                            y: focusRect.top - 2,
                             width: focusRect.width + 4,
                             height: focusRect.height + 4,
                           }}
                           exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
-                          transition={shouldReduceMotion ? { duration: 0 } : {
-                            ...spring.fast,
-                            opacity: { duration: 0.08 },
-                          }}
+                          transition={resolveHighlightTransition(spring.fast, !!shouldReduceMotion)}
                         />
                       )}
                     </AnimatePresence>
@@ -763,7 +740,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
                   }}
                   exit={{
                     pathLength: 0,
-                    transition: { duration: shouldReduceMotion ? 0 : 0.04, ease: "easeIn" },
+                    transition: { duration: shouldReduceMotion ? 0 : 0.04, ease: "easeOut" },
                   }}
                 />
               </motion.svg>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import type { Slide } from '../../_lib/types';
+import { prefersReducedMotion } from '../../_lib/motion';
 import { Graphic } from '../graphics/Graphic';
 import { ScatterIcons } from './ScatterIcons';
 
@@ -15,17 +16,38 @@ export function SlideView({ slide, direction }: SlideViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef<HTMLDivElement>(null);
   const heroIconRef = useRef<HTMLDivElement>(null);
+  // SlideView is keyed per slide, so direction only matters at mount. A clamped
+  // nav press at either end changes `direction` without changing the slide and
+  // must not replay the entrance.
+  const [enterDirection] = useState(direction);
 
   useLayoutEffect(() => {
-    if (!rootRef.current) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const reduce = prefersReducedMotion();
+    const countTo =
+      slide.numericValue != null && slide.numericValue > 0 ? slide.numericValue : null;
+
     const ctx = gsap.context(() => {
+      const valueEl = valueRef.current;
+
+      if (reduce) {
+        // Opacity only: no push, pops, or count-up.
+        if (countTo != null && valueEl) valueEl.textContent = countTo.toLocaleString();
+        gsap.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power3.out' });
+        return;
+      }
+
+      // Absolute positions so every element is in by ~0.95s; the count-up runs
+      // alongside instead of holding the caption, chips, and footer back.
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       // Slide-wide entrance: subtle push from direction.
       tl.fromTo(
-        rootRef.current,
-        { opacity: 0, x: direction * 60, scale: 0.98 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.6 },
+        root,
+        { opacity: 0, x: enterDirection * 60, scale: 0.98 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.5 },
+        0,
       );
 
       // Eyebrow reveal with clip-path.
@@ -40,44 +62,43 @@ export function SlideView({ slide, direction }: SlideViewProps) {
           opacity: 1,
           y: 0,
           clipPath: 'inset(0 0% 0 0)',
-          duration: 0.55,
+          duration: 0.5,
         },
-        '-=0.35',
+        0.1,
       );
 
       // Hero icon pop.
       if (heroIconRef.current) {
         tl.fromTo(
           heroIconRef.current,
-          { opacity: 0, scale: 0, rotate: -60 },
+          { opacity: 0, scale: 0.5, rotate: -60 },
           { opacity: 1, scale: 1, rotate: 0, duration: 0.5, ease: 'back.out(2)' },
-          '-=0.4',
+          0.1,
         );
       }
 
       // Hero value.
-      tl.fromTo(
-        '.slide-value',
-        { opacity: 0, y: 40, letterSpacing: '-0.04em' },
-        { opacity: 1, y: 0, letterSpacing: '-0.02em', duration: 0.7 },
-        '-=0.3',
-      );
+      tl.fromTo('.slide-value', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6 }, 0.2);
 
-      // Count-up for numeric slides.
-      if (slide.numericValue != null && valueRef.current && slide.numericValue > 0) {
+      // Count-up for numeric slides. Only touch the DOM when the shown digits
+      // change: each write re-lays out and repaints the drop-shadowed hero text.
+      if (countTo != null && valueEl) {
         const target = { v: 0 };
-        const el = valueRef.current;
+        let shown = '';
         tl.to(
           target,
           {
-            v: slide.numericValue,
+            v: countTo,
             duration: 1.4,
             ease: 'power2.out',
             onUpdate: () => {
-              el.textContent = Math.round(target.v).toLocaleString();
+              const next = Math.round(target.v).toLocaleString();
+              if (next === shown) return;
+              shown = next;
+              valueEl.textContent = next;
             },
           },
-          '-=0.5',
+          0.3,
         );
       }
 
@@ -85,8 +106,8 @@ export function SlideView({ slide, direction }: SlideViewProps) {
       tl.fromTo(
         '.slide-caption',
         { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 0.55 },
-        '-=0.4',
+        { opacity: 1, y: 0, duration: 0.5 },
+        0.35,
       );
 
       // Chips pop (pathway etc.).
@@ -95,8 +116,8 @@ export function SlideView({ slide, direction }: SlideViewProps) {
         tl.fromTo(
           chips,
           { opacity: 0, y: 10, scale: 0.8 },
-          { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.08, ease: 'back.out(2)' },
-          '-=0.3',
+          { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.05, ease: 'back.out(2)' },
+          0.45,
         );
       }
 
@@ -105,12 +126,12 @@ export function SlideView({ slide, direction }: SlideViewProps) {
         '.slide-footer',
         { opacity: 0, y: 10 },
         { opacity: 1, y: 0, duration: 0.4 },
-        '-=0.3',
+        0.5,
       );
     }, rootRef);
 
     return () => ctx.revert();
-  }, [slide.key, direction, slide.numericValue]);
+  }, [slide.key, slide.numericValue, enterDirection]);
 
   const HeroIcon = slide.icon;
 

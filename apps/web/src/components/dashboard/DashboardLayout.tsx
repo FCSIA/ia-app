@@ -246,7 +246,7 @@ function WidgetColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-0 flex-1 flex-col gap-6",
+        "flex min-w-0 flex-1 flex-col gap-4 sm:gap-6",
         editing && ids.length === 0 && "min-h-40",
       )}
     >
@@ -362,6 +362,9 @@ function SortableWidget({
     <m.div
       layout="position"
       layoutId={`dashboard-widget-${id}`}
+      // Placement motion belongs to editing. A constant dependency outside it
+      // skips the per-render measurement, so loading data never slides widgets.
+      layoutDependency={editing ? undefined : "settled"}
       transition={{ layout: { duration: reducedMotion ? 0 : 0.22 } }}
       // display:none also drops the slot from its column's flex gap.
       className={hidden ? "hidden" : undefined}
@@ -947,7 +950,7 @@ export function DashboardLayout({
   return (
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6">
           {editing
             ? toolbarTarget
               ? createPortal(editToolbar, toolbarTarget)
@@ -992,7 +995,7 @@ export function DashboardLayout({
                   items={fullIds}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-4 sm:gap-6">
                     {/* Full-width dynamic widgets */}
                     {fullIds.map((id) => {
                       const widget = getWidget(id);
@@ -1013,7 +1016,7 @@ export function DashboardLayout({
 
                     {/* Explicit columns preserve the placement shown while dragging. */}
                     {columns.length > 0 && (
-                      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                      <div className="flex flex-col gap-4 sm:gap-6 md:flex-row md:items-start">
                         {columns.map((colIds, colIndex) => (
                           <WidgetColumn
                             key={`${columnCount}-${colIndex}`}

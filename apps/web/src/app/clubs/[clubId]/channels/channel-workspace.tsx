@@ -1,5 +1,7 @@
 'use client';
 
+import { randomId } from '@/lib/random-id';
+
 import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 
 import {
@@ -734,7 +736,7 @@ function MessageAuthorPreview({
       <button
         type="button"
         aria-label={`View ${name} profile`}
-        className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+        className="shrink-0 rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
       >
         <PresenceAvatar status={presence}>
           <ClubPersonAvatar
@@ -791,12 +793,12 @@ function PollCard({
   if (!message.poll) return null;
   const total = Math.max(message.poll.totalVotes, 1);
   return (
-    <div className="mt-2 rounded-lg border bg-muted/20 p-3">
-      <div className="flex items-center gap-2 text-sm font-semibold">
+    <div className="mt-2 rounded-lg border bg-muted/20 p-2.5 sm:p-3">
+      <div className="flex items-center gap-2 text-[13px] font-semibold sm:text-sm">
         <BarChart3 className="size-4 text-primary" />
         {message.poll.question}
       </div>
-      <div className="mt-3 space-y-2">
+      <div className="mt-2 space-y-1 sm:mt-3 sm:space-y-2">
         {message.poll.options.map((option) => {
           const percent = Math.round((option.count / total) * 100);
           return (
@@ -806,7 +808,7 @@ function PollCard({
               disabled={isPending}
               onClick={() => onVote(message._id, option.id)}
               className={cn(
-                'relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-hover',
+                'relative min-h-11 w-full overflow-hidden rounded-md border px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-hover sm:min-h-0 sm:py-2 sm:text-sm pointer-coarse:min-h-11',
                 option.votedByCurrentUser && 'border-primary/50 bg-primary/10',
               )}
             >
@@ -1194,7 +1196,7 @@ function TypingPresence({
   });
   useEffect(() => {
     if (!active) return;
-    const sessionId = crypto.randomUUID();
+    const sessionId = randomId();
     let stopped = false;
     let token: string | null = null;
     const ping = () => {
@@ -1251,7 +1253,11 @@ function ScrollToReplyTarget({
       return;
 
     const frame = requestAnimationFrame(() => {
-      if (scrollToMessage(messageId, { align: 'center', behavior: 'smooth' })) {
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)')
+        .matches
+        ? 'auto'
+        : 'smooth';
+      if (scrollToMessage(messageId, { align: 'center', behavior })) {
         lastScrolledRequestKey.current = requestKey;
       }
     });
@@ -1443,10 +1449,10 @@ function MessageRow({
   const replySwipeStart = useRef<{
     x: number;
     y: number;
+    identifier: number;
     swiping: boolean;
   } | null>(null);
-  const [replySwipeOffset, setReplySwipeOffset] = useState(0);
-  const [replySwipeSettling, setReplySwipeSettling] = useState(false);
+  const replySwipeContentRef = useRef<HTMLDivElement>(null);
   // Replies go to the channel composer, so they need a channel you can post in.
   const canReply = !compact && canPost;
   const canSwipeToReply = isTouchPrimary && canAct && canReply;
@@ -1498,11 +1504,28 @@ function MessageRow({
     },
   });
 
+  // The swipe writes straight to the element: a state update per touchmove would
+  // re-render the whole row every frame.
+  const setReplySwipeOffset = (offset: number) => {
+    const content = replySwipeContentRef.current;
+    if (!content) return;
+    content.style.transition = 'none';
+    content.style.willChange = 'transform';
+    content.style.transform = `translateX(${offset}px)`;
+    rowRef.current?.toggleAttribute('data-reply-swiping', offset !== 0);
+  };
+
   const resetReplySwipe = () => {
     replySwipeStart.current = null;
-    setReplySwipeSettling(true);
-    setReplySwipeOffset(0);
-    requestAnimationFrame(() => setReplySwipeSettling(false));
+    const content = replySwipeContentRef.current;
+    if (content) {
+      // Dropping the inline transition hands back to the class transition, so
+      // the row settles from wherever the finger left it.
+      content.style.transition = '';
+      content.style.willChange = '';
+      content.style.transform = '';
+    }
+    rowRef.current?.removeAttribute('data-reply-swiping');
   };
 
   const reactionOptions = QUICK_REACTIONS.map((reaction) => ({
@@ -1616,7 +1639,7 @@ function MessageRow({
                 : undefined
             }
             className={cn(
-              'group/row relative touch-pan-y',
+              'group/row relative [touch-action:pan-y_pinch-zoom]',
               // On touch, a hold opens the actions; it never selects text, shows
               // the iOS callout, or lifts a link or image to drag. Copy text is
               // in the sheet. Pointers keep normal text selection.
@@ -1628,27 +1651,22 @@ function MessageRow({
             <div
               aria-hidden="true"
               className={cn(
-                'pointer-events-none absolute inset-y-0 end-3 flex items-center text-primary transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none',
-                replySwipeOffset
-                  ? 'translate-x-0 opacity-100'
-                  : 'translate-x-1 opacity-0',
+                'pointer-events-none absolute inset-y-0 end-3 flex translate-x-1 items-center text-primary opacity-0 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none group-data-[reply-swiping]/row:translate-x-0 group-data-[reply-swiping]/row:opacity-100',
               )}
             >
               <Reply className="size-4" />
             </div>
             <div
-              className={cn(
-                'relative will-change-transform',
-                replySwipeSettling &&
-                  'transition-transform duration-200 ease-out motion-reduce:transition-none',
-              )}
-              style={
-                replySwipeOffset
-                  ? { transform: `translateX(${replySwipeOffset}px)` }
-                  : undefined
-              }
+              ref={replySwipeContentRef}
+              // `isolate` keeps the per-row stacking context without promoting
+              // every message to a GPU layer; the swipe adds will-change itself.
+              className="relative isolate transition-transform duration-200 ease-out motion-reduce:transition-none"
               onTouchStart={(event) => {
-                if (!canSwipeToReply || event.touches.length !== 1) return;
+                if (event.touches.length !== 1 || (window.visualViewport?.scale ?? 1) > 1) {
+                  if (replySwipeStart.current) resetReplySwipe();
+                  return;
+                }
+                if (!canSwipeToReply) return;
                 // Touches inside a dialog opened from this row are not swipes on it.
                 if (
                   !(event.target instanceof Element) ||
@@ -1665,13 +1683,22 @@ function MessageRow({
                 replySwipeStart.current = {
                   x: touch.clientX,
                   y: touch.clientY,
+                  identifier: touch.identifier,
                   swiping: false,
                 };
               }}
               onTouchMove={(event) => {
                 const start = replySwipeStart.current;
-                if (!start || event.touches.length !== 1) return;
+                if (!start) return;
+                if (event.touches.length !== 1 || (window.visualViewport?.scale ?? 1) > 1) {
+                  resetReplySwipe();
+                  return;
+                }
                 const touch = event.touches[0];
+                if (touch.identifier !== start.identifier) {
+                  resetReplySwipe();
+                  return;
+                }
                 const deltaX = touch.clientX - start.x;
                 const deltaY = Math.abs(touch.clientY - start.y);
                 if (!start.swiping) {
@@ -1684,13 +1711,19 @@ function MessageRow({
                 }
                 // Right swipes belong to the workspace navigation gesture. Replies
                 // deliberately use the opposite direction so the two never compete.
-                setReplySwipeSettling(false);
                 setReplySwipeOffset(Math.max(-48, Math.min(0, deltaX)));
               }}
               onTouchEnd={(event) => {
                 const start = replySwipeStart.current;
                 const touch = event.changedTouches[0];
-                if (start?.swiping && touch && start.x - touch.clientX >= 48) {
+                if (
+                  start?.swiping &&
+                  event.touches.length === 0 &&
+                  event.changedTouches.length === 1 &&
+                  touch?.identifier === start.identifier &&
+                  (window.visualViewport?.scale ?? 1) <= 1 &&
+                  start.x - touch.clientX >= 48
+                ) {
                   setReplySwipeOffset(-48);
                   hapticTick();
                   onStartReply(message._id);
@@ -1703,7 +1736,7 @@ function MessageRow({
                 grouped={groupedWithPrevious}
                 data-replying={replying || undefined}
                 className={cn(
-                  'rounded-md gap-3 px-3 transition-colors duration-200 hover:bg-hover',
+                  'rounded-md gap-3 px-3 transition-colors duration-150 hover:bg-hover',
                   // Pressed (set by the press handlers) and selected (sheet open).
                   'group-data-[pressed]/row:bg-active group-data-[pressed]/row:duration-75 group-data-[selected]/row:bg-active',
                   pingsViewer &&
@@ -1712,8 +1745,6 @@ function MessageRow({
                     'bg-primary/10 ring-1 ring-primary/25 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300',
                   replying &&
                     'bg-primary/5 shadow-[inset_2px_0_0_hsl(var(--primary))]',
-                  isSending &&
-                    'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
                 )}
               >
                 <MessageAvatar
@@ -1853,11 +1884,11 @@ function MessageRow({
                         <>
                           <MessageActions
                             className={cn(
-                              'pointer-events-none translate-y-1 rounded-xl bg-surface-3 p-0.5 opacity-0 shadow-surface-3 transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:pointer-events-auto group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
+                              'pointer-events-none rounded-xl bg-surface-3 p-0.5 opacity-0 shadow-surface-3 transition-opacity duration-150 motion-reduce:transition-none group-hover/message:pointer-events-auto group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100',
                               (reactionPickerOpen ||
                                 actionsMenuOpen ||
                                 deleteDialogOpen) &&
-                                'pointer-events-auto translate-y-0 opacity-100',
+                                'pointer-events-auto opacity-100',
                             )}
                           >
                             <Popover
@@ -3241,7 +3272,7 @@ export function ChannelWorkspace() {
               >
                 <MessageScrollerViewport preserveScrollOnPrepend>
                   <MessageScrollerContent
-                    className={cn('w-full gap-0 px-4 py-2')}
+                    className={cn('w-full gap-0 px-1 py-2 md:px-4')}
                   >
                     {messagePageStatus === 'CanLoadMore' ||
                     messagePageStatus === 'LoadingMore' ? (

@@ -254,7 +254,7 @@ export function ClubHero({
             containerClassName="absolute -top-8 left-4 size-16"
             className="size-full rounded-xl border-4 border-background bg-muted"
             fallback={clubInitial}
-            fallbackClassName="rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-lg text-orange-100"
+            fallbackClassName="rounded-xl bg-primary/10 text-lg text-foreground"
             fallbackStyle={
               accent
                 ? {

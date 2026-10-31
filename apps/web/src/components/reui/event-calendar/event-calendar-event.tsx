@@ -36,7 +36,7 @@ import {
   Tooltip,
   TooltipProvider,
 } from "@/components/ui/tooltip"
-import { RepeatIcon } from "lucide-react"
+import { GripVertical, RepeatIcon } from "lucide-react"
 
 /** Event color presets; each stays legible on light and dark surfaces. */
 const EVENT_CALENDAR_COLORS: Array<{ name: string; value: string }> = [
@@ -183,6 +183,10 @@ function EventCalendarEvent<TData = unknown>({
   // must add/remove the handles without waiting for an unrelated re-render
   const resizeOn = useEventCalendarSelector<TData, boolean>(
     (state) => state.interactions.resize,
+    { calendar: instance }
+  )
+  const dragOn = useEventCalendarSelector<TData, boolean>(
+    (state) => state.interactions.drag,
     { calendar: instance }
   )
   // A preview clone must never inherit the source's selected/dragging state
@@ -349,6 +353,8 @@ function EventCalendarEvent<TData = unknown>({
 
   const showResize =
     interactive && resizeOn && !event.readOnly && event.resizable !== false
+  const showDragHandle =
+    interactive && dragOn && !event.readOnly && event.draggable !== false
   // Hover grip pill (mirrors the gantt bars) marking the resize direction.
   // Shown on compact sub-compactEventMinutes blocks too: the 1.5rem chip
   // min-height leaves edge room without colliding with the centered title.
@@ -448,7 +454,7 @@ function EventCalendarEvent<TData = unknown>({
       }
       // A background tint alone conveys selection, so the chip is a real toggle
       // wherever it is interactive (agenda rows never select, previews are inert).
-      aria-pressed={interactive && !event.readOnly ? isSelected : undefined}
+      aria-pressed={interactive && !event.readOnly && event.selectable !== false ? isSelected : undefined}
       aria-hidden={preview || undefined}
       tabIndex={preview ? -1 : undefined}
       // merged, not spread: every tint, ring and dot reads --ec-event-color,
@@ -466,7 +472,7 @@ function EventCalendarEvent<TData = unknown>({
         e.stopPropagation()
         // suppress the trailing slot-create click when this press yields no drag
         markChipPress()
-        if (interactive) gestures.beginMove(e, segment)
+        if (interactive && e.pointerType === "mouse") gestures.beginMove(e, segment)
       }}
       onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         onClick?.(e)
@@ -475,7 +481,7 @@ function EventCalendarEvent<TData = unknown>({
         // consumer first: e.preventDefault() opts out of built-in selection
         settings.onEventClick?.(occurrence, e)
         // the agenda is a read-only list: a click never selects/focuses a row
-        if (e.defaultPrevented || view === "agenda" || event.readOnly) return
+        if (e.defaultPrevented || view === "agenda" || event.readOnly || event.selectable === false) return
         instance.api.selectEvent(occurrence.key)
       }}
       onDoubleClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -484,7 +490,7 @@ function EventCalendarEvent<TData = unknown>({
         settings.onEventDoubleClick?.(occurrence, e)
       }}
       className={cn(
-        "group/ec-event text-foreground relative flex w-full min-w-0 cursor-pointer touch-none items-center overflow-hidden text-start select-none",
+        "group/ec-event text-foreground relative flex w-full min-w-0 cursor-pointer touch-manipulation items-center overflow-hidden text-start select-none",
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
         // Past entries recede through text and tint, never transparency:
         // a see-through chip lets grid lines and schedule bands print
@@ -513,11 +519,29 @@ function EventCalendarEvent<TData = unknown>({
               segment.continuesAfter && "rounded-e-none"
             ),
         viewConfig.classNames?.event,
+        stackedBlock && showDragHandle && "pe-7",
         className
       )}
       {...props}
     >
       {content}
+      {showDragHandle && (
+        <span
+          aria-hidden="true"
+          data-slot="event-calendar-drag-handle"
+          className={cn(
+            "flex size-6 shrink-0 touch-none cursor-grab items-center justify-center select-none [-webkit-touch-callout:none]",
+            stackedBlock ? "absolute end-0 top-0" : "ms-auto"
+          )}
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            markChipPress()
+            gestures.beginMove(e, segment, true)
+          }}
+        >
+          <GripVertical className="size-4" />
+        </span>
+      )}
       {resizeHandles}
     </Comp>
   )

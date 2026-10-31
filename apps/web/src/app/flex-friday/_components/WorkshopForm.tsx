@@ -134,7 +134,7 @@ export function WorkshopForm({
                   return (
                     <label key={s._id}
                       className={cn(
-                        'flex items-start gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-all',
+                        'flex items-start gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors',
                         checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/50',
                       )}>
                       <input

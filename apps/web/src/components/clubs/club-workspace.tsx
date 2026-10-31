@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   animate,
   motion,
@@ -194,14 +194,22 @@ export function ClubWorkspace({
     useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const mobileNavigationReveal = useMotionValue(0);
+  const navigationAnimationId = useRef(0);
   const mobileNavigationX = useTransform(
     mobileNavigationReveal,
     [0, 1],
     ["-100%", "0%"],
   );
+  const mobileNavigationEdgeOpacity = useTransform(
+    mobileNavigationReveal,
+    [0, 0.02, 0.95, 1],
+    [0, 1, 1, 0],
+  );
   const reduceMotion = useReducedMotion();
 
-  const settleMobileNavigation = (open: boolean) => {
+  const settleMobileNavigation = useCallback((open: boolean) => {
+    const animationId = ++navigationAnimationId.current;
+    mobileNavigationReveal.stop();
     if (open) setMobileNavigationOpen(true);
     if (reduceMotion) {
       mobileNavigationReveal.set(open ? 1 : 0);
@@ -213,9 +221,25 @@ export function ClubWorkspace({
       stiffness: 460,
       damping: 42,
     }).then(() => {
-      if (!open) setMobileNavigationOpen(false);
+      if (!open && animationId === navigationAnimationId.current) {
+        setMobileNavigationOpen(false);
+      }
     });
-  };
+  }, [mobileNavigationReveal, reduceMotion]);
+
+  const openMobileNavigation = useCallback(
+    () => settleMobileNavigation(true),
+    [settleMobileNavigation],
+  );
+  const cancelMobileNavigation = useCallback(
+    () => settleMobileNavigation(false),
+    [settleMobileNavigation],
+  );
+  const updateMobileNavigation = useCallback((progress: number) => {
+    navigationAnimationId.current += 1;
+    mobileNavigationReveal.stop();
+    mobileNavigationReveal.set(progress);
+  }, [mobileNavigationReveal]);
 
   useEffect(() => {
     if (!resizableRightPane) return;
@@ -528,10 +552,10 @@ export function ClubWorkspace({
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
-      onMobileSwipeRight={() => settleMobileNavigation(true)}
+      onMobileSwipeRight={openMobileNavigation}
       mobileNavigationSwipeOptions={{
-        onProgress: (progress) => mobileNavigationReveal.set(progress),
-        onCancel: () => settleMobileNavigation(false),
+        onProgress: updateMobileNavigation,
+        onCancel: cancelMobileNavigation,
       }}
       viewportMode="visual"
     >
@@ -542,7 +566,7 @@ export function ClubWorkspace({
           aria-hidden={!mobileNavigationOpen}
           inert={!mobileNavigationOpen}
           className={cn(
-            "fixed inset-x-0 bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] top-[calc(4rem+env(safe-area-inset-top))] z-30 bg-card md:hidden",
+            "fixed inset-x-0 bottom-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] top-[calc(3.5rem+env(safe-area-inset-top))] z-30 bg-card md:hidden",
             CARD_SURFACE_FOREGROUND,
             mobileNavigationOpen
               ? "pointer-events-auto"
@@ -575,6 +599,11 @@ export function ClubWorkspace({
                 );
               }
             }}
+          />
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-px bg-border/70"
+            style={{ opacity: mobileNavigationEdgeOpacity }}
           />
         </motion.aside>
 
@@ -910,6 +939,18 @@ function ClubNavigationPanel({
               <X />
             </Button>
           ) : null}
+        </div>
+      ) : onClose ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Close club navigation"
+            onClick={onClose}
+          >
+            <X />
+          </Button>
         </div>
       ) : undefined}
       footer={!hideBrowseClubs ? (

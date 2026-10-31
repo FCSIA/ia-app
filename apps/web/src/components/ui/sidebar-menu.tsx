@@ -22,7 +22,7 @@ import {
   type Ref,
   type RefObject,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
@@ -32,7 +32,11 @@ import { useSize, SizeProvider, type SizeVariant } from "@/lib/size-context";
 import { useFluidHover, type ItemRect } from "@/hooks/use-fluid-hover";
 import type { IconComponent } from "@/lib/icon-context";
 import { resolveSlotTemplate, SlotElement } from "@/components/ui/sidebar-core";
-import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import {
+  FluidHoverHighlight,
+  resolveHighlightTransition,
+  toTarget,
+} from "@/components/ui/fluid-hover-highlight";
 
 // SSR-safe layout effect (client components still server-render in Next).
 const useIsoLayoutEffect =
@@ -456,6 +460,9 @@ function useMenuScope(
   );
 
   const shape = useShape();
+  // Reduced motion keeps the active/focus fades and drops their travel, as
+  // FluidHoverHighlight already does for the hover layer.
+  const reduceMotion = useReducedMotion() ?? false;
   // Every active row gets its own background — the buttons' own text styling
   // already lights each active row, so the overlays must match. Keys are the
   // row's level (root, or its sub-menu) plus its occurrence within that
@@ -507,19 +514,16 @@ function useMenuScope(
         {activeRects.map(({ key, rect }) => (
           <motion.div
             key={key}
-            className={`absolute ${shape.bg} bg-active pointer-events-none`}
+            // Travels on a transform (left-0/top-0 + x/y), not top/left:
+            // this layer moves on every route change, while the next page
+            // is loading.
+            className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
             initial={false}
-            animate={{
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              opacity: 1,
-            }}
+            animate={{ ...toTarget(rect), opacity: 1 }}
             exit={{ opacity: 0, transition: spring.moderate.exit }}
             transition={
               activeTargets.get(key)?.rowChanged
-                ? { ...spring.moderate, opacity: { duration: 0.08 } }
+                ? resolveHighlightTransition(spring.moderate, reduceMotion)
                 : { duration: 0 }
             }
           />
@@ -539,18 +543,18 @@ function useMenuScope(
       <AnimatePresence>
         {focusRect && (
           <motion.div
-            className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+            className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
             initial={false}
             animate={{
-              left: focusRect.left - 2,
-              top: focusRect.top - 2,
+              x: focusRect.left - 2,
+              y: focusRect.top - 2,
               width: focusRect.width + 4,
               height: focusRect.height + 4,
             }}
             exit={{ opacity: 0, transition: spring.fast.exit }}
             transition={
               focusRowChanged
-                ? { ...spring.fast, opacity: { duration: 0.08 } }
+                ? resolveHighlightTransition(spring.fast, reduceMotion)
                 : { duration: 0 }
             }
           />

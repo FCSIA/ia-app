@@ -17,12 +17,18 @@ import {
 } from 'lucide-react';
 import type { WrappedSummary } from '../../_lib/types';
 import { shortYear } from '../../_lib/utils';
+import { prefersReducedMotion } from '../../_lib/motion';
 
 export function SummaryOverlay({ summary }: { summary: WrappedSummary }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (!ref.current) return;
+    const reduce = prefersReducedMotion();
     const ctx = gsap.context(() => {
+      if (reduce) {
+        gsap.fromTo('.summary-stat', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power3.out' });
+        return;
+      }
       gsap.fromTo(
         '.summary-stat',
         { opacity: 0, y: 24, scale: 0.9 },
@@ -31,9 +37,9 @@ export function SummaryOverlay({ summary }: { summary: WrappedSummary }) {
           y: 0,
           scale: 1,
           duration: 0.5,
-          stagger: 0.07,
+          stagger: 0.03,
           ease: 'back.out(1.4)',
-          delay: 0.6,
+          delay: 0.4,
         },
       );
     }, ref);

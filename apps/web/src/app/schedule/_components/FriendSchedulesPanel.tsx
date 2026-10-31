@@ -231,7 +231,9 @@ export function FriendSchedulesPanel() {
                     leadingIcon={UserPlus}
                     onClick={() =>
                       incomingRequestsRef.current?.scrollIntoView({
-                        behavior: "smooth",
+                        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                          ? "auto"
+                          : "smooth",
                         block: "start",
                       })
                     }

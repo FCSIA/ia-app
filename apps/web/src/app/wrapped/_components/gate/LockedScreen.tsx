@@ -5,6 +5,21 @@ import Link from 'next/link';
 import gsap from 'gsap';
 import { Clock, Lock, X } from 'lucide-react';
 import { formatCountdown, schoolYearLabel } from '@/lib/wrapped';
+import { prefersReducedMotion, startAmbientLoops } from '../../_lib/motion';
+
+// Only the dashed rings rotate; a solid circle spinning about its own centre
+// changes no pixels.
+const RING_DURATIONS_MS = [40_000, 52_000];
+
+function createStars() {
+  return Array.from({ length: 60 }, () => ({
+    top: `${Math.random() * 100}%`,
+    left: `${Math.random() * 100}%`,
+    opacity: 0.2 + Math.random() * 0.6,
+    animationDelay: `${Math.random() * 3}s`,
+    animationDuration: `${2 + Math.random() * 3}s`,
+  }));
+}
 
 interface LockedScreenProps {
   opensAt: Date;
@@ -14,6 +29,9 @@ interface LockedScreenProps {
 export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => new Date());
+  // Generated once so the minute countdown re-render doesn't teleport the
+  // stars or restart their pulse.
+  const [stars] = useState(createStars);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -22,11 +40,20 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
 
   useLayoutEffect(() => {
     if (!rootRef.current) return;
+    const reduce = prefersReducedMotion();
     const ctx = gsap.context(() => {
+      if (reduce) {
+        gsap.fromTo(
+          ['.locked-icon', '.locked-eyebrow', '.locked-title', '.locked-body', '.locked-countdown', '.locked-cta'],
+          { opacity: 0 },
+          { opacity: 1, duration: 0.3, ease: 'power3.out' },
+        );
+        return;
+      }
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.fromTo(
         '.locked-icon',
-        { scale: 0, rotate: -60, opacity: 0 },
+        { scale: 0.5, rotate: -60, opacity: 0 },
         { scale: 1, rotate: 0, opacity: 1, duration: 0.7, ease: 'back.out(2)' },
       )
         .fromTo(
@@ -59,20 +86,19 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
           { opacity: 1, y: 0, duration: 0.4 },
           '-=0.2',
         );
-
-      // Continuous orbiting stars.
-      gsap.utils.toArray<HTMLElement>('.locked-star').forEach((el, i) => {
-        gsap.to(el, {
-          rotate: 360,
-          duration: 40 + i * 6,
-          ease: 'none',
-          repeat: -1,
-          transformOrigin: 'center',
-        });
-      });
     }, rootRef);
     return () => ctx.revert();
   }, []);
+
+  // Slow ring rotation, compositor-driven; skipped under reduced motion.
+  useEffect(
+    () =>
+      startAmbientLoops(rootRef.current, '.locked-star', (_, i) => ({
+        keyframes: [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+        options: { duration: RING_DURATIONS_MS[i], easing: 'linear' },
+      })),
+    [],
+  );
 
   const countdown = formatCountdown(opensAt, now);
   const opensLabel = opensAt.toLocaleDateString('en-US', {
@@ -91,7 +117,7 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
         <svg viewBox="0 0 800 800" className="locked-star w-[200%] max-w-none opacity-25">
           <circle cx="400" cy="400" r="320" stroke="white" strokeWidth="1" fill="none" strokeDasharray="4 12" />
         </svg>
-        <svg viewBox="0 0 800 800" className="locked-star absolute w-[160%] max-w-none opacity-20">
+        <svg viewBox="0 0 800 800" className="absolute w-[160%] max-w-none opacity-20">
           <circle cx="400" cy="400" r="260" stroke="white" strokeWidth="1" fill="none" />
         </svg>
         <svg viewBox="0 0 800 800" className="locked-star absolute w-[120%] max-w-none opacity-15">
@@ -101,17 +127,11 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
 
       {/* Starfield */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        {Array.from({ length: 60 }).map((_, i) => (
+        {stars.map((star, i) => (
           <span
             key={i}
-            className="absolute block size-1 rounded-full bg-white animate-pulse"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              opacity: 0.2 + Math.random() * 0.6,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
-            }}
+            className="absolute block size-1 rounded-full bg-white animate-pulse motion-reduce:animate-none"
+            style={star}
           />
         ))}
       </div>

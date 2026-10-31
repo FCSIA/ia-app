@@ -19,7 +19,7 @@ export function ClubPersonAvatar({ person, className, fallbackClassName }: ClubP
       avatarUrl={person.avatarUrl}
       className={cn('size-10', className)}
       fallbackClassName={cn(
-        'bg-gradient-to-br from-orange-500/15 via-amber-500/20 to-white text-xs font-semibold text-orange-700 dark:from-orange-500/20 dark:via-amber-400/15 dark:to-zinc-950 dark:text-orange-100',
+        'text-xs font-semibold',
         fallbackClassName,
       )}
     />

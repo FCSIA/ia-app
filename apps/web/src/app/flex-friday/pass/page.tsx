@@ -241,7 +241,7 @@ function PassCard({
   });
 
   return (
-    <Card className={cn('relative transition-all duration-200', isPast ? 'opacity-70' : '')}>
+    <Card className={cn('relative', isPast ? 'opacity-70' : '')}>
       <CardContent className="p-5">
         {/* Header: Friday date + meta */}
         <div className="mb-4 flex items-start justify-between gap-4">
