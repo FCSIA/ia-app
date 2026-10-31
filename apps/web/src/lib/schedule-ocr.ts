@@ -60,6 +60,10 @@ const WEEKDAY_LINE =
 const TIME_LINE =
   /^\d{1,2}:\d{2}\s*(?:am|pm)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?$/i;
 const TIME_PREFIX = /^\d{1,2}:\d{2}\s*(?:am|pm)?\s*[-–]/i;
+// Small screenshot text sometimes loses the colon ("228PM-321PM"). Only
+// remove a complete clock range with both meridiems, never a course number.
+const OCR_CLOCK = "(?:1[0-2]|0?[1-9]):?[0-5]\\d\\s*[ap]m";
+const OCR_TIME_RANGE = new RegExp(`(?:^|\\s)${OCR_CLOCK}\\s*[-–]\\s*${OCR_CLOCK}$`, "i");
 
 function normalize(value: string) {
   return value
@@ -156,6 +160,7 @@ function courseMatchScore(candidate: string, course: CourseSummary) {
 
 function meaningfulLine(value: string) {
   const line = value
+    .replace(OCR_TIME_RANGE, "")
     .replace(/\s+(?:teacher|room|start)\s*[:;].*$/i, "")
     .replace(/\s+\|$/, " I")
     .replace(/\s+/g, " ")

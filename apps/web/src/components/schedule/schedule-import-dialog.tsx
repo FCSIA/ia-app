@@ -33,17 +33,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { uploadFileToConvex } from "@/lib/convex-upload";
-import { useAction, useMutation } from "@/lib/convex-react";
 import { readScheduleImageLocally } from "@/lib/schedule-ocr-local";
 import {
   parseInfiniteCampusSchedule,
   type ImportedScheduleRow,
   type OcrScheduleRow,
 } from "@/lib/schedule-ocr";
-import { api } from "~/apps/convex/src/_generated/api";
-
-const USE_LOCAL_OCR = process.env.NODE_ENV === "development";
 
 export function ScheduleImportDialog({
   courses,
@@ -59,8 +54,6 @@ export function ScheduleImportDialog({
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
-  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
-  const scanImage = useAction(api.schedule.importOcr.scanImage);
 
   const courseMap = useMemo(
     () =>
@@ -105,26 +98,9 @@ export function ScheduleImportDialog({
     setError(null);
     setProgress(0);
     try {
-      const result = USE_LOCAL_OCR
-        ? await (async () => {
-            setStatus("Reading picture on this device");
-            setProgress(10);
-            return readScheduleImageLocally(file, setProgress);
-          })()
-        : await (async () => {
-            setStatus("Uploading image");
-            setProgress(20);
-            const uploaded = await uploadFileToConvex(
-              {
-                generateUploadUrl: () =>
-                  generateUploadUrl({ purpose: "SCHEDULE_OCR" }),
-              },
-              file,
-            );
-            setStatus("Reading schedule");
-            setProgress(60);
-            return scanImage(uploaded);
-          })();
+      setStatus("Reading picture on this device");
+      setProgress(10);
+      const result = await readScheduleImageLocally(file, setProgress);
       const parsed = parseInfiniteCampusSchedule(
         result.fullText,
         courses,
@@ -179,9 +155,7 @@ export function ScheduleImportDialog({
         <DialogHeader>
           <DialogTitle>Import schedule</DialogTitle>
           <DialogDescription>
-            {USE_LOCAL_OCR
-              ? "This picture is read on your device. Review every class before applying."
-              : "A clear picture is sent to Google Cloud Vision to read, then deleted immediately from IA storage. Review every class before applying."}
+            This picture is read on your device. Review every class before applying.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-5">

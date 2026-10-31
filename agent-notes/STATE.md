@@ -2,6 +2,19 @@
 
 ## Active Focus
 
+- **Browser OCR production repair (2026-10-30)**: Worktree
+  `.worktrees/browser-schedule-ocr`, branch `codex/browser-schedule-ocr`, switches
+  the web importer to on-device Tesseract in every environment. Production no
+  longer needs Google credentials. Worker/core/model assets are same-origin;
+  production CSP permits WASM compilation while still blocking JavaScript eval.
+  All 72 focused tests pass, including eight real-engine image checks. Browser
+  checks drive the actual dialog through file selection, OCR, review, and Apply,
+  verify exact periods/classes and no uploads/external requests, and cover a failed
+  model download followed by a successful retry. Reference-image scans take about
+  4–5 seconds on this desktop; physical phone performance remains unverified.
+  Unrelated primary-checkout changes are preserved. No production deployment
+  or shared backend mutation is part of this repair.
+
 - **PR #171 OCR review (2026-10-28)**: `.worktrees/pr-171-review` uses
   `codex/pr-171-ocr-accuracy`, based on PR head `eed55c75`. Generalized local OCR,
   relative row/column parsing, conservative catalog matching, Google word-box
