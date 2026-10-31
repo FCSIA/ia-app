@@ -33,6 +33,16 @@ const courses = [
 ] satisfies CourseSummary[];
 
 describe("parseInfiniteCampusSchedule", () => {
+  it.each(["228PM-321PM", "2:28 PM - 3:21 PM", "1155AM–1245PM"])(
+    "excludes the OCR clock range %s from course text",
+    (time) => {
+      expect(parseInfiniteCampusSchedule(`7 AP Cybersecurity\n${time}`, [])[0])
+        .toMatchObject({ periodNumber: 7, className: "AP Cybersecurity" });
+      expect(parseInfiniteCampusSchedule(`7 AP Cybersecurity ${time}`, [])[0])
+        .toMatchObject({ periodNumber: 7, className: "AP Cybersecurity" });
+    },
+  );
+
   it("keeps every class in the supplied campus screenshot, with period 5 reserved for lunch", () => {
     const rows = parseInfiniteCampusSchedule(
       campusScreenshot.fullText,
