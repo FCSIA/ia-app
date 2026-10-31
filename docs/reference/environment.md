@@ -154,9 +154,15 @@ reacts to actual close/reopen events—not labels. Closure reasons map as follow
 the feedback to pending. Configure these only on the explicitly authorized
 deployment; merging the code does not activate a webhook or deploy it.
 
-### Google Cloud Vision schedule import
+### Schedule image import
 
-Schedule image import requires a Google Cloud service account with the Cloud
+The web schedule importer uses Tesseract on the student's device in development
+and production. It needs no deployment secrets. `predev` and `prebuild` copy the
+installed OCR engine and English model to `public/schedule-ocr-assets`.
+
+### Legacy Google Cloud Vision action
+
+The legacy server OCR action (unused by the web importer) requires a service account with the Cloud
 Vision API enabled. Store the complete service-account JSON as the deployment
 secret `GOOGLE_VISION_SERVICE_ACCOUNT_JSON`; never add it to `.env`, a client
 bundle, or git. The action exchanges its signed JWT for a short-lived OAuth token
