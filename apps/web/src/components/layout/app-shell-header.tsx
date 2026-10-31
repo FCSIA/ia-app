@@ -162,7 +162,7 @@ function AppShellHeader({
     <header
       data-mode={mode}
       className={cn(
-        "app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b px-4 pt-[env(safe-area-inset-top)] md:px-6 lg:px-8",
+        "app-main-header sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] md:h-[calc(4rem+env(safe-area-inset-top))] md:gap-3 md:pl-[max(1.5rem,env(safe-area-inset-left))] md:pr-[max(1.5rem,env(safe-area-inset-right))] lg:pl-[max(2rem,env(safe-area-inset-left))] lg:pr-[max(2rem,env(safe-area-inset-right))]",
         CARD_SURFACE_FOREGROUND,
         mode === "editing" ? "bg-primary/20" : "bg-card",
       )}
@@ -220,7 +220,7 @@ function AppShellHeader({
                     lastName={user.lastName}
                     preferredName={user.preferredName}
                     avatarUrl={user.avatarUrl}
-                    className="size-11 sm:size-9"
+                    className="size-9"
                     fallbackClassName="text-xs"
                   />
                 </PresenceAvatar>

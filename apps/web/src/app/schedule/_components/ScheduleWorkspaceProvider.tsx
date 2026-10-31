@@ -217,7 +217,9 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   useEffect(() => {
     if (selectedTab !== "friends" || requestedSection !== "requests") return;
     incomingRequestsRef.current?.scrollIntoView({
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
       block: "start",
     });
   }, [data?.incomingRequests?.length, requestedSection, selectedTab]);

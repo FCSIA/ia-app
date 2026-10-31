@@ -101,6 +101,28 @@ async function calendarFixture() {
 }
 
 describe("calendar invites and visibility", () => {
+  it("reschedules only the owner's reminder without overwriting its details", async () => {
+    const { t, ownerClient, strangerClient } = await calendarFixture();
+    const entryId = await ownerClient.mutation(api.events.calendar.create, { title: "Study", description: "Notes", location: "Library", startAt: 1000, endAt: 3000 });
+    await expect(strangerClient.mutation(api.events.calendar.reschedule, { entryId, expectedStartAt: 1000, startAt: 5000 })).rejects.toThrow();
+    await ownerClient.mutation(api.events.calendar.reschedule, { entryId, expectedStartAt: 1000, startAt: 5000 });
+    const entry = await t.run((ctx) => ctx.db.get(entryId));
+    expect(entry).toMatchObject({ title: "Study", description: "Notes", location: "Library", startAt: 5000, endAt: 7000 });
+    await expect(ownerClient.mutation(api.events.calendar.reschedule, { entryId, expectedStartAt: 1000, startAt: 9000 })).rejects.toThrow("changed");
+    const noEnd = await ownerClient.mutation(api.events.calendar.create, { title: "No end", startAt: 1000 });
+    await ownerClient.mutation(api.events.calendar.reschedule, { entryId: noEnd, expectedStartAt: 1000, startAt: 2000 });
+    expect((await t.run((ctx) => ctx.db.get(noEnd)))?.endAt).toBeUndefined();
+  });
+
+  it("preserves an all-day span across daylight saving time", async () => {
+    const { t, ownerClient } = await calendarFixture();
+    const startAt = Date.parse("2026-03-07T05:00:00Z");
+    const entryId = await ownerClient.mutation(api.events.calendar.create, { title: "All day", startAt, endAt: Date.parse("2026-03-08T05:00:00Z"), allDay: true });
+    await ownerClient.mutation(api.events.calendar.reschedule, { entryId, expectedStartAt: startAt, startAt: Date.parse("2026-03-08T05:00:00Z"), endAt: Date.parse("2026-03-09T04:00:00Z") });
+    expect(await t.run((ctx) => ctx.db.get(entryId))).toMatchObject({ endAt: Date.parse("2026-03-09T04:00:00Z") });
+    await expect(ownerClient.mutation(api.events.calendar.reschedule, { entryId, expectedStartAt: Date.parse("2026-03-08T05:00:00Z"), startAt: Date.parse("2026-03-09T04:00:00Z"), endAt: Date.parse("2026-03-12T04:00:00Z") })).rejects.toThrow("end time");
+  });
+
   it("keeps all-day intent and duration when editing and refuses another owner's write", async () => {
     const { ownerClient, strangerClient } = await calendarFixture();
     const entryId = await ownerClient.mutation(api.events.calendar.create, { title: "Deadline", startAt: 1000, endAt: 3000, allDay: true });

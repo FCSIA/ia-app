@@ -19,6 +19,9 @@ overrides, and canonical-period resolution.
 - Filters by source.
 - Lets users create, edit and delete their own personal reminders, including
   explicit end times and all-day date ranges.
+- Lets owners move reminders in calendar grids; touch users drag the handle,
+  while the reminder body remains available for scrolling and details. The
+  Edit action remains available for changing the date without dragging.
 - Lets students invite accepted friends and manage received invitations.
 - Lets users connect private HTTPS ICS feeds, including Canvas personal calendar
   feeds such as `fultonschools.instructure.com`.
@@ -46,6 +49,7 @@ overrides, and canonical-period resolution.
 - `api.events.calendar.list`
 - `api.events.calendar.create`
 - `api.events.calendar.update`
+- `api.events.calendar.reschedule`
 - `api.events.calendar.remove`
 - `api.events.calendar.listPendingInvites`
 - `api.events.calendar.listEligibleFriends`

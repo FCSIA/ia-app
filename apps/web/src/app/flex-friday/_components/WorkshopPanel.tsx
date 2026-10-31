@@ -101,7 +101,7 @@ export function WorkshopPanel({
                 const spansMultiple = linkedSessions.length > 1;
 
                 return (
-                  <Card key={w._id} className="overflow-hidden border-border/60 bg-background transition-shadow hover:shadow-surface-1">
+                  <Card key={w._id} className="overflow-hidden border-border/60 bg-background">
                     <CardContent className="p-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">

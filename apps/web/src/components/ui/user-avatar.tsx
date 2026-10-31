@@ -26,7 +26,7 @@ export function UserAvatar({
       {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName({ firstName, lastName, preferredName })} /> : null}
       <AvatarFallback
         className={cn(
-          'bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-white font-semibold',
+          'bg-primary/10 text-foreground font-semibold',
           fallbackClassName,
         )}
       >

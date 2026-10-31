@@ -76,6 +76,10 @@ interface DialogContentProps
   showCloseButton?: boolean;
   /** Official top-anchored panel placement; distinct from phone-only placement. */
   position?: "center" | "top";
+  /** `false` opens and closes instantly, through the same path reduced
+   *  motion uses. For keyboard-summoned surfaces (the ⌘K command menu),
+   *  where any open/close duration reads as delay. */
+  animated?: boolean;
 }
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
@@ -90,6 +94,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       mobilePosition = "center",
       showCloseButton = true,
       position = "center",
+      animated = true,
       ...props
     },
     ref,
@@ -101,6 +106,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     const [mounted, setMounted] = useState(false);
     const reduceMotion = useReducedMotion();
+    const instant = reduceMotion || !animated;
     // We remove the framer-motion x/y transforms and use tailwind classes for
     // position so we can use sm: variants for desktop/mobile differences.
     const isTop = position === "top";
@@ -141,7 +147,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             )}
             initial={{ opacity: 0 }}
             animate={{ opacity: open ? 1 : 0 }}
-            transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
+            transition={instant ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
           />
         </DialogPrimitive.Overlay>
         <DialogPrimitive.Content ref={contentRef} asChild forceMount {...props}>
@@ -175,7 +181,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               opacity: open ? 1 : 0,
               scale: open ? 1 : 0.97,
             }}
-            transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
+            transition={instant ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
             onAnimationComplete={handleExitComplete}
           >
             <SurfaceProvider value={dialogLevel}>

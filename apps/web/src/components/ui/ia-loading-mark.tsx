@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
 
@@ -41,13 +40,11 @@ export function IaLoadingMark({
       aria-label={label}
     >
       {animated ? (
-        <motion.div
-          className="flex h-full w-full items-center justify-center"
-          animate={{ opacity: [0.88, 1, 0.88], scale: [0.98, 1, 0.98] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-        >
+        // CSS keyframes, not a Framer loop: the scale shorthand ran on the
+        // main thread exactly while navigation/hydration kept it busy.
+        <div className="flex h-full w-full animate-loading-mark-breathe items-center justify-center motion-reduce:animate-none">
           {content}
-        </motion.div>
+        </div>
       ) : (
         content
       )}

@@ -117,7 +117,6 @@ export function UnitTreePicker({
             custom={direction}
             initial={reduceMotion ? false : { opacity: 0, x: direction * 14 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, x: direction * -10 }}
             transition={{
               duration: reduceMotion ? 0.01 : 0.16,
               ease: [0.22, 1, 0.36, 1],

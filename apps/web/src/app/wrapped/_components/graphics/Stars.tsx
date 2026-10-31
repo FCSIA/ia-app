@@ -1,40 +1,40 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
-import gsap from 'gsap';
+import { useEffect, useRef, useState } from 'react';
+import { EASE_IN_OUT_SINE, randomBetween, startAmbientLoops } from '../../_lib/motion';
+
+function createStars() {
+  return Array.from({ length: 60 }, () => ({
+    top: `${Math.random() * 100}%`,
+    left: `${Math.random() * 100}%`,
+    opacity: 0.2 + Math.random() * 0.6,
+  }));
+}
 
 export function StarsGraphic() {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.utils.toArray<HTMLElement>('.twinkle').forEach((el, i) => {
-        gsap.to(el, {
-          opacity: gsap.utils.random(0.2, 1),
-          scale: gsap.utils.random(0.6, 1.4),
-          duration: gsap.utils.random(1.4, 3.2),
-          ease: 'sine.inOut',
-          repeat: -1,
-          yoyo: true,
-          delay: i * 0.08,
-        });
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
-  const stars = Array.from({ length: 60 });
+  // Generated once per mount so parent re-renders don't teleport the stars.
+  const [stars] = useState(createStars);
+  useEffect(
+    () =>
+      startAmbientLoops(ref.current, '.twinkle', (_, i) => ({
+        keyframes: [
+          { opacity: stars[i].opacity, transform: 'scale(1)' },
+          { opacity: randomBetween(0.2, 1), transform: `scale(${randomBetween(0.6, 1.4)})` },
+        ],
+        options: {
+          duration: randomBetween(1400, 3200),
+          delay: i * 80,
+          easing: EASE_IN_OUT_SINE,
+          direction: 'alternate',
+        },
+      })),
+    [stars],
+  );
   return (
     <div ref={ref} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      {stars.map((_, i) => (
-        <span
-          key={i}
-          className="twinkle absolute block size-1 rounded-full bg-white"
-          style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            opacity: 0.2 + Math.random() * 0.6,
-          }}
-        />
+      {stars.map((star, i) => (
+        <span key={i} className="twinkle absolute block size-1 rounded-full bg-white" style={star} />
       ))}
     </div>
   );

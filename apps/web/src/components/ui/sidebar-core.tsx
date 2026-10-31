@@ -1130,26 +1130,52 @@ SidebarRail.displayName = "SidebarRail";
 
 export type SidebarInsetProps = HTMLAttributes<HTMLElement>;
 
+// Match the desktop shell's CSS breakpoints so the hidden peer cannot leave a
+// desktop card inset on mobile, including before the media-query effect runs.
+// Keep the class names literal for Tailwind's scanner.
+const INSET_DESKTOP: Record<number, { frame: string; round: string; soft: string }> = {
+  640: {
+    frame: "sm:peer-data-[variant=inset]:m-2 sm:peer-data-[variant=inset]:peer-data-[side=left]:ml-0 sm:peer-data-[variant=inset]:peer-data-[side=right]:mr-0 sm:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=left]:ml-2 sm:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=right]:mr-2 sm:peer-data-[variant=inset]:bg-surface-2 sm:peer-data-[variant=inset]:shadow-surface-2",
+    round: "sm:peer-data-[variant=inset]:rounded-3xl",
+    soft: "sm:peer-data-[variant=inset]:rounded-xl",
+  },
+  768: {
+    frame: "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:peer-data-[side=left]:ml-0 md:peer-data-[variant=inset]:peer-data-[side=right]:mr-0 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=left]:ml-2 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=right]:mr-2 md:peer-data-[variant=inset]:bg-surface-2 md:peer-data-[variant=inset]:shadow-surface-2",
+    round: "md:peer-data-[variant=inset]:rounded-3xl",
+    soft: "md:peer-data-[variant=inset]:rounded-xl",
+  },
+  1024: {
+    frame: "lg:peer-data-[variant=inset]:m-2 lg:peer-data-[variant=inset]:peer-data-[side=left]:ml-0 lg:peer-data-[variant=inset]:peer-data-[side=right]:mr-0 lg:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=left]:ml-2 lg:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=right]:mr-2 lg:peer-data-[variant=inset]:bg-surface-2 lg:peer-data-[variant=inset]:shadow-surface-2",
+    round: "lg:peer-data-[variant=inset]:rounded-3xl",
+    soft: "lg:peer-data-[variant=inset]:rounded-xl",
+  },
+  1280: {
+    frame: "xl:peer-data-[variant=inset]:m-2 xl:peer-data-[variant=inset]:peer-data-[side=left]:ml-0 xl:peer-data-[variant=inset]:peer-data-[side=right]:mr-0 xl:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=left]:ml-2 xl:peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=right]:mr-2 xl:peer-data-[variant=inset]:bg-surface-2 xl:peer-data-[variant=inset]:shadow-surface-2",
+    round: "xl:peer-data-[variant=inset]:rounded-3xl",
+    soft: "xl:peer-data-[variant=inset]:rounded-xl",
+  },
+};
+const INSET_UNRESPONSIVE = {
+  frame: "peer-data-[variant=inset]:m-2 peer-data-[variant=inset]:peer-data-[side=left]:ml-0 peer-data-[variant=inset]:peer-data-[side=right]:mr-0 peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=left]:ml-2 peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=right]:mr-2 peer-data-[variant=inset]:bg-surface-2 peer-data-[variant=inset]:shadow-surface-2",
+  round: "peer-data-[variant=inset]:rounded-3xl",
+  soft: "peer-data-[variant=inset]:rounded-xl",
+};
+
 const SidebarInset = forwardRef<HTMLElement, SidebarInsetProps>(
   ({ className, ...props }, ref) => {
     const shape = useShape();
+    const { mobileBreakpoint, isMobile } = useSidebar();
+    const insetClasses =
+      INSET_DESKTOP[mobileBreakpoint] ?? (!isMobile ? INSET_UNRESPONSIVE : null);
     return (
       <main
         ref={ref}
         data-slot="sidebar-inset"
         className={cn(
           "relative flex min-h-0 w-full min-w-0 flex-1 flex-col bg-background",
-          "peer-data-[variant=inset]:m-2 peer-data-[variant=inset]:peer-data-[side=left]:ml-0 peer-data-[variant=inset]:peer-data-[side=right]:mr-0",
-          // With the rail collapsed away, restore the sidebar-side margin so
-          // the card keeps symmetric insets.
-          "peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=left]:ml-2 peer-data-[variant=inset]:peer-data-[state=collapsed]:peer-data-[side=right]:mr-2",
+          insetClasses?.frame,
           "transition-[margin] duration-80",
-          // Container radius follows the shape system (literal classes so
-          // Tailwind's scanner emits both).
-          shape.bgRadius >= 20
-            ? "peer-data-[variant=inset]:rounded-3xl"
-            : "peer-data-[variant=inset]:rounded-xl",
-          "peer-data-[variant=inset]:bg-surface-2 peer-data-[variant=inset]:shadow-surface-2",
+          shape.bgRadius >= 20 ? insetClasses?.round : insetClasses?.soft,
           className
         )}
         {...props}

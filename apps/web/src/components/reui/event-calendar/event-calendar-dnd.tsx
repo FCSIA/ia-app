@@ -234,6 +234,7 @@ interface BeginGestureConfig<TData> {
   kind: GestureKind
   origin: HTMLElement
   startEvent: PointerEvent
+  touchHandle?: boolean
   segment?: EventCalendarSegment<TData>
   /** create only */
   createDay?: Date
@@ -552,7 +553,9 @@ function beginGesture<TData>(config: BeginGestureConfig<TData>) {
         const start = addDays(toZoned(occurrence.start, timeZone), delta)
         return {
           start,
-          end: new Date(start.getTime() + durationMs),
+          end: occurrence.allDay
+            ? addDays(toZoned(occurrence.end, timeZone), delta)
+            : new Date(start.getTime() + durationMs),
           allDay: occurrence.allDay,
           dayGranular: true,
         }
@@ -855,7 +858,7 @@ function beginGesture<TData>(config: BeginGestureConfig<TData>) {
     lastPointer = e
     if (!active) {
       const distance = Math.hypot(e.clientX - startX, e.clientY - startY)
-      if (isTouch) {
+      if (isTouch && !config.touchHandle) {
         // Long-press pending: moving past tolerance means scroll, not drag
         if (distance > activation.touchTolerancePx) cancel()
         return
@@ -889,7 +892,9 @@ function beginGesture<TData>(config: BeginGestureConfig<TData>) {
     }
     const drag = state.drag
     internals.setDrag(null)
-    if (!drag || !occurrence) return
+    // The last preview can be explicitly rejected by canDropEvent. Do not
+    // call the update handler for an invalid drop on pointer release.
+    if (!drag || !occurrence || !drag.valid) return
     const unchanged =
       drag.proposedStart.getTime() === occurrence.start.getTime() &&
       drag.proposedEnd.getTime() === occurrence.end.getTime() &&
@@ -935,7 +940,7 @@ function beginGesture<TData>(config: BeginGestureConfig<TData>) {
   activeGestureCancels.add(cancel)
 
   // Touch: long-press activation (movement past tolerance cancels above)
-  if (isTouch && !active) {
+  if (isTouch && !active && !config.touchHandle) {
     touchTimer = setTimeout(() => {
       activate()
       applyProposal(lastPointer)
@@ -989,7 +994,7 @@ function useEventCalendarGestures<TData = unknown>() {
   )
 
   const beginMove = useCallback(
-    (e: React.PointerEvent, segment: EventCalendarSegment<TData>) => {
+    (e: React.PointerEvent, segment: EventCalendarSegment<TData>, touchHandle = false) => {
       if (e.button !== 0) return
       if (!canDrag(segment)) {
         // refused, but still give feedback + broadcast on a real drag attempt
@@ -1001,6 +1006,7 @@ function useEventCalendarGestures<TData = unknown>() {
         kind: "move",
         origin: e.currentTarget as HTMLElement,
         startEvent: e.nativeEvent,
+        touchHandle,
         segment,
         ui,
       })

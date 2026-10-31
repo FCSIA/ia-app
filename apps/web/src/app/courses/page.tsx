@@ -175,7 +175,7 @@ export default function CoursesPage() {
               <div className="grid gap-4 xl:grid-cols-2">
                 {courses.map((course) => (
                   <Link key={course.id} href={`/courses/${course.slug}`}>
-                    <Card className="h-full rounded-[1.75rem] border-border/70 bg-background/90 transition-transform duration-200 hover:-translate-y-0.5">
+                    <Card className="h-full rounded-[1.75rem] border-border/70 bg-background/90">
                       <CardContent className="space-y-4 p-5">
                         <div className="space-y-2">
                           <p className="text-lg font-semibold tracking-tight text-foreground">

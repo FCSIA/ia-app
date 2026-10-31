@@ -5,7 +5,7 @@ import { announcementUnreadColors } from "./unread-colors";
 describe("announcementUnreadColors", () => {
   it("chooses the surface furthest from each built-in theme background", () => {
     expect(announcementUnreadColors(themes.light).surface).toBe("secondary");
-    expect(announcementUnreadColors(themes.dark).surface).toBe("secondary");
+    expect(announcementUnreadColors(themes.dark).surface).toBe("accent");
     expect(announcementUnreadColors(themes.bubblegum).surface).toBe("accent");
   });
 

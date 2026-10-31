@@ -146,7 +146,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         <span
           aria-hidden
           className={cn(
-            "absolute inset-0 rounded-[inherit] transition-[background-color,transform] duration-80 group-active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none",
+            "absolute inset-0 rounded-[inherit] transition-[background-color,scale] duration-80 group-active:scale-[0.98] motion-reduce:scale-none motion-reduce:transition-none",
             bgClass,
           )}
         />

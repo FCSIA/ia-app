@@ -12,10 +12,9 @@ import {
   type TdHTMLAttributes,
   type ThHTMLAttributes,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { spring } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,7 +37,6 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
 const Table = forwardRef<HTMLTableElement, TableProps>(
   ({ children, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const shouldReduceMotion = useReducedMotion();
 
     const {
       activeIndex,
@@ -69,34 +67,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
         >
-          {/* Hover background */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                className="absolute bg-hover pointer-events-none"
-                initial={{
-                  opacity: 0,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                animate={{
-                  opacity: 1,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
-                transition={shouldReduceMotion ? { duration: 0 } : {
-                  ...spring.fast,
-                  opacity: { duration: 0.08 },
-                }}
-              />
-            )}
-          </AnimatePresence>
+          {/* Hover background — the shared highlight travels on a transform
+              (not top/left) and keeps its fade under reduced motion. */}
+          <FluidHoverHighlight rect={activeRect ?? null} session={sessionRef.current} />
 
           <table
             ref={ref}

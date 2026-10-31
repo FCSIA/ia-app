@@ -12,7 +12,7 @@ import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useShape } from "@/lib/shape-context";
+import { shapeMap, useShape } from "@/lib/shape-context";
 import { Badge } from "@/components/ui/badge";
 
 /** Pointer dragging can cover a panel header while its named grip owns keyboard input. */
@@ -76,7 +76,7 @@ export function PageFrame({ children, className }: PageFrameProps) {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[1580px] flex-col gap-6 pb-8 pt-2",
+        "mx-auto flex w-full max-w-[1580px] flex-col gap-4 pb-8 pt-2 sm:gap-6",
         className,
       )}
     >
@@ -179,7 +179,7 @@ export function Panel({
   const reservedHeight = useContext(PanelReservedHeightContext);
   const heldHeight = loading && reservedHeight ? reservedHeight : undefined;
   // One title anatomy with or without a link: title, count chip, then (links
-  // only) the chevron at the trailing edge. Both rows share the same height.
+  // only) the chevron at the trailing edge. Links retain a larger touch target.
   const countBadge =
     count !== undefined && (count > 0 || countHasMore) ? (
       <Badge size="sm" className="shrink-0 tabular-nums">
@@ -191,7 +191,7 @@ export function Panel({
     <section
       className={cn(
         "flex flex-col border [--panel-inset:1rem] sm:[--panel-inset:1.25rem]",
-        shape.container,
+        shape === shapeMap.pill ? "rounded-2xl" : shape.container,
         tone === "accent"
           ? "border-transparent bg-accent"
           : cn("bg-card", CARD_SURFACE_FOREGROUND),
@@ -206,7 +206,7 @@ export function Panel({
           data-slot="panel-header"
           {...dragProps}
           className={cn(
-            "flex items-center justify-between gap-3 px-(--panel-inset) pt-(--panel-inset)",
+            "flex items-center justify-between gap-3 px-(--panel-inset) pt-3 sm:pt-(--panel-inset)",
             dragProps && "cursor-grab touch-none active:cursor-grabbing",
           )}
         >
@@ -226,7 +226,7 @@ export function Panel({
                     />
                   </Link>
                 ) : (
-                  <span className="flex min-h-8 items-center gap-2 pointer-coarse:min-h-11">
+                  <span className="flex min-h-8 items-center gap-2">
                     <span className="min-w-0 truncate">{title}</span>
                     {countBadge}
                   </span>
@@ -247,7 +247,7 @@ export function Panel({
       <div
         className={cn(
           "flex-1 p-(--panel-inset)",
-          flush && "px-0 sm:px-1",
+          flush && "px-0 pt-1 sm:px-1 sm:pt-(--panel-inset)",
           contentClassName,
         )}
       >

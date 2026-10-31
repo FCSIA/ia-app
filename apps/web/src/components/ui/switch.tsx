@@ -1,6 +1,6 @@
 'use client';
 
-import { animate, motion, useMotionValue, type Transition } from 'framer-motion';
+import { animate, motion, useMotionValue, useReducedMotion, type Transition } from 'framer-motion';
 import * as SwitchPrimitive from '@radix-ui/react-switch';
 import {
   useEffect,
@@ -25,6 +25,7 @@ type SwitchProps = Omit<
   wrapperClassName?: string;
 };
 
+const INSTANT: Transition = { duration: 0 };
 const TRACK_WIDTH = 36;
 const TRACK_HEIGHT = 20;
 const THUMB_SIZE = 16;
@@ -56,7 +57,10 @@ function Switch({
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const hasMounted = useRef(false);
-  const transition = thumbTransition ?? spring.fast;
+  // Reduced motion snaps the thumb (a position change); the track color
+  // still fades, so the state change stays legible.
+  const reduceMotion = useReducedMotion() ?? false;
+  const transition = reduceMotion ? INSTANT : (thumbTransition ?? spring.fast);
   const thumbWidth = pressed ? 20 : hovered ? 18 : THUMB_SIZE;
   const thumbHeight = pressed ? 12 : THUMB_SIZE;
   const thumbX = checked

@@ -1,22 +1,21 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
-import gsap from 'gsap';
+import { useEffect, useRef } from 'react';
+import { startAmbientLoops } from '../../_lib/motion';
+
+// Start offsets match each wave's inline transform; both drift to -50%.
+const WAVE_START = ['translateX(0%)', 'translateX(-25%)'];
 
 export function WavesGraphic() {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.to('.wave', {
-        x: '-50%',
-        duration: 18,
-        ease: 'none',
-        repeat: -1,
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  useEffect(
+    () =>
+      startAmbientLoops(ref.current, '.wave', (_, i) => ({
+        keyframes: [{ transform: WAVE_START[i] }, { transform: 'translateX(-50%)' }],
+        options: { duration: 18_000, easing: 'linear' },
+      })),
+    [],
+  );
   return (
     <div ref={ref} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <svg

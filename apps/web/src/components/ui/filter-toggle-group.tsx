@@ -58,7 +58,7 @@ const FilterToggleItem = React.forwardRef<
       ref={ref}
       data-slot="filter-toggle-item"
       className={cn(
-        "min-w-0 max-w-full pointer-coarse:min-h-11 gap-1.5 border-border/70 bg-transparent px-3 text-xs text-muted-foreground shadow-none transition-[background-color,border-color,color,transform] duration-100 hover:border-border hover:bg-hover hover:text-foreground active:scale-[0.98] data-[state=on]:border-border data-[state=on]:bg-active data-[state=on]:text-foreground data-[state=on]:shadow-none [&_svg]:size-3.5",
+        "min-w-0 max-w-full pointer-coarse:min-h-11 gap-1.5 border-border/70 bg-transparent px-3 text-xs text-muted-foreground shadow-none transition-[background-color,border-color,color,scale] duration-100 hover:border-border hover:bg-hover hover:text-foreground active:scale-[0.98] data-[state=on]:border-border data-[state=on]:bg-active data-[state=on]:text-foreground data-[state=on]:shadow-none [&_svg]:size-3.5",
         shape.button,
         className
       )}

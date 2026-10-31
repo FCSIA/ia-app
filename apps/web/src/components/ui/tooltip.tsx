@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { motion, useMotionValue } from "framer-motion";
+import { motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
@@ -173,7 +173,9 @@ function Tooltip({
     );
   };
 
-  const slideOffset = getSlideOffset(side);
+  // Reduced motion keeps the fade and drops the 4px slide.
+  const reduceMotion = useReducedMotion() ?? false;
+  const slideOffset = reduceMotion ? undefined : getSlideOffset(side);
 
   // An explicit delayDuration overrides the ambient provider's delay; left
   // undefined, the Root inherits it from the nearest provider.

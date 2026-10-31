@@ -133,6 +133,8 @@ to the content pane.
 Registry dependency adaptations are deliberately narrow:
 
 - Use the installed `framer-motion` entry point for the same Motion APIs.
+- Apply the SidebarInset frame only at or above its provider's mobile
+  breakpoint, so a hidden desktop sidebar does not inset mobile content.
 - Map the new Sidebar's body/caption/micro classes to the existing local type
   ladder instead of overwriting SizeContext or importing new global tokens.
 - Add only the two missing panel icon names to IconContext.

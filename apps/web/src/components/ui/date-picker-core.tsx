@@ -15,7 +15,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
@@ -322,14 +322,19 @@ export const DatePickerPopupFrame = forwardRef<
     className?: string;
     children: ReactNode;
   }
->(({ open, onExitComplete, className, children }, ref) => (
+>(({ open, onExitComplete, className, children }, ref) => {
+  // Reduced motion keeps the fade and drops the slide/scale.
+  const reduceMotion = useReducedMotion() ?? false;
+  return (
   <motion.div
     className={cn("outline-none", popupMotionClass)}
-    initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
+    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
     animate={
       open
         ? { opacity: 1, y: 0, scaleY: 1 }
-        : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
+        : reduceMotion
+          ? { opacity: 0 }
+          : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
     }
     transition={open ? spring.fast : spring.fast.exit}
     onAnimationComplete={() => {
@@ -346,7 +351,8 @@ export const DatePickerPopupFrame = forwardRef<
       {children}
     </Elevated>
   </motion.div>
-));
+  );
+});
 DatePickerPopupFrame.displayName = "DatePickerPopupFrame";
 
 // ---------------------------------------------------------------------------
