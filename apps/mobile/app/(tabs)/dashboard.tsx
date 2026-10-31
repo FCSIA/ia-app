@@ -1,3 +1,4 @@
+import { calendarDisplayDate } from '~/apps/shared/calendar-date';
 import { greetingName } from '~/apps/shared/user-name';
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
@@ -136,7 +137,9 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
                 divider={index > 0}
                 title={entry.title}
                 subtitle={entry.location}
-                meta={`${shortDate(entry.startAt)} · ${timeRange(entry.startAt)}`}
+                meta={entry.source === "EXTERNAL" && entry.allDay
+                  ? `${shortDate(calendarDisplayDate(entry.startAt, true).getTime())} · All day`
+                  : `${shortDate(entry.startAt)} · ${timeRange(entry.startAt)}`}
                 onPress={() => entry.eventId
                   ? router.push(`/events/${entry.eventId}` as never)
                   : router.push("/calendar" as never)}
@@ -268,7 +271,9 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
                   divider={index > 0}
                   title={entry.title}
                   subtitle={entry.location}
-                  meta={`${shortDate(entry.startAt)} · ${timeRange(entry.startAt)}`}
+                  meta={entry.source === "EXTERNAL" && entry.allDay
+                    ? `${shortDate(calendarDisplayDate(entry.startAt, true).getTime())} · All day`
+                    : `${shortDate(entry.startAt)} · ${timeRange(entry.startAt)}`}
                   onPress={() => entry.eventId
                     ? router.push(`/events/${entry.eventId}` as never)
                     : router.push("/calendar" as never)}
@@ -615,8 +620,11 @@ function useUpcomingCalendarEntries() {
   const startedBefore = useMemo(() => Date.now(), []);
   const entries = useQuery(api.events.calendar.list, range);
   return useMemo(
-    () => entries?.filter((entry: any) => entry.startAt >= startedBefore),
-    [entries, startedBefore],
+    () => entries?.filter((entry: any) => {
+      const start = calendarDisplayDate(entry.startAt, entry.source === "EXTERNAL" && entry.allDay).getTime();
+      return start >= (entry.source === "EXTERNAL" && entry.allDay ? range.startDate : startedBefore) && start <= range.endDate;
+    }),
+    [entries, startedBefore, range],
   );
 }
 

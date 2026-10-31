@@ -1359,11 +1359,13 @@ export const schema = defineSchema({
     location: v.optional(v.string()),
     startAt: v.number(),
     endAt: v.optional(v.number()),
+    allDay: v.optional(v.boolean()),
     tags: v.array(v.string()),
     lastSeenAt: v.number(),
   })
     .index("by_subscriptionId_and_externalId", ["subscriptionId", "externalId"])
     .index("by_userId_and_startAt", ["userId", "startAt"])
+    .index("by_userId_and_allDay_and_endAt", ["userId", "allDay", "endAt"])
     .index("by_subscriptionId_and_lastSeenAt", [
       "subscriptionId",
       "lastSeenAt",

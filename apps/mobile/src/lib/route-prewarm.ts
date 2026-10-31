@@ -1,3 +1,4 @@
+import { calendarQueryRange } from '~/apps/shared/calendar-date';
 /**
  * Starts a tab's queries when the user taps it, not when they sign in.
  *
@@ -80,8 +81,7 @@ function queriesForTab(tab: PrewarmTab, user: AppUser): KeepAliveEntry[] {
         {
           query: api.events.calendar.list,
           args: {
-            startDate: month.start.getTime(),
-            endDate: month.end.getTime(),
+            ...calendarQueryRange(month.start.getTime(), month.end.getTime()),
             sources: [...CALENDAR_SOURCES],
           },
         },

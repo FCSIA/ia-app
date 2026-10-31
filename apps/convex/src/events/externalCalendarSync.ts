@@ -37,29 +37,36 @@ async function fetchIcs(url: string): Promise<string> {
   throw new Error("Calendar feed redirected too many times.");
 }
 
-function parseIcs(text: string) {
+function occurrenceTimestamp(time: ICAL.Time): number {
+  return time.isDate
+    ? Date.UTC(time.year, time.month - 1, time.day)
+    : time.toJSDate().getTime();
+}
+
+export function parseIcs(text: string) {
   const component = new ICAL.Component(ICAL.parse(text));
   const lowerBound = new Date();
   lowerBound.setDate(lowerBound.getDate() - 31);
   const upperBound = new Date();
   upperBound.setFullYear(upperBound.getFullYear() + 1);
-  const events: Array<{ externalId: string; title: string; description?: string; location?: string; startAt: number; endAt?: number }> = [];
+  const events: Array<{ externalId: string; title: string; description?: string; location?: string; startAt: number; endAt?: number; allDay?: boolean }> = [];
   for (const vevent of component.getAllSubcomponents("vevent")) {
     const event = new ICAL.Event(vevent);
     const occurrences = event.isRecurring() ? event.iterator() : null;
     let occurrence: ICAL.Time | null = occurrences ? occurrences.next() : event.startDate;
     while (occurrence && events.length < MAX_EVENTS_PER_FEED) {
       const details = event.getOccurrenceDetails(occurrence);
-      const startAt = details.item.startDate.toJSDate().getTime();
+      const startAt = occurrenceTimestamp(details.startDate);
       if (startAt > upperBound.getTime()) break;
       if (startAt >= lowerBound.getTime()) {
-        const endAt = details.item.endDate?.toJSDate().getTime();
+        const endAt = details.endDate ? occurrenceTimestamp(details.endDate) : undefined;
         events.push({
           externalId: `${event.uid}:${occurrence.toString()}`,
           title: (details.item.summary || "Untitled event").slice(0, 160),
           description: details.item.description?.slice(0, 2_000),
           location: details.item.location?.slice(0, 300),
           startAt,
+          ...(details.startDate.isDate ? { allDay: true } : {}),
           ...(endAt ? { endAt } : {}),
         });
       }

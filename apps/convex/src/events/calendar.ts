@@ -38,6 +38,7 @@ const externalCalendarEntryOutputValidator = v.object({
   location: v.optional(v.string()),
   startAt: v.number(),
   endAt: v.optional(v.number()),
+  allDay: v.optional(v.boolean()),
   tags: v.array(v.string()),
   source: v.literal("EXTERNAL"),
   subscriptionId: v.id("externalCalendarSubscriptions"),
@@ -57,6 +58,7 @@ export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvent
     location: entry.location,
     startAt: entry.startAt,
     endAt: entry.endAt,
+    ...(entry.allDay === undefined ? {} : { allDay: entry.allDay }),
     tags: entry.tags,
     source: "EXTERNAL" as const,
     subscriptionId: entry.subscriptionId,
@@ -107,6 +109,8 @@ export const list = query({
   args: {
     startDate: v.number(),
     endDate: v.number(),
+    startDay: v.optional(v.number()),
+    endDay: v.optional(v.number()),
     sources: v.optional(v.array(v.string())),
   },
   returns: v.array(calendarListEntryValidator),
@@ -144,13 +148,31 @@ export const list = query({
       return true;
     });
 
-    const externalEntries = allowed.has("EXTERNAL") ? await ctx.db
-      .query("externalCalendarEvents")
-      .withIndex("by_userId_and_startAt", (q) =>
-        q.eq("userId", user._id).gte("startAt", args.startDate).lte("startAt", args.endDate),
-      )
-      .take(500) : [];
-    const importedEntries = externalEntries.map(serializeExternalCalendarEntry);
+    // Day-only values use UTC midnight as a calendar-date encoding, not an
+    // instant. Clients send their local day bounds separately from timestamps.
+    const startDay = args.startDay ?? args.startDate;
+    const endDay = args.endDay ?? args.endDate;
+    if ((args.startDay === undefined) !== (args.endDay === undefined) ||
+        endDay < startDay || Math.abs(startDay - args.startDate) > 2 * 86400000 ||
+        Math.abs(endDay - args.endDate) > 2 * 86400000) {
+      throw new Error("Invalid calendar day range");
+    }
+    const [externalEntries, overlappingDays] = allowed.has("EXTERNAL") ? await Promise.all([
+      ctx.db.query("externalCalendarEvents")
+        .withIndex("by_userId_and_startAt", (q) => q.eq("userId", user._id)
+          .gte("startAt", Math.min(args.startDate, startDay))
+          .lte("startAt", Math.max(args.endDate, endDay)))
+        .take(500),
+      ctx.db.query("externalCalendarEvents")
+        .withIndex("by_userId_and_allDay_and_endAt", (q) => q.eq("userId", user._id)
+          .eq("allDay", true).gt("endAt", startDay))
+        .take(500),
+    ]) : [[], []];
+    const importedEntries = Array.from(new Map([...externalEntries, ...overlappingDays]
+      .filter((entry) => entry.allDay
+        ? entry.startAt <= endDay && (entry.endAt ?? entry.startAt + 86400000) > startDay
+        : entry.startAt >= args.startDate && entry.startAt <= args.endDate)
+      .map((entry) => [entry._id, entry])).values()).map(serializeExternalCalendarEntry);
 
     if (!includePersonal) return [...visibleEntries, ...importedEntries];
 
@@ -171,7 +193,7 @@ export const list = query({
           loader.get(invite.senderId),
           getFriendshipBetween(ctx, invite.senderId, user._id),
         ]);
-        if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") {
+        if (!entry || entry.source !== "PERSONAL" || entry.createdById !== invite.senderId || !sender || friendship?.status !== "ACCEPTED") {
           return null;
         }
         if (entry.startAt < args.startDate || entry.startAt > args.endDate) return null;
@@ -224,10 +246,17 @@ export const listPendingInvites = query({
           loader.get(invite.senderId),
           getFriendshipBetween(ctx, invite.senderId, user._id),
         ]);
-        if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") {
+        if (!entry || entry.source !== "PERSONAL" || entry.createdById !== invite.senderId || !sender || friendship?.status !== "ACCEPTED") {
           return null;
         }
-        return { ...invite, entry, sender: serializeUser(sender) };
+        return {
+          _id: invite._id,
+          _creationTime: invite._creationTime,
+          status: invite.status,
+          createdAt: invite.createdAt,
+          entry,
+          sender: serializeUser(sender),
+        };
       }),
     );
     return resolved.filter((row): row is NonNullable<typeof row> => row !== null);
