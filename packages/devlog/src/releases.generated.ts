@@ -7,6 +7,23 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.41",
+    "date": "2026-10-31",
+    "commit": "1ce98109",
+    "changes": [
+      {
+        "category": "Internal",
+        "summary": "Add new requirements to Azure deployment plan.",
+        "commit": "1ce98109"
+      },
+      {
+        "category": "Internal",
+        "summary": "Add single-VM Azure deployment plan.",
+        "commit": "7e825788"
+      }
+    ]
+  },
+  {
     "version": "0.8.40",
     "date": "2026-10-31",
     "commit": "2ccd82f6",
