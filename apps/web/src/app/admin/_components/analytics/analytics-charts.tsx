@@ -172,7 +172,7 @@ export function DailyTrendChart<T extends { day: string }>({
   return (
     <ChartContainer config={config} className="aspect-auto h-56 w-full">
       <AreaChart accessibilityLayer data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} />
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
           dataKey="day"
           tickLine={false}
@@ -231,7 +231,7 @@ export type BarItem = { label: string; value: number; display?: string };
 /**
  * Named categories compared by length. Each row prints its name and value on
  * one line with the bar beneath, so it reads the same on a phone as on a wide
- * screen. One color for every bar, rounded only at the data end.
+ * screen. One color for every bar, with a track showing the comparison scale.
  */
 export function BarListChart({
   data,
@@ -252,7 +252,7 @@ export function BarListChart({
         const share = top > 0 ? Math.min(item.value / top, 1) : 0;
         return (
           <li key={`${item.label}-${index}`} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-3 text-xs">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="min-w-0 truncate text-muted-foreground" title={item.label}>
                 {item.label}
               </span>
@@ -260,15 +260,16 @@ export function BarListChart({
                 {item.display ?? format(item.value)}
               </span>
             </div>
-            <div
-              aria-hidden
-              className="mt-1.5 h-2 rounded-r-[4px] rounded-l-[1px]"
-              style={{
-                width: `${share * 100}%`,
-                minWidth: item.value > 0 ? 2 : 0,
-                background: seriesColor,
-              }}
-            />
+            <div aria-hidden className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${share * 100}%`,
+                  minWidth: item.value > 0 ? 2 : 0,
+                  background: seriesColor,
+                }}
+              />
+            </div>
           </li>
         );
       })}

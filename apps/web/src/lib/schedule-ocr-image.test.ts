@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 import {
@@ -7,6 +8,9 @@ import {
   scheduleOcrImageDimensions,
 } from "./schedule-ocr-local";
 import { parseInfiniteCampusSchedule } from "./schedule-ocr";
+
+const require = createRequire(import.meta.url);
+const languagePath = join(dirname(require.resolve("@tesseract.js-data/eng/package.json")), "4.0.0_best_int");
 
 // Opt in with the owner's local image; do not commit a student screenshot.
 const screenshot = process.env.SCHEDULE_OCR_IMAGE;
@@ -20,7 +24,7 @@ describe.skipIf(!screenshot)("real Campus screenshot OCR", () => {
       .png()
       .toBuffer();
     const { height } = await sharp(image).metadata();
-    const worker = await createWorker("eng", 1, { cachePath: tmpdir() });
+    const worker = await createWorker("eng", 1, { langPath: languagePath, cacheMethod: "none" });
     try {
       const result = await recognizeScheduleImage(worker, image, height!);
       const rows = parseInfiniteCampusSchedule(
@@ -156,7 +160,7 @@ describe.skipIf(!integration)(
   () => {
     let worker: Awaited<ReturnType<typeof createWorker>>;
     beforeAll(async () => {
-      worker = await createWorker("eng", 1, { cachePath: tmpdir() });
+      worker = await createWorker("eng", 1, { langPath: languagePath, cacheMethod: "none" });
     }, 60_000);
     afterAll(async () => {
       await worker?.terminate();
