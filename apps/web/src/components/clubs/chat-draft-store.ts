@@ -65,7 +65,8 @@ export class ChatDraftStore {
       draft.pollOptions = current.pollOptions;
     }
     // Sent files must not remain attached to the next message, even if new files were added.
-    draft.files = current.files.filter((file) => !submitted.files.includes(file));
+    const sentFiles = new Set(submitted.files);
+    draft.files = current.files.filter((file) => !sentFiles.has(file));
     this.publish({ draft, pending: false, generation: this.snapshot.generation + (unchanged('richValue') ? 1 : 0) });
   }
 }
