@@ -12,6 +12,35 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.40 — 2026-10-31 (alpha)
+
+### Added
+
+- **feedback** — Paste screenshots directly into feedback. ([`c6edd259`](https://github.com/virajdas/ia-app/commit/c6edd259))
+- **schedule** — Add OCR image checks and verification guide. ([`87f2aaa2`](https://github.com/virajdas/ia-app/commit/87f2aaa2))
+- **clubs** — Log service hours with proof photos and view clear personal and club volunteer reports on any screen. ([#173](https://github.com/virajdas/ia-app/pull/173), [`ea8917a3`](https://github.com/virajdas/ia-app/commit/ea8917a3))
+
+### Improved
+
+- **chat** — Streamline sent attachment lookup. ([`9b3f81f7`](https://github.com/virajdas/ia-app/commit/9b3f81f7))
+- **schedule** — Schedule picture import now reads images on your device without uploading them. ([`d0292f71`](https://github.com/virajdas/ia-app/commit/d0292f71))
+- **chat** — Failed chat sends keep your message, reply, poll, and attachments ready to retry. ([`44ce5424`](https://github.com/virajdas/ia-app/commit/44ce5424))
+- **admin** — Improve analytics chart readability. ([`cff7f86a`](https://github.com/virajdas/ia-app/commit/cff7f86a))
+- **schedule** — Importing part of a schedule now keeps your other classes and checks lunch conflicts before applying. ([`0de420bb`](https://github.com/virajdas/ia-app/commit/0de420bb))
+- **schedule** — Schedule picture imports recognize more layouts while preserving periods and course distinctions. ([`4dd40328`](https://github.com/virajdas/ia-app/commit/4dd40328))
+- **schedule** — Schedule picture import now keeps the right class periods and skips SSS/Flex and Period 9. ([`35f21ded`](https://github.com/virajdas/ia-app/commit/35f21ded))
+
+### Security
+
+- Hardened file matching and cancellation against resource-exhaustion attacks. ([`3bc1831c`](https://github.com/virajdas/ia-app/commit/3bc1831c))
+- Updated security dependencies and strengthened checks around reviewed security exceptions. ([`8bedf305`](https://github.com/virajdas/ia-app/commit/8bedf305))
+- Patch systeminformation command injection. ([`dd2486ca`](https://github.com/virajdas/ia-app/commit/dd2486ca))
+
+### Internal
+
+- Record dependency exception reassessment. ([`aa0a9a09`](https://github.com/virajdas/ia-app/commit/aa0a9a09))
+- Expose Convex prompts and isolate environment loading. ([`da16173c`](https://github.com/virajdas/ia-app/commit/da16173c))
+
 ## v0.8.39 — 2026-10-23 (alpha)
 
 ### Added

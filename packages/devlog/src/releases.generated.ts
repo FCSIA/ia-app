@@ -7,6 +7,99 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.40",
+    "date": "2026-10-31",
+    "commit": "2ccd82f6",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "feedback",
+        "summary": "Paste screenshots directly into feedback.",
+        "commit": "c6edd259"
+      },
+      {
+        "category": "Added",
+        "scope": "schedule",
+        "summary": "Add OCR image checks and verification guide.",
+        "commit": "87f2aaa2"
+      },
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "Log service hours with proof photos and view clear personal and club volunteer reports on any screen.",
+        "commit": "ea8917a3",
+        "pr": 173
+      },
+      {
+        "category": "Improved",
+        "scope": "chat",
+        "summary": "Streamline sent attachment lookup.",
+        "commit": "9b3f81f7"
+      },
+      {
+        "category": "Improved",
+        "scope": "schedule",
+        "summary": "Schedule picture import now reads images on your device without uploading them.",
+        "commit": "d0292f71"
+      },
+      {
+        "category": "Improved",
+        "scope": "chat",
+        "summary": "Failed chat sends keep your message, reply, poll, and attachments ready to retry.",
+        "commit": "44ce5424"
+      },
+      {
+        "category": "Improved",
+        "scope": "admin",
+        "summary": "Improve analytics chart readability.",
+        "commit": "cff7f86a"
+      },
+      {
+        "category": "Improved",
+        "scope": "schedule",
+        "summary": "Importing part of a schedule now keeps your other classes and checks lunch conflicts before applying.",
+        "commit": "0de420bb"
+      },
+      {
+        "category": "Improved",
+        "scope": "schedule",
+        "summary": "Schedule picture imports recognize more layouts while preserving periods and course distinctions.",
+        "commit": "4dd40328"
+      },
+      {
+        "category": "Improved",
+        "scope": "schedule",
+        "summary": "Schedule picture import now keeps the right class periods and skips SSS/Flex and Period 9.",
+        "commit": "35f21ded"
+      },
+      {
+        "category": "Security",
+        "summary": "Hardened file matching and cancellation against resource-exhaustion attacks.",
+        "commit": "3bc1831c"
+      },
+      {
+        "category": "Security",
+        "summary": "Updated security dependencies and strengthened checks around reviewed security exceptions.",
+        "commit": "8bedf305"
+      },
+      {
+        "category": "Security",
+        "summary": "Patch systeminformation command injection.",
+        "commit": "dd2486ca"
+      },
+      {
+        "category": "Internal",
+        "summary": "Record dependency exception reassessment.",
+        "commit": "aa0a9a09"
+      },
+      {
+        "category": "Internal",
+        "summary": "Expose Convex prompts and isolate environment loading.",
+        "commit": "da16173c"
+      }
+    ]
+  },
+  {
     "version": "0.8.39",
     "date": "2026-10-23",
     "commit": "48d983fb",
