@@ -241,8 +241,12 @@
     "unrs-resolver",
   ],
   "patchedDependencies": {
-    "braces@3.0.3": "patches/braces@3.0.3.patch",
     "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch",
+    "glob@10.5.0": "patches/glob@10.5.0.patch",
+    "glob@13.0.6": "patches/glob@13.0.6.patch",
+    "minimatch@9.0.9": "patches/minimatch@9.0.9.patch",
+    "braces@3.0.3": "patches/braces@3.0.3.patch",
+    "minimatch@10.2.6": "patches/minimatch@10.2.6.patch",
   },
   "overrides": {
     "@types/react": "19.2.7",
