@@ -12,6 +12,13 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.41 — 2026-10-31 (alpha)
+
+### Internal
+
+- Add new requirements to Azure deployment plan. ([`1ce98109`](https://github.com/virajdas/ia-app/commit/1ce98109))
+- Add single-VM Azure deployment plan. ([`7e825788`](https://github.com/virajdas/ia-app/commit/7e825788))
+
 ## v0.8.40 — 2026-10-31 (alpha)
 
 ### Added
