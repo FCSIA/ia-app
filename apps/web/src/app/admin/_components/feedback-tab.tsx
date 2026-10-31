@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Archive, Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
@@ -372,8 +373,11 @@ function FeedbackDetail({
                     maxHeight={80}
                   />
                 ) : (
-                  <img
+                  <Image
                     src={image.url}
+                    width={80}
+                    height={80}
+                    unoptimized
                     alt={`Feedback attachment ${index + 1}`}
                     loading="lazy"
                     decoding="async"

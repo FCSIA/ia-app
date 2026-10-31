@@ -13,6 +13,7 @@ import {
   type HTMLAttributes,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import * as Collapsible from "@radix-ui/react-collapsible";
 
 // SSR-safe layout effect (client components still server-render in Next).
@@ -517,9 +518,13 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
         filter: { duration: 0.15, delay },
       }}
     >
-      <img
+      <Image
         src={src}
         alt={alt}
+        width={200}
+        height={200}
+        unoptimized
+        style={{ height: "auto" }}
         className={cn(
           "w-full max-w-[200px] object-cover",
           shape.container

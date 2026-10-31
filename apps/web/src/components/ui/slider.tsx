@@ -1699,21 +1699,13 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       label,
       formatValue,
       disabled,
-      // Compact-engine-only fields — all undefined on this path (any defined
-      // one would have routed to the compact engine above).
-      steps: _steps,
-      showSteps: _showSteps,
-      showValue: _showValue,
-      valuePosition: _valuePosition,
-      trackClassName: _trackClassName,
-      trackStyle: _trackStyle,
-      fillClassName: _fillClassName,
-      fillStyle: _fillStyle,
-      hideFill: _hideFill,
-      thumbColor: _thumbColor,
-      thumbBorderColor: _thumbBorderColor,
       ...html
     } = props;
+
+    // Compact-only props must not reach the comfortable slider's DOM.
+    for (const key of ["steps", "showSteps", "showValue", "valuePosition", "trackClassName", "trackStyle", "fillClassName", "fillStyle", "hideFill", "thumbColor", "thumbBorderColor"]) {
+      delete (html as Record<string, unknown>)[key];
+    }
 
     return (
       <ComfortableSlider

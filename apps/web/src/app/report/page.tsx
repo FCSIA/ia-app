@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { X } from 'lucide-react';
 import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -158,7 +159,7 @@ export default function ReportPage() {
                   {image.file.type === 'image/gif' ? (
                     <AnimatedGif src={image.previewUrl} name={image.file.name} thumbnail maxHeight={80} />
                   ) : (
-                    <img src={image.previewUrl} alt={image.file.name} className="size-full object-cover" />
+                    <Image src={image.previewUrl} alt={image.file.name} width={80} height={80} unoptimized className="size-full object-cover" />
                   )}
                   <Button
                     type="button"
