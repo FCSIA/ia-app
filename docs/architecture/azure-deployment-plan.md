@@ -166,7 +166,7 @@ uploaded files, and a few hours of downtime while the VM is rebuilt.
 | File / area | Change |
 | --- | --- |
 | [next.config.ts](../../apps/web/next.config.ts) | Add `output: 'standalone'` and the monorepo tracing root. Check the Next.js docs in `node_modules/next/dist/docs/` first. |
-| `apps/web/Dockerfile` (new) | Multi-stage Bun and Node 24 build with a non-root runtime. Run the Excalidraw asset copy. Pass `NEXT_PUBLIC_*` values as build args, because they are compiled in. |
+| `apps/web/Dockerfile` (new) | Multi-stage Bun and Node 24 build with a non-root runtime. Run the `web` `prebuild` step, which generates the Excalidraw and `schedule-ocr-assets` files in `apps/web/public`. Copy `public` into the standalone output so the app serves both. Pass `NEXT_PUBLIC_*` values as build args, because they are compiled in. |
 | `infra/azure-vm/` (new) | Compose file, Caddyfile, backup scripts, and a restore runbook. |
 | [prod.yml](../../.github/workflows/prod.yml) | Keep tag validation and tests. Use `CONVEX_SELF_HOSTED_URL` and `CONVEX_SELF_HOSTED_ADMIN_KEY`. Replace the Vercel step with `azure/login` (OIDC), an image push, and `az vm run-command` to pull and restart. |
 | [contributor-validation.yml](../../.github/workflows/contributor-validation.yml) | Update any production Convex URL or key assumptions. |
@@ -201,7 +201,9 @@ and web push subscriptions should keep working. Test both.
 Stop and resolve any failure here before moving on:
 
 - [ ] The pinned backend image works with `convex` 1.46 and `defineApp({ env })`
-- [ ] Rate limiter, migrations, presence, and Better Auth components work
+- [ ] Rate limiter, migrations, presence, aggregate (`volunteerHours`), and
+      Better Auth components work
+- [ ] Volunteer hour totals match Convex Cloud after the data import
 - [ ] Sign-in, sign-up, password reset, and mobile sign-in work
 - [ ] `"use node"` actions work: web push and external calendar sync
 - [ ] All crons in [crons.ts](../../apps/convex/src/crons.ts) run
@@ -209,6 +211,7 @@ Stop and resolve any failure here before moving on:
 - [ ] Chat and whiteboards update live across two browsers
 - [ ] Clients reconnect after a backend restart
 - [ ] Expo push and Google Vision OCR work
+- [ ] Browser schedule OCR loads its files from `/schedule-ocr-assets`
 
 ### 4. Load Test
 
