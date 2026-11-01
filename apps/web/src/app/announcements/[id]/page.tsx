@@ -29,7 +29,6 @@ const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') return 'Active';
-  if (status === 'EXPIRED') return 'Expired';
   if (status === 'ARCHIVED') return 'Archived';
   return status.replace(/_/g, ' ');
 }
@@ -71,6 +70,7 @@ function AnnouncementDetailSkeleton() {
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const announcementNow = useAnnouncementFeedClock(3_600_000);
+  const displayNow = useAnnouncementFeedClock(60_000);
   const user = useCurrentUser();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
@@ -202,7 +202,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                     addSuffix: true,
                   })}
                 </time>
-                {announcement.expiresAt ? <span>Expires {format(new Date(announcement.expiresAt), 'MMM d')}</span> : null}
+                {announcement.expiresAt ? <span>{announcement.expiresAt <= displayNow ? 'Expired' : 'Expires'} {format(new Date(announcement.expiresAt), 'MMM d')}</span> : null}
               </div>
             </AnnouncementAuthor>
           </CardHeader>

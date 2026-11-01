@@ -568,7 +568,6 @@ export const schema = defineSchema({
     status: v.union(
       v.literal("PENDING_APPROVAL"),
       v.literal("ACTIVE"),
-      v.literal("EXPIRED"),
       v.literal("ARCHIVED"),
       v.literal("REJECTED"),
     ),
