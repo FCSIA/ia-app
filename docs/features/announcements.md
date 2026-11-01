@@ -15,6 +15,8 @@ a club, inside club workflows.
   first, promoted posts second, and remaining posts ordered newest-first.
 - Automatically places announcements more than 14 days old in the collapsed
   Past Announcements section without changing their stored publication status.
+- Treats an active announcement as expired when its `expiresAt` time has passed;
+  it remains stored as `ACTIVE` and appears under Past Announcements.
 - Searches the visible feed by title, body, author, club, grade, and pathway
   while preserving the all, unread, and saved filters.
 - Supports detail pages, comments, read/unread state, bookmarks, archives, and
