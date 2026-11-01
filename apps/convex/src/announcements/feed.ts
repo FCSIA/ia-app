@@ -119,7 +119,7 @@ export const listPinnedPage = query({
 
 export const listPastStatusPage = query({
   args: {
-    status: v.union(v.literal("ACTIVE"), v.literal("EXPIRED"), v.literal("ARCHIVED"), v.literal("REJECTED")),
+    status: v.union(v.literal("ACTIVE"), v.literal("ARCHIVED"), v.literal("REJECTED")),
     clubId: v.optional(v.id("clubs")),
     now: v.number(),
     paginationOpts: paginationOptsValidator,
@@ -228,7 +228,7 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
         const belongsInPast =
           isPastByAge(ann, now) ||
           isEffectivelyExpired(ann, now) ||
-          ["EXPIRED", "ARCHIVED", "REJECTED"].includes(ann.status);
+          ["ARCHIVED", "REJECTED"].includes(ann.status);
         if (!belongsInPast) return false;
         if (elevated) return true;
         if (

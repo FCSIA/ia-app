@@ -29,7 +29,6 @@ const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') return 'Active';
-  if (status === 'EXPIRED') return 'Expired';
   if (status === 'ARCHIVED') return 'Archived';
   return status.replace(/_/g, ' ');
 }

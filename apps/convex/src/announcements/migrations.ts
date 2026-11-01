@@ -1,9 +1,8 @@
 import { Migrations } from "@convex-dev/migrations";
 import { components } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
-import schema from "../schema";
 
-const migrations = new Migrations<DataModel, typeof schema>(components.migrations, { schema });
+const migrations = new Migrations<DataModel>(components.migrations);
 
 /**
  * Fill in `announcements.commentCount` for rows written before the counter
@@ -26,25 +25,4 @@ export const backfillCommentCount = migrations.define({
       .collect();
     return { commentCount: comments.length };
   },
-});
-
-/**
- * Convert the legacy stored expiry status to the same representation used by
- * live announcements. Run this before removing EXPIRED from the schema.
- *
- *   bun run --cwd apps/convex convex run --deployment local \
- *     announcements/migrations:normalizeExpiredStatus '{"dryRun":true}'
- */
-export const normalizeExpiredStatus = migrations.define({
-  table: "announcements",
-  customRange: (query) =>
-    query.withIndex("by_status", (q) => q.eq("status", "EXPIRED")),
-  batchSize: 50,
-  migrateOne: async (_ctx, announcement) => ({
-    status: "ACTIVE" as const,
-    expiresAt: Math.min(
-      announcement.expiresAt ?? announcement.createdAt,
-      Date.now() - 1,
-    ),
-  }),
 });

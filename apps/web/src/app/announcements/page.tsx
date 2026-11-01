@@ -180,11 +180,6 @@ export default function AnnouncementsPage() {
     pastOpen ? { archived: true, now: feedNow } : 'skip',
     { initialNumItems: 20 },
   );
-  const { results: recentExpired, status: expiredStatus, loadMore: loadMoreExpired } = usePaginatedQuery(
-    api.announcements.feed.listPastStatusPage,
-    pastOpen ? { status: 'EXPIRED', now: feedNow } : 'skip',
-    { initialNumItems: 20 },
-  );
   const { results: recentArchived, status: archivedStatus, loadMore: loadMoreArchived } = usePaginatedQuery(
     api.announcements.feed.listPastStatusPage,
     pastOpen ? { status: 'ARCHIVED', now: feedNow } : 'skip',
@@ -202,15 +197,14 @@ export default function AnnouncementsPage() {
   );
   const pastStatusPages = [
     { status: recentlyExpiredStatus, loadMore: loadMoreRecentlyExpired },
-    { status: expiredStatus, loadMore: loadMoreExpired },
     { status: archivedStatus, loadMore: loadMoreArchived },
     { status: rejectedStatus, loadMore: loadMoreRejected },
   ];
   const pastAllAnnouncements = useMemo(() => {
     const byId = new Map<string, any>();
-    for (const item of [...pastAnnouncements, ...recentExpired, ...recentArchived, ...recentRejected, ...recentlyExpired]) byId.set(item._id, item);
+    for (const item of [...pastAnnouncements, ...recentArchived, ...recentRejected, ...recentlyExpired]) byId.set(item._id, item);
     return [...byId.values()].sort((left, right) => right.createdAt - left.createdAt);
-  }, [pastAnnouncements, recentExpired, recentArchived, recentRejected, recentlyExpired]);
+  }, [pastAnnouncements, recentArchived, recentRejected, recentlyExpired]);
   const isLoading = feedStatus === 'LoadingFirstPage' || pinnedStatus === 'LoadingFirstPage';
   const canLoadMore = feedStatus === 'CanLoadMore' || feedStatus === 'LoadingMore';
   const canLoadMorePast = pastFeedStatus === 'CanLoadMore' || pastFeedStatus === 'LoadingMore' || pastStatusPages.some(({ status }) => status === 'CanLoadMore' || status === 'LoadingMore');
@@ -805,7 +799,7 @@ export default function AnnouncementsPage() {
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-4">
-            {pastFeedStatus === 'LoadingFirstPage' || expiredStatus === 'LoadingFirstPage' || archivedStatus === 'LoadingFirstPage' || rejectedStatus === 'LoadingFirstPage' || recentlyExpiredStatus === 'LoadingFirstPage' ? (
+            {pastFeedStatus === 'LoadingFirstPage' || archivedStatus === 'LoadingFirstPage' || rejectedStatus === 'LoadingFirstPage' || recentlyExpiredStatus === 'LoadingFirstPage' ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Loading past announcements…</p>
             ) : filteredPastAnnouncements.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
