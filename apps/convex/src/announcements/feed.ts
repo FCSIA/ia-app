@@ -445,6 +445,9 @@ export const approve = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    if (ann.status !== "PENDING_APPROVAL") {
+      throw new ConvexError("Only pending announcements can be approved");
+    }
 
     await ctx.db.patch(args.announcementId, {
       status: "ACTIVE",
@@ -489,6 +492,9 @@ export const reject = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    if (ann.status !== "PENDING_APPROVAL") {
+      throw new ConvexError("Only pending announcements can be rejected");
+    }
     const note = normalizeOptionalBoundedText(
       args.note,
       "Rejection note",
