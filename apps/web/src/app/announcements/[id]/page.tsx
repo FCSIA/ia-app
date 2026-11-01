@@ -97,6 +97,7 @@ export default function AnnouncementDetailPage({
 }) {
   const { id } = use(params);
   const announcementNow = useAnnouncementFeedClock(3_600_000);
+  const displayNow = useAnnouncementFeedClock(60_000);
   const user = useCurrentUser();
   const { toast } = useToast();
   const commentComposer = useRef<ChannelMessageComposerHandle>(null);
@@ -271,7 +272,7 @@ export default function AnnouncementDetailPage({
                   </time>
                   {announcement.expiresAt ? (
                     <span>
-                      Expires{' '}
+                      {announcement.expiresAt <= displayNow ? 'Expired' : 'Expires'}{' '}
                       {format(new Date(announcement.expiresAt), 'MMM d')}
                     </span>
                   ) : null}
