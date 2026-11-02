@@ -179,6 +179,7 @@ export const applySync = internalMutation({
       location: v.optional(v.string()),
       startAt: v.number(),
       endAt: v.optional(v.number()),
+      allDay: v.optional(v.boolean()),
     })),
   },
   returns: v.null(),
@@ -193,7 +194,7 @@ export const applySync = internalMutation({
           q.eq("subscriptionId", subscription._id).eq("externalId", event.externalId),
         )
         .unique();
-      const values = { ...event, userId: subscription.userId, tags: ["external"], lastSeenAt: now };
+      const values = { ...event, allDay: event.allDay, userId: subscription.userId, tags: ["external"], lastSeenAt: now };
       if (existing) await ctx.db.patch(existing._id, values);
       else await ctx.db.insert("externalCalendarEvents", { subscriptionId: subscription._id, ...values });
     }
