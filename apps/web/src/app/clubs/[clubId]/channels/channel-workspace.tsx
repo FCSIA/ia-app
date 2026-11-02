@@ -168,6 +168,8 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
+import { chatDraftKey } from '@/components/clubs/chat-draft-store';
+import { useChatDraft } from '@/components/clubs/use-chat-draft';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { ChatGifLinks } from '@/components/clubs/chat-gif';
 import { AnimatedGif } from '@/components/media/animated-gif';
@@ -241,7 +243,6 @@ type ComposerSubmitArgs = {
   files: File[];
   pollQuestion?: string;
   pollOptions?: Array<{ id: string; label: string }>;
-  mode: 'root' | 'thread';
 };
 
 function formatBytes(size?: number | null) {
@@ -1739,18 +1740,21 @@ export function ChannelWorkspace() {
     router.replace(query ? `${pathname}?${query}` : (pathname ?? ''), { scroll: false });
   };
 
-  const [rootComposerResetKey, setRootComposerResetKey] = useState(0);
-  const [replyComposerResetKey, setReplyComposerResetKey] = useState(0);
+  const user = useCurrentUser();
+  const rootDraftKey = chatDraftKey(user?._id ?? 'anonymous', channelId);
+  const rootDraft = useChatDraft(rootDraftKey);
+  const replyingToMessageId = rootDraft.draft.replyToMessageId as Id<'clubChannelMessages'> | null;
+  const setReplyingToMessageId = (value: Id<'clubChannelMessages'> | null) => rootDraft.store.set('replyToMessageId', value);
   const [editingMessageId, setEditingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [search, setSearch] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
-  const [replyingToMessageId, setReplyingToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const threadDraftKey = chatDraftKey(user?._id ?? 'anonymous', channelId, selectedThreadId ?? 'closed');
+  const threadDraft = useChatDraft(threadDraftKey);
   const [jumpedToMessageId, setJumpedToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [jumpRequestKey, setJumpRequestKey] = useState(0);
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
-  const [sendingMode, setSendingMode] = useState<'root' | 'thread' | null>(null);
   const [mentionContextRequested, setMentionContextRequested] = useState(false);
   const rootComposerRef = useRef<ChannelMessageComposerHandle>(null);
   const [imageViewer, setImageViewer] = useState<(ImageViewerRequest & { open: boolean }) | null>(null);
@@ -1761,13 +1765,11 @@ export function ChannelWorkspace() {
   useEffect(() => {
     setEditingMessageId(null);
     setSelectedThreadId(null);
-    setReplyingToMessageId(null);
     setJumpedToMessageId(null);
     setJumpRequestKey(0);
     setReportingMessageId(null);
     setReportReason('');
     setFriendRequestPendingId(null);
-    setSendingMode(null);
     setMentionContextRequested(false);
     setSearch('');
     setImageViewer(null);
@@ -1777,8 +1779,6 @@ export function ChannelWorkspace() {
     () => normalizeSearchQuery(deferredSearch),
     [deferredSearch],
   );
-
-  const user = useCurrentUser();
 
   const conversationContext = useQuery(api.clubs.channels.getConversationContext, {
     clubId,
@@ -1991,10 +1991,8 @@ export function ChannelWorkspace() {
     files,
     pollQuestion,
     pollOptions,
-    mode,
   }: ComposerSubmitArgs) => {
     const attachmentUploadIds: Id<'clubChannelAttachmentUploads'>[] = [];
-    setSendingMode(mode);
     try {
       const uploadResults = await Promise.allSettled(
         files.map(async (file) => {
@@ -2033,13 +2031,8 @@ export function ChannelWorkspace() {
         attachments: attachmentUploadIds,
         ...messageIdentity,
       });
-      if (mode === 'thread') {
-        setReplyComposerResetKey((current) => current + 1);
-      } else {
-        setReplyingToMessageId(null);
-        setRootComposerResetKey((current) => current + 1);
-      }
       await postPromise;
+      return true;
     } catch {
       await Promise.allSettled(
         attachmentUploadIds.map((attachmentUploadId) =>
@@ -2047,8 +2040,7 @@ export function ChannelWorkspace() {
         ),
       );
       toast({ title: 'Failed to send message', variant: 'destructive' });
-    } finally {
-      setSendingMode(null);
+      return false;
     }
   };
 
@@ -2222,12 +2214,10 @@ export function ChannelWorkspace() {
             rootComposerRef.current?.focus();
           }}
           onJumpToReply={(messageId) => {
-            setReplyingToMessageId(null);
             setJumpedToMessageId(messageId as Id<'clubChannelMessages'>);
             setJumpRequestKey((key) => key + 1);
           }}
           onOpenThread={(threadId) => {
-            setReplyingToMessageId(null);
             setSelectedThreadId(threadId as Id<'clubChannelMessages'>);
           }}
           onToggleReaction={(messageId, emoji) =>
@@ -2388,9 +2378,10 @@ export function ChannelWorkspace() {
       <div className={cn("channel-thread-dock shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
-            key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
-            onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
-            isPending={sendingMode === 'thread'}
+            key={`${threadDraftKey}-${threadDraft.generation}`}
+            draftKey={threadDraftKey}
+            onSubmit={(args) => submitMessage({ ...args, parentMessageId: selectedThread._id })}
+            isPending={threadDraft.pending}
             suggestionEntries={suggestionEntries}
             placeholder="Reply in thread…"
             submitLabel="Reply"
@@ -2572,16 +2563,16 @@ export function ChannelWorkspace() {
                 </div>
               ) : null}
               <ChannelMessageComposer
-                key={`root-${rootComposerResetKey}`}
+                key={`${rootDraftKey}-${rootDraft.generation}`}
+                draftKey={rootDraftKey}
                 handleRef={rootComposerRef}
                 onSubmit={(args) =>
-                  void submitMessage({
+                  submitMessage({
                     ...args,
                     replyToMessageId: replyingToMessageId ?? undefined,
-                    mode: 'root',
                   })
                 }
-                isPending={sendingMode === 'root'}
+                isPending={rootDraft.pending}
                 suggestionEntries={suggestionEntries}
                 placeholder={`Message #${channel.name}`}
                 submitLabel="Send"

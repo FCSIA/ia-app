@@ -61,6 +61,12 @@ code after the app confirms the viewer is already a club member.
   one when live messages arrive.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
+- Web channel and thread drafts retain rich text, reply targets, polls, and local
+  files until a send succeeds. Failed sends remain editable and retryable;
+  successful sends clear only unchanged submitted content. Each conversation has
+  its own send lock and draft, scoped to the signed-in account. Drafts survive
+  navigation within the current browser tab, including closing/reopening threads,
+  but are held only in memory and do not survive reloads or closing the tab.
 - Gives every channel collaborative [whiteboards](whiteboards.md) that all
   channel readers can use.
 - Lets club settings managers enable a volunteer-hours tracker per club. When

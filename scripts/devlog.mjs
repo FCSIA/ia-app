@@ -33,7 +33,7 @@ const dataPath = path.join(root, "packages/devlog/data/releases.json");
 const modulePath = path.join(root, "packages/devlog/src/releases.generated.ts");
 const changelogPath = path.join(root, "CHANGELOG.md");
 
-const REPO_URL = "https://github.com/virajdas/ia-app";
+const REPO_URL = "https://github.com/FCSIA/ia-app";
 
 const CHANGE_CATEGORIES = ["Added", "Improved", "Fixed", "Security", "Internal"];
 const RELEASE_CHANNELS = ["alpha", "beta", "stable"];

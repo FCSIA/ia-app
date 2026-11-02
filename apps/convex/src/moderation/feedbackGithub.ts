@@ -5,7 +5,7 @@ import { env, httpAction, internalAction, internalMutation, internalQuery } from
 import { deliverNotification } from "../notifications/delivery";
 import { logAuditEvent } from "../audit/_lib";
 
-const GITHUB_REPOSITORY = "virajdas/ia-app";
+const GITHUB_REPOSITORY = "FCSIA/ia-app";
 const GITHUB_API_VERSION = "2022-11-28";
 
 type FeedbackStatus = "PENDING" | "RESOLVED" | "DISMISSED";

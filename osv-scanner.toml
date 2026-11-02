@@ -1,49 +1,49 @@
 [[IgnoredVulns]]
-id = "GHSA-86w9-cpqp-85rv"
-ignoreUntil = 2026-11-01
-reason = "node-forge 1.4.0 is patched via patches/node-forge@1.4.0.patch with the nested DigestAlgorithm validation from upstream PR 1152 (https://github.com/digitalbazaar/forge/pull/1152); scripts/dependency-security.test.mjs reproduces the vulnerable behavior and verifies its rejection in CI. Remove this version-only exception when an upstream patched release is available."
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. minimatch 9.0.9 and 10.2.6 carry the upstream 77a0f5c preprocessing bounds in both CJS and ESM builds; regressions verify bounded amplification, skipped quadratic deduplication and ordinary matches. Fixed upstream 11 changes the matcher engine, so preserve old caller APIs until their migration is reviewed. Legacy 3.1.5 lacks the implicated firstPhasePreProcess/optimizationLevel algorithm, which the regression verifies. This is a version-scoped patch/non-applicability exception, not a package-wide fix."
 
 [[IgnoredVulns]]
-id = "GHSA-vfj7-8cjw-p6xm"
-ignoreUntil = 2026-11-01
-reason = "braces 3.0.3 is source-patched via patches/braces@3.0.3.patch with the five lib depth/parent-cycle guards from upstream proposal https://github.com/micromatch/braces/pull/72 (including its corrected stringify parent handling). There is no newer published release as of 2026-10-15. scripts/dependency-security.test.mjs verifies deep string/AST rejection, untrusted maxDepth caps, parent cycles, and ordinary expansion/escaping before scanning. This exception covers the patched version identifier only; remove it when a fixed release or replacement is adopted."
+id = "GHSA-3g3m-2fjr-6pw4"
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. glob 10.5.0 and 13.0.6 are source-patched in both CJS and ESM builds so all four aborted walker branches immediately return cb(). Regressions exercise each cancellation branch and ordinary async/sync/stream traversal. Fixed glob 14 changes its minimatch/path-scurry dependency generations; preserve existing callers pending a reviewed migration. glob 7.2.3 precedes the affected v9+ walker. Remove these version-only exceptions with a validated fixed-major upgrade."
 
 [[IgnoredVulns]]
 id = "GHSA-fm4j-4xhm-xpwx"
-ignoreUntil = 2026-11-01
-reason = "Package-name reuse false positive: sandbox 4.4.0 is the Vercel Sandbox CLI (https://github.com/vercel/sandbox/tree/main/packages/sandbox), not the abandoned gf3/sandbox JavaScript isolation library in this 2020 advisory. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. scripts/dependency-security.test.mjs checks every locked sandbox instance and the installed package provenance. Recheck the database correction before expiry."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Package-name reuse false positive: sandbox 4.4.0 is the Vercel Sandbox CLI (https://github.com/vercel/sandbox/tree/main/packages/sandbox), not the abandoned gf3/sandbox JavaScript isolation library in this 2020 advisory. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. scripts/dependency-security.test.mjs checks every locked sandbox instance and the installed package provenance. Recheck the database correction before expiry."
 
 [[IgnoredVulns]]
 id = "GHSA-gc25-3vc5-2jf9"
-ignoreUntil = 2026-11-01
-reason = "Package-name reuse false positive for Vercel Sandbox CLI 4.4.0, not gf3/sandbox. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. See GHSA-fm4j-4xhm-xpwx above; the dependency-security regression checks all locked versions and installed provenance. Recheck the database correction before expiry."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Package-name reuse false positive for Vercel Sandbox CLI 4.4.0, not gf3/sandbox. OSV records last_known_affected_version_range <1.0.0 but has an unbounded SEMVER range. See GHSA-fm4j-4xhm-xpwx above; the dependency-security regression checks all locked versions and installed provenance. Recheck the database correction before expiry."
 
 [[IgnoredVulns]]
 id = "GHSA-mrhx-c7xc-m3w5"
-ignoreUntil = 2026-11-01
-reason = "Zod 4.6.5 uncontrolled resource consumption in $ZodArray (CVE-2023-54404). Application dependencies upgraded to zod 4.6.7. OSV advisory records unbounded lower SEMVER range (< 4.6.6) which false-positives on Zod 3.x instances used by Expo CLI and Vercel tooling. Recheck upstream advisory scoping before expiry."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Application Zod 4 instances are fixed at 4.6.7. Remaining 3.22.4 and 3.25.76 instances belong to CLI tooling with no compatible patched Zod 3 release. This is a time-limited tooling risk exception, not a blanket false-positive claim: 3.25.76 also bundles old v4 code, and size-bounded Zod 3 arrays still visit every element. Do not validate untrusted bulk data with those tooling instances; migrate their callers before removing this exception."
 
 [[IgnoredVulns]]
 id = "GHSA-gcqx-w48m-w2h4"
-ignoreUntil = 2026-11-01
-reason = "deepmerge 4.3.1 has no fixed upstream release. patches/deepmerge@4.3.1.patch rejects __proto__ keys in both target-copy and source-merge paths in source, CommonJS and UMD entry points. scripts/dependency-security.test.mjs reproduces the null-prototype, null-placeholder and poisoned-target attacks and checks ordinary merges. This exception covers the patched version identifier only; remove when a fixed release is adopted."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. deepmerge 4.3.1 has no fixed upstream release. patches/deepmerge@4.3.1.patch rejects __proto__ keys in both target-copy and source-merge paths in source, CommonJS and UMD entry points. scripts/dependency-security.test.mjs reproduces the null-prototype, null-placeholder and poisoned-target attacks and checks ordinary merges. This exception covers the patched version identifier only; remove when a fixed release is adopted."
 
 [[IgnoredVulns]]
 id = "GHSA-44jh-23m7-hpcf"
-ignoreUntil = 2026-11-01
-reason = "Configuration-specific non-applicability: this app uses the Convex adapter, never the PostgreSQL Drizzle/Kysely adapters implicated by the rate-limit race. scripts/dependency-security.test.mjs enforces the exact createAuthOptions configuration and locked better-auth/adapter 1.6.22 versions. Convex integration currently supports <1.7.0; reassess on integration upgrade or any auth configuration change. This does not mark upstream code patched."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Configuration-specific non-applicability: this app uses the Convex adapter, never the PostgreSQL Drizzle/Kysely adapters implicated by the rate-limit race. scripts/dependency-security.test.mjs enforces the exact createAuthOptions configuration and locked better-auth/adapter 1.6.22 versions. Convex integration currently supports <1.7.0; reassess on integration upgrade or any auth configuration change. This does not mark upstream code patched."
 
 [[IgnoredVulns]]
 id = "GHSA-965c-763c-88jm"
-ignoreUntil = 2026-11-01
-reason = "Configuration-specific non-applicability: Magic Link and social/Generic OAuth providers are not enabled. scripts/dependency-security.test.mjs fails on auth option/plugin changes and pins the reviewed 1.6.22 package instances. The upstream flaw remains; reassess before enabling these features or upgrading the Convex integration."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Configuration-specific non-applicability: Magic Link and social/Generic OAuth providers are not enabled. scripts/dependency-security.test.mjs fails on auth option/plugin changes and pins the reviewed 1.6.22 package instances. The upstream flaw remains; reassess before enabling these features or upgrading the Convex integration."
 
 [[IgnoredVulns]]
 id = "GHSA-q84f-53jg-9ppm"
-ignoreUntil = 2026-11-01
-reason = "Configuration-specific non-applicability: the opt-in deviceAuthorization plugin is not enabled. scripts/dependency-security.test.mjs enforces the exact auth option/plugin list and locked 1.6.22 package instances. This is not a package-level fix; reassess before auth configuration changes."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Configuration-specific non-applicability: the opt-in deviceAuthorization plugin is not enabled. scripts/dependency-security.test.mjs enforces the exact auth option/plugin list and locked 1.6.22 package instances. This is not a package-level fix; reassess before auth configuration changes."
 
 [[IgnoredVulns]]
 id = "GHSA-r4xp-prcw-77qf"
-ignoreUntil = 2026-11-01
-reason = "Configuration-specific non-applicability: the OAuth Proxy plugin is not enabled. scripts/dependency-security.test.mjs enforces the exact auth option/plugin list and locked 1.6.22 package instances. This is not a package-level fix; reassess before auth configuration changes."
+ignoreUntil = 2026-11-06
+reason = "Reviewed 2026-10-30; owner @rebanto; scope enforced by scripts/dependency-security.test.mjs. Configuration-specific non-applicability: the OAuth Proxy plugin is not enabled. scripts/dependency-security.test.mjs enforces the exact auth option/plugin list and locked 1.6.22 package instances. This is not a package-level fix; reassess before auth configuration changes."

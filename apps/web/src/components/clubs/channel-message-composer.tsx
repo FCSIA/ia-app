@@ -42,6 +42,8 @@ import {
 import { cn } from '@/lib/utils';
 import { SchoolGifPicker } from './school-gif-picker';
 import { extractChatGifLinks, isGifAttachment } from '~/apps/shared/chat/gifs';
+import { useChatDraft } from './use-chat-draft';
+import type { ChatDraft } from './chat-draft-store';
 import { AnimatedGif } from '@/components/media/animated-gif';
 
 export type ChannelMentionSuggestion = {
@@ -63,6 +65,7 @@ export type ExistingComposerAttachment = {
 type DraftFile = { id: string; file: File; previewUrl: string | null };
 
 type ChannelMessageComposerProps = {
+  draftKey?: string;
   suggestionEntries: ChannelMentionSuggestion[];
   placeholder: string;
   submitLabel: string;
@@ -78,7 +81,7 @@ type ChannelMessageComposerProps = {
     removedAttachmentIds: string[];
     pollQuestion?: string;
     pollOptions?: Array<{ id: string; label: string }>;
-  }) => void;
+  }) => void | Promise<boolean>;
   canAttach?: boolean;
   /** Attachments already on the message; shown removable when editing. */
   existingAttachments?: ExistingComposerAttachment[];
@@ -221,6 +224,7 @@ function ComposerAttachmentTile({
 }
 
 export function ChannelMessageComposer({
+  draftKey,
   suggestionEntries,
   placeholder,
   submitLabel,
@@ -235,6 +239,8 @@ export function ChannelMessageComposer({
   onMentionIntent,
   handleRef,
 }: ChannelMessageComposerProps) {
+  // Editing uses an instance-local store; new messages use a conversation-scoped store.
+  const recovery = useChatDraft(draftKey);
   const initialValue = useMemo(
     () =>
       initialBodyRich ??
@@ -253,7 +259,7 @@ export function ChannelMessageComposer({
         ),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
-      value: initialValue,
+      value: draftKey ? recovery.draft.richValue : initialValue,
     },
     [],
   );
@@ -261,22 +267,25 @@ export function ChannelMessageComposer({
   // to a timer, which iOS no longer treats as part of the tap.
   useImperativeHandle(handleRef, () => ({ focus: () => editor.tf.focus() }), [editor]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const setField = <K extends keyof ChatDraft>(key: K) =>
+    (value: ChatDraft[K] | ((previous: ChatDraft[K]) => ChatDraft[K])) => recovery.store.set(key, value);
   const [drafts, setDrafts] = useState<DraftFile[]>([]);
+  useEffect(() => {
+    const previews = recovery.draft.files.map((file) => ({
+      id: `draft-${++draftFileSequence}`, file,
+      previewUrl: isPreviewableImage(file.type, file.name) ? URL.createObjectURL(file) : null,
+    }));
+    setDrafts(previews);
+    return () => {
+      for (const draft of previews) if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+    };
+  }, [recovery.draft.files]);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
-  const draftsRef = useRef<DraftFile[]>([]);
-  draftsRef.current = drafts;
+
   const keptExisting = (existingAttachments ?? []).filter((a) => !removedIds.includes(a._id));
-  const files = useMemo(() => drafts.map((draft) => draft.file), [drafts]);
-  const attachmentCount = keptExisting.length + drafts.length;
-  useEffect(
-    () => () => {
-      for (const draft of draftsRef.current) {
-        if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
-      }
-    },
-    [],
-  );
+  const files = recovery.draft.files;
+  const attachmentCount = keptExisting.length + files.length;
 
   const addFiles = (incoming: File[]) => {
     if (!canAttach || isPending || incoming.length === 0) return;
@@ -295,21 +304,13 @@ export function ChannelMessageComposer({
         ? `Only ${room} more ${room === 1 ? 'file fits' : 'files fit'} (5 max).`
         : null,
     );
-    const accepted = incoming.slice(0, room).map(
-      (file): DraftFile => ({
-        id: `draft-${++draftFileSequence}`,
-        file,
-        previewUrl: isPreviewableImage(file.type, file.name) ? URL.createObjectURL(file) : null,
-      }),
-    );
-    setDrafts((current) => [...current, ...accepted]);
+    recovery.store.set('files', (current) => [...current, ...incoming.slice(0, room)]);
   };
 
   const removeDraft = (id: string) => {
     setAttachmentError(null);
-    const target = draftsRef.current.find((draft) => draft.id === id);
-    if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
-    setDrafts((current) => current.filter((draft) => draft.id !== id));
+    const target = drafts.find((draft) => draft.id === id);
+    recovery.store.set('files', (current) => current.filter((file) => file !== target?.file));
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
@@ -337,15 +338,16 @@ export function ChannelMessageComposer({
     addFiles(Array.from(event.dataTransfer.files));
   };
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const [plainText, setPlainText] = useState(() =>
-    serializeClubChannelMessagePlainText(initialValue),
-  );
-  const [richValue, setRichValue] = useState<Value>(initialValue);
-  const [pollOpen, setPollOpen] = useState(false);
+  const [editRichValue, setEditRichValue] = useState<Value>(initialValue);
+  const richValue = draftKey ? recovery.draft.richValue : editRichValue;
+  const setRichValue = draftKey ? setField('richValue') : setEditRichValue;
+  const plainText = serializeClubChannelMessagePlainText(richValue);
+  const { pollOpen, pollQuestion, pollOptions } = recovery.draft;
+  const setPollOpen = setField('pollOpen');
+  const setPollQuestion = setField('pollQuestion');
+  const setPollOptions = setField('pollOptions');
   const [toolsOpen, setToolsOpen] = useState(false);
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOptions, setPollOptions] = useState(['', '']);
   const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
   const [markdownSource, setMarkdownSource] = useState(initialBodyMarkdown ?? '');
 
@@ -372,22 +374,29 @@ export function ChannelMessageComposer({
     !isPending && (currentBody.trim().length > 0 || attachmentCount > 0 || !!hasPoll);
   const hasComposerTools = canAttach || canCreatePoll || !isMarkdownSource;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSend) return;
 
-    onSubmit({
-      body: currentBody,
-      bodyMarkdown: isMarkdownSource
-        ? markdownSource.trim()
-        : serializeClubChannelMessageMarkdown(richValue),
-      bodyRich: plainText.trim() && !isMarkdownSource
-        ? (richValue as unknown as ClubChannelMessageRichBody)
-        : null,
-      files,
-      removedAttachmentIds: removedIds,
-      pollQuestion: hasPoll ? pollQuestion.trim() : undefined,
-      pollOptions: hasPoll ? normalizedPollOptions : undefined,
-    });
+    const submitted = draftKey ? recovery.store.begin() : null;
+    if (draftKey && !submitted) return;
+    try {
+      const result = await onSubmit({
+        body: currentBody,
+        bodyMarkdown: isMarkdownSource
+          ? markdownSource.trim()
+          : serializeClubChannelMessageMarkdown(richValue),
+        bodyRich: plainText.trim() && !isMarkdownSource
+          ? (richValue as unknown as ClubChannelMessageRichBody)
+          : null,
+        files,
+        removedAttachmentIds: removedIds,
+        pollQuestion: hasPoll ? pollQuestion.trim() : undefined,
+        pollOptions: hasPoll ? normalizedPollOptions : undefined,
+      });
+      if (submitted) recovery.store.finish(submitted, result === true);
+    } catch {
+      if (submitted) recovery.store.finish(submitted, false);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -398,7 +407,7 @@ export function ChannelMessageComposer({
         editor.tf.insertBreak();
       } else if (!event.shiftKey) {
         event.preventDefault();
-        handleSubmit();
+        void handleSubmit();
       }
     }
   };
@@ -406,7 +415,7 @@ export function ChannelMessageComposer({
   const handleMarkdownSourceKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }
   };
 
@@ -416,7 +425,6 @@ export function ChannelMessageComposer({
       onValueChange={({ value }) => {
         const nextValue = value as Value;
         setRichValue(nextValue);
-        setPlainText(serializeClubChannelMessagePlainText(nextValue));
       }}
     >
       <MentionablesProvider items={mentionables}>
@@ -684,7 +692,7 @@ export function ChannelMessageComposer({
                   aria-label={isPending ? 'Sending message' : submitLabel}
                   disabled={!canSend}
                   loading={isPending}
-                  onClick={handleSubmit}
+                  onClick={() => void handleSubmit()}
                 >
                   <Send data-icon="inline-start" />
                 </Button>

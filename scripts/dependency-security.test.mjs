@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { generateKeyPairSync } from "node:crypto";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { generateKeyPairSync, verify } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
 import vm from "node:vm";
@@ -10,6 +13,7 @@ const require = createRequire(import.meta.url);
 const forge = require("node-forge");
 const braces = require("braces");
 const deepmerge = require("deepmerge");
+const zod = require("zod");
 const { getAssetSize } = require("metro/private/Assets");
 const { privateKey: pem } = generateKeyPairSync("rsa", {
   modulusLength: 1024,
@@ -46,6 +50,168 @@ test("RSA verification rejects extra nested DigestAlgorithm children (GHSA-86w9-
       () => publicKey.verify(digest, signature({ parameters, extra: true })),
       /valid RSASSA-PKCS1-v1_5 DigestInfo/,
     );
+  }
+});
+
+test("upstream node-forge 1.4.2 retains Buffer PEM compatibility", () => {
+  assert.equal(require("node-forge/package.json").version, "1.4.2");
+  assert.equal(forge.pki.privateKeyFromPem(Buffer.from(pem)).n.toString(), privateKey.n.toString());
+});
+
+test("Expo code signing round-trips certificates and produces valid manifest signatures", () => {
+  const expoSigning = require("@expo/code-signing-certificates");
+  const certificate = expoSigning.generateSelfSignedCodeSigningCertificate({
+    keyPair: { privateKey, publicKey },
+    validityNotBefore: new Date(Date.now() - 60_000),
+    validityNotAfter: new Date(Date.now() + 60_000),
+    commonName: "dependency regression only",
+  });
+  const restored = expoSigning.convertCertificatePEMToCertificate(
+    expoSigning.convertCertificateToCertificatePEM(certificate),
+  );
+  expoSigning.validateSelfSignedCertificate(restored, { privateKey, publicKey });
+  const manifest = Buffer.from('{"id":"test-manifest"}');
+  const signature = Buffer.from(expoSigning.signBufferRSASHA256AndVerify(privateKey, restored, manifest), "base64");
+  const key = forge.pki.publicKeyToPem(publicKey);
+  assert.equal(verify("sha256", manifest, key, signature), true);
+  assert.equal(verify("sha256", Buffer.from("tampered"), key, signature), false);
+});
+
+test("fixed Zod rejects oversized collections before validating their elements", () => {
+  let visited = 0;
+  const element = zod.z.string().superRefine(() => { visited += 1; });
+  for (const [schema, input] of [
+    [zod.z.array(element).max(2), ["a", "b", "c"]],
+    [zod.z.set(element).max(2), new Set(["a", "b", "c"])],
+    [zod.z.map(element, element).max(2), new Map([["a", "a"], ["b", "b"], ["c", "c"]])],
+  ]) {
+    const result = schema.safeParse(input);
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues.map(({ code }) => code), ["too_big"]);
+  }
+  assert.equal(visited, 0);
+  assert.deepEqual(zod.z.array(element).max(2).parse(["a", "b"]), ["a", "b"]);
+  assert.equal(visited, 2);
+});
+
+test("audit exceptions expire and cover only the reviewed package versions", () => {
+  const lock = JSON.parse(readFileSync(new URL("../bun.lock", import.meta.url), "utf8").replace(/,\s*([}\]])/g, "$1"));
+  // OSV ignores an advisory globally. Guard every instance, including nested
+  // versions, so an update cannot silently inherit a reviewed exception.
+  const scopes = {
+    "node-forge": ["1.4.2"],
+    sandbox: ["4.4.0"],
+    deepmerge: ["4.3.1"],
+    zod: ["3.22.4", "3.25.76", "4.6.7"],
+    glob: ["7.2.3", "10.5.0", "13.0.6"],
+    minimatch: ["3.1.5", "9.0.9", "10.2.6"],
+    "better-auth": ["1.6.22"],
+    "@better-auth/core": ["1.6.22"],
+    "@better-auth/drizzle-adapter": ["1.6.22"],
+    "@better-auth/kysely-adapter": ["1.6.22"],
+    "@better-auth/expo": ["1.6.22"],
+    "@convex-dev/better-auth": ["0.12.2"],
+  };
+  for (const [name, versions] of Object.entries(scopes)) {
+    const ids = Object.values(lock.packages).map(([id]) => id).filter((id) => id.startsWith(`${name}@`));
+    assert.ok(ids.length > 0, `Missing reviewed package ${name}; remove its exception`);
+    assert.deepEqual([...new Set(ids)].sort(), versions.map((version) => `${name}@${version}`).sort());
+  }
+  const config = readFileSync(new URL("../osv-scanner.toml", import.meta.url), "utf8");
+  const blocks = config.split("[[IgnoredVulns]]").slice(1);
+  assert.deepEqual(blocks.map((block) => block.match(/id = "([^"]+)"/)[1]).sort(), [
+    "GHSA-fm4j-4xhm-xpwx", "GHSA-gc25-3vc5-2jf9", "GHSA-mrhx-c7xc-m3w5", "GHSA-gcqx-w48m-w2h4",
+    "GHSA-44jh-23m7-hpcf", "GHSA-965c-763c-88jm", "GHSA-q84f-53jg-9ppm", "GHSA-r4xp-prcw-77qf",
+    "GHSA-g3hv-75wg-m249", "GHSA-3g3m-2fjr-6pw4",
+  ].sort());
+  for (const block of blocks) {
+    assert.match(block, /owner @rebanto/);
+    assert.match(block, /Reviewed 2026-10-30/);
+    const expiry = block.match(/ignoreUntil = (\d{4}-\d{2}-\d{2})/)[1];
+    assert.equal(expiry, "2026-11-06");
+    assert.ok(Date.now() < Date.parse(`${expiry}T00:00:00Z`), `Expired audit exception: ${block}`);
+  }
+  assert.doesNotMatch(config, /\[\[PackageOverrides\]\]/);
+  const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(manifest.overrides["node-forge"], "1.4.2");
+  assert.equal(manifest.patchedDependencies["node-forge@1.4.0"], undefined);
+});
+
+function globInstallations() {
+  const nextPlugin = createRequire(require.resolve("@next/eslint-plugin-next"));
+  return [require.resolve("glob/package.json"), nextPlugin.resolve("glob/package.json")];
+}
+
+test("minimatch CJS/ESM backports bound preprocessing while retaining ordinary matches", async () => {
+  for (const globPackage of globInstallations()) {
+    const fromGlob = createRequire(globPackage);
+    const root = dirname(fromGlob.resolve("minimatch/package.json"));
+    for (const format of ["commonjs", "esm"]) {
+      const file = join(root, "dist", format, "index.js");
+      const { Minimatch } = format === "commonjs" ? require(file) : await import(pathToFileURL(file).href);
+      const pattern = Array(30).fill("**/../a/b").join("/");
+      const bounded = vm.runInNewContext("new Minimatch(pattern, { optimizationLevel: 2, braceExpandMax: 64 })", { Minimatch, pattern }, { timeout: 2000 });
+      assert.equal(bounded.set.length, 64);
+      const ordinary = new Minimatch("**/../a/b/**/../c/d", { optimizationLevel: 2 });
+      assert.equal(ordinary.set.length, 4);
+      assert.equal(ordinary.match("../a/b/../c/d"), true);
+      assert.equal(ordinary.match("x/a/b/y/c/d"), true);
+      const large = new Minimatch("{x,*}/{0..999}", { optimizationLevel: 2 });
+      assert.equal(large.set.length, 2000);
+      assert.equal(large.match("x/5"), true);
+      assert.equal(large.match("y/999"), true);
+      assert.equal(large.match(".y/5"), false);
+    }
+  }
+  const legacy = require("minimatch");
+  assert.equal(require("minimatch/package.json").version, "3.1.5");
+  assert.equal(legacy.Minimatch.prototype.firstPhasePreProcess, undefined);
+  assert.doesNotMatch(readFileSync(require.resolve("minimatch"), "utf8"), /firstPhasePreProcess|optimizationLevel/);
+  assert.equal(legacy("src/app.ts", "src/**/*.ts"), true);
+});
+
+test("glob CJS/ESM cancellation stops all four walker entry points and normal traversal works", async () => {
+  const fixture = mkdtempSync(join(tmpdir(), "ia-glob-security-"));
+  try {
+    mkdirSync(join(fixture, "nested"));
+    writeFileSync(join(fixture, "a.ts"), "test");
+    writeFileSync(join(fixture, "nested", "b.ts"), "test");
+    writeFileSync(join(fixture, "nested", "ignored.txt"), "test");
+    for (const packageFile of globInstallations()) {
+      for (const format of ["commonjs", "esm"]) {
+        const root = join(dirname(packageFile), "dist", format);
+        const walkerFile = join(root, "walker.js");
+        const { GlobUtil } = format === "commonjs" ? require(walkerFile) : await import(pathToFileURL(walkerFile).href);
+        for (const method of ["walkCB", "walkCB2", "walkCBSync", "walkCB2Sync"]) {
+          const controller = new AbortController();
+          const walker = new GlobUtil([], {}, { platform: process.platform, signal: controller.signal });
+          const mustNotContinue = () => { throw new Error(`Continued after abort: ${method}`); };
+          let callbacks = 0;
+          const done = () => { callbacks += 1; };
+          controller.abort();
+          if (method === "walkCB" || method === "walkCBSync") {
+            walker[method === "walkCB" ? "walkCB2" : "walkCB2Sync"] = mustNotContinue;
+            walker[method]({}, [], done);
+          } else {
+            walker[method]({}, [], { processPatterns: mustNotContinue }, done);
+          }
+          assert.equal(callbacks, 1);
+        }
+        const index = join(root, "index.js");
+        const glob = format === "commonjs" ? require(index) : await import(pathToFileURL(index).href);
+        const options = { cwd: fixture, posix: true };
+        const expected = ["a.ts", "nested/b.ts"];
+        assert.deepEqual((await glob.glob("**/*.ts", options)).sort(), expected);
+        assert.deepEqual(glob.globSync("**/*.ts", options).sort(), expected);
+        const streamed = [];
+        for await (const file of glob.globStream("**/*.ts", options)) streamed.push(file);
+        assert.deepEqual(streamed.sort(), expected);
+      }
+    }
+  } finally {
+    assert.equal(dirname(resolve(fixture)), resolve(tmpdir()));
+    assert.match(basename(fixture), /^ia-glob-security-/);
+    rmSync(fixture, { recursive: true, force: true });
   }
 });
 
@@ -141,6 +307,13 @@ test("Better Auth audit exceptions remain limited to the pinned unused feature c
   }
   const source = readFileSync(new URL("../apps/convex/src/auth.ts", import.meta.url), "utf8");
   const ast = ts.createSourceFile("auth.ts", source, ts.ScriptTarget.Latest, true);
+  const pluginImports = ast.statements.filter((node) => ts.isImportDeclaration(node) && node.moduleSpecifier.text === "better-auth/plugins");
+  assert.equal(pluginImports.length, 1);
+  assert.deepEqual(pluginImports[0].importClause.namedBindings.elements.map((binding) => [
+    binding.propertyName?.text ?? binding.name.text, binding.name.text,
+  ]), [["admin", "admin"], ["username", "username"]]);
+  const integration = require("@convex-dev/better-auth/package.json");
+  assert.equal(integration.peerDependencies["better-auth"], ">=1.6.9 <1.7.0");
   let options;
   function visit(node) {
     if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "createAuthOptions") options = node.initializer.body;
