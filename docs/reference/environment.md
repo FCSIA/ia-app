@@ -136,7 +136,7 @@ internal `bootstrap:resetAndSeed` function through the Convex CLI or Dashboard.
 
 ## GitHub Feedback Issues
 
-To mirror general feedback into `virajdas/ia-app`, create a fine-grained GitHub
+To mirror general feedback into `FCSIA/ia-app`, create a fine-grained GitHub
 token with **Issues: Read and write** access restricted to that repository, then
 set these variables on the target Convex deployment:
 

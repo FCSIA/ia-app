@@ -16,51 +16,51 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Internal
 
-- Add new requirements to Azure deployment plan. ([`1ce98109`](https://github.com/virajdas/ia-app/commit/1ce98109))
-- Add single-VM Azure deployment plan. ([`7e825788`](https://github.com/virajdas/ia-app/commit/7e825788))
+- Add new requirements to Azure deployment plan. ([`1ce98109`](https://github.com/FCSIA/ia-app/commit/1ce98109))
+- Add single-VM Azure deployment plan. ([`7e825788`](https://github.com/FCSIA/ia-app/commit/7e825788))
 
 ## v0.8.40 — 2026-10-31 (alpha)
 
 ### Added
 
-- **feedback** — Paste screenshots directly into feedback. ([`c6edd259`](https://github.com/virajdas/ia-app/commit/c6edd259))
-- **schedule** — Add OCR image checks and verification guide. ([`87f2aaa2`](https://github.com/virajdas/ia-app/commit/87f2aaa2))
-- **clubs** — Log service hours with proof photos and view clear personal and club volunteer reports on any screen. ([#173](https://github.com/virajdas/ia-app/pull/173), [`ea8917a3`](https://github.com/virajdas/ia-app/commit/ea8917a3))
+- **feedback** — Paste screenshots directly into feedback. ([`c6edd259`](https://github.com/FCSIA/ia-app/commit/c6edd259))
+- **schedule** — Add OCR image checks and verification guide. ([`87f2aaa2`](https://github.com/FCSIA/ia-app/commit/87f2aaa2))
+- **clubs** — Log service hours with proof photos and view clear personal and club volunteer reports on any screen. ([#173](https://github.com/FCSIA/ia-app/pull/173), [`ea8917a3`](https://github.com/FCSIA/ia-app/commit/ea8917a3))
 
 ### Improved
 
-- **chat** — Streamline sent attachment lookup. ([`9b3f81f7`](https://github.com/virajdas/ia-app/commit/9b3f81f7))
-- **schedule** — Schedule picture import now reads images on your device without uploading them. ([`d0292f71`](https://github.com/virajdas/ia-app/commit/d0292f71))
-- **chat** — Failed chat sends keep your message, reply, poll, and attachments ready to retry. ([`44ce5424`](https://github.com/virajdas/ia-app/commit/44ce5424))
-- **admin** — Improve analytics chart readability. ([`cff7f86a`](https://github.com/virajdas/ia-app/commit/cff7f86a))
-- **schedule** — Importing part of a schedule now keeps your other classes and checks lunch conflicts before applying. ([`0de420bb`](https://github.com/virajdas/ia-app/commit/0de420bb))
-- **schedule** — Schedule picture imports recognize more layouts while preserving periods and course distinctions. ([`4dd40328`](https://github.com/virajdas/ia-app/commit/4dd40328))
-- **schedule** — Schedule picture import now keeps the right class periods and skips SSS/Flex and Period 9. ([`35f21ded`](https://github.com/virajdas/ia-app/commit/35f21ded))
+- **chat** — Streamline sent attachment lookup. ([`9b3f81f7`](https://github.com/FCSIA/ia-app/commit/9b3f81f7))
+- **schedule** — Schedule picture import now reads images on your device without uploading them. ([`d0292f71`](https://github.com/FCSIA/ia-app/commit/d0292f71))
+- **chat** — Failed chat sends keep your message, reply, poll, and attachments ready to retry. ([`44ce5424`](https://github.com/FCSIA/ia-app/commit/44ce5424))
+- **admin** — Improve analytics chart readability. ([`cff7f86a`](https://github.com/FCSIA/ia-app/commit/cff7f86a))
+- **schedule** — Importing part of a schedule now keeps your other classes and checks lunch conflicts before applying. ([`0de420bb`](https://github.com/FCSIA/ia-app/commit/0de420bb))
+- **schedule** — Schedule picture imports recognize more layouts while preserving periods and course distinctions. ([`4dd40328`](https://github.com/FCSIA/ia-app/commit/4dd40328))
+- **schedule** — Schedule picture import now keeps the right class periods and skips SSS/Flex and Period 9. ([`35f21ded`](https://github.com/FCSIA/ia-app/commit/35f21ded))
 
 ### Security
 
-- Hardened file matching and cancellation against resource-exhaustion attacks. ([`3bc1831c`](https://github.com/virajdas/ia-app/commit/3bc1831c))
-- Updated security dependencies and strengthened checks around reviewed security exceptions. ([`8bedf305`](https://github.com/virajdas/ia-app/commit/8bedf305))
-- Patch systeminformation command injection. ([`dd2486ca`](https://github.com/virajdas/ia-app/commit/dd2486ca))
+- Hardened file matching and cancellation against resource-exhaustion attacks. ([`3bc1831c`](https://github.com/FCSIA/ia-app/commit/3bc1831c))
+- Updated security dependencies and strengthened checks around reviewed security exceptions. ([`8bedf305`](https://github.com/FCSIA/ia-app/commit/8bedf305))
+- Patch systeminformation command injection. ([`dd2486ca`](https://github.com/FCSIA/ia-app/commit/dd2486ca))
 
 ### Internal
 
-- Record dependency exception reassessment. ([`aa0a9a09`](https://github.com/virajdas/ia-app/commit/aa0a9a09))
-- Expose Convex prompts and isolate environment loading. ([`da16173c`](https://github.com/virajdas/ia-app/commit/da16173c))
+- Record dependency exception reassessment. ([`aa0a9a09`](https://github.com/FCSIA/ia-app/commit/aa0a9a09))
+- Expose Convex prompts and isolate environment loading. ([`da16173c`](https://github.com/FCSIA/ia-app/commit/da16173c))
 
 ## v0.8.39 — 2026-10-23 (alpha)
 
 ### Added
 
-- **courses** — Add AP Cybersecurity. ([`2eb193d5`](https://github.com/virajdas/ia-app/commit/2eb193d5))
+- **courses** — Add AP Cybersecurity. ([`2eb193d5`](https://github.com/FCSIA/ia-app/commit/2eb193d5))
 
 ### Fixed
 
-- **chat** — Scrolling through chat stays in place when GIFs reload or new messages arrive. ([`3814985e`](https://github.com/virajdas/ia-app/commit/3814985e))
+- **chat** — Scrolling through chat stays in place when GIFs reload or new messages arrive. ([`3814985e`](https://github.com/FCSIA/ia-app/commit/3814985e))
 
 ### Security
 
-- Updated the app's software to protect against newly disclosed security vulnerabilities. ([`48d983fb`](https://github.com/virajdas/ia-app/commit/48d983fb))
+- Updated the app's software to protect against newly disclosed security vulnerabilities. ([`48d983fb`](https://github.com/FCSIA/ia-app/commit/48d983fb))
 
 ## v0.8.38 — 2026-10-21 (alpha)
 
@@ -68,23 +68,23 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Added
 
-- **notifications** — Enable desktop notifications from a banner that fits below navigation and preserves your keyboard position. ([`2990cac4`](https://github.com/virajdas/ia-app/commit/2990cac4))
-- **profiles** — Choose a preferred name in settings. Profiles still show your regular name, and people can find you by either name. ([`eee3d8c1`](https://github.com/virajdas/ia-app/commit/eee3d8c1))
+- **notifications** — Enable desktop notifications from a banner that fits below navigation and preserves your keyboard position. ([`2990cac4`](https://github.com/FCSIA/ia-app/commit/2990cac4))
+- **profiles** — Choose a preferred name in settings. Profiles still show your regular name, and people can find you by either name. ([`eee3d8c1`](https://github.com/FCSIA/ia-app/commit/eee3d8c1))
 
 ### Improved
 
-- **admin** — Staff can search clearer activity history, and calendar controls and keyboard focus outlines fit more reliably. ([`4c464526`](https://github.com/virajdas/ia-app/commit/4c464526))
-- **admin** — Feedback replies have a simpler layout. ([`e7dd4f88`](https://github.com/virajdas/ia-app/commit/e7dd4f88))
-- **media** — GIFs pause when offscreen and load more efficiently while keeping playback controls and original image quality. ([`a317659e`](https://github.com/virajdas/ia-app/commit/a317659e))
-- **moderation** — Preferred names now follow school language filters, with flagged changes sent for staff review. ([`79a8e414`](https://github.com/virajdas/ia-app/commit/79a8e414))
-- **dashboard** — The dashboard calendar now keeps its month controls in one compact header and fits neatly on smaller screens. ([`679f7a00`](https://github.com/virajdas/ia-app/commit/679f7a00))
-- **announcements** — Announcement pages now share clickable profiles and compact mobile actions, with simpler connection lists, centered empty states, and more consistent spacing. ([`8b29a445`](https://github.com/virajdas/ia-app/commit/8b29a445))
+- **admin** — Staff can search clearer activity history, and calendar controls and keyboard focus outlines fit more reliably. ([`4c464526`](https://github.com/FCSIA/ia-app/commit/4c464526))
+- **admin** — Feedback replies have a simpler layout. ([`e7dd4f88`](https://github.com/FCSIA/ia-app/commit/e7dd4f88))
+- **media** — GIFs pause when offscreen and load more efficiently while keeping playback controls and original image quality. ([`a317659e`](https://github.com/FCSIA/ia-app/commit/a317659e))
+- **moderation** — Preferred names now follow school language filters, with flagged changes sent for staff review. ([`79a8e414`](https://github.com/FCSIA/ia-app/commit/79a8e414))
+- **dashboard** — The dashboard calendar now keeps its month controls in one compact header and fits neatly on smaller screens. ([`679f7a00`](https://github.com/FCSIA/ia-app/commit/679f7a00))
+- **announcements** — Announcement pages now share clickable profiles and compact mobile actions, with simpler connection lists, centered empty states, and more consistent spacing. ([`8b29a445`](https://github.com/FCSIA/ia-app/commit/8b29a445))
 
 ### Fixed
 
-- **themes** — Custom themes now offer adjustable wallpaper blur, a switch to turn surface tint off, and contrast warnings that let you keep your chosen colors. ([`196cf06a`](https://github.com/virajdas/ia-app/commit/196cf06a))
-- **web** — Tooltips now match the active theme surface. ([`fa0d0c4b`](https://github.com/virajdas/ia-app/commit/fa0d0c4b))
-- **chat** — Long URLs stay inside pinned message previews. ([`70108066`](https://github.com/virajdas/ia-app/commit/70108066))
+- **themes** — Custom themes now offer adjustable wallpaper blur, a switch to turn surface tint off, and contrast warnings that let you keep your chosen colors. ([`196cf06a`](https://github.com/FCSIA/ia-app/commit/196cf06a))
+- **web** — Tooltips now match the active theme surface. ([`fa0d0c4b`](https://github.com/FCSIA/ia-app/commit/fa0d0c4b))
+- **chat** — Long URLs stay inside pinned message previews. ([`70108066`](https://github.com/FCSIA/ia-app/commit/70108066))
 
 ## v0.8.37 — 2026-10-17 (alpha)
 
@@ -92,26 +92,26 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Improved
 
-- **announcements** — Announcements have clearer unread and saved states, compact filters, clickable author profiles, and consistent dashboard previews. Menus and dialogs keep the page in place. ([`81bbca86`](https://github.com/virajdas/ia-app/commit/81bbca86))
-- **feedback** — Feedback has a clearer form and submission history, and its notifications are separate from moderation alerts. ([`ef157d6a`](https://github.com/virajdas/ia-app/commit/ef157d6a))
-- **clubs** — Your clubs have clearer grouping, consistent corners, and an aligned discovery action. ([`df566c46`](https://github.com/virajdas/ia-app/commit/df566c46))
-- **settings** — Profile settings are clearer and stay in place when switching tabs, with shared notification controls and nested club preferences. ([`c53396d7`](https://github.com/virajdas/ia-app/commit/c53396d7))
-- Notifications have aligned controls, and your profile has consistent corners, spacing, and circular pictures. ([`c3a15071`](https://github.com/virajdas/ia-app/commit/c3a15071))
-- **dashboard** — Dashboard widgets stay where you place them, with a Balance layout action and Undo when you want a tidier arrangement. ([#147](https://github.com/virajdas/ia-app/pull/147), [`55b615e1`](https://github.com/virajdas/ia-app/commit/55b615e1))
-- **feedback** — Feedback reviewers can track submitted reports through linked GitHub issues and keep their status in sync. ([`cbb87b8f`](https://github.com/virajdas/ia-app/commit/cbb87b8f))
-- **notifications** — On phones, the profile menu now offers Do not disturb for one hour, with an option to resume notifications early. ([`5aa47b29`](https://github.com/virajdas/ia-app/commit/5aa47b29))
-- **web** — Swiping right in a club opens its navigation without leaving the conversation. ([`80b9a711`](https://github.com/virajdas/ia-app/commit/80b9a711))
-- **backend** — Retain calendar dependency after rebase. ([`a91bed3f`](https://github.com/virajdas/ia-app/commit/a91bed3f))
-- **backend** — Adopt Convex 1.45 helpers. ([`39db4a99`](https://github.com/virajdas/ia-app/commit/39db4a99))
-- **tooling** — Rebase Bun migration onto main. ([`006f0ab4`](https://github.com/virajdas/ia-app/commit/006f0ab4))
-- **tooling** — Migrate pnpm to Bun. ([`1d47a053`](https://github.com/virajdas/ia-app/commit/1d47a053))
+- **announcements** — Announcements have clearer unread and saved states, compact filters, clickable author profiles, and consistent dashboard previews. Menus and dialogs keep the page in place. ([`81bbca86`](https://github.com/FCSIA/ia-app/commit/81bbca86))
+- **feedback** — Feedback has a clearer form and submission history, and its notifications are separate from moderation alerts. ([`ef157d6a`](https://github.com/FCSIA/ia-app/commit/ef157d6a))
+- **clubs** — Your clubs have clearer grouping, consistent corners, and an aligned discovery action. ([`df566c46`](https://github.com/FCSIA/ia-app/commit/df566c46))
+- **settings** — Profile settings are clearer and stay in place when switching tabs, with shared notification controls and nested club preferences. ([`c53396d7`](https://github.com/FCSIA/ia-app/commit/c53396d7))
+- Notifications have aligned controls, and your profile has consistent corners, spacing, and circular pictures. ([`c3a15071`](https://github.com/FCSIA/ia-app/commit/c3a15071))
+- **dashboard** — Dashboard widgets stay where you place them, with a Balance layout action and Undo when you want a tidier arrangement. ([#147](https://github.com/FCSIA/ia-app/pull/147), [`55b615e1`](https://github.com/FCSIA/ia-app/commit/55b615e1))
+- **feedback** — Feedback reviewers can track submitted reports through linked GitHub issues and keep their status in sync. ([`cbb87b8f`](https://github.com/FCSIA/ia-app/commit/cbb87b8f))
+- **notifications** — On phones, the profile menu now offers Do not disturb for one hour, with an option to resume notifications early. ([`5aa47b29`](https://github.com/FCSIA/ia-app/commit/5aa47b29))
+- **web** — Swiping right in a club opens its navigation without leaving the conversation. ([`80b9a711`](https://github.com/FCSIA/ia-app/commit/80b9a711))
+- **backend** — Retain calendar dependency after rebase. ([`a91bed3f`](https://github.com/FCSIA/ia-app/commit/a91bed3f))
+- **backend** — Adopt Convex 1.45 helpers. ([`39db4a99`](https://github.com/FCSIA/ia-app/commit/39db4a99))
+- **tooling** — Rebase Bun migration onto main. ([`006f0ab4`](https://github.com/FCSIA/ia-app/commit/006f0ab4))
+- **tooling** — Migrate pnpm to Bun. ([`1d47a053`](https://github.com/FCSIA/ia-app/commit/1d47a053))
 
 ### Internal
 
-- Audit production dependency closure. ([`296890ca`](https://github.com/virajdas/ia-app/commit/296890ca))
-- Make Bun lockfile auditing unconditional. ([`98eccc6f`](https://github.com/virajdas/ia-app/commit/98eccc6f))
-- Share validation build environment. ([`213a23bb`](https://github.com/virajdas/ia-app/commit/213a23bb))
-- Enforce release and contributor gates. ([`f2509568`](https://github.com/virajdas/ia-app/commit/f2509568))
+- Audit production dependency closure. ([`296890ca`](https://github.com/FCSIA/ia-app/commit/296890ca))
+- Make Bun lockfile auditing unconditional. ([`98eccc6f`](https://github.com/FCSIA/ia-app/commit/98eccc6f))
+- Share validation build environment. ([`213a23bb`](https://github.com/FCSIA/ia-app/commit/213a23bb))
+- Enforce release and contributor gates. ([`f2509568`](https://github.com/FCSIA/ia-app/commit/f2509568))
 
 ## v0.8.36 — 2026-10-02 (alpha)
 
@@ -119,326 +119,326 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Added
 
-- **chat** — Chat read receipts now wait for sent messages to finish saving. ([#131](https://github.com/virajdas/ia-app/pull/131), [`f84a4648`](https://github.com/virajdas/ia-app/commit/f84a4648))
-- **presence** — You can now see who is online in your clubs, and turn on Do Not Disturb to pause push notifications. ([#145](https://github.com/virajdas/ia-app/pull/145), [`698fb5d8`](https://github.com/virajdas/ia-app/commit/698fb5d8))
+- **chat** — Chat read receipts now wait for sent messages to finish saving. ([#131](https://github.com/FCSIA/ia-app/pull/131), [`f84a4648`](https://github.com/FCSIA/ia-app/commit/f84a4648))
+- **presence** — You can now see who is online in your clubs, and turn on Do Not Disturb to pause push notifications. ([#145](https://github.com/FCSIA/ia-app/pull/145), [`698fb5d8`](https://github.com/FCSIA/ia-app/commit/698fb5d8))
 
 ### Improved
 
-- **chat ** — Paste images into the composer and add/remove attachments when editing. ([`2dc48cde`](https://github.com/virajdas/ia-app/commit/2dc48cde))
-- **admin** — Analytics dashboard for super admins. ([#144](https://github.com/virajdas/ia-app/pull/144), [`46a89691`](https://github.com/virajdas/ia-app/commit/46a89691))
-- **clubs** — Pick which reaction a double tap adds: tap the emoji under the reactions when you hold a message. ([#142](https://github.com/virajdas/ia-app/pull/142), [`8ec005be`](https://github.com/virajdas/ia-app/commit/8ec005be))
-- **whiteboards** — Report archived-board unsent edits from the save path. ([#139](https://github.com/virajdas/ia-app/pull/139), [`d2618cb4`](https://github.com/virajdas/ia-app/commit/d2618cb4))
+- **chat ** — Paste images into the composer and add/remove attachments when editing. ([`2dc48cde`](https://github.com/FCSIA/ia-app/commit/2dc48cde))
+- **admin** — Analytics dashboard for super admins. ([#144](https://github.com/FCSIA/ia-app/pull/144), [`46a89691`](https://github.com/FCSIA/ia-app/commit/46a89691))
+- **clubs** — Pick which reaction a double tap adds: tap the emoji under the reactions when you hold a message. ([#142](https://github.com/FCSIA/ia-app/pull/142), [`8ec005be`](https://github.com/FCSIA/ia-app/commit/8ec005be))
+- **whiteboards** — Report archived-board unsent edits from the save path. ([#139](https://github.com/FCSIA/ia-app/pull/139), [`d2618cb4`](https://github.com/FCSIA/ia-app/commit/d2618cb4))
 
 ### Internal
 
-- One-command phone testing with automatic host. ([#140](https://github.com/virajdas/ia-app/pull/140), [`68e6b7c1`](https://github.com/virajdas/ia-app/commit/68e6b7c1))
+- One-command phone testing with automatic host. ([#140](https://github.com/FCSIA/ia-app/pull/140), [`68e6b7c1`](https://github.com/FCSIA/ia-app/commit/68e6b7c1))
 
 ## v0.8.35 — 2026-10-02 (alpha)
 
 ### Added
 
-- **clubs** — Club managers can turn whiteboards off for individual channels. ([#133](https://github.com/virajdas/ia-app/pull/133), [`1b1aa2d5`](https://github.com/virajdas/ia-app/commit/1b1aa2d5))
+- **clubs** — Club managers can turn whiteboards off for individual channels. ([#133](https://github.com/FCSIA/ia-app/pull/133), [`1b1aa2d5`](https://github.com/FCSIA/ia-app/commit/1b1aa2d5))
 
 ### Improved
 
-- **notifications** — If notifications get turned off on your phone, the dashboard now offers a one-tap way to turn them back on. ([#136](https://github.com/virajdas/ia-app/pull/136), [`9eb82d3f`](https://github.com/virajdas/ia-app/commit/9eb82d3f))
-- **mobile** — Chat read receipts now wait for sent messages to finish saving. ([#134](https://github.com/virajdas/ia-app/pull/134), [`f5d21318`](https://github.com/virajdas/ia-app/commit/f5d21318))
+- **notifications** — If notifications get turned off on your phone, the dashboard now offers a one-tap way to turn them back on. ([#136](https://github.com/FCSIA/ia-app/pull/136), [`9eb82d3f`](https://github.com/FCSIA/ia-app/commit/9eb82d3f))
+- **mobile** — Chat read receipts now wait for sent messages to finish saving. ([#134](https://github.com/FCSIA/ia-app/pull/134), [`f5d21318`](https://github.com/FCSIA/ia-app/commit/f5d21318))
 
 ### Fixed
 
-- **clubs** — Club chat on phones no longer slides sideways, opens menus by accident, or starts replies when you swipe through images. ([#141](https://github.com/virajdas/ia-app/pull/141), [`7f037ba2`](https://github.com/virajdas/ia-app/commit/7f037ba2))
-- **notifications** — Signing out, or switching accounts on a shared device, now stops the previous account's notifications there. ([#138](https://github.com/virajdas/ia-app/pull/138), [`5da23f28`](https://github.com/virajdas/ia-app/commit/5da23f28))
+- **clubs** — Club chat on phones no longer slides sideways, opens menus by accident, or starts replies when you swipe through images. ([#141](https://github.com/FCSIA/ia-app/pull/141), [`7f037ba2`](https://github.com/FCSIA/ia-app/commit/7f037ba2))
+- **notifications** — Signing out, or switching accounts on a shared device, now stops the previous account's notifications there. ([#138](https://github.com/FCSIA/ia-app/pull/138), [`5da23f28`](https://github.com/FCSIA/ia-app/commit/5da23f28))
 
 ### Internal
 
-- Add Azure school environment plan and hosting migration plan. ([`b015a978`](https://github.com/virajdas/ia-app/commit/b015a978))
+- Add Azure school environment plan and hosting migration plan. ([`b015a978`](https://github.com/FCSIA/ia-app/commit/b015a978))
 
 ## v0.8.34 — 2026-10-01 (alpha)
 
 ### Added
 
-- **chat** — Chat channels now show where your unread messages begin when you return. ([`a380b943`](https://github.com/virajdas/ia-app/commit/a380b943))
+- **chat** — Chat channels now show where your unread messages begin when you return. ([`a380b943`](https://github.com/FCSIA/ia-app/commit/a380b943))
 
 ### Improved
 
-- **chat** — Sending chat messages and thread replies no longer causes read-receipt errors. ([`27185d80`](https://github.com/virajdas/ia-app/commit/27185d80))
-- **schedule** — Fixed errors when opening a friend group, browsing a channel's shared files, or viewing club unit members that include a developer-designated user. ([`11552124`](https://github.com/virajdas/ia-app/commit/11552124))
-- **dashboard** — The dashboard stops prompting you to connect your Canvas calendar once a calendar feed is connected. ([`76440602`](https://github.com/virajdas/ia-app/commit/76440602))
-- Custom wallpapers now offer image-matched colors for cards and menus, with your choice saved to your account. ([#129](https://github.com/virajdas/ia-app/pull/129), [`98a043c4`](https://github.com/virajdas/ia-app/commit/98a043c4))
-- **schedule** — Fixed an error that could prevent Groups, shared schedules, and calendar invites from loading for developer-designated users. ([`63584e25`](https://github.com/virajdas/ia-app/commit/63584e25))
-- **ui follow-ups** — Gallery, dashboard, and announcements. ([`e9b99414`](https://github.com/virajdas/ia-app/commit/e9b99414))
-- **announcements** — Cursor pagination for web and mobile feeds. ([`b8f486e5`](https://github.com/virajdas/ia-app/commit/b8f486e5))
+- **chat** — Sending chat messages and thread replies no longer causes read-receipt errors. ([`27185d80`](https://github.com/FCSIA/ia-app/commit/27185d80))
+- **schedule** — Fixed errors when opening a friend group, browsing a channel's shared files, or viewing club unit members that include a developer-designated user. ([`11552124`](https://github.com/FCSIA/ia-app/commit/11552124))
+- **dashboard** — The dashboard stops prompting you to connect your Canvas calendar once a calendar feed is connected. ([`76440602`](https://github.com/FCSIA/ia-app/commit/76440602))
+- Custom wallpapers now offer image-matched colors for cards and menus, with your choice saved to your account. ([#129](https://github.com/FCSIA/ia-app/pull/129), [`98a043c4`](https://github.com/FCSIA/ia-app/commit/98a043c4))
+- **schedule** — Fixed an error that could prevent Groups, shared schedules, and calendar invites from loading for developer-designated users. ([`63584e25`](https://github.com/FCSIA/ia-app/commit/63584e25))
+- **ui follow-ups** — Gallery, dashboard, and announcements. ([`e9b99414`](https://github.com/FCSIA/ia-app/commit/e9b99414))
+- **announcements** — Cursor pagination for web and mobile feeds. ([`b8f486e5`](https://github.com/FCSIA/ia-app/commit/b8f486e5))
 
 ### Fixed
 
-- **clubs** — On phones, open a club chat thread from a message's long-press menu. ([#130](https://github.com/virajdas/ia-app/pull/130), [`1085bc9d`](https://github.com/virajdas/ia-app/commit/1085bc9d))
+- **clubs** — On phones, open a club chat thread from a message's long-press menu. ([#130](https://github.com/FCSIA/ia-app/pull/130), [`1085bc9d`](https://github.com/FCSIA/ia-app/commit/1085bc9d))
 
 ## v0.8.33 — 2026-09-21 (alpha)
 
 ### Improved
 
-- **clubs** — Finding people and club tools is easier on a phone with a clearer layout. ([`53ab8c80`](https://github.com/virajdas/ia-app/commit/53ab8c80))
+- **clubs** — Finding people and club tools is easier on a phone with a clearer layout. ([`53ab8c80`](https://github.com/FCSIA/ia-app/commit/53ab8c80))
 
 ### Fixed
 
-- **clubs** — Chat profile cards now show only classes you have in common. ([`72de06fb`](https://github.com/virajdas/ia-app/commit/72de06fb))
+- **clubs** — Chat profile cards now show only classes you have in common. ([`72de06fb`](https://github.com/FCSIA/ia-app/commit/72de06fb))
 
 ## v0.8.32 — 2026-09-20 (alpha)
 
 ### Improved
 
-- **clubs** — Expand chat profile card with mutual friends and classes. ([`885d5570`](https://github.com/virajdas/ia-app/commit/885d5570))
+- **clubs** — Expand chat profile card with mutual friends and classes. ([`885d5570`](https://github.com/FCSIA/ia-app/commit/885d5570))
 
 ### Fixed
 
-- **profile** — Profile names and developer badges now fit correctly in Settings on phones and larger screens. ([`2d03ee2b`](https://github.com/virajdas/ia-app/commit/2d03ee2b))
+- **profile** — Profile names and developer badges now fit correctly in Settings on phones and larger screens. ([`2d03ee2b`](https://github.com/FCSIA/ia-app/commit/2d03ee2b))
 
 ## v0.8.31 — 2026-09-19 (alpha)
 
 ### Added
 
-- **users** — Add developer designation with wrench badge. ([#123](https://github.com/virajdas/ia-app/pull/123), [`3b56c48b`](https://github.com/virajdas/ia-app/commit/3b56c48b))
+- **users** — Add developer designation with wrench badge. ([#123](https://github.com/FCSIA/ia-app/pull/123), [`3b56c48b`](https://github.com/FCSIA/ia-app/commit/3b56c48b))
 
 ### Improved
 
-- **tooling** — Upgrade convex stack. ([`c83f5b7b`](https://github.com/virajdas/ia-app/commit/c83f5b7b))
-- **web** — The old IA App address now points students to app.fcsia.com and includes device-specific Home Screen setup help. ([`6b491e28`](https://github.com/virajdas/ia-app/commit/6b491e28))
-- **auth** — The IA app now recognizes app.fcsia.com as its official sign-in address. ([`6734a5ca`](https://github.com/virajdas/ia-app/commit/6734a5ca))
-- **clubs** — Club member imports now finish even when a club reaches capacity, with clear results for skipped students. ([`eb66865f`](https://github.com/virajdas/ia-app/commit/eb66865f))
-- **clubs** — People search now matches role and unit labels. ([`4355524e`](https://github.com/virajdas/ia-app/commit/4355524e))
+- **tooling** — Upgrade convex stack. ([`c83f5b7b`](https://github.com/FCSIA/ia-app/commit/c83f5b7b))
+- **web** — The old IA App address now points students to app.fcsia.com and includes device-specific Home Screen setup help. ([`6b491e28`](https://github.com/FCSIA/ia-app/commit/6b491e28))
+- **auth** — The IA app now recognizes app.fcsia.com as its official sign-in address. ([`6734a5ca`](https://github.com/FCSIA/ia-app/commit/6734a5ca))
+- **clubs** — Club member imports now finish even when a club reaches capacity, with clear results for skipped students. ([`eb66865f`](https://github.com/FCSIA/ia-app/commit/eb66865f))
+- **clubs** — People search now matches role and unit labels. ([`4355524e`](https://github.com/FCSIA/ia-app/commit/4355524e))
 
 ### Fixed
 
-- **clubs** — Club chat interaction updates now build correctly. ([`e2ee1ec9`](https://github.com/virajdas/ia-app/commit/e2ee1ec9))
+- **clubs** — Club chat interaction updates now build correctly. ([`e2ee1ec9`](https://github.com/FCSIA/ia-app/commit/e2ee1ec9))
 
 ## v0.8.30 — 2026-09-10 (alpha)
 
 ### Added
 
-- **clubs** — Add idempotent bulk enrollment. ([`a5788285`](https://github.com/virajdas/ia-app/commit/a5788285))
+- **clubs** — Add idempotent bulk enrollment. ([`a5788285`](https://github.com/FCSIA/ia-app/commit/a5788285))
 
 ### Internal
 
-- Name release:ship as the standard deploy path. ([`193992a9`](https://github.com/virajdas/ia-app/commit/193992a9))
-- **release** — Add one-command release:ship. ([`88bee80c`](https://github.com/virajdas/ia-app/commit/88bee80c))
+- Name release:ship as the standard deploy path. ([`193992a9`](https://github.com/FCSIA/ia-app/commit/193992a9))
+- **release** — Add one-command release:ship. ([`88bee80c`](https://github.com/FCSIA/ia-app/commit/88bee80c))
 
 ## v0.8.29 — 2026-09-09 (alpha)
 
 ### Fixed
 
-- **web** — Dialogs and confirmations are centered again on desktop while staying above the keyboard on mobile. ([`ff628442`](https://github.com/virajdas/ia-app/commit/ff628442))
+- **web** — Dialogs and confirmations are centered again on desktop while staying above the keyboard on mobile. ([`ff628442`](https://github.com/FCSIA/ia-app/commit/ff628442))
 
 ## v0.8.28 — 2026-09-08 (alpha)
 
 ### Improved
 
-- **convex** — Club screens no longer show an error after your club access changes. ([`dd411f1f`](https://github.com/virajdas/ia-app/commit/dd411f1f))
+- **convex** — Club screens no longer show an error after your club access changes. ([`dd411f1f`](https://github.com/FCSIA/ia-app/commit/dd411f1f))
 
 ## v0.8.27 — 2026-09-08 (alpha)
 
 ### Added
 
-- **mobile** — The Clubs tab now explains when you have not joined a club and lets you open the club directory. ([`dc07b4b3`](https://github.com/virajdas/ia-app/commit/dc07b4b3))
-- **schedule** — Schedule picture import now reads images with Google Vision and requires you to confirm each period before applying it. ([`ec21813f`](https://github.com/virajdas/ia-app/commit/ec21813f))
+- **mobile** — The Clubs tab now explains when you have not joined a club and lets you open the club directory. ([`dc07b4b3`](https://github.com/FCSIA/ia-app/commit/dc07b4b3))
+- **schedule** — Schedule picture import now reads images with Google Vision and requires you to confirm each period before applying it. ([`ec21813f`](https://github.com/FCSIA/ia-app/commit/ec21813f))
 
 ### Improved
 
-- **login** — Sign-in campus artwork now has a subtly more visible dither pattern. ([`9fcc8ee7`](https://github.com/virajdas/ia-app/commit/9fcc8ee7))
-- **dashboard** — Canvas calendar prompt has clearer connect and dismiss controls. ([`e8007af1`](https://github.com/virajdas/ia-app/commit/e8007af1))
-- **tooling** — Bump convex to 1.45.0. ([`57922eb9`](https://github.com/virajdas/ia-app/commit/57922eb9))
-- **web** — Notifications, feedback, and Admin Panel stay at the bottom of the desktop sidebar when space allows. ([`8d193a35`](https://github.com/virajdas/ia-app/commit/8d193a35))
-- **tooling** — Harden worktree bootstrap modes. ([`4841d245`](https://github.com/virajdas/ia-app/commit/4841d245))
+- **login** — Sign-in campus artwork now has a subtly more visible dither pattern. ([`9fcc8ee7`](https://github.com/FCSIA/ia-app/commit/9fcc8ee7))
+- **dashboard** — Canvas calendar prompt has clearer connect and dismiss controls. ([`e8007af1`](https://github.com/FCSIA/ia-app/commit/e8007af1))
+- **tooling** — Bump convex to 1.45.0. ([`57922eb9`](https://github.com/FCSIA/ia-app/commit/57922eb9))
+- **web** — Notifications, feedback, and Admin Panel stay at the bottom of the desktop sidebar when space allows. ([`8d193a35`](https://github.com/FCSIA/ia-app/commit/8d193a35))
+- **tooling** — Harden worktree bootstrap modes. ([`4841d245`](https://github.com/FCSIA/ia-app/commit/4841d245))
 
 ### Internal
 
-- Explain LAN worktree configuration. ([`fc5efd63`](https://github.com/virajdas/ia-app/commit/fc5efd63))
+- Explain LAN worktree configuration. ([`fc5efd63`](https://github.com/FCSIA/ia-app/commit/fc5efd63))
 
 ## v0.8.26 — 2026-09-05 (alpha)
 
 ### Improved
 
-- **mobile** — Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner. ([#120](https://github.com/virajdas/ia-app/pull/120), [`a1987cd8`](https://github.com/virajdas/ia-app/commit/a1987cd8))
+- **mobile** — Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner. ([#120](https://github.com/FCSIA/ia-app/pull/120), [`a1987cd8`](https://github.com/FCSIA/ia-app/commit/a1987cd8))
 
 ### Fixed
 
-- Sign-in now keeps one randomly selected dithered campus image for the browser session and tints it with the active theme. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+- Sign-in now keeps one randomly selected dithered campus image for the browser session and tints it with the active theme. ([#118](https://github.com/FCSIA/ia-app/pull/118), [`6d8970b6`](https://github.com/FCSIA/ia-app/commit/6d8970b6))
 
 ## v0.8.25 — 2026-09-04 (alpha)
 
 ### Improved
 
-- **convex** — Regenerate api types for the new counter modules. ([`35777a00`](https://github.com/virajdas/ia-app/commit/35777a00))
-- **web** — Route the profile dialog through the query cache. ([`aa2d778f`](https://github.com/virajdas/ia-app/commit/aa2d778f))
-- **flex-friday** — Denormalize session counts. ([`b537fa18`](https://github.com/virajdas/ia-app/commit/b537fa18))
-- **web** — Prewarm tab queries on navigation intent. ([`16c632c8`](https://github.com/virajdas/ia-app/commit/16c632c8))
-- **web** — Switching tabs no longer reloads the page — announcements, clubs, events and the rest open straight away. ([`62de866f`](https://github.com/virajdas/ia-app/commit/62de866f))
-- **review** — Keep reply and club navigation reachable without gestures. ([`2add6bf3`](https://github.com/virajdas/ia-app/commit/2add6bf3))
-- **web** — The app now avoids stale PWA assets and offers a clear way to refresh a stuck sign-in session. ([`cfb118ea`](https://github.com/virajdas/ia-app/commit/cfb118ea))
-- **clubs** — Club people controls and roles are easier to use on touch devices. ([`be9b0d7e`](https://github.com/virajdas/ia-app/commit/be9b0d7e))
-- **calendar** — You can connect Canvas calendar feeds from the dashboard and calendar. ([`dfa672e4`](https://github.com/virajdas/ia-app/commit/dfa672e4))
-- **clubs** — You can jump from an inline reply to its original channel message. ([`0a5534a9`](https://github.com/virajdas/ia-app/commit/0a5534a9))
-- **web** — Search close controls now stay aligned with the search field. ([`0b13bba1`](https://github.com/virajdas/ia-app/commit/0b13bba1))
-- **clubs** — Club member profiles now show shared clubs and let eligible students send friend requests. ([`43fee957`](https://github.com/virajdas/ia-app/commit/43fee957))
+- **convex** — Regenerate api types for the new counter modules. ([`35777a00`](https://github.com/FCSIA/ia-app/commit/35777a00))
+- **web** — Route the profile dialog through the query cache. ([`aa2d778f`](https://github.com/FCSIA/ia-app/commit/aa2d778f))
+- **flex-friday** — Denormalize session counts. ([`b537fa18`](https://github.com/FCSIA/ia-app/commit/b537fa18))
+- **web** — Prewarm tab queries on navigation intent. ([`16c632c8`](https://github.com/FCSIA/ia-app/commit/16c632c8))
+- **web** — Switching tabs no longer reloads the page — announcements, clubs, events and the rest open straight away. ([`62de866f`](https://github.com/FCSIA/ia-app/commit/62de866f))
+- **review** — Keep reply and club navigation reachable without gestures. ([`2add6bf3`](https://github.com/FCSIA/ia-app/commit/2add6bf3))
+- **web** — The app now avoids stale PWA assets and offers a clear way to refresh a stuck sign-in session. ([`cfb118ea`](https://github.com/FCSIA/ia-app/commit/cfb118ea))
+- **clubs** — Club people controls and roles are easier to use on touch devices. ([`be9b0d7e`](https://github.com/FCSIA/ia-app/commit/be9b0d7e))
+- **calendar** — You can connect Canvas calendar feeds from the dashboard and calendar. ([`dfa672e4`](https://github.com/FCSIA/ia-app/commit/dfa672e4))
+- **clubs** — You can jump from an inline reply to its original channel message. ([`0a5534a9`](https://github.com/FCSIA/ia-app/commit/0a5534a9))
+- **web** — Search close controls now stay aligned with the search field. ([`0b13bba1`](https://github.com/FCSIA/ia-app/commit/0b13bba1))
+- **clubs** — Club member profiles now show shared clubs and let eligible students send friend requests. ([`43fee957`](https://github.com/FCSIA/ia-app/commit/43fee957))
 
 ### Fixed
 
-- **convex** — Stop counting rows to render list queries. ([`cab9a6fb`](https://github.com/virajdas/ia-app/commit/cab9a6fb))
-- **calendar** — Tolerate non-student friend queries. ([`fdf17a47`](https://github.com/virajdas/ia-app/commit/fdf17a47))
-- **clubs** — Channel rows no longer grow when hover controls appear on touch-capable Windows devices. ([`240c1a9a`](https://github.com/virajdas/ia-app/commit/240c1a9a))
-- **web** — Search now opens as one clean panel without an extra frame on desktop or mobile. ([`3e78fc19`](https://github.com/virajdas/ia-app/commit/3e78fc19))
+- **convex** — Stop counting rows to render list queries. ([`cab9a6fb`](https://github.com/FCSIA/ia-app/commit/cab9a6fb))
+- **calendar** — Tolerate non-student friend queries. ([`fdf17a47`](https://github.com/FCSIA/ia-app/commit/fdf17a47))
+- **clubs** — Channel rows no longer grow when hover controls appear on touch-capable Windows devices. ([`240c1a9a`](https://github.com/FCSIA/ia-app/commit/240c1a9a))
+- **web** — Search now opens as one clean panel without an extra frame on desktop or mobile. ([`3e78fc19`](https://github.com/FCSIA/ia-app/commit/3e78fc19))
 
 ## v0.8.24 — 2026-09-04 (alpha)
 
 ### Added
 
-- **clubs** — You can mention club roles and substructures in channels. ([`e0c9f6ff`](https://github.com/virajdas/ia-app/commit/e0c9f6ff))
+- **clubs** — You can mention club roles and substructures in channels. ([`e0c9f6ff`](https://github.com/FCSIA/ia-app/commit/e0c9f6ff))
 
 ### Improved
 
-- **notifications** — Reading a chat or opening notifications now clears matching alerts automatically. ([`e2f182ff`](https://github.com/virajdas/ia-app/commit/e2f182ff))
-- **web** — Profile pictures, club logos, and club banners now use the same crop-and-adjust flow. ([`180bc650`](https://github.com/virajdas/ia-app/commit/180bc650))
-- **web** — Theme surfaces now stay legible across every appearance, and the browser icon follows your selected theme. ([`9a9bc4a1`](https://github.com/virajdas/ia-app/commit/9a9bc4a1))
-- **clubs** — Shared screenshots and photos now keep their original shape instead of being cropped. ([`01f05b54`](https://github.com/virajdas/ia-app/commit/01f05b54))
-- **admin** — Show student pathways in user table. ([`c53b3c31`](https://github.com/virajdas/ia-app/commit/c53b3c31))
+- **notifications** — Reading a chat or opening notifications now clears matching alerts automatically. ([`e2f182ff`](https://github.com/FCSIA/ia-app/commit/e2f182ff))
+- **web** — Profile pictures, club logos, and club banners now use the same crop-and-adjust flow. ([`180bc650`](https://github.com/FCSIA/ia-app/commit/180bc650))
+- **web** — Theme surfaces now stay legible across every appearance, and the browser icon follows your selected theme. ([`9a9bc4a1`](https://github.com/FCSIA/ia-app/commit/9a9bc4a1))
+- **clubs** — Shared screenshots and photos now keep their original shape instead of being cropped. ([`01f05b54`](https://github.com/FCSIA/ia-app/commit/01f05b54))
+- **admin** — Show student pathways in user table. ([`c53b3c31`](https://github.com/FCSIA/ia-app/commit/c53b3c31))
 
 ### Fixed
 
-- **clubs** — Club branding images now have direct edit controls, club names sit cleanly below their logo, and banner uploads work reliably. ([`0c8258af`](https://github.com/virajdas/ia-app/commit/0c8258af))
+- **clubs** — Club branding images now have direct edit controls, club names sit cleanly below their logo, and banner uploads work reliably. ([`0c8258af`](https://github.com/FCSIA/ia-app/commit/0c8258af))
 
 ## v0.8.23 — 2026-09-02 (alpha)
 
 ### Added
 
-- **clubs** — Filter People by substructure, role, and member type — quickly narrow to the group you need. ([`d2d350dd`](https://github.com/virajdas/ia-app/commit/d2d350dd))
-- **web** — Allow local Convex images in CSP. ([`650b96e4`](https://github.com/virajdas/ia-app/commit/650b96e4))
-- **themes** — Bubblegum now has a dark pink option for low-light use. ([`7b11ef50`](https://github.com/virajdas/ia-app/commit/7b11ef50))
-- **profile** — Adjust and crop your profile picture before saving — zoom and drag to frame it perfectly. ([`b948d569`](https://github.com/virajdas/ia-app/commit/b948d569))
+- **clubs** — Filter People by substructure, role, and member type — quickly narrow to the group you need. ([`d2d350dd`](https://github.com/FCSIA/ia-app/commit/d2d350dd))
+- **web** — Allow local Convex images in CSP. ([`650b96e4`](https://github.com/FCSIA/ia-app/commit/650b96e4))
+- **themes** — Bubblegum now has a dark pink option for low-light use. ([`7b11ef50`](https://github.com/FCSIA/ia-app/commit/7b11ef50))
+- **profile** — Adjust and crop your profile picture before saving — zoom and drag to frame it perfectly. ([`b948d569`](https://github.com/FCSIA/ia-app/commit/b948d569))
 
 ### Improved
 
-- **web** — Custom colors now reject unreadable combinations, and automatic Custom surfaces stay dark and legible. ([`d0f78bcb`](https://github.com/virajdas/ia-app/commit/d0f78bcb))
-- **web** — Search now opens as one clear panel instead of a nested dialog. ([`daf93a1d`](https://github.com/virajdas/ia-app/commit/daf93a1d))
-- **web** — Custom themes now keep text readable across schedule panels, navigation, cards, menus, and popups. ([`d91ee4ab`](https://github.com/virajdas/ia-app/commit/d91ee4ab))
-- **clubs** — Tap any profile picture to view that person's profile — works great on your phone. ([`2d920619`](https://github.com/virajdas/ia-app/commit/2d920619))
-- Revert "navigation: expand mobile tab bar". ([`e46a394f`](https://github.com/virajdas/ia-app/commit/e46a394f))
-- **navigation** — Your mobile tab bar can show up to five favorite destinations. ([`0688fcda`](https://github.com/virajdas/ia-app/commit/0688fcda))
+- **web** — Custom colors now reject unreadable combinations, and automatic Custom surfaces stay dark and legible. ([`d0f78bcb`](https://github.com/FCSIA/ia-app/commit/d0f78bcb))
+- **web** — Search now opens as one clear panel instead of a nested dialog. ([`daf93a1d`](https://github.com/FCSIA/ia-app/commit/daf93a1d))
+- **web** — Custom themes now keep text readable across schedule panels, navigation, cards, menus, and popups. ([`d91ee4ab`](https://github.com/FCSIA/ia-app/commit/d91ee4ab))
+- **clubs** — Tap any profile picture to view that person's profile — works great on your phone. ([`2d920619`](https://github.com/FCSIA/ia-app/commit/2d920619))
+- Revert "navigation: expand mobile tab bar". ([`e46a394f`](https://github.com/FCSIA/ia-app/commit/e46a394f))
+- **navigation** — Your mobile tab bar can show up to five favorite destinations. ([`0688fcda`](https://github.com/FCSIA/ia-app/commit/0688fcda))
 
 ### Fixed
 
-- **web** — Fixed the command palette layout so search works cleanly on both desktop and mobile again. ([`0669ac17`](https://github.com/virajdas/ia-app/commit/0669ac17))
-- **navigation** — The mobile tab bar keeps the app's familiar icons while fitting more shortcuts. ([`4a880ac6`](https://github.com/virajdas/ia-app/commit/4a880ac6))
+- **web** — Fixed the command palette layout so search works cleanly on both desktop and mobile again. ([`0669ac17`](https://github.com/FCSIA/ia-app/commit/0669ac17))
+- **navigation** — The mobile tab bar keeps the app's familiar icons while fitting more shortcuts. ([`4a880ac6`](https://github.com/FCSIA/ia-app/commit/4a880ac6))
 
 ## v0.8.22 — 2026-09-01 (alpha)
 
 ### Improved
 
-- **schedule** — Deleting a friend group now returns you to the groups list instead of showing an error page. ([`7d019d5`](https://github.com/virajdas/ia-app/commit/7d019d5))
-- **web** — Club cards, menus, and reaction details now use readable text colors with custom themes. ([`6bc7ee8`](https://github.com/virajdas/ia-app/commit/6bc7ee8))
-- **clubs** — Mentions now include people who can access your club channel, including inherited house leaders. ([`223f179`](https://github.com/virajdas/ia-app/commit/223f179))
-- **navigation** — Your mobile tab bar now uses filled icons and can show up to five favorite destinations. ([`8880f5d`](https://github.com/virajdas/ia-app/commit/8880f5d))
+- **schedule** — Deleting a friend group now returns you to the groups list instead of showing an error page. ([`7d019d5`](https://github.com/FCSIA/ia-app/commit/7d019d5))
+- **web** — Club cards, menus, and reaction details now use readable text colors with custom themes. ([`6bc7ee8`](https://github.com/FCSIA/ia-app/commit/6bc7ee8))
+- **clubs** — Mentions now include people who can access your club channel, including inherited house leaders. ([`223f179`](https://github.com/FCSIA/ia-app/commit/223f179))
+- **navigation** — Your mobile tab bar now uses filled icons and can show up to five favorite destinations. ([`8880f5d`](https://github.com/FCSIA/ia-app/commit/8880f5d))
 
 ## v0.8.21 — 2026-09-01 (alpha)
 
 ### Improved
 
-- **dashboard** — Fun facts now rotate through more topics, with special facts appearing less often. ([`3dba3a8`](https://github.com/virajdas/ia-app/commit/3dba3a8))
-- **clubs** — Club chat now keeps navigation and unread updates responsive as activity grows. ([`d262aab`](https://github.com/virajdas/ia-app/commit/d262aab))
-- **convex** — Reduce hot read amplification. ([`7a72403`](https://github.com/virajdas/ia-app/commit/7a72403))
+- **dashboard** — Fun facts now rotate through more topics, with special facts appearing less often. ([`3dba3a8`](https://github.com/FCSIA/ia-app/commit/3dba3a8))
+- **clubs** — Club chat now keeps navigation and unread updates responsive as activity grows. ([`d262aab`](https://github.com/FCSIA/ia-app/commit/d262aab))
+- **convex** — Reduce hot read amplification. ([`7a72403`](https://github.com/FCSIA/ia-app/commit/7a72403))
 
 ## v0.8.20 — 2026-08-31 (alpha)
 
 ### Improved
 
-- **dashboard** — Dashboard calendar controls now live in the header, selected dates stay contained, and event dots remain visible. ([`e172d92`](https://github.com/virajdas/ia-app/commit/e172d92))
-- **dashboard** — Fun facts now feature more variety, with Phoenix facts appearing less often. ([`7550cfd`](https://github.com/virajdas/ia-app/commit/7550cfd))
+- **dashboard** — Dashboard calendar controls now live in the header, selected dates stay contained, and event dots remain visible. ([`e172d92`](https://github.com/FCSIA/ia-app/commit/e172d92))
+- **dashboard** — Fun facts now feature more variety, with Phoenix facts appearing less often. ([`7550cfd`](https://github.com/FCSIA/ia-app/commit/7550cfd))
 
 ## v0.8.19 — 2026-08-31 (alpha)
 
 ### Added
 
-- **calendar** — Long agenda titles now fade at hidden edges, calendar actions align right, and sticky date headers stay opaque. ([`129579c`](https://github.com/virajdas/ia-app/commit/129579c))
+- **calendar** — Long agenda titles now fade at hidden edges, calendar actions align right, and sticky date headers stay opaque. ([`129579c`](https://github.com/FCSIA/ia-app/commit/129579c))
 
 ### Improved
 
-- **web** — Club chat now keeps your place while older messages load and keeps consecutive messages compact. ([`fd62daf`](https://github.com/virajdas/ia-app/commit/fd62daf))
-- **dashboard** — The Dashboard calendar now aligns its controls cleanly and keeps selected-day event indicators visible. ([`57996e6`](https://github.com/virajdas/ia-app/commit/57996e6))
-- **calendar** — Calendar agenda rows now keep long titles on one scrollable line and use clean circular action buttons. ([`88bce51`](https://github.com/virajdas/ia-app/commit/88bce51))
-- **web** — You can select and copy notification text on a computer. ([`bd61057`](https://github.com/virajdas/ia-app/commit/bd61057))
-- **web** — Consecutive messages in club chats now stay grouped so names are not repeated. ([`cb754c3`](https://github.com/virajdas/ia-app/commit/cb754c3))
-- **calendar** — Calendar now uses readable agenda and day views on phones, with consistent event views and a compact Dashboard date picker. ([`84e5fd8`](https://github.com/virajdas/ia-app/commit/84e5fd8))
-- **web** — Custom themes now let you choose page text color and automatically use higher-contrast text on custom surfaces. ([`ead3f2d`](https://github.com/virajdas/ia-app/commit/ead3f2d))
+- **web** — Club chat now keeps your place while older messages load and keeps consecutive messages compact. ([`fd62daf`](https://github.com/FCSIA/ia-app/commit/fd62daf))
+- **dashboard** — The Dashboard calendar now aligns its controls cleanly and keeps selected-day event indicators visible. ([`57996e6`](https://github.com/FCSIA/ia-app/commit/57996e6))
+- **calendar** — Calendar agenda rows now keep long titles on one scrollable line and use clean circular action buttons. ([`88bce51`](https://github.com/FCSIA/ia-app/commit/88bce51))
+- **web** — You can select and copy notification text on a computer. ([`bd61057`](https://github.com/FCSIA/ia-app/commit/bd61057))
+- **web** — Consecutive messages in club chats now stay grouped so names are not repeated. ([`cb754c3`](https://github.com/FCSIA/ia-app/commit/cb754c3))
+- **calendar** — Calendar now uses readable agenda and day views on phones, with consistent event views and a compact Dashboard date picker. ([`84e5fd8`](https://github.com/FCSIA/ia-app/commit/84e5fd8))
+- **web** — Custom themes now let you choose page text color and automatically use higher-contrast text on custom surfaces. ([`ead3f2d`](https://github.com/FCSIA/ia-app/commit/ead3f2d))
 
 ### Fixed
 
-- **calendar** — Calendar views now scroll correctly, show readable agenda details, and make Canvas connections easier to set up. ([`0ac5f08`](https://github.com/virajdas/ia-app/commit/0ac5f08))
+- **calendar** — Calendar views now scroll correctly, show readable agenda details, and make Canvas connections easier to set up. ([`0ac5f08`](https://github.com/FCSIA/ia-app/commit/0ac5f08))
 
 ## v0.8.18 — 2026-08-31 (alpha)
 
 ### Improved
 
-- Clubs now keep your place when you switch tabs and show cleaner timestamps. ([`4da382d`](https://github.com/virajdas/ia-app/commit/4da382d))
+- Clubs now keep your place when you switch tabs and show cleaner timestamps. ([`4da382d`](https://github.com/FCSIA/ia-app/commit/4da382d))
 
 ### Fixed
 
-- **clubs** — Selecting a club chat mention now works reliably in iPhone and iPad PWAs. ([`c168abb`](https://github.com/virajdas/ia-app/commit/c168abb))
-- **calendar** — Canvas and other connected ICS calendars no longer prevent the calendar from opening after events sync. ([`994632c`](https://github.com/virajdas/ia-app/commit/994632c))
+- **clubs** — Selecting a club chat mention now works reliably in iPhone and iPad PWAs. ([`c168abb`](https://github.com/FCSIA/ia-app/commit/c168abb))
+- **calendar** — Canvas and other connected ICS calendars no longer prevent the calendar from opening after events sync. ([`994632c`](https://github.com/FCSIA/ia-app/commit/994632c))
 
 ## v0.8.17 — 2026-08-29 (alpha)
 
 ### Improved
 
-- **clubs** — Show all clubs to superadmins. ([`a20d794`](https://github.com/virajdas/ia-app/commit/a20d794))
+- **clubs** — Show all clubs to superadmins. ([`a20d794`](https://github.com/FCSIA/ia-app/commit/a20d794))
 
 ## v0.8.16 — 2026-08-29 (alpha)
 
 ### Improved
 
-- **clubs** — Club navigation scrolls more smoothly, reactions are more compact, and club discovery now has clearer pages and empty states. ([`eda148c`](https://github.com/virajdas/ia-app/commit/eda148c))
-- **dashboard** — Home now swaps the clock and date for a lighthearted message when there is no school or the school day is over. ([`c866ece`](https://github.com/virajdas/ia-app/commit/c866ece))
+- **clubs** — Club navigation scrolls more smoothly, reactions are more compact, and club discovery now has clearer pages and empty states. ([`eda148c`](https://github.com/FCSIA/ia-app/commit/eda148c))
+- **dashboard** — Home now swaps the clock and date for a lighthearted message when there is no school or the school day is over. ([`c866ece`](https://github.com/FCSIA/ia-app/commit/c866ece))
 
 ## v0.8.15 — 2026-08-29 (alpha)
 
 ### Added
 
-- **clubs** — Club chat navigation now follows your right-swipe gesture before opening. ([`736be25`](https://github.com/virajdas/ia-app/commit/736be25))
-- **calendar** — Mobile calendar users can connect Canvas feeds and share personal reminders with friends. ([`390edff`](https://github.com/virajdas/ia-app/commit/390edff))
+- **clubs** — Club chat navigation now follows your right-swipe gesture before opening. ([`736be25`](https://github.com/FCSIA/ia-app/commit/736be25))
+- **calendar** — Mobile calendar users can connect Canvas feeds and share personal reminders with friends. ([`390edff`](https://github.com/FCSIA/ia-app/commit/390edff))
 
 ### Improved
 
-- **clubs** — In club chats, swipe left to reply while swipe right opens workspace navigation. ([`4b75dd6`](https://github.com/virajdas/ia-app/commit/4b75dd6))
-- **courses** — Course search now finds likely matches when a course name is slightly misspelled. ([`30dbece`](https://github.com/virajdas/ia-app/commit/30dbece))
+- **clubs** — In club chats, swipe left to reply while swipe right opens workspace navigation. ([`4b75dd6`](https://github.com/FCSIA/ia-app/commit/4b75dd6))
+- **courses** — Course search now finds likely matches when a course name is slightly misspelled. ([`30dbece`](https://github.com/FCSIA/ia-app/commit/30dbece))
 
 ## v0.8.14 — 2026-08-28 (alpha)
 
 ### Added
 
-- **calendar** — Connect a private Canvas or other calendar feed and see its events alongside your school calendar. ([`6fd136d`](https://github.com/virajdas/ia-app/commit/6fd136d))
-- **clubs** — Clubs can now require an invitation instead of allowing joins or join requests. ([`7758fbc`](https://github.com/virajdas/ia-app/commit/7758fbc))
+- **calendar** — Connect a private Canvas or other calendar feed and see its events alongside your school calendar. ([`6fd136d`](https://github.com/FCSIA/ia-app/commit/6fd136d))
+- **clubs** — Clubs can now require an invitation instead of allowing joins or join requests. ([`7758fbc`](https://github.com/FCSIA/ia-app/commit/7758fbc))
 
 ### Improved
 
-- **clubs** — Club pages now keep titles clear and make customization easier to manage. ([`ae971a6`](https://github.com/virajdas/ia-app/commit/ae971a6))
-- **dashboard** — Keep dashboard customization actions easy to scan. ([`d515df6`](https://github.com/virajdas/ia-app/commit/d515df6))
-- **calendar** — Keep calendar titles and descriptions within safe limits. ([`d7a754e`](https://github.com/virajdas/ia-app/commit/d7a754e))
-- **web** — Friend requests and feedback are now easier to find, and group copy clearly describes schedule comparison. ([`0f0034e`](https://github.com/virajdas/ia-app/commit/0f0034e))
+- **clubs** — Club pages now keep titles clear and make customization easier to manage. ([`ae971a6`](https://github.com/FCSIA/ia-app/commit/ae971a6))
+- **dashboard** — Keep dashboard customization actions easy to scan. ([`d515df6`](https://github.com/FCSIA/ia-app/commit/d515df6))
+- **calendar** — Keep calendar titles and descriptions within safe limits. ([`d7a754e`](https://github.com/FCSIA/ia-app/commit/d7a754e))
+- **web** — Friend requests and feedback are now easier to find, and group copy clearly describes schedule comparison. ([`0f0034e`](https://github.com/FCSIA/ia-app/commit/0f0034e))
 
 ## v0.8.13 — 2026-08-28 (alpha)
 
 ### Improved
 
-- **web** — What's new is easier to read on mobile, and feedback now tells the team which app version you used. ([`4873982`](https://github.com/virajdas/ia-app/commit/4873982))
-- **clubs** — Removing a club role now shows which channel rules will change and warns before access becomes club-wide. ([`f1f0ead`](https://github.com/virajdas/ia-app/commit/f1f0ead))
-- **clubs** — Club links now open the overview on desktop while the installed mobile app keeps its navigation screen. ([`ce2d0ac`](https://github.com/virajdas/ia-app/commit/ce2d0ac))
-- **web** — Uploaded images now appear directly inside club channel conversations. ([`fb9e0ac`](https://github.com/virajdas/ia-app/commit/fb9e0ac))
-- **announcements** — Announcement filters stay contained and easier to scan on mobile. ([`698dedf`](https://github.com/virajdas/ia-app/commit/698dedf))
-- **settings** — Profile picture editing and settings separators feel cleaner on mobile. ([`7342090`](https://github.com/virajdas/ia-app/commit/7342090))
-- **notifications** — Notifications keep their controls compact and aligned on mobile. ([`b86d2fe`](https://github.com/virajdas/ia-app/commit/b86d2fe))
-- **clubs** — Club channels are easier to scan and navigate on mobile. ([`73ee384`](https://github.com/virajdas/ia-app/commit/73ee384))
+- **web** — What's new is easier to read on mobile, and feedback now tells the team which app version you used. ([`4873982`](https://github.com/FCSIA/ia-app/commit/4873982))
+- **clubs** — Removing a club role now shows which channel rules will change and warns before access becomes club-wide. ([`f1f0ead`](https://github.com/FCSIA/ia-app/commit/f1f0ead))
+- **clubs** — Club links now open the overview on desktop while the installed mobile app keeps its navigation screen. ([`ce2d0ac`](https://github.com/FCSIA/ia-app/commit/ce2d0ac))
+- **web** — Uploaded images now appear directly inside club channel conversations. ([`fb9e0ac`](https://github.com/FCSIA/ia-app/commit/fb9e0ac))
+- **announcements** — Announcement filters stay contained and easier to scan on mobile. ([`698dedf`](https://github.com/FCSIA/ia-app/commit/698dedf))
+- **settings** — Profile picture editing and settings separators feel cleaner on mobile. ([`7342090`](https://github.com/FCSIA/ia-app/commit/7342090))
+- **notifications** — Notifications keep their controls compact and aligned on mobile. ([`b86d2fe`](https://github.com/FCSIA/ia-app/commit/b86d2fe))
+- **clubs** — Club channels are easier to scan and navigate on mobile. ([`73ee384`](https://github.com/FCSIA/ia-app/commit/73ee384))
 
 ### Fixed
 
-- **clubs** — Club chat mentions now select reliably on mobile and show people's names instead of student IDs. ([`0c5d726`](https://github.com/virajdas/ia-app/commit/0c5d726))
-- **clubs** — Club messages now show poll and mention options when your role allows them, and notifications identify the sender. ([`6cd0ae6`](https://github.com/virajdas/ia-app/commit/6cd0ae6))
+- **clubs** — Club chat mentions now select reliably on mobile and show people's names instead of student IDs. ([`0c5d726`](https://github.com/FCSIA/ia-app/commit/0c5d726))
+- **clubs** — Club messages now show poll and mention options when your role allows them, and notifications identify the sender. ([`6cd0ae6`](https://github.com/FCSIA/ia-app/commit/6cd0ae6))
 
 ## v0.8.12 — 2026-08-27 (alpha)
 
@@ -450,93 +450,93 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Added
 
-- **web** — Mobile and tablet navigation now uses a persistent labeled tab bar, compact More drawer, and faster club browsing. ([`30713cd`](https://github.com/virajdas/ia-app/commit/30713cd))
+- **web** — Mobile and tablet navigation now uses a persistent labeled tab bar, compact More drawer, and faster club browsing. ([`30713cd`](https://github.com/FCSIA/ia-app/commit/30713cd))
 
 ### Improved
 
-- **web** — Mobile web navigation, search, chat, announcements, and schedules now feel more deliberate on phones. ([`cdd8476`](https://github.com/virajdas/ia-app/commit/cdd8476))
-- **web** — Mobile and tablet page changes now animate smoothly without blocking the entire screen, and Calendar uses the shared viewport layout. ([`fd35232`](https://github.com/virajdas/ia-app/commit/fd35232))
-- **web** — Dialogs, sheets, forms, tabs, and menus now fit phones better with larger touch targets and safe-area-aware panels. ([`54953e3`](https://github.com/virajdas/ia-app/commit/54953e3))
+- **web** — Mobile web navigation, search, chat, announcements, and schedules now feel more deliberate on phones. ([`cdd8476`](https://github.com/FCSIA/ia-app/commit/cdd8476))
+- **web** — Mobile and tablet page changes now animate smoothly without blocking the entire screen, and Calendar uses the shared viewport layout. ([`fd35232`](https://github.com/FCSIA/ia-app/commit/fd35232))
+- **web** — Dialogs, sheets, forms, tabs, and menus now fit phones better with larger touch targets and safe-area-aware panels. ([`54953e3`](https://github.com/FCSIA/ia-app/commit/54953e3))
 
 ## v0.8.10 — 2026-08-27 (alpha)
 
 ### Improved
 
-- **web** — Mobile chat now lets you tap a reaction to see who reacted. ([`abd9c46`](https://github.com/virajdas/ia-app/commit/abd9c46))
+- **web** — Mobile chat now lets you tap a reaction to see who reacted. ([`abd9c46`](https://github.com/FCSIA/ia-app/commit/abd9c46))
 
 ### Fixed
 
-- **web** — Club channels, people lists, branding uploads, and feedback review now behave more clearly and reliably. ([`4b7e87a`](https://github.com/virajdas/ia-app/commit/4b7e87a))
-- **web** — Destructive confirmation buttons now stay readable in every theme. ([`ec29bfe`](https://github.com/virajdas/ia-app/commit/ec29bfe))
+- **web** — Club channels, people lists, branding uploads, and feedback review now behave more clearly and reliably. ([`4b7e87a`](https://github.com/FCSIA/ia-app/commit/4b7e87a))
+- **web** — Destructive confirmation buttons now stay readable in every theme. ([`ec29bfe`](https://github.com/FCSIA/ia-app/commit/ec29bfe))
 
 ## v0.8.9 — 2026-08-25 (alpha)
 
 ### Improved
 
-- **web** — Club chat now removes the extra safe-area gap below the composer while the iPhone keyboard is open. ([`366932f`](https://github.com/virajdas/ia-app/commit/366932f))
-- **clubs** — Opening a club now starts with its channel list and club navigation. ([`5ff2a67`](https://github.com/virajdas/ia-app/commit/5ff2a67))
+- **web** — Club chat now removes the extra safe-area gap below the composer while the iPhone keyboard is open. ([`366932f`](https://github.com/FCSIA/ia-app/commit/366932f))
+- **clubs** — Opening a club now starts with its channel list and club navigation. ([`5ff2a67`](https://github.com/FCSIA/ia-app/commit/5ff2a67))
 
 ## v0.8.8 — 2026-08-24 (alpha)
 
 ### Improved
 
-- **web** — Channel messages on your phone now sit closer together so you. ([`e09d979`](https://github.com/virajdas/ia-app/commit/e09d979))
-- **web** — While you type in a channel on your phone, the small toolbar. ([`d5bda41`](https://github.com/virajdas/ia-app/commit/d5bda41))
-- **web** — The app now uses the shorter IA App name and a cleaner mobile club header. ([`a4ae48f`](https://github.com/virajdas/ia-app/commit/a4ae48f))
-- **fun-facts** — Loading screens now surface more rare facts and include new science, ocean, animal, and food trivia. ([`d421e95`](https://github.com/virajdas/ia-app/commit/d421e95))
+- **web** — Channel messages on your phone now sit closer together so you. ([`e09d979`](https://github.com/FCSIA/ia-app/commit/e09d979))
+- **web** — While you type in a channel on your phone, the small toolbar. ([`d5bda41`](https://github.com/FCSIA/ia-app/commit/d5bda41))
+- **web** — The app now uses the shorter IA App name and a cleaner mobile club header. ([`a4ae48f`](https://github.com/FCSIA/ia-app/commit/a4ae48f))
+- **fun-facts** — Loading screens now surface more rare facts and include new science, ocean, animal, and food trivia. ([`d421e95`](https://github.com/FCSIA/ia-app/commit/d421e95))
 
 ### Fixed
 
-- **web** — Club chat now keeps its safe-area header anchored and its composer flush with the keyboard on iPhone. ([`1e3ecb0`](https://github.com/virajdas/ia-app/commit/1e3ecb0))
-- **web** — LAN and tunneled development now load styles, keep sign-in sessions on the public origin, and connect mobile PWAs to local data. ([`a12630b`](https://github.com/virajdas/ia-app/commit/a12630b))
-- **web** — Stop tracking generated Next.js types. ([`d7cdeb6`](https://github.com/virajdas/ia-app/commit/d7cdeb6))
+- **web** — Club chat now keeps its safe-area header anchored and its composer flush with the keyboard on iPhone. ([`1e3ecb0`](https://github.com/FCSIA/ia-app/commit/1e3ecb0))
+- **web** — LAN and tunneled development now load styles, keep sign-in sessions on the public origin, and connect mobile PWAs to local data. ([`a12630b`](https://github.com/FCSIA/ia-app/commit/a12630b))
+- **web** — Stop tracking generated Next.js types. ([`d7cdeb6`](https://github.com/FCSIA/ia-app/commit/d7cdeb6))
 
 ## v0.8.7 — 2026-08-20 (alpha)
 
 ### Added
 
-- **actions** — Support production deploys from private repo. ([`1b87c26`](https://github.com/virajdas/ia-app/commit/1b87c26))
-- **web** — Swipe back from club content to the full club navigation, then swipe again for app navigation. ([`2fec13b`](https://github.com/virajdas/ia-app/commit/2fec13b))
+- **actions** — Support production deploys from private repo. ([`1b87c26`](https://github.com/FCSIA/ia-app/commit/1b87c26))
+- **web** — Swipe back from club content to the full club navigation, then swipe again for app navigation. ([`2fec13b`](https://github.com/FCSIA/ia-app/commit/2fec13b))
 
 ## v0.8.6 — 2026-08-20 (alpha)
 
 ### Improved
 
-- **web** — Keep editable text readable on touch devices without changing desktop sizing. ([#104](https://github.com/virajdas/ia-app/pull/104), [`9b0068e`](https://github.com/virajdas/ia-app/commit/9b0068e))
+- **web** — Keep editable text readable on touch devices without changing desktop sizing. ([#104](https://github.com/FCSIA/ia-app/pull/104), [`9b0068e`](https://github.com/FCSIA/ia-app/commit/9b0068e))
 
 ## v0.8.5 — 2026-08-19 (alpha)
 
 ### Fixed
 
-- **web** — Keep editable text readable on touch devices without changing desktop sizing. ([#102](https://github.com/virajdas/ia-app/pull/102), [`3754668`](https://github.com/virajdas/ia-app/commit/3754668))
+- **web** — Keep editable text readable on touch devices without changing desktop sizing. ([#102](https://github.com/FCSIA/ia-app/pull/102), [`3754668`](https://github.com/FCSIA/ia-app/commit/3754668))
 
 ## v0.8.4 — 2026-08-18 (alpha)
 
 ### Fixed
 
-- **web** — Destructive confirmation buttons now stay readable in every theme. ([`c2dbf2e`](https://github.com/virajdas/ia-app/commit/c2dbf2e))
+- **web** — Destructive confirmation buttons now stay readable in every theme. ([`c2dbf2e`](https://github.com/FCSIA/ia-app/commit/c2dbf2e))
 
 ## v0.8.3 — 2026-08-18 (alpha)
 
 ### Added
 
-- **clubs** — Configure role and custom People tabs from Club Settings. ([`240fe53`](https://github.com/virajdas/ia-app/commit/240fe53))
+- **clubs** — Configure role and custom People tabs from Club Settings. ([`240fe53`](https://github.com/FCSIA/ia-app/commit/240fe53))
 
 ### Improved
 
-- **auth** — Passwords can now be at least six characters long across web, mobile, and backend validation. ([`42e2440`](https://github.com/virajdas/ia-app/commit/42e2440))
+- **auth** — Passwords can now be at least six characters long across web, mobile, and backend validation. ([`42e2440`](https://github.com/FCSIA/ia-app/commit/42e2440))
 
 ## v0.8.2 — 2026-08-18 (alpha)
 
 ### Fixed
 
-- **notifications** — Notifications keep arriving after you reinstall the app or clear browser data, instead of going to browsers you no longer use. ([`0e3afdf`](https://github.com/virajdas/ia-app/commit/0e3afdf))
+- **notifications** — Notifications keep arriving after you reinstall the app or clear browser data, instead of going to browsers you no longer use. ([`0e3afdf`](https://github.com/FCSIA/ia-app/commit/0e3afdf))
 
 ## v0.8.1 — 2026-08-18 (alpha)
 
 ### Fixed
 
-- **notifications** — Browser notifications now arrive reliably on Android, and a Send test button confirms delivery on your own device. ([`2945fa8`](https://github.com/virajdas/ia-app/commit/2945fa8))
+- **notifications** — Browser notifications now arrive reliably on Android, and a Send test button confirms delivery on your own device. ([`2945fa8`](https://github.com/FCSIA/ia-app/commit/2945fa8))
 
 ## v0.8.0 — 2026-08-18 (alpha)
 
@@ -544,7 +544,7 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Fixed
 
-- **notifications** — Fix Android PWA delivery, SW registration, and FCM high urgency. ([`884ad25`](https://github.com/virajdas/ia-app/commit/884ad25))
+- **notifications** — Fix Android PWA delivery, SW registration, and FCM high urgency. ([`884ad25`](https://github.com/FCSIA/ia-app/commit/884ad25))
 
 ## v0.6.0 — 2026-08-17 (alpha)
 
@@ -552,7 +552,7 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Fixed
 
-- **pwa** — Fix Android push notification delivery. ([`038d0c8`](https://github.com/virajdas/ia-app/commit/038d0c8))
+- **pwa** — Fix Android push notification delivery. ([`038d0c8`](https://github.com/FCSIA/ia-app/commit/038d0c8))
 
 ## v0.4.2 — 2026-08-17 (alpha)
 
@@ -560,37 +560,37 @@ are recorded here for maintainers and hidden from the in-app devlog.
 
 ### Improved
 
-- **clubs** — Club managers can import houses, rooms, and leadership assignments atomically while skipping people who have not joined. ([`5bbdb03`](https://github.com/virajdas/ia-app/commit/5bbdb03))
+- **clubs** — Club managers can import houses, rooms, and leadership assignments atomically while skipping people who have not joined. ([`5bbdb03`](https://github.com/FCSIA/ia-app/commit/5bbdb03))
 
 ## v0.4.1 — 2026-08-16 (alpha)
 
 ### Added
 
-- **users** — Add administrator roster import. ([#92](https://github.com/virajdas/ia-app/pull/92), [`2cf7fdb`](https://github.com/virajdas/ia-app/commit/2cf7fdb))
-- **clubs** — Add role and unit channel access controls. ([`8dd9f37`](https://github.com/virajdas/ia-app/commit/8dd9f37))
+- **users** — Add administrator roster import. ([#92](https://github.com/FCSIA/ia-app/pull/92), [`2cf7fdb`](https://github.com/FCSIA/ia-app/commit/2cf7fdb))
+- **clubs** — Add role and unit channel access controls. ([`8dd9f37`](https://github.com/FCSIA/ia-app/commit/8dd9f37))
 
 ### Improved
 
-- **agents** — Anti-slop skill. ([`986b189`](https://github.com/virajdas/ia-app/commit/986b189))
-- What's new is easier to scan by update type and area. ([#89](https://github.com/virajdas/ia-app/pull/89), [`c587b30`](https://github.com/virajdas/ia-app/commit/c587b30))
-- **schedule** — Remove-shared-slot-count. ([`c60c3c4`](https://github.com/virajdas/ia-app/commit/c60c3c4))
-- **schedule** — Include-shared-lunch-slots. ([#93](https://github.com/virajdas/ia-app/pull/93), [`dcf67a7`](https://github.com/virajdas/ia-app/commit/dcf67a7))
-- **performance** — Reduce auth and database reads. ([#90](https://github.com/virajdas/ia-app/pull/90), [`824d1d9`](https://github.com/virajdas/ia-app/commit/824d1d9))
-- **announcements** — Streamline compose targeting. ([`5f59b90`](https://github.com/virajdas/ia-app/commit/5f59b90))
-- **clubs** — Refine member management controls. ([`9510a9e`](https://github.com/virajdas/ia-app/commit/9510a9e))
-- **clubs** — Import CSV unit assignments. ([`1993035`](https://github.com/virajdas/ia-app/commit/1993035))
-- **web** — Remove route and channel tree motion. ([`b7c0e65`](https://github.com/virajdas/ia-app/commit/b7c0e65))
+- **agents** — Anti-slop skill. ([`986b189`](https://github.com/FCSIA/ia-app/commit/986b189))
+- What's new is easier to scan by update type and area. ([#89](https://github.com/FCSIA/ia-app/pull/89), [`c587b30`](https://github.com/FCSIA/ia-app/commit/c587b30))
+- **schedule** — Remove-shared-slot-count. ([`c60c3c4`](https://github.com/FCSIA/ia-app/commit/c60c3c4))
+- **schedule** — Include-shared-lunch-slots. ([#93](https://github.com/FCSIA/ia-app/pull/93), [`dcf67a7`](https://github.com/FCSIA/ia-app/commit/dcf67a7))
+- **performance** — Reduce auth and database reads. ([#90](https://github.com/FCSIA/ia-app/pull/90), [`824d1d9`](https://github.com/FCSIA/ia-app/commit/824d1d9))
+- **announcements** — Streamline compose targeting. ([`5f59b90`](https://github.com/FCSIA/ia-app/commit/5f59b90))
+- **clubs** — Refine member management controls. ([`9510a9e`](https://github.com/FCSIA/ia-app/commit/9510a9e))
+- **clubs** — Import CSV unit assignments. ([`1993035`](https://github.com/FCSIA/ia-app/commit/1993035))
+- **web** — Remove route and channel tree motion. ([`b7c0e65`](https://github.com/FCSIA/ia-app/commit/b7c0e65))
 
 ### Fixed
 
-- **notifications** — Fix push on iOS PWAs and register service worker. ([#94](https://github.com/virajdas/ia-app/pull/94), [`f72259c`](https://github.com/virajdas/ia-app/commit/f72259c))
-- Enable student impersonation and fix exit payload. ([#91](https://github.com/virajdas/ia-app/pull/91), [`cca8748`](https://github.com/virajdas/ia-app/commit/cca8748))
+- **notifications** — Fix push on iOS PWAs and register service worker. ([#94](https://github.com/FCSIA/ia-app/pull/94), [`f72259c`](https://github.com/FCSIA/ia-app/commit/f72259c))
+- Enable student impersonation and fix exit payload. ([#91](https://github.com/FCSIA/ia-app/pull/91), [`cca8748`](https://github.com/FCSIA/ia-app/commit/cca8748))
 
 ### Internal
 
-- Remove code owners. ([`4ec22e9`](https://github.com/virajdas/ia-app/commit/4ec22e9))
-- Document local demo credentials. ([`c39e4d6`](https://github.com/virajdas/ia-app/commit/c39e4d6))
-- Preserve local demo and theme work. ([`f4b787f`](https://github.com/virajdas/ia-app/commit/f4b787f))
+- Remove code owners. ([`4ec22e9`](https://github.com/FCSIA/ia-app/commit/4ec22e9))
+- Document local demo credentials. ([`c39e4d6`](https://github.com/FCSIA/ia-app/commit/c39e4d6))
+- Preserve local demo and theme work. ([`f4b787f`](https://github.com/FCSIA/ia-app/commit/f4b787f))
 
 ## v0.4.0 — 2026-08-13 (alpha)
 
@@ -600,31 +600,31 @@ Clubs can now model their real internal structure, feedback you send gets a repl
 
 ### Added
 
-- **clubs** — Clubs can build their own internal units with unit-aware channel policies, and unit channels are created automatically. ([`b371ea3`](https://github.com/virajdas/ia-app/commit/b371ea3))
-- **clubs** — Club managers can add authorized members directly instead of waiting for a join request. ([`59ddc2a`](https://github.com/virajdas/ia-app/commit/59ddc2a))
-- **moderation** — Feedback you submit now notifies you when it is resolved, and dismissed feedback is archived rather than lost. ([`c11f24e`](https://github.com/virajdas/ia-app/commit/c11f24e))
-- **schedule** — Schedules, collaboration, and Wrapped were reworked into one student experience pass. ([#88](https://github.com/virajdas/ia-app/pull/88), [`b30e21c`](https://github.com/virajdas/ia-app/commit/b30e21c))
+- **clubs** — Clubs can build their own internal units with unit-aware channel policies, and unit channels are created automatically. ([`b371ea3`](https://github.com/FCSIA/ia-app/commit/b371ea3))
+- **clubs** — Club managers can add authorized members directly instead of waiting for a join request. ([`59ddc2a`](https://github.com/FCSIA/ia-app/commit/59ddc2a))
+- **moderation** — Feedback you submit now notifies you when it is resolved, and dismissed feedback is archived rather than lost. ([`c11f24e`](https://github.com/FCSIA/ia-app/commit/c11f24e))
+- **schedule** — Schedules, collaboration, and Wrapped were reworked into one student experience pass. ([#88](https://github.com/FCSIA/ia-app/pull/88), [`b30e21c`](https://github.com/FCSIA/ia-app/commit/b30e21c))
 
 ### Improved
 
-- **clubs** — Channels nest under their parent rows, workspace navigation is resizable, and the composer stays pinned to the bottom of the workspace. ([`e81628d`](https://github.com/virajdas/ia-app/commit/e81628d))
-- **clubs** — Switching channels keeps the workspace mounted, so the club you are in no longer flashes on every jump. ([`10ecbd0`](https://github.com/virajdas/ia-app/commit/10ecbd0))
-- **clubs** — Channel controls appear on hover, and club settings sections are visible instead of buried. ([`2461375`](https://github.com/virajdas/ia-app/commit/2461375))
-- **clubs** — Role settings and structure editing are clearer to configure. ([`7dcb6f9`](https://github.com/virajdas/ia-app/commit/7dcb6f9))
+- **clubs** — Channels nest under their parent rows, workspace navigation is resizable, and the composer stays pinned to the bottom of the workspace. ([`e81628d`](https://github.com/FCSIA/ia-app/commit/e81628d))
+- **clubs** — Switching channels keeps the workspace mounted, so the club you are in no longer flashes on every jump. ([`10ecbd0`](https://github.com/FCSIA/ia-app/commit/10ecbd0))
+- **clubs** — Channel controls appear on hover, and club settings sections are visible instead of buried. ([`2461375`](https://github.com/FCSIA/ia-app/commit/2461375))
+- **clubs** — Role settings and structure editing are clearer to configure. ([`7dcb6f9`](https://github.com/FCSIA/ia-app/commit/7dcb6f9))
 
 ### Fixed
 
-- **web** — The mobile navigation drawer respects device safe areas. ([`e465c07`](https://github.com/virajdas/ia-app/commit/e465c07))
-- **clubs** — Repaired the nested channel layout. ([`2418481`](https://github.com/virajdas/ia-app/commit/2418481))
+- **web** — The mobile navigation drawer respects device safe areas. ([`e465c07`](https://github.com/FCSIA/ia-app/commit/e465c07))
+- **clubs** — Repaired the nested channel layout. ([`2418481`](https://github.com/FCSIA/ia-app/commit/2418481))
 
 ### Security
 
-- **auth** — Impersonation HTTP routes are disabled, and supervised impersonation is limited to authorized staff. ([`efa0a9f`](https://github.com/virajdas/ia-app/commit/efa0a9f))
-- **web** — Custom themes are disabled in production while the editor is reviewed. ([`2258821`](https://github.com/virajdas/ia-app/commit/2258821))
+- **auth** — Impersonation HTTP routes are disabled, and supervised impersonation is limited to authorized staff. ([`efa0a9f`](https://github.com/FCSIA/ia-app/commit/efa0a9f))
+- **web** — Custom themes are disabled in production while the editor is reviewed. ([`2258821`](https://github.com/FCSIA/ia-app/commit/2258821))
 
 ### Internal
 
-- **deps** — Aligned the Convex workspace to 1.43. ([`afbdc4e`](https://github.com/virajdas/ia-app/commit/afbdc4e))
+- **deps** — Aligned the Convex workspace to 1.43. ([`afbdc4e`](https://github.com/FCSIA/ia-app/commit/afbdc4e))
 
 ## v0.3.0 — 2026-08-11 (alpha)
 
@@ -634,26 +634,26 @@ School day plans moved onto a real calendar, the announcement feed was flattened
 
 ### Added
 
-- **schedule** — Day plans are calendar-first: templates drive Monday–Thursday inheritance and special days are assigned by date. ([`11edeef`](https://github.com/virajdas/ia-app/commit/11edeef))
-- **schedule** — Friend search now spans grades, so you can find people outside your own year. ([`67d4313`](https://github.com/virajdas/ia-app/commit/67d4313))
-- **feedback** — You can attach images to a report. ([`51a6af8`](https://github.com/virajdas/ia-app/commit/51a6af8))
-- **clubs** — Club leads can remove members, and superadmins can delete a club outright. ([`d82e984`](https://github.com/virajdas/ia-app/commit/d82e984))
+- **schedule** — Day plans are calendar-first: templates drive Monday–Thursday inheritance and special days are assigned by date. ([`11edeef`](https://github.com/FCSIA/ia-app/commit/11edeef))
+- **schedule** — Friend search now spans grades, so you can find people outside your own year. ([`67d4313`](https://github.com/FCSIA/ia-app/commit/67d4313))
+- **feedback** — You can attach images to a report. ([`51a6af8`](https://github.com/FCSIA/ia-app/commit/51a6af8))
+- **clubs** — Club leads can remove members, and superadmins can delete a club outright. ([`d82e984`](https://github.com/FCSIA/ia-app/commit/d82e984))
 
 ### Improved
 
-- **announcements** — The feed is flatter, with clearer filters, card states, and unread treatment. ([`ae3be14`](https://github.com/virajdas/ia-app/commit/ae3be14))
-- **theme** — New accounts default to dark mode. ([`43b5240`](https://github.com/virajdas/ia-app/commit/43b5240))
-- **web** — Installed-app layout fixes for search, notifications, and chat on phones. ([`3aa6388`](https://github.com/virajdas/ia-app/commit/3aa6388))
-- **admin** — Feedback is separated from moderation reports in the admin panel. ([`52a842f`](https://github.com/virajdas/ia-app/commit/52a842f))
+- **announcements** — The feed is flatter, with clearer filters, card states, and unread treatment. ([`ae3be14`](https://github.com/FCSIA/ia-app/commit/ae3be14))
+- **theme** — New accounts default to dark mode. ([`43b5240`](https://github.com/FCSIA/ia-app/commit/43b5240))
+- **web** — Installed-app layout fixes for search, notifications, and chat on phones. ([`3aa6388`](https://github.com/FCSIA/ia-app/commit/3aa6388))
+- **admin** — Feedback is separated from moderation reports in the admin panel. ([`52a842f`](https://github.com/FCSIA/ia-app/commit/52a842f))
 
 ### Fixed
 
-- **auth** — Restored dynamic base URL resolution so sign-in works on every deployment host. ([#87](https://github.com/virajdas/ia-app/pull/87), [`e777877`](https://github.com/virajdas/ia-app/commit/e777877))
-- **schedule** — Classes persist across days instead of resetting when you change the date. ([`377b678`](https://github.com/virajdas/ia-app/commit/377b678))
-- **chat** — Direct messages respect friendship state. ([`9e44157`](https://github.com/virajdas/ia-app/commit/9e44157))
-- **uploads** — Large uploads no longer fail on a Blob slice bounds error. ([`a3a58cf`](https://github.com/virajdas/ia-app/commit/a3a58cf))
-- **web** — Mobile safe area insets are respected, and toasts stay clear of the navigation bar. ([`9fb2e60`](https://github.com/virajdas/ia-app/commit/9fb2e60))
-- **ui** — Restored alert action contrast and kept custom surface text readable. ([`1d4490f`](https://github.com/virajdas/ia-app/commit/1d4490f))
+- **auth** — Restored dynamic base URL resolution so sign-in works on every deployment host. ([#87](https://github.com/FCSIA/ia-app/pull/87), [`e777877`](https://github.com/FCSIA/ia-app/commit/e777877))
+- **schedule** — Classes persist across days instead of resetting when you change the date. ([`377b678`](https://github.com/FCSIA/ia-app/commit/377b678))
+- **chat** — Direct messages respect friendship state. ([`9e44157`](https://github.com/FCSIA/ia-app/commit/9e44157))
+- **uploads** — Large uploads no longer fail on a Blob slice bounds error. ([`a3a58cf`](https://github.com/FCSIA/ia-app/commit/a3a58cf))
+- **web** — Mobile safe area insets are respected, and toasts stay clear of the navigation bar. ([`9fb2e60`](https://github.com/FCSIA/ia-app/commit/9fb2e60))
+- **ui** — Restored alert action contrast and kept custom surface text readable. ([`1d4490f`](https://github.com/FCSIA/ia-app/commit/1d4490f))
 
 ## v0.2.0 — 2026-08-09 (alpha)
 
@@ -663,23 +663,23 @@ Clubs gained arbitrary internal hierarchies, replies were separated from threads
 
 ### Added
 
-- **clubs** — Clubs support arbitrary internal hierarchies with dedicated hierarchy administration. ([`41fe53f`](https://github.com/virajdas/ia-app/commit/41fe53f))
-- **clubs** — Inline replies stay in the main timeline; threads are now an explicit action. ([`df07408`](https://github.com/virajdas/ia-app/commit/df07408))
-- **navigation** — Compact search in the header, and a swipe gesture that reveals navigation on phones. ([`7f4471f`](https://github.com/virajdas/ia-app/commit/7f4471f))
+- **clubs** — Clubs support arbitrary internal hierarchies with dedicated hierarchy administration. ([`41fe53f`](https://github.com/FCSIA/ia-app/commit/41fe53f))
+- **clubs** — Inline replies stay in the main timeline; threads are now an explicit action. ([`df07408`](https://github.com/FCSIA/ia-app/commit/df07408))
+- **navigation** — Compact search in the header, and a swipe gesture that reveals navigation on phones. ([`7f4471f`](https://github.com/FCSIA/ia-app/commit/7f4471f))
 
 ### Improved
 
-- **schedule** — Overhauled superadmin day plans with drag-and-drop block ordering. ([`537a975`](https://github.com/virajdas/ia-app/commit/537a975))
-- **dashboard** — Simplified the greeting and moved dashboard customization into the header. ([`3e713c7`](https://github.com/virajdas/ia-app/commit/3e713c7))
-- **ui** — Refreshed the shared interface primitives across the app. ([`2acea5e`](https://github.com/virajdas/ia-app/commit/2acea5e))
+- **schedule** — Overhauled superadmin day plans with drag-and-drop block ordering. ([`537a975`](https://github.com/FCSIA/ia-app/commit/537a975))
+- **dashboard** — Simplified the greeting and moved dashboard customization into the header. ([`3e713c7`](https://github.com/FCSIA/ia-app/commit/3e713c7))
+- **ui** — Refreshed the shared interface primitives across the app. ([`2acea5e`](https://github.com/FCSIA/ia-app/commit/2acea5e))
 
 ### Fixed
 
-- **clubs** — Restored scrolling in club discovery and tightened mobile channel interactions. ([`db5d51a`](https://github.com/virajdas/ia-app/commit/db5d51a))
+- **clubs** — Restored scrolling in club discovery and tightened mobile channel interactions. ([`db5d51a`](https://github.com/FCSIA/ia-app/commit/db5d51a))
 
 ### Security
 
-- **security** — Remediated the 2026-08-09 audit: route and role hardening, private club and channel access, upload ownership checks, and abuse throttles. ([`7cf1716`](https://github.com/virajdas/ia-app/commit/7cf1716))
+- **security** — Remediated the 2026-08-09 audit: route and role hardening, private club and channel access, upload ownership checks, and abuse throttles. ([`7cf1716`](https://github.com/FCSIA/ia-app/commit/7cf1716))
 
 ## v0.1.0 — 2026-08-08 (alpha)
 
@@ -689,20 +689,20 @@ The first alpha build for the wider student group: global search, screenshot sch
 
 ### Added
 
-- **search** — Cmd+K searches people and club channels you have access to. ([#72](https://github.com/virajdas/ia-app/pull/72), [`31c9d40`](https://github.com/virajdas/ia-app/commit/31c9d40))
-- **schedule** — Import your classes from an Infinite Campus screenshot and review the matches before saving. ([#70](https://github.com/virajdas/ia-app/pull/70))
-- **schedule** — Friend links and private schedule groups. ([#75](https://github.com/virajdas/ia-app/pull/75), [`d0394e4`](https://github.com/virajdas/ia-app/commit/d0394e4))
-- **notifications** — Browser push notifications can be activated from notification settings. ([#73](https://github.com/virajdas/ia-app/pull/73), [`7b3ee8b`](https://github.com/virajdas/ia-app/commit/7b3ee8b))
+- **search** — Cmd+K searches people and club channels you have access to. ([#72](https://github.com/FCSIA/ia-app/pull/72), [`31c9d40`](https://github.com/FCSIA/ia-app/commit/31c9d40))
+- **schedule** — Import your classes from an Infinite Campus screenshot and review the matches before saving. ([#70](https://github.com/FCSIA/ia-app/pull/70))
+- **schedule** — Friend links and private schedule groups. ([#75](https://github.com/FCSIA/ia-app/pull/75), [`d0394e4`](https://github.com/FCSIA/ia-app/commit/d0394e4))
+- **notifications** — Browser push notifications can be activated from notification settings. ([#73](https://github.com/FCSIA/ia-app/pull/73), [`7b3ee8b`](https://github.com/FCSIA/ia-app/commit/7b3ee8b))
 
 ### Improved
 
-- **clubs** — The club directory focuses on your clubs first. ([#69](https://github.com/virajdas/ia-app/pull/69))
-- **calendar** — Calendar surfaces follow the active theme. ([#71](https://github.com/virajdas/ia-app/pull/71))
+- **clubs** — The club directory focuses on your clubs first. ([#69](https://github.com/FCSIA/ia-app/pull/69))
+- **calendar** — Calendar surfaces follow the active theme. ([#71](https://github.com/FCSIA/ia-app/pull/71))
 
 ### Fixed
 
-- **web** — Repaired tab switching in production builds. ([`f62fb8d`](https://github.com/virajdas/ia-app/commit/f62fb8d))
+- **web** — Repaired tab switching in production builds. ([`f62fb8d`](https://github.com/FCSIA/ia-app/commit/f62fb8d))
 
 ### Internal
 
-- **docs** — Established student contribution safety rules and documented client state ownership. ([#80](https://github.com/virajdas/ia-app/pull/80), [`32745a3`](https://github.com/virajdas/ia-app/commit/32745a3))
+- **docs** — Established student contribution safety rules and documented client state ownership. ([#80](https://github.com/FCSIA/ia-app/pull/80), [`32745a3`](https://github.com/FCSIA/ia-app/commit/32745a3))

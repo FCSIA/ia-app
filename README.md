@@ -47,7 +47,7 @@ CI uses the Bun version recorded in `package.json`; local developers may use a
 newer compatible Bun release.
 
 ```bash
-git clone https://github.com/virajdas/ia-app.git
+git clone https://github.com/FCSIA/ia-app.git
 cd ia-app
 cp .env.example .env
 bun install

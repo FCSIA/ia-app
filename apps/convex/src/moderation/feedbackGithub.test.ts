@@ -72,7 +72,7 @@ async function signature(body: string) {
   return `sha256=${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
-function issueEvent(repository = "virajdas/ia-app") {
+function issueEvent(repository = "FCSIA/ia-app") {
   return JSON.stringify({
     action: "closed",
     repository: { full_name: repository },
@@ -125,6 +125,7 @@ describe("GitHub feedback webhook", () => {
     const signed = await signature(body);
     expect((await webhook(t, `${body} `, signed)).status).toBe(401);
     expect((await webhook(t, issueEvent("another/repository"))).status).toBe(204);
+    expect((await webhook(t, issueEvent("virajdas/ia-app"))).status).toBe(204);
     expect((await t.run((ctx) => ctx.db.get(reportId)))?.status).toBe("PENDING");
   });
 
@@ -204,7 +205,7 @@ describe("GitHub feedback issue creation", () => {
     vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-feedback-token");
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
       number: 456,
-      html_url: "https://github.com/virajdas/ia-app/issues/456",
+      html_url: "https://github.com/FCSIA/ia-app/issues/456",
     }, { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const { t, reportId } = await fixture();
@@ -216,7 +217,7 @@ describe("GitHub feedback issue creation", () => {
     await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, request] = fetchMock.mock.calls[0]!;
-    expect(url).toBe("https://api.github.com/repos/virajdas/ia-app/issues");
+    expect(url).toBe("https://api.github.com/repos/FCSIA/ia-app/issues");
     expect(request?.method).toBe("POST");
     expect(request?.headers).toMatchObject({ Authorization: "Bearer synthetic-feedback-token" });
     const payload = JSON.parse(String(request?.body));
@@ -226,7 +227,7 @@ describe("GitHub feedback issue creation", () => {
     expect(payload.body).not.toContain("Test Student");
     expect(await t.run((ctx) => ctx.db.get(reportId))).toMatchObject({
       githubIssueNumber: 456,
-      githubIssueUrl: "https://github.com/virajdas/ia-app/issues/456",
+      githubIssueUrl: "https://github.com/FCSIA/ia-app/issues/456",
       githubIssueSyncState: "SYNCED",
       githubIssueSyncError: null,
     });
