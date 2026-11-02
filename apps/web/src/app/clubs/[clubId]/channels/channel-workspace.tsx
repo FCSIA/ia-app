@@ -965,6 +965,8 @@ function MessageReplyReference({
   );
 }
 
+type MessageOverlay = 'reactions' | 'actions' | 'delete' | 'sheet';
+
 function MessageRow({
   clubId,
   message,
@@ -1056,10 +1058,15 @@ function MessageRow({
   const hasReactions =
     !isDeleted && !isEditing && !isSending && message.reactions.length > 0;
   const canAct = !isDeleted && !isSending && !isEditing;
-  const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
-  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  // At most one of the row's overlays is open at a time.
+  const [overlay, setOverlay] = useState<MessageOverlay | null>(null);
+  const overlayControl = (name: MessageOverlay) => ({
+    open: overlay === name,
+    // A closing overlay must not clear the one that replaced it, e.g. the
+    // menu closing after its Delete item opened the delete dialog.
+    onOpenChange: (open: boolean) =>
+      setOverlay((current) => (open ? name : current === name ? null : current)),
+  });
   const [reactionBurst, setReactionBurst] = useState<{ key: number; x: number; y: number } | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const replySwipeStart = useRef<{ x: number; y: number; swiping: boolean } | null>(null);
@@ -1088,7 +1095,7 @@ function MessageRow({
     enabled: isTouchPrimary && canAct,
     onLongPress: () => {
       replySwipeStart.current = null;
-      setActionSheetOpen(true);
+      setOverlay('sheet');
     },
     onDoubleTap: (point) => {
       const rect = rowRef.current?.getBoundingClientRect();
@@ -1163,7 +1170,7 @@ function MessageRow({
             icon: Trash2,
             destructive: true,
             disabled: isDeletePending,
-            onSelect: () => setDeleteDialogOpen(true),
+            onSelect: () => setOverlay('delete'),
           },
         ]
       : [],
@@ -1176,7 +1183,7 @@ function MessageRow({
       <ContextMenuTrigger asChild disabled={!canAct || isTouchPrimary}>
         <div
           ref={rowRef}
-          data-selected={actionSheetOpen ? '' : undefined}
+          data-selected={overlay === 'sheet' ? '' : undefined}
           className={cn(
             'group/row relative touch-pan-y',
             // On touch, a hold opens the actions; it never selects text, shows
@@ -1375,11 +1382,11 @@ function MessageRow({
                 <MessageActions
                   className={cn(
                     'pointer-events-none translate-y-1 rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:pointer-events-auto group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
-                    (reactionPickerOpen || actionsMenuOpen || deleteDialogOpen) &&
+                    overlay !== null && overlay !== 'sheet' &&
                       'pointer-events-auto translate-y-0 opacity-100',
                   )}
                 >
-                  <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
+                  <Popover {...overlayControl('reactions')}>
                     <Tooltip content="Add reaction">
                       <PopoverTrigger asChild>
                         <Button
@@ -1453,7 +1460,7 @@ function MessageRow({
                       </Button>
                     </Tooltip>
                   )}
-                  <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                  <DropdownMenu {...overlayControl('actions')}>
                     <Tooltip content="More">
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -1496,7 +1503,7 @@ function MessageRow({
                         <DropdownMenuItem
                           disabled={isDeletePending}
                           className="rounded-xl text-destructive focus:text-destructive"
-                          onSelect={() => setDeleteDialogOpen(true)}
+                          onSelect={() => setOverlay('delete')}
                         >
                           <Trash2 />
                           Delete
@@ -1637,7 +1644,7 @@ function MessageRow({
             <ContextMenuItem
               disabled={isDeletePending}
               className="text-destructive focus:text-destructive"
-              onSelect={() => setDeleteDialogOpen(true)}
+              onSelect={() => setOverlay('delete')}
             >
               <Trash2 />
               Delete
@@ -1648,8 +1655,7 @@ function MessageRow({
     </ContextMenu>
     {isTouchPrimary ? (
       <MessageActionSheet
-        open={actionSheetOpen}
-        onOpenChange={setActionSheetOpen}
+        {...overlayControl('sheet')}
         preview={{
           avatar: <ClubAvatar person={message.author} className="size-9" fallbackClassName="text-[11px]" />,
           authorName: fullName(message.author),
@@ -1683,7 +1689,7 @@ function MessageRow({
       />
     ) : null}
     {/* Outside the row, so touches in the dialog never reach the row's gestures. */}
-    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+    <AlertDialog {...overlayControl('delete')}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete message?</AlertDialogTitle>

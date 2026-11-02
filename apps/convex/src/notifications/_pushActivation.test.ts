@@ -17,4 +17,10 @@ describe("push preference activation", () => {
     expect(preferenceNeedsPushUpgrade(preference(false, "IN_APP"))).toBe(false);
     expect(preferenceNeedsPushUpgrade(preference(false, "OFF"))).toBe(false);
   });
+
+  test("upgrades level-only preferences written after enabled was retired", () => {
+    expect(preferenceNeedsPushUpgrade({ level: "IN_APP" })).toBe(true);
+    expect(preferenceNeedsPushUpgrade({ level: "OFF" })).toBe(false);
+    expect(preferenceNeedsPushUpgrade({ level: "PUSH" })).toBe(false);
+  });
 });

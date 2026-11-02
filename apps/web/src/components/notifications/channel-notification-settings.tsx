@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip } from '@/components/ui/tooltip';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
+import { isMuteActive } from '~/apps/shared/notification-mute';
 import { useToast } from '@/hooks/use-toast';
 
 type PreferenceLevel = NotificationPreferenceLevel;
@@ -135,10 +136,7 @@ export function ChannelNotificationSettings({
       preference.category === MESSAGE_CATEGORY &&
       preference.scopeKey === `mute:channel:${channelId}`,
   );
-  const storedMuted = Boolean(
-    mutePreference?.isMuted &&
-      (mutePreference.mutedUntil == null || mutePreference.mutedUntil > Date.now()),
-  );
+  const storedMuted = isMuteActive(mutePreference, Date.now());
   const muted = optimisticMuted ?? storedMuted;
 
   useEffect(() => {
