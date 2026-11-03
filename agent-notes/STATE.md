@@ -2,6 +2,15 @@
 
 ## Active Focus
 
+- **Production performance release (2026-11-02)**: Owner-authorized profiling of
+  `app.fcsia.com` identified audit, moderation, presence, and chat query work.
+  Focused fixes shipped through `bun run release` as v0.8.42 (`c30d4be`);
+  production validation and Convex/Vercel deployment succeeded. All 464 backend
+  tests and backend/web typechecks, web lint, and production build passed.
+  The deployed audit table preserves the baseline 250-row content/order hash.
+  See `docs/reference/production-performance-2026-11-02.md` for measurements and
+  limits. Unrelated primary-checkout changes were preserved.
+
 - **Direct releases (2026-11-02)**: The owner authorized replacing release PRs
   with dedicated release commits pushed directly to `main`. `bun run release`
   and `release:ship` now generate, commit, and push release files; the push

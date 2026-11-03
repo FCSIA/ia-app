@@ -60,10 +60,55 @@ the experience of a student with populated personal data.
   run concurrently. Deleted-message suppression, chronological attachments,
   caps and truncation indicators remain unchanged.
 
-No numeric speedup is promised before deployment measurements. Parallel reads
-reduce serial work but cannot eliminate authentication, database scheduling,
-network latency, or unrelated query stages. No schema migration or dependency
-upgrade is required.
+Parallel reads reduce serial work but cannot eliminate authentication, database
+scheduling, network latency, or unrelated query stages. No schema migration or
+dependency upgrade is required.
+
+## Production release and verification
+
+`bun run release` published v0.8.42, commit
+`c30d4beabf2fe3eaf6484fa8c5c3c521a1c2b539`. The exact-commit validation,
+Convex deployment, and Vercel deployment all succeeded in
+[release run 41554031119](https://github.com/FCSIA/ia-app/actions/runs/41554031119).
+The live `/_meta` endpoint reports version `0.8.42`, build `c30d4be`.
+
+The initial 250 audit rows have exactly the same visible-text SHA-256 as the
+baseline below. Filters initially remain closed; opening them loads the choices.
+Selecting an action returns 39 matching rows, and closing/reopening Filters
+preserves the selected action and results. That selective page read 290
+documents versus the unfiltered page's 411; candidate event reads remain, while
+unneeded relationship reads are avoided. These are different result sets, so
+this is evidence of selective read reduction, not a like-for-like latency test.
+
+The detail drawer, Reports (`?tab=moderation`), Feedback, and a club channel
+loaded without UI errors. The channel rendered 40 messages and a composer.
+Presence completed successfully in backend logs, but its indicators were not
+visible in this UI state. Production older-history interaction was skipped
+after the preview tool timed out; cursor traversal remains covered by backend
+tests. The large-table snapshot tool also timed out, so browser checks used
+read-only DOM inspection and existing controls. No content was created or edited.
+
+Post-deployment uncached query observations follow. Audit latency includes only
+the two unfiltered executions with the same 411-document read set; the selective
+290-document execution is excluded. The other queries also retained their
+baseline document counts. Cached executions and nested component calls are
+excluded, and repeated log captures are deduplicated by execution metadata.
+
+| Query | Baseline samples | Baseline median ms | Post-release samples | Post-release median ms | Documents read |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `audit/events:listPage` | 2 | 365.9 | 2 | 251.2 | 411 |
+| `moderation/reports:listFeedback` | 1 | 460.1 | 1 | 305.2 | 436 |
+| `presence/status:clubStatuses` | 2 | 318.7 | 1 | 294.6 | 46 |
+| `moderation/reports:list` | 4 | 202.8 | 4 | 145.6 | 130 |
+| `clubs/channels:getMessagePage` | 1 | 220.3 | 1 | 230.7 | 79 |
+
+These small samples describe different executions in a shared deployment.
+Warmup, concurrent work, and runtime variability remain uncontrolled. Chat's
+single post-release sample was slightly slower, so this pass does not establish
+a chat latency improvement or a general percentage speedup. The measured gains
+should be validated with a larger representative workload before further
+architectural changes. No top-level application completion errors appeared in
+the bounded post-deployment capture.
 
 ## Other tweet cases
 
