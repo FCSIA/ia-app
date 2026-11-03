@@ -25,6 +25,15 @@ END:VCALENDAR`;
 
 afterEach(() => vi.useRealTimers());
 describe("ICS date-only imports", () => {
+  it("imports a daily series without starving other events and rejects oversized feeds", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2027-03-01T12:00:00Z"));
+    const daily = `BEGIN:VEVENT\nUID:daily\nDTSTART;VALUE=DATE:20270301\nRRULE:FREQ=DAILY;COUNT=365\nSUMMARY:Daily\nEND:VEVENT`;
+    const single = `BEGIN:VEVENT\nUID:other\nDTSTART;VALUE=DATE:20270320\nSUMMARY:Other\nEND:VEVENT`;
+    const wrap = (contents: string) => `BEGIN:VCALENDAR\nVERSION:2.0\n${contents}\nEND:VCALENDAR`;
+    expect(parseIcs(wrap(`${daily}\n${single}`)).some((event) => event.title === "Other")).toBe(true);
+    expect(() => parseIcs(wrap(Array.from({ length: 501 }, (_, i) => single.replace("UID:other", `UID:${i}`)).join("\n")))).toThrow(/too many/i);
+  });
   it("keeps exclusive date ends and each recurring occurrence across DST", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2027-03-01T12:00:00Z"));

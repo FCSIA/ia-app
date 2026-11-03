@@ -15,6 +15,18 @@ export function calendarQueryRange(startDate: number, endDate: number) {
   return { startDate, endDate, startDay: day(startDate), endDay: day(endDate) };
 }
 
+/** Whether an entry belongs in the dashboard's upcoming window. */
+export function isUpcomingCalendarEntry(
+  entry: { startAt: number; endAt?: number; source: string; allDay?: boolean },
+  range: { startDate: number; endDate: number; startDay: number; endDay: number },
+  now: number,
+): boolean {
+  if (entry.source === 'EXTERNAL' && entry.allDay) {
+    return entry.startAt <= range.endDay && (entry.endAt ?? entry.startAt + 86400000) > range.startDay;
+  }
+  return entry.startAt >= now && entry.startAt <= range.endDate;
+}
+
 /** Local display days in the visible window. ICS all-day end dates are exclusive. */
 export function calendarEntryDays(
   startAt: number, endAt: number | undefined, allDay: boolean, windowStart: Date, windowEnd: Date,

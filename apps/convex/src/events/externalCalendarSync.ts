@@ -7,7 +7,8 @@ import { internalAction } from "../_generated/server";
 import { validateIcsFeedUrl } from "./externalCalendars";
 
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
-const MAX_EVENTS_PER_FEED = 300;
+// Keep this aligned with the maximum removable subscription size.
+const MAX_EVENTS_PER_FEED = 500;
 
 async function fetchIcs(url: string): Promise<string> {
   let current = validateIcsFeedUrl(url);
@@ -54,11 +55,12 @@ export function parseIcs(text: string) {
     const event = new ICAL.Event(vevent);
     const occurrences = event.isRecurring() ? event.iterator() : null;
     let occurrence: ICAL.Time | null = occurrences ? occurrences.next() : event.startDate;
-    while (occurrence && events.length < MAX_EVENTS_PER_FEED) {
+    while (occurrence) {
       const details = event.getOccurrenceDetails(occurrence);
       const startAt = occurrenceTimestamp(details.startDate);
       if (startAt > upperBound.getTime()) break;
       if (startAt >= lowerBound.getTime()) {
+        if (events.length >= MAX_EVENTS_PER_FEED) throw new Error("Calendar feed has too many events to sync.");
         const endAt = details.endDate ? occurrenceTimestamp(details.endDate) : undefined;
         events.push({
           externalId: `${event.uid}:${occurrence.toString()}`,

@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { calendarDisplayDate, calendarEntryDays, calendarQueryRange } from "../../../shared/calendar-date";
+import { calendarDisplayDate, calendarEntryDays, calendarQueryRange, isUpcomingCalendarEntry } from "../../../shared/calendar-date";
 
 describe("calendar date display", () => {
+  it("includes ongoing all-day events in the upcoming window until their exclusive end", () => {
+    const day = Date.UTC(2027, 2, 14);
+    const range = { startDate: day, endDate: day + 30 * 86400000, startDay: day, endDay: day + 30 * 86400000 };
+    const event = { source: "EXTERNAL", allDay: true, startAt: day - 86400000, endAt: day + 86400000 };
+    expect(isUpcomingCalendarEntry(event, range, day + 3600000)).toBe(true);
+    expect(isUpcomingCalendarEntry({ ...event, endAt: day }, range, day + 3600000)).toBe(false);
+    expect(isUpcomingCalendarEntry({ source: "PERSONAL", startAt: day }, range, day + 3600000)).toBe(false);
+  });
   it("retains date-only days and exclusive ends across daylight saving", () => {
     const start = Date.UTC(2027, 2, 13);
     const end = Date.UTC(2027, 2, 16);

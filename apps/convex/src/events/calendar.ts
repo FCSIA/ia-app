@@ -166,6 +166,7 @@ export const list = query({
       ctx.db.query("externalCalendarEvents")
         .withIndex("by_userId_and_allDay_and_endAt", (q) => q.eq("userId", user._id)
           .eq("allDay", true).gt("endAt", startDay))
+        .filter((q) => q.lte(q.field("startAt"), endDay))
         .take(500),
     ]) : [[], []];
     const importedEntries = Array.from(new Map([...externalEntries, ...overlappingDays]

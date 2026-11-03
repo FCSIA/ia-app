@@ -1,4 +1,4 @@
-import { calendarDisplayDate } from '~/apps/shared/calendar-date';
+import { calendarDisplayDate, isUpcomingCalendarEntry } from '~/apps/shared/calendar-date';
 import { greetingName } from '~/apps/shared/user-name';
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
@@ -608,22 +608,16 @@ type DashboardSchoolDay = ReturnType<typeof getDashboardSchoolDay>;
  * "Coming up" calendar entries for the next 30 days.
  *
  * The window is anchored to midnight rather than the current instant so the
- * query arguments hold for the whole day, which is what lets the keep-alive and
- * the tab prewarm reuse one subscription instead of opening a fresh one on
- * every mount. The backend filters on `startAt >= startDate`, so entries that
- * already started earlier today come back too and are dropped here — the
- * section is meant to show only what has yet to begin, and the cutoff is fixed
- * at mount exactly as the old `Date.now()` window fixed it.
+ * query arguments hold for the whole day, which lets the keep-alive and tab
+ * prewarm reuse one subscription. Timed entries use a cutoff fixed at mount;
+ * all-day imports remain visible throughout their calendar dates.
  */
 function useUpcomingCalendarEntries() {
   const range = useMemo(upcomingCalendarWindow, []);
   const startedBefore = useMemo(() => Date.now(), []);
   const entries = useQuery(api.events.calendar.list, range);
   return useMemo(
-    () => entries?.filter((entry: any) => {
-      const start = calendarDisplayDate(entry.startAt, entry.source === "EXTERNAL" && entry.allDay).getTime();
-      return start >= (entry.source === "EXTERNAL" && entry.allDay ? range.startDate : startedBefore) && start <= range.endDate;
-    }),
+    () => entries?.filter((entry: any) => isUpcomingCalendarEntry(entry, range, startedBefore)),
     [entries, startedBefore, range],
   );
 }

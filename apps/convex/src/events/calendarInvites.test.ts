@@ -80,6 +80,17 @@ describe("calendar invitations", () => {
 
 
 describe("external calendar range and privacy", () => {
+  it("finds a long overlapping event beyond 500 future all-day events", async () => {
+    const { t, recipient } = await fixture();
+    const day = Date.UTC(2027, 2, 14);
+    await t.run(async (ctx) => {
+      const subscriptionId = await ctx.db.insert("externalCalendarSubscriptions", { userId: recipient, provider: "ICS", displayName: "Calendar", feedUrl: "https://example.com/feed", status: "ACTIVE", nextRefreshAt: 0, createdAt: 0, updatedAt: 0 });
+      for (let i = 0; i < 500; i++) await ctx.db.insert("externalCalendarEvents", { subscriptionId, userId: recipient, externalId: `${i}`, title: "Future", startAt: day + 86400000, endAt: day + 2 * 86400000, allDay: true, tags: [], lastSeenAt: 0 });
+      await ctx.db.insert("externalCalendarEvents", { subscriptionId, userId: recipient, externalId: "long", title: "Long", startAt: day - 86400000, endAt: day + 3 * 86400000, allDay: true, tags: [], lastSeenAt: 0 });
+    });
+    const entries = await t.withIdentity({ subject: recipient }).query(api.events.calendar.list, { startDate: day, endDate: day, startDay: day, endDay: day });
+    expect(entries.map((entry) => entry.title)).toContain("Long");
+  });
   it("preserves all-day dates through sync and returns overlaps only to the owner", async () => {
     const { t, recipient, outsider } = await fixture();
     const subscriptionId = await t.run((ctx) => ctx.db.insert("externalCalendarSubscriptions", {
