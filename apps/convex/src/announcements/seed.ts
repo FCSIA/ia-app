@@ -373,7 +373,8 @@ export const run = internalMutation({
         targetMinorPathways: [],
         isAdminGeneral: false,
         allowComments: false,
-        status: "EXPIRED",
+        // Expiry is derived from `expiresAt`; there is no stored EXPIRED state.
+        status: "ACTIVE",
         expiresAt: lastWeek,
         createdAt: now,
         updatedAt: now,
@@ -503,7 +504,6 @@ export const run = internalMutation({
         await ctx.db.insert("notificationPreferences", {
           userId: u._id,
           category: bp.category,
-          enabled: true,
           level: "IN_APP",
           locked: bp.locked ?? false,
           clubId: bp.clubId,

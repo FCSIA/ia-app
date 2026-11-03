@@ -15,7 +15,7 @@ test("production inventory follows workspace dependencies, not dev tooling", asy
   );
 
   assert.equal(packages.get("next"), "16.4.3");
-  assert.equal(packages.get("convex"), "1.46.0");
+  assert.equal(packages.get("convex"), "1.47.0");
   assert.equal(packages.has("deepmerge-ts"), false);
   assert.equal(packages.has("flatted"), false);
   assert.equal(packages.get("glob"), "13.0.6");

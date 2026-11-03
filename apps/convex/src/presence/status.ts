@@ -167,29 +167,23 @@ export const clubStatuses = query({
     const context = await getViewerContext(ctx, args.clubId, user);
     if (!context.canAccessWorkspace) return [];
 
-    const people = new Set<Id<"users">>();
-    for (const member of await ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .take(maxClubPeople)) {
-      people.add(member.userId);
-    }
-    for (const sponsor of await ctx.db
-      .query("clubSponsors")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .take(maxClubPeople)) {
-      people.add(sponsor.userId);
-    }
-
-    const statuses = [];
-    for (const userId of people) {
+    const [members, sponsors] = await Promise.all([
+      ctx.db.query("clubMembers")
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+        .take(maxClubPeople),
+      ctx.db.query("clubSponsors")
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+        .take(maxClubPeople),
+    ]);
+    const people = new Set([...members, ...sponsors].map((person) => person.userId));
+    const statuses = await Promise.all(Array.from(people, async (userId) => {
       const rooms = await presence.listUser(ctx, userId, true, 1);
-      if (rooms.length === 0) continue;
-      statuses.push({
+      if (rooms.length === 0) return null;
+      return {
         userId,
         status: (await isDoNotDisturb(ctx, userId)) ? ("doNotDisturb" as const) : ("online" as const),
-      });
-    }
-    return statuses;
+      };
+    }));
+    return statuses.filter((status) => status !== null);
   },
 });

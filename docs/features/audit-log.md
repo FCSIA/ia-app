@@ -115,7 +115,10 @@ the migration. Deploy/run only against an explicitly authorized target.
 - Web: `apps/web/src/app/admin/_hooks/use-admin-audit.ts` and `_components/audit/`
 - Shared person preview: `apps/web/src/components/users/person-trigger.tsx`
 - `api.audit.events.list`: bounded legacy/mobile read
-- `api.audit.events.listPage`: filtered cursor history
+- `api.audit.events.listFilteredPage`: filtered stream-cursor history; each
+  request reads at most 100 audit rows or about 2 MiB, so sparse searches can
+  return partial or empty pages with a cursor to continue
+- `api.audit.events.listPage`: legacy native-cursor history for open clients
 - `api.audit.events.listFilterOptions`: static action/type registry
 - `api.audit.events.counts`: readiness-gated totals and category facets
 - `api.audit.events.get`: full event and record preview

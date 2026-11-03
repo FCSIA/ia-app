@@ -71,7 +71,7 @@ into the super-admin archive and remains in the submitter's history. Each staff 
 links them to the read-only feedback history.
 
 When configured, each general-feedback submission creates a GitHub issue in
-`virajdas/ia-app` without the submitter's identity or attachments. GitHub's
+`FCSIA/ia-app` without the submitter's identity or attachments. GitHub's
 signed `issues` webhook updates the app when that issue is closed (`completed`
 becomes resolved; `not_planned` becomes dismissed) or reopened (becomes
 pending). The issue link is visible to feedback reviewers.

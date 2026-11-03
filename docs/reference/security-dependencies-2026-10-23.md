@@ -4,6 +4,9 @@ tags: [reference, security, dependencies]
 
 # Software vulnerability remediation, October 23, 2026
 
+The [October 30 exception reassessment](security-exceptions-2026-10-30.md)
+supersedes the exception status and November 1 deadlines recorded below.
+
 ## October 28 PR validation follow-up
 
 The refreshed PR audit reported new advisory metadata. `qs` is now pinned to

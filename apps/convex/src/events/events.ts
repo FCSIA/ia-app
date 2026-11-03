@@ -5,6 +5,7 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEventDetail, serializeEvents, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 import { getClubContext } from "../clubs/access";
+import { clearPendingApprovals } from "./approvals";
 import {
   normalizeEventTitle,
   normalizeOptionalEventDescription,
@@ -125,6 +126,22 @@ export const create = mutation({
     const status =
       admin || isSponsor || !args.clubId ? "PUBLISHED" : "PENDING_APPROVAL";
 
+    // Only the club's sponsors can approve, so without one a pending event
+    // could never leave PENDING_APPROVAL.
+    const clubId = args.clubId;
+    const sponsors =
+      clubId && status === "PENDING_APPROVAL"
+        ? await ctx.db
+            .query("clubSponsors")
+            .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
+            .collect()
+        : [];
+    if (status === "PENDING_APPROVAL" && sponsors.length === 0) {
+      throw new ConvexError(
+        "This club has no sponsor to approve events yet. Ask a staff member to add one.",
+      );
+    }
+
     const eventId = await ctx.db.insert("events", {
       authorId: user._id,
       clubId: args.clubId,
@@ -142,8 +159,6 @@ export const create = mutation({
       allowedMajorPathways: [],
       allowedMinorPathways: [],
       requiredMajorWorkshopCount: 0,
-      isInactive: false,
-      deactivatedAt: undefined,
       publishedAt: status === "PUBLISHED" ? Date.now() : undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -178,20 +193,13 @@ export const create = mutation({
       }
     }
 
-    if (args.clubId && status === "PENDING_APPROVAL") {
-      const clubId = args.clubId;
-      const sponsors = await ctx.db
-        .query("clubSponsors")
-        .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
-        .collect();
-      for (const sponsor of sponsors) {
-        await ctx.db.insert("eventApprovals", {
-          eventId,
-          sponsorId: sponsor.userId,
-          status: "PENDING",
-          createdAt: Date.now(),
-        });
-      }
+    for (const sponsor of sponsors) {
+      await ctx.db.insert("eventApprovals", {
+        eventId,
+        sponsorId: sponsor.userId,
+        status: "PENDING",
+        createdAt: Date.now(),
+      });
     }
 
     await logAuditEvent(ctx, {
@@ -217,6 +225,10 @@ export const cancel = mutation({
     if (event.authorId !== user._id && !admin) {
       throw new Error("Cannot cancel this event");
     }
+    // Also clears approval requests left by cancellations made before this
+    // cleanup existed.
+    await clearPendingApprovals(ctx, args.eventId);
+    if (event.status === "CANCELLED") return null;
 
     await ctx.db.patch(args.eventId, {
       status: "CANCELLED",

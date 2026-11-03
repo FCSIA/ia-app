@@ -30,6 +30,14 @@ describe("ICS normalization", () => {
   });
 
   it("rejects an oversized import instead of silently dropping later dates", () => {
-    expect(() => parseIcs(feed("DTSTART:20261022T130000Z\r\nDTEND:20261022T140000Z\r\nRRULE:FREQ=DAILY;COUNT=301"), now)).toThrow("more than 300 events");
+    expect(() => parseIcs(feed("DTSTART:20261022T130000Z\r\nDTEND:20261022T140000Z\r\nRRULE:FREQ=HOURLY;COUNT=501"), now)).toThrow("more than 500");
+  });
+
+  it("imports a long daily series without starving other events", () => {
+    const start = Date.parse("2027-03-01T12:00:00Z");
+    const daily = "BEGIN:VEVENT\r\nUID:daily\r\nDTSTART;VALUE=DATE:20270301\r\nRRULE:FREQ=DAILY;COUNT=365\r\nSUMMARY:Daily\r\nEND:VEVENT";
+    const single = "BEGIN:VEVENT\r\nUID:other\r\nDTSTART;VALUE=DATE:20270320\r\nSUMMARY:Other\r\nEND:VEVENT";
+    const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${daily}\r\n${single}\r\nEND:VCALENDAR`;
+    expect(parseIcs(ics, start).some((event) => event.title === "Other")).toBe(true);
   });
 });

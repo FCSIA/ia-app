@@ -39,11 +39,11 @@ const externalCalendarEntryOutputValidator = v.object({
   location: v.optional(v.string()),
   startAt: v.number(),
   endAt: v.optional(v.number()),
+  allDay: v.optional(v.boolean()),
   tags: v.array(v.string()),
   source: v.literal("EXTERNAL"),
   subscriptionId: v.id("externalCalendarSubscriptions"),
   readOnly: v.literal(true),
-  allDay: v.optional(v.boolean()),
   url: v.optional(v.string()),
 });
 const calendarListEntryValidator = v.union(
@@ -60,6 +60,7 @@ export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvent
     location: entry.location,
     startAt: entry.startAt,
     endAt: entry.endAt,
+    ...(entry.allDay === undefined ? {} : { allDay: entry.allDay }),
     tags: entry.tags,
     source: "EXTERNAL" as const,
     subscriptionId: entry.subscriptionId,
@@ -112,6 +113,8 @@ export const list = query({
   args: {
     startDate: v.number(),
     endDate: v.number(),
+    startDay: v.optional(v.number()),
+    endDay: v.optional(v.number()),
     sources: v.optional(v.array(v.string())),
   },
   returns: v.array(calendarListEntryValidator),
@@ -203,7 +206,7 @@ export const list = query({
           loader.get(invite.senderId),
           getFriendshipBetween(ctx, invite.senderId, user._id),
         ]);
-        if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") {
+        if (!entry || entry.source !== "PERSONAL" || entry.createdById !== invite.senderId || !sender || friendship?.status !== "ACCEPTED") {
           return null;
         }
         if (entry.startAt > args.endDate || (entry.endAt ?? entry.startAt) < args.startDate) return null;
@@ -256,7 +259,7 @@ export const listPendingInvites = query({
           loader.get(invite.senderId),
           getFriendshipBetween(ctx, invite.senderId, user._id),
         ]);
-        if (!entry || entry.source !== "PERSONAL" || !sender || friendship?.status !== "ACCEPTED") {
+        if (!entry || entry.source !== "PERSONAL" || entry.createdById !== invite.senderId || !sender || friendship?.status !== "ACCEPTED") {
           return null;
         }
         return {

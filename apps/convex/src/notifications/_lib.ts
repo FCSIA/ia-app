@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { preferenceIsOn } from "./deliveryPreference";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -136,7 +137,8 @@ export function toPreference(row: Doc<"notificationPreferences">) {
   return {
     id: row._id,
     category: row.category,
-    enabled: row.enabled,
+    // Still returned for app builds that read it; derived from `level`.
+    enabled: preferenceIsOn(row),
     level: row.level,
     locked: row.locked,
     clubId: row.clubId ?? null,

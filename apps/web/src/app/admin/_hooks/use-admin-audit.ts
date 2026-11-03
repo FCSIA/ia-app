@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditRecordLabel, parseAuditSearch, type AuditCategory } from '~/apps/shared/audit';
-import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
+import { useQuery, useStreamPaginatedQuery } from '@/lib/convex-react';
 import { useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -85,8 +85,8 @@ export function useAdminAudit(activeTab: AdminTabId) {
     endAt: auditEndDate ? new Date(`${auditEndDate}T23:59:59.999`).getTime() : undefined,
     categories: auditCategoryFilters.length ? auditCategoryFilters : undefined,
   }), [deferredQuery, auditActor, auditActorId, auditEntityId, auditActionFilters, auditEntityTypeFilter, auditActorScope, auditStartDate, auditEndDate, auditCategoryFilters]);
-  const { results: auditEvents, status: auditStatus, loadMore: loadMoreAuditEvents, isStale } = usePaginatedQuery(
-    api.audit.events.listPage, activeTab === 'audit' ? auditQueryParams : 'skip',
+  const { results: auditEvents, status: auditStatus, loadMore: loadMoreAuditEvents, isStale } = useStreamPaginatedQuery(
+    api.audit.events.listFilteredPage, activeTab === 'audit' ? auditQueryParams : 'skip',
     { initialNumItems: AUDIT_FETCH_LIMIT, keepPreviousResults: true, scopeKey: user?._id ?? 'signed-out' },
   );
   const auditCounts = useQuery(api.audit.events.counts, activeTab === 'audit' ? auditQueryParams : 'skip');

@@ -39,7 +39,7 @@ export default function LoginPage() {
       }
 
       toast({ title: 'Logged in successfully' });
-      router.replace('/home');
+      router.replace('/');
     } catch (err: unknown) {
       clearAuth();
       toast({

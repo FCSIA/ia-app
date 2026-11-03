@@ -12,13 +12,14 @@ import {
 } from "../../lib/currentUser";
 import {
   auditEventValidator,
+  auditEventResolver,
   auditPageValidator,
   auditEventSerializer,
   toAuditEvent,
   toAuditEvents,
 } from "./_lib";
 
-import { auditFilters, auditMatcher } from "./_filters";
+import { auditFilters, auditMatcher, auditRecordMatcher } from "./_filters";
 
 const auditFilterOptionsValidator = v.object({
   actions: v.array(v.string()),
@@ -110,7 +111,7 @@ export const list = query({
       .withIndex("by_createdAt")
       .order("desc")
       .take(Math.min(Math.max(args.limit ?? 100, 1), 500));
-    return (await toAuditEvents(ctx, rows)).filter(matches);
+    return (await toAuditEvents(ctx, rows.filter(auditRecordMatcher(args)))).filter(matches);
   },
 });
 
@@ -132,6 +133,25 @@ export const listFilterOptions = query({
 });
 
 export const listPage = query({
+  // Existing clients use native Convex cursors; retain this endpoint while
+  // open browser sessions transition to the stream cursor protocol below.
+  args: { paginationOpts: paginationOptsValidator, ...auditFilters },
+  returns: auditPageValidator,
+  handler: async (ctx, args) => {
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]))
+      return { page: [], isDone: true, continueCursor: "" };
+    const matches = auditMatcher(args);
+    const result = await ctx.db.query("auditEvents")
+      .withIndex("by_createdAt", (q) => {
+        const lower = args.startAt === undefined ? q : q.gte("createdAt", args.startAt);
+        return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt);
+      }).order("desc").paginate(args.paginationOpts);
+    return { ...result, page: (await toAuditEvents(ctx, result.page.filter(auditRecordMatcher(args)))).filter(matches) };
+  },
+});
+
+export const listFilteredPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
@@ -173,18 +193,24 @@ export const listPage = query({
         : categories.length && ready && !actorId
           ? mergedStream(categories.map((category) => db.query('auditEvents').withIndex('by_category_and_createdAt', (q) => { const lower = args.startAt === undefined ? q.eq('category', category) : q.eq('category', category).gte('createdAt', args.startAt); return args.endAt === undefined ? lower : lower.lte('createdAt', args.endAt); }).order('desc')), ['createdAt'])
           : source.order('desc');
+    // Reject stored-field mismatches before reading actors and related records.
+    const matchesRecord = auditRecordMatcher(args);
     return ordered
-      .filterWith(async (row) => (!args.action || row.action === args.action)
-        && (!actions.length || actions.includes(row.action))
-        && (!categories.length || categories.includes(auditCategory(row.entityType, row.action)))
-        && (!args.entityType || auditEntityKey(row.entityType) === auditEntityKey(args.entityType))
-        && (!args.recordId || row.entityId === args.recordId)
-        && (!args.category || (args.category === 'general' || args.category === 'flex'
-          ? isFlexAudit(row.entityType) === (args.category === 'flex')
-          : auditCategory(row.entityType, row.action) === args.category)))
+      .filterWith(async (row) => matchesRecord(row))
       .map(auditEventSerializer(ctx))
       .filterWith(async (row) => matches(row))
-      .paginate({ ...args.paginationOpts, maximumRowsRead: 1000, maximumBytesRead: 4_000_000 });
+      .paginate({
+        ...args.paginationOpts,
+        // Clients choose page and scan sizes; keep both bounded so sparse
+        // filters return a cursor instead of reading the whole history.
+        numItems: Number.isFinite(args.paginationOpts.numItems)
+          ? Math.max(1, Math.min(Math.floor(args.paginationOpts.numItems), 100))
+          : 50,
+        maximumRowsRead: Number.isFinite(args.paginationOpts.maximumRowsRead)
+          ? Math.max(2, Math.min(Math.floor(args.paginationOpts.maximumRowsRead!), 100))
+          : 100,
+        maximumBytesRead: 2 * 1024 * 1024,
+      });
   },
 });
 
@@ -206,10 +232,11 @@ export const get = query({
       return null;
     const row = await ctx.db.get(args.auditEventId);
     if (!row) return null;
-    return {
-      ...(await toAuditEvent(ctx, row)),
-      entityPreview: await resolveEntityPreview(ctx, row),
-    };
+    const [event, entityPreview] = await Promise.all([
+      toAuditEvent(ctx, row),
+      resolveEntityPreview(ctx, row),
+    ]);
+    return { ...event, entityPreview };
   },
 });
 

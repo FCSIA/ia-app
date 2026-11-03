@@ -225,27 +225,92 @@ async function prepareScheduleImage(file: File) {
   }
 }
 
-export async function readScheduleImageLocally(
+let cachedWorker: Worker | undefined;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
+let scanQueue: Promise<unknown> = Promise.resolve();
+let reportProgress: ((value: number) => void) | undefined;
+let reportWorkerError: ((reason: unknown) => void) | undefined;
+let workerGeneration = 0;
+
+async function readOnDevice(
   file: File,
   onProgress: (value: number) => void,
 ): Promise<{ fullText: string; lines: ScheduleOcrLine[] }> {
-  const { createWorker } = await import("tesseract.js");
   const image = await prepareScheduleImage(file);
+  clearTimeout(idleTimer);
   let progress = 10;
-  const worker = await createWorker("eng", 1, {
-    workerPath: "/schedule-ocr-assets/worker.min.js",
-    corePath: "/schedule-ocr-assets",
-    workerBlobURL: false,
-    logger: (message) => {
-      if (message.status === "recognizing text") {
-        progress = Math.max(progress, 20 + Math.round(message.progress * 70));
-        onProgress(progress);
-      }
-    },
+  // Each pass reports 0–1 independently. Keep the displayed total monotonic.
+  reportProgress = (value) => {
+    progress = Math.max(progress, value);
+    onProgress(progress);
+  };
+  let scanTimer: ReturnType<typeof setTimeout> | undefined;
+  const failed = new Promise<never>((_, reject) => {
+    reportWorkerError = reject;
+    scanTimer = setTimeout(() => reject(new Error("Reading timed out")), 120_000);
   });
   try {
-    return await recognizeScheduleImage(worker, image, image.height);
+    if (!cachedWorker) {
+      const { createWorker } = await import("tesseract.js");
+      const generation = ++workerGeneration;
+      const loading = createWorker("eng", 1, {
+        workerPath: "/schedule-ocr-assets/worker.min.js",
+        corePath: "/schedule-ocr-assets",
+        langPath: "/schedule-ocr-assets",
+        workerBlobURL: false,
+        // A separate cache key avoids reusing a different model from another app.
+        cachePath: "ia-schedule-eng-v1",
+        logger: (message) => {
+          if (generation === workerGeneration && message.status === "recognizing text") {
+            reportProgress?.(20 + Math.round(message.progress * 70));
+          }
+        },
+        // Some initialization failures do not reject createWorker itself.
+        errorHandler: (reason) => {
+          if (generation === workerGeneration) reportWorkerError?.(reason);
+        },
+      });
+      try {
+        cachedWorker = await Promise.race([loading, failed]);
+      } catch (error) {
+        // If initialization finishes after a timeout, do not retain its memory.
+        void loading.then((worker) => worker.terminate(), () => {});
+        throw error;
+      }
+    }
+    return await Promise.race([
+      recognizeScheduleImage(cachedWorker, image, image.height),
+      failed,
+    ]);
+  } catch {
+    workerGeneration += 1;
+    const failedWorker = cachedWorker;
+    cachedWorker = undefined;
+    await failedWorker?.terminate();
+    throw new Error(
+      "Could not read this picture on your device. Try again, or enter your classes manually. If the reader could not load, check your connection and reload the page.",
+    );
   } finally {
-    await worker.terminate();
+    reportProgress = undefined;
+    reportWorkerError = undefined;
+    clearTimeout(scanTimer);
+    image.width = 0;
+    image.height = 0;
+    // Keep the initialized engine warm for a retry, then release its WASM memory.
+    idleTimer = setTimeout(() => {
+      const idleWorker = cachedWorker;
+      cachedWorker = undefined;
+      void idleWorker?.terminate();
+    }, 30_000);
   }
+}
+
+export function readScheduleImageLocally(
+  file: File,
+  onProgress: (value: number) => void,
+): Promise<{ fullText: string; lines: ScheduleOcrLine[] }> {
+  // A worker owns mutable recognition parameters; never run two scans on it at once.
+  const scan = scanQueue.then(() => readOnDevice(file, onProgress));
+  scanQueue = scan.catch(() => {});
+  return scan;
 }

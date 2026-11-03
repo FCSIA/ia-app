@@ -12,6 +12,7 @@ import {
 } from '../../../shared/audit';
 import type { AuditCategory, SearchableAuditEvent } from '../../../shared/audit';
 import { nameSearchValues } from '../../../shared/user-name';
+import type { Doc } from '../_generated/dataModel';
 
 export const auditFilters = {
   query: v.optional(v.string()),
@@ -49,14 +50,18 @@ export type AuditFilters = {
   category?: 'general' | 'flex' | AuditCategory;
   categories?: AuditCategory[];
 };
-export function auditMatcher(args: AuditFilters) {
-  if ((args.actions?.length ?? 0) > 200) throw new ConvexError('Choose at most 200 actions.');
-  const parsed = parseAuditSearch(args.advancedQuery ?? '');
-  if (parsed.error) throw new ConvexError(parsed.error);
+/** Reject stored-field mismatches before reading actors and related records. */
+export function auditRecordMatcher(args: AuditFilters) {
+  const start = args.startAt ??
+    (args.startDate ? Date.parse(`${args.startDate}T00:00:00Z`) : undefined);
+  const end = args.endAt ??
+    (args.endDate ? Date.parse(`${args.endDate}T23:59:59.999Z`) : undefined);
   const contains = (value: string | null | undefined, needle?: string) =>
     !needle?.trim() ||
     (value ?? '').toLowerCase().includes(needle.trim().toLowerCase());
-  return (event: SearchableAuditEvent) => {
+  return (event: Pick<
+    Doc<'auditEvents'>, 'action' | 'entityType' | 'entityId' | 'createdAt'
+  > & { actorId?: string }) => {
     if (args.actorId && event.actorId !== args.actorId) return false;
     if (args.recordId && event.entityId !== args.recordId) return false;
     if (args.action && event.action !== args.action) return false;
@@ -70,22 +75,37 @@ export function auditMatcher(args: AuditFilters) {
     )
       return false;
     if (args.categories?.length && !args.categories.includes(auditCategory(event.entityType, event.action))) return false;
-    const isPerson = !!(event.actorId || event.actor);
-    if (args.actorScope === 'SYSTEM' && !isAuditSystem(event)) return false;
+    const isPerson = !!event.actorId;
+    // System rows never have an actor; auditMatcher checks the rest from meta.
+    if (args.actorScope === 'SYSTEM' && isPerson) return false;
     if (args.actorScope === 'USER' && !isPerson) return false;
-    const time = Date.parse(event.createdAt);
-    const start =
-      args.startAt ??
-      (args.startDate ? Date.parse(`${args.startDate}T00:00:00Z`) : undefined);
-    const end =
-      args.endAt ??
-      (args.endDate ? Date.parse(`${args.endDate}T23:59:59.999Z`) : undefined);
+    const time = event.createdAt;
     if (
       (start !== undefined && time < start) ||
       (end !== undefined && time > end)
     )
       return false;
     if (!contains(event.entityId, args.entityId)) return false;
+    return true;
+  };
+}
+export function auditMatcher(args: AuditFilters) {
+  if ((args.actions?.length ?? 0) > 200) throw new ConvexError('Choose at most 200 actions.');
+  const parsed = parseAuditSearch(args.advancedQuery ?? '');
+  if (parsed.error) throw new ConvexError(parsed.error);
+  const matchesRecord = auditRecordMatcher(args);
+  const contains = (value: string | null | undefined, needle?: string) =>
+    !needle?.trim() ||
+    (value ?? '').toLowerCase().includes(needle.trim().toLowerCase());
+  return (event: SearchableAuditEvent) => {
+    if (!matchesRecord({
+      action: event.action,
+      entityType: event.entityType,
+      actorId: event.actorId ?? event.actor?.id ?? undefined,
+      entityId: event.entityId ?? undefined,
+      createdAt: Date.parse(event.createdAt),
+    })) return false;
+    if (args.actorScope === 'SYSTEM' && !isAuditSystem(event)) return false;
     if (
       !contains(
         [

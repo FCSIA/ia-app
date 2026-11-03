@@ -102,7 +102,7 @@ function AuthenticatedRouteBoundary({ children }: { children: React.ReactNode })
   // The server proxy is the only redirect authority. It has the complete
   // request cookie set, whereas a browser can temporarily hold a stale Convex
   // JWT while Better Auth restores or clears its session. Redirecting from
-  // here creates a /home → /login → /home loop in that split state.
+  // here creates a / → /login → / loop in that split state.
   if (isPublicAuthRoute) return children;
   if (isLoading || !isAuthenticated) return <AuthConnectionState />;
   return children;

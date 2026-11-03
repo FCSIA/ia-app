@@ -1,7 +1,8 @@
 import ICAL from "ical.js";
 import { schoolTimestamp } from "../../lib/schoolTime";
 
-const MAX_EVENTS_PER_FEED = 300;
+// Keep this aligned with the maximum removable subscription size.
+const MAX_EVENTS_PER_FEED = 500;
 const MAX_OCCURRENCES_PER_FEED = 20_000;
 
 export type ImportedCalendarEvent = {
@@ -55,7 +56,7 @@ export function parseIcs(text: string, now = Date.now()): ImportedCalendarEvent[
       const endAt = timestamp(details.endDate);
       if (startAt > upperBound.getTime()) break;
       if (endAt >= lowerBound) {
-        if (events.length >= MAX_EVENTS_PER_FEED) throw new Error("Calendar feed has more than 300 events in its import window.");
+        if (events.length >= MAX_EVENTS_PER_FEED) throw new Error("Calendar feed has too many events: more than 500 in its import window.");
         events.push({
           externalId: `${event.uid}:${occurrence.toString()}`,
           title: (details.item.summary || "Untitled event").slice(0, 160),

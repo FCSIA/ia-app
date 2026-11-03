@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useMutation } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
-import { InputGroup, InputField } from '@/components/ui/input-group';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -33,19 +34,20 @@ export function PreferredNameSettings({ user }: { user: AppUser }) {
 
   return (
     <form onSubmit={(event) => { event.preventDefault(); void save(); }} className="flex flex-col gap-3">
-      <InputGroup className="w-full">
-        <InputField
-          index={0}
-          label="Preferred name (optional)"
+      <div className="space-y-1.5">
+        <Label htmlFor="preferred-name">Preferred name (optional)</Label>
+        <Input
+          id="preferred-name"
           value={value}
-          onChange={(next) => { setValue(next); setError(undefined); }}
+          onChange={(event) => { setValue(event.target.value); setError(undefined); }}
           maxLength={MAX_PREFERRED_NAME_LENGTH}
           autoComplete="nickname"
-          aria-describedby="preferred-name-description"
+          aria-describedby={error ? 'preferred-name-description preferred-name-error' : 'preferred-name-description'}
+          aria-invalid={!!error}
           disabled={saving}
-          error={error}
         />
-      </InputGroup>
+        {error && <p id="preferred-name-error" className="text-xs text-destructive">{error}</p>}
+      </div>
       <p id="preferred-name-description" className="text-xs leading-5 text-muted-foreground">
         Shown throughout the app, including chats. Leave blank to use your regular name. People can find you by either name.
       </p>

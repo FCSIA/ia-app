@@ -105,11 +105,12 @@ export const cleanupUploadIntent = internalMutation({
   args: { uploadIntentId: v.id("uploadIntents") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // A claimed intent's file belongs to whatever claimed it, and an unclaimed
+    // upload never recorded its storage id (`claimUploadIntent` sets both
+    // together), so only the intent itself goes. orphanCleanup.sweep removes
+    // uploaded files nothing claimed.
     const intent = await ctx.db.get(args.uploadIntentId);
     if (!intent) return null;
-    if (!intent.claimedAt && intent.storageId) {
-      await ctx.storage.delete(intent.storageId).catch(() => {});
-    }
     await ctx.db.delete(intent._id);
     return null;
   },

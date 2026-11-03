@@ -15,7 +15,7 @@ const localStorageOrigins = process.env.NODE_ENV === 'development'
       .map(origin)
       .filter((value) => value && ['127.0.0.1', 'localhost'].includes(new URL(value).hostname))
   : [];
-const connectSources = [...new Set(["'self'", convexUrl, convexSiteUrl, websocketUrl, ...localStorageOrigins, ...(process.env.NODE_ENV === 'development' ? ['https://cdn.jsdelivr.net'] : [])].filter(Boolean))].join(' ');
+const connectSources = [...new Set(["'self'", convexUrl, convexSiteUrl, websocketUrl, ...localStorageOrigins].filter(Boolean))].join(' ');
 const imageSources = [
   "'self'",
   'data:',
@@ -41,7 +41,7 @@ const contentSecurityPolicy = [
   `img-src ${imageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "worker-src 'self' blob:",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');
@@ -66,9 +66,6 @@ const buildCommit = (
 ).slice(0, 7);
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [{ source: '/dashboard', destination: '/home', permanent: true }];
-  },
   env: {
     NEXT_PUBLIC_APP_COMMIT: buildCommit,
   },
@@ -82,6 +79,13 @@ const nextConfig: NextConfig = {
       (host): host is string => !!host && !['localhost', '127.0.0.1'].includes(host),
     ),
   ],
+
+  async redirects() {
+    return [
+      { source: '/dashboard', destination: '/', permanent: true },
+      { source: '/home', destination: '/', permanent: true },
+    ];
+  },
 
   // `/_meta` is the documented deployment marker, but the App Router treats
   // folders starting with an underscore as private and never routes them, so

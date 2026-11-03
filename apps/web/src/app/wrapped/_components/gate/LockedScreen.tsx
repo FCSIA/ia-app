@@ -138,7 +138,7 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
 
       {/* Close */}
       <Link
-        href="/home"
+        href="/"
         aria-label="Close"
         className="absolute top-4 right-4 z-30 flex size-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md hover:bg-white/30 transition border border-white/20"
       >
@@ -174,7 +174,7 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
         </div>
 
         <Link
-          href="/home"
+          href="/"
           className="locked-cta rounded-full border border-white/30 bg-white/15 px-6 py-3 text-sm font-semibold uppercase tracking-wider hover:bg-white/25 transition"
         >
           Back to home

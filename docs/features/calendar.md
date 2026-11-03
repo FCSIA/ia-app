@@ -87,7 +87,7 @@ use the school timezone (`America/New_York`), and safe event URLs are retained.
 Calendar reads use source/owner-scoped start and overlap indexes, a maximum
 92-day range, and explicit failure beyond 1,000 rows per scan. End-index scans
 can hit this limit on future volume even for a short visible range. Feed imports
-fail explicitly beyond 300 in-window events or 20,000 inspected recurrence
+fail explicitly beyond 500 in-window events (the most a subscription removal can clear) or 20,000 inspected recurrence
 occurrences; they preserve the prior successful import on failure. See the
 [repair ledger](../reference/ui-audit-calendar-repairs-2026-10-22.md) for the
 capacity tradeoff and validation limits.

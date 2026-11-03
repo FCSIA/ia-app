@@ -58,11 +58,14 @@ export function auditEventSerializer(ctx: QueryCtx) {
   const resolveContext = auditContextResolver(ctx);
   return async (event: Doc<"auditEvents">) => {
     if (event.actorId && !actors.has(event.actorId)) actors.set(event.actorId, ctx.db.get(event.actorId));
-    const actor = event.actorId ? await actors.get(event.actorId) : null;
+    const [actor, context] = await Promise.all([
+      event.actorId ? actors.get(event.actorId) ?? null : null,
+      resolveContext(event),
+    ]);
     return {
       id: event._id,
       actorId: event.actorId ?? null,
-      context: await resolveContext(event),
+      context,
       action: event.action,
       entityType: event.entityType,
       entityId: event.entityId ?? null,
@@ -78,6 +81,8 @@ export function auditEventSerializer(ctx: QueryCtx) {
     };
   };
 }
+/** Name used on main for the same per-response serializer. */
+export const auditEventResolver = auditEventSerializer;
 export async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
   return await auditEventSerializer(ctx)(event);
 }

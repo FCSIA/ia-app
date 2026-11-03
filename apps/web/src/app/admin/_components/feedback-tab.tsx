@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Archive, Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
+import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   DataTablePanel,
@@ -271,6 +272,8 @@ function FeedbackDetail({
   const [isSending, setIsSending] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState<string>();
+  // When this detail opened; a sync that was already stale then can be retried.
+  const [openedAt] = useState(() => Date.now());
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -338,10 +341,13 @@ function FeedbackDetail({
             </a>
           </Button>
         ) : null}
-        {report.githubIssueSyncState === 'FAILED' ? (
+        {report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-destructive">
-              GitHub sync failed. This feedback is still saved.
+              {report.githubIssueSyncState === 'FAILED'
+                ? 'GitHub sync failed.'
+                : 'GitHub sync stopped before finishing.'}{' '}
+              This feedback is still saved.
             </p>
             {canUpdateFeedback ? (
               <Button

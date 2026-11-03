@@ -2,6 +2,39 @@
 
 ## Active Focus
 
+- **Production performance release (2026-11-02)**: Owner-authorized profiling of
+  `app.fcsia.com` identified audit, moderation, presence, and chat query work.
+  Focused fixes shipped through `bun run release` as v0.8.42 (`c30d4be`);
+  production validation and Convex/Vercel deployment succeeded. All 464 backend
+  tests and backend/web typechecks, web lint, and production build passed.
+  The deployed audit table preserves the baseline 250-row content/order hash.
+  See `docs/reference/production-performance-2026-11-02.md` for measurements and
+  limits. Unrelated primary-checkout changes were preserved.
+
+- **Direct releases (2026-11-02)**: The owner authorized replacing release PRs
+  with dedicated release commits pushed directly to `main`. `bun run release`
+  and `release:ship` now generate, commit, and push release files; the push
+  publisher validates the recorded parent/version/generated files, tags that
+  commit, and calls production. Production validates the exact SHA through the
+  full Contributor Validation workflow before Convex then Vercel. Ordinary main
+  pushes run CI without deployment. Main permits direct pushes while rejecting
+  force pushes/deletion; `v*` tag rules reject updates/deletion. This supersedes
+  the older release-PR instructions below. See `docs/reference/versioning.md`.
+
+
+- **Browser OCR production repair (2026-10-30)**: Worktree
+  `.worktrees/browser-schedule-ocr`, branch `codex/browser-schedule-ocr`, switches
+  the web importer to on-device Tesseract in every environment. Production no
+  longer needs Google credentials. Worker/core/model assets are same-origin;
+  production CSP permits WASM compilation while still blocking JavaScript eval.
+  All 72 focused tests pass, including eight real-engine image checks. Browser
+  checks drive the actual dialog through file selection, OCR, review, and Apply,
+  verify exact periods/classes and no uploads/external requests, and cover a failed
+  model download followed by a successful retry. Reference-image scans take about
+  4–5 seconds on this desktop; physical phone performance remains unverified.
+  Unrelated primary-checkout changes are preserved. No production deployment
+  or shared backend mutation is part of this repair.
+
 - **PR #187 seed optimization (2026-10-29)**: `perf/seed-benchmark-report`
   in `.worktrees/seed-benchmark-report` is stacked on `ui/restore-audit` (#186).
   Its separate local backend uses 3214/3215 and retains disposable development

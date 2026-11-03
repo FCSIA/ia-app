@@ -262,7 +262,9 @@ export const schema = defineSchema({
   notificationPreferences: defineTable({
     userId: v.id("users"),
     category: notificationCategoryValidator,
-    enabled: v.boolean(),
+    // Legacy mirror of `level !== "OFF"`, retired by
+    // notifications/migrations:foldPreferenceEnabledIntoLevel. Staged below.
+    enabled: v.optional(v.boolean()),
     level: notificationPreferenceLevelValidator,
     locked: v.boolean(),
     clubId: v.optional(v.string()),
@@ -274,11 +276,13 @@ export const schema = defineSchema({
     mutedUntil: v.optional(v.union(v.number(), v.null())),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_userId_and_category_and_scopeKey", [
-    "userId",
-    "category",
-    "scopeKey",
-  ]),
+  })
+    .index("by_userId_and_category_and_scopeKey", [
+      "userId",
+      "category",
+      "scopeKey",
+    ])
+    .staged({ enabled: undefined }),
 
   notificationPushSubscriptions: defineTable({
     userId: v.id("users"),
@@ -614,7 +618,17 @@ export const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_authorId_and_status", ["authorId", "status"])
     .index("by_clubId_and_status", ["clubId", "status"])
-    .index("by_status_and_createdAt", ["status", "createdAt"]),
+    .index("by_status_and_createdAt", ["status", "createdAt"])
+    // Expiry is derived from `expiresAt`; stored EXPIRED rows are retired by
+    // announcements/migrations:retireExpiredStatus.
+    .staged({
+      status: v.union(
+        v.literal("PENDING_APPROVAL"),
+        v.literal("ACTIVE"),
+        v.literal("ARCHIVED"),
+        v.literal("REJECTED"),
+      ),
+    }),
 
   comments: defineTable({
     announcementId: v.id("announcements"),
@@ -1294,7 +1308,8 @@ export const schema = defineSchema({
     allowedMajorPathways: v.array(pathwayValidator),
     allowedMinorPathways: v.array(pathwayValidator),
     requiredMajorWorkshopCount: v.number(),
-    isInactive: v.boolean(),
+    // Never read; removed by events/migrations:dropUnusedLifecycleFields.
+    isInactive: v.optional(v.boolean()),
     deactivatedAt: v.optional(v.number()),
     publishedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -1304,7 +1319,18 @@ export const schema = defineSchema({
     .index("by_clubId_and_status", ["clubId", "status"])
     .index("by_status", ["status"])
     .index("by_status_and_startAt", ["status", "startAt"])
-    .index("by_startAt", ["startAt"]),
+    .index("by_startAt", ["startAt"])
+    // DRAFT and APPROVED were never set on an event; sponsors' decisions live
+    // on `eventApprovals`.
+    .staged({
+      status: v.union(
+        v.literal("PENDING_APPROVAL"),
+        v.literal("PUBLISHED"),
+        v.literal("CANCELLED"),
+      ),
+      isInactive: undefined,
+      deactivatedAt: undefined,
+    }),
 
   eventApprovals: defineTable({
     eventId: v.id("events"),
@@ -1513,6 +1539,12 @@ export const schema = defineSchema({
       v.union(v.literal("PENDING"), v.literal("SYNCED"), v.literal("FAILED")),
     ),
     githubIssueSyncError: v.optional(v.union(v.string(), v.null())),
+    // When the current PENDING sync was queued, so a sync that died without
+    // recording an outcome can be retried. Absent on reports queued before.
+    githubIssueSyncQueuedAt: v.optional(v.number()),
+    // Set while a push is mirroring the status onto the linked issue; at most
+    // one runs per report. Disagreeing GitHub events are ignored meanwhile.
+    githubIssuePushingSince: v.optional(v.number()),
     githubIssueCreatedAt: v.optional(v.number()),
     githubIssueStateUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),

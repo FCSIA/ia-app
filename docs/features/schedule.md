@@ -13,7 +13,7 @@ and special-day plans without rewriting student course choices.
 ## What It Does
 
 - Students manage classes from an actual school date instead of a Monday–Friday selector strip, with a manual class-name option when a class is not in the catalog.
-- Students can upload an Infinite Campus Schedule Term screenshot or photo. In development, Tesseract reads the image in the browser without uploading it. Deployed builds temporarily stage it in authenticated Convex storage, send its bytes to Google Cloud Vision for OCR, then delete the staged image whether OCR succeeds or fails. Import reads the image's row positions, ignores lunch, SSS/Flex, and Period 9, and selects the available Period 4 or 5 lunch slot. The review table requires every imported class to have a unique, explicitly confirmed canonical period before it can apply to every school weekday.
+- Students can select an Infinite Campus Schedule Term screenshot or photo. Tesseract reads the image on their device, without uploading it. Import reads the image's row positions, ignores lunch, SSS/Flex, and Period 9, and selects the available Period 4 or 5 lunch slot. The review table requires every imported class to have a unique, explicitly confirmed canonical period before it can apply to every school weekday.
 - Every student selects exactly one lunch assignment: Period 4 or Period 5. A selected lunch period cannot also contain a class on any weekday.
 - Students can inspect the resolved schedule for a date, including reordered or shortened periods, custom blocks, omitted periods, and special-day labels.
 - Students choose public/private schedule visibility.
@@ -63,7 +63,8 @@ After setup, the admin workspace keeps a full month calendar visible. Compact st
 - Web page: `apps/web/src/app/schedule/page.tsx`
 - Schedule components: `apps/web/src/components/schedule/`
 - OCR parser: `apps/web/src/lib/schedule-ocr.ts`
-- Google Vision adapter: `apps/convex/src/schedule/importOcr.ts`
+- Browser OCR engine: `apps/web/src/lib/schedule-ocr-local.ts`
+- Legacy Google Vision adapter (unused by web): `apps/convex/src/schedule/importOcr.ts`
 - Seed fixtures: `apps/convex/seed-data/schedule.ts`
 
 ## Convex Surface
@@ -150,16 +151,16 @@ accepted-friendship, and current schedule-visibility state.
 
 ## Schedule Image Import
 
-Schedule OCR accepts PNG, JPEG, and WebP images up to 10 MB. It is limited to
-eight scans per student per hour. Images are not retained after the OCR action;
-the feature stores neither image bytes nor OCR text in application tables.
-Google Cloud Vision receives the image solely to perform OCR. Deployment owners
-must configure the `GOOGLE_VISION_SERVICE_ACCOUNT_JSON` secret with a
-least-privilege service account that has Cloud Vision access. The import UI must
-not be enabled in a deployment until its Google Cloud data-processing terms have
-been approved. Development builds use browser-side Tesseract instead; its
-public English model is fetched from jsDelivr and cached by the browser, but
-the schedule image is not sent to that CDN.
+Schedule OCR accepts PNG, JPEG, and WebP images up to 10 MB. Both development
+and production use browser-side Tesseract in a Web Worker. The app serves the
+worker, WebAssembly engine, and pinned English model from its own origin; no
+Google credentials or external OCR service is required. The image stays on the
+device. Only the student's reviewed class assignments are saved through the
+normal schedule editor. Language data is cached in the browser, and an initialized
+worker is reused for consecutive scans before releasing it after 30 idle seconds.
+The production CSP permits WebAssembly compilation without permitting general
+JavaScript eval. Initial asset loading and recognition speed depend on the device
+and connection; the interface remains responsive while recognition runs.
 
 Local OCR enlarges small screenshots within a 16-megapixel limit, recognizes
 the aligned period-number column separately, and reads course text without
@@ -178,7 +179,7 @@ classes in an applied import. Ambiguous catalog abbreviations remain custom
 names rather than selecting a catalog entry by order; AP/Honors and numbered
 course distinctions are retained.
 
-The Google Vision adapter preserves word boxes and detected line breaks rather
+The legacy Google Vision adapter preserves word boxes and detected line breaks rather
 than flattening paragraphs, which may span multiple rows or columns. Its local
 response fixtures cover this geometry; they do not establish external Google
 Vision recognition accuracy or production configuration.
@@ -186,8 +187,8 @@ Vision recognition accuracy or production configuration.
 `schedule-ocr.test.ts` includes a sanitized position/text fixture from the owner's
 Campus screenshot. To run real OCR against that same local image without
 committing it, set `SCHEDULE_OCR_IMAGE` to its absolute path and run Vitest on
-`apps/web/src/lib/schedule-ocr-image.test.ts`. The opt-in test downloads the
-public English model when it is not cached; the image stays local.
+`apps/web/src/lib/schedule-ocr-image.test.ts`. The opt-in test uses the same
+installed English model as the browser; the image stays local.
 
 Run `direnv exec . bun run test:schedule-ocr` for offline parser, geometry, and
 draft-preservation tests. They also run as part of `bun run test`. Set

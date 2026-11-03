@@ -79,6 +79,7 @@ import type * as events_events from "../events/events.js";
 import type * as events_externalCalendarIcs from "../events/externalCalendarIcs.js";
 import type * as events_externalCalendarSync from "../events/externalCalendarSync.js";
 import type * as events_externalCalendars from "../events/externalCalendars.js";
+import type * as events_migrations from "../events/migrations.js";
 import type * as events_serialize from "../events/serialize.js";
 import type * as flexFriday__lib from "../flexFriday/_lib.js";
 import type * as flexFriday__personalWorkshops from "../flexFriday/_personalWorkshops.js";
@@ -232,6 +233,7 @@ declare const fullApi: ApiFromModules<{
   "events/externalCalendarIcs": typeof events_externalCalendarIcs;
   "events/externalCalendarSync": typeof events_externalCalendarSync;
   "events/externalCalendars": typeof events_externalCalendars;
+  "events/migrations": typeof events_migrations;
   "events/serialize": typeof events_serialize;
   "flexFriday/_lib": typeof flexFriday__lib;
   "flexFriday/_personalWorkshops": typeof flexFriday__personalWorkshops;

@@ -50,7 +50,6 @@ export async function proxy(request: NextRequest) {
 
   // 1. Redirect unauthenticated users from protected routes to login
   const protectedRoutes = [
-    '/home',
     '/admin',
     '/announcements',
     '/clubs',
@@ -65,7 +64,8 @@ export async function proxy(request: NextRequest) {
     '/change-password',
     '/report',
   ];
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isProtectedRoute = pathname === '/' ||
+    protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtectedRoute && !isAuth) {
     const loginUrl = new URL('/login', request.url);
@@ -84,19 +84,14 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname === '/change-password' && isAuth && !mustResetPassword) {
-    return NextResponse.redirect(new URL('/home', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // 2. Redirect authenticated users away from the login page
   if (pathname === '/login' && isAuth) {
     return NextResponse.redirect(
-      new URL(mustResetPassword ? '/change-password' : '/home', request.url),
+      new URL(mustResetPassword ? '/change-password' : '/', request.url),
     );
-  }
-
-  // 3. Handle root path redirect
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL(isAuth ? '/home' : '/login', request.url));
   }
 
   return NextResponse.next();

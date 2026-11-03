@@ -53,6 +53,7 @@ same change.
 - [Deployment](architecture/deployment.md)
 - [Azure portability review](architecture/azure-portability.md)
 - [Azure school environment plan](architecture/azure-school-environment-plan.md)
+- [Azure deployment plan](architecture/azure-deployment-plan.md)
 - [Azure hosting migration](architecture/azure-hosting-migration.md)
 - [Client state ownership](architecture/client-state-ownership.md)
 
