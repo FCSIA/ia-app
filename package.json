@@ -40,7 +40,8 @@
     "release:ship": "node scripts/release.mjs",
     "fluid:update": "node scripts/update-fluid-components.mjs",
     "login:dither": "node scripts/dither-login-images.mjs",
-    "sync:convex-env": "node scripts/sync-convex-env.mjs"
+    "sync:convex-env": "node scripts/sync-convex-env.mjs",
+    "test:ci": "bun run test:routing && bun run test:schedule-ocr && bun run test:chat && turbo run test --filter=!cvx"
   },
   "overrides": {
     "react": "19.2.3",

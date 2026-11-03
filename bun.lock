@@ -107,6 +107,7 @@
         "@babel/core": "^7.28.5",
         "@types/react": "19.2.7",
         "typescript": "^6.0.3",
+        "vitest": "4.1.12",
       },
     },
     "apps/web": {
