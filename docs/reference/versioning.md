@@ -5,8 +5,8 @@ tags: [docs, reference, release]
 # Versioning and the devlog
 
 The app carries a version, a changelog, and an in-app devlog that students can
-read. All three come from one file. Release data is generated and approved in a
-normal pull request before anything reaches production.
+read. All three come from one file. Release data is generated in a dedicated commit on `main`; GitHub validates
+and tests that exact commit before anything reaches production.
 
 ## What the version means
 
@@ -45,65 +45,75 @@ CI. Contributor Validation runs that check on every pull request.
 
 ## Cutting a release
 
-A production deploy uses an approved immutable release tag. Run the single
-release command from an up-to-date clean `main` checkout; it creates a release
-branch and pull request containing the generated release files. When that PR
-merges, the merge-triggered release workflow
-(`.github/workflows/release-on-merge.yml`)
-creates and pushes the tag; `Production Deploy` (`.github/workflows/prod.yml`)
-is called directly after the tag exists and validates and deploys that existing
-immutable tag. The tag-push trigger remains available for external/manual
-retry paths, but deployment does not depend on workflow recursion from a
-`GITHUB_TOKEN` push. Humans never create or push release tags.
-
-The workflow is read-only. Before installing dependencies or using deployment
-secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
-already reachable from `main`, and the latest approved devlog version matches
-the tag. It then tests and deploys that exact commit to Convex and Vercel. It
-cannot create a release commit, move `main`, or bypass branch protection. A
-failed deploy leaves the already-approved release commit and tag in place so it
-can be safely retried.
-
-If publishing fails before the tag exists, retry **Publish Release Tag** from
-`main` with the already-merged release PR number:
+A production deploy starts with a dedicated release commit pushed directly to
+`main`. No release branch, pull request, or manual tag is needed. From a clean
+`main` checkout synchronized with `origin/main`, run:
 
 ```bash
-gh workflow run release-on-merge.yml --ref main -f pull_request_number=160
+direnv exec . bun run release
 ```
 
-The retry verifies the merged PR, repository, recorded release base, and main
-ancestry before the Actions bot creates the tag. It refuses to move an existing
-tag. If the tag already exists and deployment failed, retry **Production Deploy**
-with that tag instead.
+This generates the next patch release, commits only `releases.json`, the
+generated TypeScript module, and `CHANGELOG.md`, then pushes `main`. The commit
+subject is `release: vMAJOR.MINOR.PATCH`, with a `Release-Base` trailer recording
+its parent. `bun run release:ship` performs the same operation. Use `--minor`
+for a deliberate minor bump or `--set=1.0.0` for an explicit version.
 
-The `main` branch ruleset must require pull requests, the `CI Gate` status, and
-that branches be up to date before merging. The release workflow also compares
-the release branch's recorded base commit with the squash merge's first parent;
-both checks are required so a release PR cannot publish stale release metadata
-after another PR reaches `main`.
-
-To see what the next release would contain, without writing anything:
+To inspect the next release without committing, pushing, fetching, or changing
+files:
 
 ```bash
-bun run devlog:preview
+direnv exec . bun run release --dry-run
 ```
 
-For scripts, `bun run devlog:preview --json` emits only the release object;
-the default output also includes the baseline, commit range, and rendered log.
+Ordinary main commits run Contributor Validation without deploying. A push that
+changes `packages/devlog/data/releases.json` also runs **Publish Release Tag**
+(`.github/workflows/release-on-push.yml`). Its final commit must be the dedicated
+release commit. The publisher verifies:
 
-To prepare one for review from an up-to-date `main` checkout:
+- The exact commit is reachable from `main` and has one parent matching
+  `Release-Base`.
+- Its subject matches the new version, the version increases, and exactly one
+  release is prepended without rewriting earlier release data.
+- Only release data/generated files change in that commit, and generated outputs
+  match their source.
+
+The Actions bot creates an annotated `vX.Y.Z` tag on that exact commit and calls
+**Production Deploy** directly. It does not rely on another workflow starting
+from a `GITHUB_TOKEN` tag push. Production resolves the tag once to a full SHA,
+runs the complete Contributor Validation suite against that SHA (including
+security audit, metadata checks, lint, tests, and build), then deploys the same
+SHA to Convex followed by Vercel. Validation receives no deployment credentials.
+New releases do not cancel an active production deployment.
+
+Repository write access is required to push releases. `main` permits direct
+pushes; it does not require a PR or pre-push status checks. CI runs after pushes,
+and production remains gated on successful validation. Force pushes and branch
+deletion remain disabled. Release tag rules prevent updates and deletion.
+
+If another push reaches `main` while the command is preparing a release, Git
+rejects its push. The local release commit is retained for inspection. Rebuild
+the release on current `origin/main` and rerun preparation; do not force-push
+stale release metadata.
+
+If publishing fails, retry from the workflow on `main` using the full release
+commit SHA (it must already be reachable from `main`):
 
 ```bash
-bun run release --minor
+gh workflow run release-on-push.yml --ref main -f release_commit=FULL_40_CHARACTER_SHA
 ```
 
-`bun run release:ship` uses the same PR preparation flow. Neither command pushes
-directly to `main` or creates a local release tag.
+An existing tag on the same commit is accepted for retry; a tag on another commit
+is never moved. If deployment alone failed, retry **Production Deploy** from
+`main` with the existing tag:
 
-The command prints the pull request URL. Wait for the usual approval and
-validation; merging the release PR begins deployment automatically. Use
-`bun run release --set=1.0.0` for an explicit version or `--dry-run` to inspect
-the proposed release without mutations.
+```bash
+gh workflow run prod.yml --ref main -f release_tag=v0.8.42
+```
+
+The tag-push entry point also remains available. Every production entry point
+checks main ancestry/version and runs the full validation suite before deployment.
+Manual retries of historical tags run the current workflow from `main`.
 
 ## How commits become entries
 

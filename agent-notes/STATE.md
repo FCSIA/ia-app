@@ -2,6 +2,17 @@
 
 ## Active Focus
 
+- **Direct releases (2026-11-02)**: The owner authorized replacing release PRs
+  with dedicated release commits pushed directly to `main`. `bun run release`
+  and `release:ship` now generate, commit, and push release files; the push
+  publisher validates the recorded parent/version/generated files, tags that
+  commit, and calls production. Production validates the exact SHA through the
+  full Contributor Validation workflow before Convex then Vercel. Ordinary main
+  pushes run CI without deployment. Main permits direct pushes while rejecting
+  force pushes/deletion; `v*` tag rules reject updates/deletion. This supersedes
+  the older release-PR instructions below. See `docs/reference/versioning.md`.
+
+
 - **Browser OCR production repair (2026-10-30)**: Worktree
   `.worktrees/browser-schedule-ocr`, branch `codex/browser-schedule-ocr`, switches
   the web importer to on-device Tesseract in every environment. Production no
