@@ -59,38 +59,39 @@ export async function toAuditEvents(
   const actorIds = Array.from(
     new Set(events.flatMap((event) => (event.actorId ? [event.actorId] : []))),
   );
-  const actorEntries = await Promise.all(
+  const actorsPromise = Promise.all(
     actorIds.map(
       async (actorId) => [actorId, await ctx.db.get(actorId)] as const,
     ),
   );
-  const actors = new Map(actorEntries);
-
   const resolveContext = auditContextResolver(ctx);
-  return await Promise.all(
-    events.map(async (event) => {
-      const actor = event.actorId ? actors.get(event.actorId) : null;
-      return {
-        id: event._id,
-        actorId: event.actorId ?? null,
-        context: await resolveContext(event),
-        action: event.action,
-        entityType: event.entityType,
-        entityId: event.entityId ?? null,
-        createdAt: new Date(event.createdAt).toISOString(),
-        meta: event.meta ?? null,
-        actor: actor
-          ? {
-              id: actor._id,
-              firstName: actor.firstName,
-              lastName: actor.lastName,
-              preferredName: actor.preferredName,
-              uniqueId: actor.uniqueId,
-            }
-          : null,
-      };
-    }),
-  );
+  const [actorEntries, contexts] = await Promise.all([
+    actorsPromise,
+    Promise.all(events.map(resolveContext)),
+  ]);
+  const actors = new Map(actorEntries);
+  return events.map((event, index) => {
+    const actor = event.actorId ? actors.get(event.actorId) : null;
+    return {
+      id: event._id,
+      actorId: event.actorId ?? null,
+      context: contexts[index]!,
+      action: event.action,
+      entityType: event.entityType,
+      entityId: event.entityId ?? null,
+      createdAt: new Date(event.createdAt).toISOString(),
+      meta: event.meta ?? null,
+      actor: actor
+        ? {
+            id: actor._id,
+            firstName: actor.firstName,
+            lastName: actor.lastName,
+            preferredName: actor.preferredName,
+            uniqueId: actor.uniqueId,
+          }
+        : null,
+    };
+  });
 }
 
 export function includes(value: string | null | undefined, needle: string) {

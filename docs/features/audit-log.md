@@ -49,7 +49,8 @@ Supported fields: `person`, `action`, `type`, `record`, `text`, `source`, `after
 
 - `api.audit.events.list` (bounded legacy/mobile read)
 - `api.audit.events.listPage` (complete cursor history)
-- `api.audit.events.listFilterOptions` (suggestions from the latest 500 events)
+- `api.audit.events.listFilterOptions` (suggestions from the latest 500 events;
+  the web client subscribes only while Filters is open)
 - `api.audit.events.get`
 
 ## Data Model and Permissions
@@ -64,7 +65,15 @@ does not retain comment text or migrate older events that lack the relationship.
 
 ## Known Limits
 
-Full-name, metadata, category, and advanced filters run after each bounded indexed page is hydrated. Date controls range the timestamp index. This preserves access to all records without an unbounded scan, but sparse searches may need multiple older-history requests. Add dedicated indexed/search fields before large production audit search. Related records are read once per page via memoization; unavailable records retain the type and original ID.
+Stored-field filters (action, type, category, source, record ID, and dates) reject
+nonmatching rows before actor/context hydration. Full-name, metadata, and advanced
+search still run after hydration. Date controls range the timestamp index. Pages
+retain their original cursor boundaries, including empty matching pages, so
+sparse searches may need multiple older-history requests. Add dedicated
+indexed/search fields before large production audit search. Related records
+are read once per page via memoization; unavailable records retain the type and
+original ID. Actor and context reads run concurrently, and an empty search skips
+search-field construction.
 
 ## Related
 
