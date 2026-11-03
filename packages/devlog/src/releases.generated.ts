@@ -7,6 +7,19 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.44",
+    "date": "2026-11-03",
+    "commit": "b0fe92c1",
+    "changes": [
+      {
+        "category": "Fixed",
+        "scope": "theme",
+        "summary": "Sidebar labels and icons now follow your custom Text color so they stay readable over your background.",
+        "commit": "b0fe92c1"
+      }
+    ]
+  },
+  {
     "version": "0.8.43",
     "date": "2026-11-03",
     "commit": "54a0de8a",

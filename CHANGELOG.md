@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.44 — 2026-11-03 (alpha)
+
+### Fixed
+
+- **theme** — Sidebar labels and icons now follow your custom Text color so they stay readable over your background. ([`b0fe92c1`](https://github.com/FCSIA/ia-app/commit/b0fe92c1))
+
 ## v0.8.43 — 2026-11-03 (alpha)
 
 ### Improved
