@@ -107,6 +107,9 @@ were inspected; the adapter was preserved with a narrow accessibility fix.
   to the Profile setup entry.
 - Desktop checks cover Light, Dark, Contrast, Bubblegum, Bubblegum Dark, and
   Custom themes with no dialog or document horizontal overflow.
+- The pinned React Doctor 0.9.8 changed-file scan reports no new issues. Profile
+  sections derive directly from URL state; local panel changes use Next's native
+  history integration without a server navigation or a child-to-parent effect.
 - Backend tests cover legacy opt-in, new invitations independent of account age,
   saved-work credit, private/empty/conflicting schedules, role gating, mixed roles,
   skipped tasks, durable defer/resume/finish, idempotency, second-client state,

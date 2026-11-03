@@ -31,15 +31,29 @@ const EMPTY_PASSWORD_FORM: PasswordForm = {
   confirm: '',
 };
 
-function ProfileSectionFromUrl({ onChange }: { onChange: (section: ProfileSection) => void }) {
-  const section = useSearchParams()?.get('section');
-  useEffect(() => {
-    onChange(section === 'whats-new' || section === 'notifications' ? section : 'account');
-  }, [section, onChange]);
-  return null;
+export default function ProfilePage() {
+  return <Suspense fallback={null}><ProfilePageContent /></Suspense>;
 }
 
-export default function ProfilePage() {
+const PROFILE_SECTION_IDS: readonly ProfileSection[] = [
+  'account', 'notifications', 'appearance', 'moderation', 'whats-new',
+];
+
+function ProfilePageContent() {
+  const searchParams = useSearchParams();
+  const requestedSection = searchParams?.get('section');
+  const activeSection = PROFILE_SECTION_IDS.find(
+    section => section === requestedSection,
+  ) ?? 'account';
+  function navigateToSection(section: ProfileSection) {
+    const params = new URLSearchParams(searchParams?.toString());
+    if (section === 'account') params.delete('section');
+    else params.set('section', section);
+    const query = params.toString();
+    // Next's native history integration updates useSearchParams immediately
+    // without a server navigation for a local settings-panel change.
+    window.history.replaceState(null, '', query ? `/profile?${query}` : '/profile');
+  }
   const user = useCurrentUser();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -51,7 +65,6 @@ export default function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [savingTimeFormat, setSavingTimeFormat] = useState(false);
-  const [activeSection, setActiveSection] = useState<ProfileSection>('account');
   const { unseenCount, markSeen } = useSeenRelease();
 
   const changePassword = useMutation(api.users.auth.changePassword);
@@ -111,13 +124,12 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
-      <Suspense fallback={null}><ProfileSectionFromUrl onChange={setActiveSection} /></Suspense>
       <div className="mx-auto grid w-full max-w-5xl gap-5 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
         <ProfileSidebar
           user={user}
           activeSection={visibleSection}
           canSeeModeration={canSeeModeration}
-          onSectionChange={setActiveSection}
+          onSectionChange={navigateToSection}
           unseenReleases={unseenCount}
         />
         <div className="flex min-w-0 flex-col gap-5">
