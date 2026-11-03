@@ -19,7 +19,7 @@ import {
   canViewAnnouncement,
   commentWithAuthorValidator,
   getAccessibleClubIds,
-  getViewerAudience,
+  viewerAudience,
   canPostGlobalAnnouncements,
   isElevatedReader,
 } from "./_lib";
@@ -33,6 +33,14 @@ import { consumeStagedAnnouncementImages } from "../uploads/announcementImages";
 
 function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: number) {
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
+}
+
+// Approval is a one-time decision: approving again would re-notify the whole
+// audience, and archived or rejected posts must not come back through it.
+function assertAwaitingApproval(ann: { status: string }) {
+  if (ann.status !== "PENDING_APPROVAL") {
+    throw new ConvexError("This announcement is no longer waiting for approval");
+  }
 }
 
 export const ANNOUNCEMENT_PAST_AGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -97,11 +105,10 @@ export const listPinnedPage = query({
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .order("desc")
       .paginate(args.paginationOpts);
-    const viewer = await getViewerAudience(ctx, user._id);
+    const viewer = viewerAudience(user);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
     const announcements: Doc<"announcements">[] = [];
-    for (const pin of result.page) {
-      const announcement = await ctx.db.get(pin.announcementId);
+    for (const announcement of await Promise.all(result.page.map((pin) => ctx.db.get(pin.announcementId)))) {
       if (!announcement || announcement.status !== "ACTIVE" || isEffectivelyExpired(announcement, args.now) || isPastByAge(announcement, args.now)) continue;
       if (canViewAnnouncement(announcement, user._id, user.roles, accessibleClubIds, viewer)) announcements.push(announcement);
     }
@@ -146,7 +153,7 @@ export const listPastStatusPage = query({
           .withIndex("by_status_and_createdAt", (q) => q.eq("status", args.status).gt("createdAt", args.now - ANNOUNCEMENT_PAST_AGE_MS))
           .order("desc")
           .paginate(args.paginationOpts);
-    const viewer = await getViewerAudience(ctx, user._id);
+    const viewer = viewerAudience(user);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
     const elevated = isElevatedReader(user.roles);
     if (args.clubId) {
@@ -169,15 +176,14 @@ export async function listPinnedForUser(
   now: number,
   limit = 100,
 ) {
-    const viewer = await getViewerAudience(ctx, user._id);
+    const viewer = viewerAudience(user);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
     const pins = await ctx.db.query("announcementPins")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .order("desc")
       .take(Math.max(1, Math.min(limit, 500)));
     const announcements: Doc<"announcements">[] = [];
-    for (const pin of pins) {
-      const announcement = await ctx.db.get(pin.announcementId);
+    for (const announcement of await Promise.all(pins.map((pin) => ctx.db.get(pin.announcementId)))) {
       if (!announcement || announcement.status !== "ACTIVE" || isEffectivelyExpired(announcement, now) || isPastByAge(announcement, now)) continue;
       if (canViewAnnouncement(announcement, user._id, user.roles, accessibleClubIds, viewer)) announcements.push(announcement);
     }
@@ -190,7 +196,7 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
     const now = args.now;
     const pastCutoff = now - ANNOUNCEMENT_PAST_AGE_MS;
 
-    const viewer = await getViewerAudience(ctx, user._id);
+    const viewer = viewerAudience(user);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
     const elevated = isElevatedReader(user.roles);
     const archived = args.archived ?? false;
@@ -280,21 +286,21 @@ export const get = query({
 
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) return null;
-    const viewer = await getViewerAudience(ctx, user._id);
+    const viewer = viewerAudience(user);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
     if (!canViewAnnouncement(ann, user._id, user.roles, accessibleClubIds, viewer)) {
       return null;
     }
 
-    const comments = await ctx.db
-      .query("comments")
-      .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))
-      .collect();
+    const [announcement, comments] = await Promise.all([
+      serializeAnnouncement(ctx, ann, user._id, args.now ?? Date.now()),
+      ctx.db.query("comments")
+        .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))
+        .collect()
+        .then((rows) => serializeComments(ctx, rows)),
+    ]);
 
-    return {
-      announcement: await serializeAnnouncement(ctx, ann, user._id, args.now ?? Date.now()),
-      comments: await serializeComments(ctx, comments),
-    };
+    return { announcement, comments };
   },
 });
 
@@ -445,6 +451,7 @@ export const approve = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    assertAwaitingApproval(ann);
 
     await ctx.db.patch(args.announcementId, {
       status: "ACTIVE",
@@ -489,6 +496,7 @@ export const reject = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    assertAwaitingApproval(ann);
     const note = normalizeOptionalBoundedText(
       args.note,
       "Rejection note",

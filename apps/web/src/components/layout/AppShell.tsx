@@ -69,7 +69,7 @@ export function AppShell({
   const appRootRef = useRef<HTMLDivElement>(null);
   const mobileTabBarRef = useRef<HTMLElement>(null);
   const usesVisualViewport = viewportMode === "visual";
-  const safePathname = pathname ?? "/dashboard";
+  const safePathname = pathname ?? "/";
   useMobileNavigationSwipe(
     appRootRef,
     onMobileSwipeRight,

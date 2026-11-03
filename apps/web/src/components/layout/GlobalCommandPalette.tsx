@@ -40,7 +40,7 @@ import {
 } from '@/components/layout/use-global-command-actions';
 
 const staticActions: CommandAction[] = [
-  { id: 'route-dashboard', label: 'Dashboard', detail: 'Home and widgets', href: '/dashboard', Icon: Home },
+  { id: 'route-dashboard', label: 'Dashboard', detail: 'Home and widgets', href: '/', Icon: Home },
   { id: 'route-announcements', label: 'Announcements', detail: 'Official updates', href: '/announcements', Icon: Megaphone },
   { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: UsersRound },
   { id: 'route-schedule', label: 'Schedule', detail: 'Classes and friends', href: '/schedule', Icon: ClipboardList },

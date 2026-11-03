@@ -17,8 +17,8 @@ const ROOT_BY_TAB: Record<MobileTabId, string> = {
 
 const DASHBOARD_KEY = "ia:mobile-last:dashboard";
 
-function tabIdForPathname(pathname: string): MobileTabId | "dashboard" | null {
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/dashboard?")) return "dashboard";
+export function tabIdForPathname(pathname: string): MobileTabId | "dashboard" | null {
+  if (pathname === "/") return "dashboard";
   for (const [id, root] of Object.entries(ROOT_BY_TAB) as Array<[MobileTabId, string]>) {
     if (pathname === root || pathname.startsWith(`${root}/`) || pathname.startsWith(`${root}?`)) return id;
   }
@@ -29,12 +29,17 @@ function storageKey(tabId: MobileTabId) {
   return `ia:mobile-last:${tabId}`;
 }
 
-function readStored(tabId: MobileTabId | "dashboard"): string | null {
+export function readStored(tabId: MobileTabId | "dashboard"): string | null {
   try {
     const key = tabId === "dashboard" ? DASHBOARD_KEY : storageKey(tabId);
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
-    const root = tabId === "dashboard" ? "/dashboard" : ROOT_BY_TAB[tabId];
+    if (tabId === "dashboard") {
+      // Migrate saved Home destinations without treating every route as Home.
+      const home = raw.replace(/^\/dashboard(?=\?|$)/, "/");
+      return home === "/" || home.startsWith("/?") ? home : null;
+    }
+    const root = ROOT_BY_TAB[tabId];
     if (raw !== root && !raw.startsWith(`${root}/`) && !raw.startsWith(`${root}?`) ) return null;
     return raw;
   } catch {
@@ -78,7 +83,7 @@ export function useMobileTabMemory() {
   }, [pathname, fullPath]);
 
   const getHref = (tabId: MobileTabId | undefined, fallbackHref: string) => {
-    if (fallbackHref === "/dashboard") return (lastByTab["dashboard"] as string | undefined) ?? fallbackHref;
+    if (fallbackHref === "/") return (lastByTab["dashboard"] as string | undefined) ?? fallbackHref;
     if (!tabId) return fallbackHref;
     return (lastByTab[tabId] as string | undefined) ?? fallbackHref;
   };

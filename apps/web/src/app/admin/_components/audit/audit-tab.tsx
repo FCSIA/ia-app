@@ -13,8 +13,8 @@ import { AuditTable } from './audit-table';
 import { AuditAdvancedSearch } from './audit-advanced-search';
 
 export function AuditTab() {
-  const audit = useAdminAudit('audit');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const audit = useAdminAudit('audit', filtersOpen);
   const viewIndex = ['all', 'general', 'flex'].indexOf(audit.auditSubView);
   const filterCount =
     audit.auditFilterChips.length + (audit.advancedQuery ? 1 : 0);

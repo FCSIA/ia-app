@@ -26,3 +26,26 @@ export const backfillCommentCount = migrations.define({
     return { commentCount: comments.length };
   },
 });
+
+/**
+ * Retire the stored EXPIRED status. An announcement is expired when it is
+ * ACTIVE and its `expiresAt` has passed, so EXPIRED rows become ACTIVE with an
+ * expiry in the past. Once this has run, the staged validator in the schema
+ * reports `announcements` as validated and EXPIRED can leave the schema.
+ *
+ *   cd apps/convex && npx convex run announcements/migrations:retireExpiredStatus
+ */
+export const retireExpiredStatus = migrations.define({
+  table: "announcements",
+  batchSize: 100,
+  migrateOne: (_ctx, announcement) => {
+    if (announcement.status !== "EXPIRED") return;
+    // Keep a real past expiry; otherwise expire it now so it stays expired.
+    const now = Date.now();
+    const expiresAt =
+      announcement.expiresAt !== undefined && announcement.expiresAt <= now
+        ? announcement.expiresAt
+        : now;
+    return { status: "ACTIVE" as const, expiresAt };
+  },
+});

@@ -1,6 +1,7 @@
 'use client';
 
 import { displayName } from '~/apps/shared/user-name';
+import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
 
 import { useState } from 'react';
 import { Archive, Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
@@ -138,6 +139,8 @@ function FeedbackList({
   retryGithubIssueMutation: RetryGithubIssueMutation;
   canUpdateFeedback: boolean;
 }) {
+  // When this list opened; a sync that was already stale then can be retried.
+  const [openedAt] = useState(() => Date.now());
   if (reports.length === 0) {
     return (
       <AdminNotice
@@ -177,9 +180,14 @@ function FeedbackList({
                   </a>
                 </Button>
               ) : null}
-              {report.githubIssueSyncState === 'FAILED' ? (
+              {report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
                 <div className="mt-3 flex items-center gap-2">
-                  <p className="text-xs text-destructive">GitHub issue sync failed. The feedback remains in this queue.</p>
+                  <p className="text-xs text-destructive">
+                    {report.githubIssueSyncState === 'FAILED'
+                      ? 'GitHub issue sync failed.'
+                      : 'GitHub issue sync stopped before finishing.'}{' '}
+                    The feedback remains in this queue.
+                  </p>
                   {canUpdateFeedback ? (
                     <Button size="sm" variant="tertiary" onClick={() => void retryGithubIssueMutation(report._id)}>
                       Retry sync

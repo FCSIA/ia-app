@@ -72,7 +72,7 @@ type NavItem = {
 };
 
 const primaryNav: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/", label: "Dashboard", icon: Home },
   { href: "/announcements", label: "Announcements", icon: Megaphone, mobileTabId: "announcements" },
   { href: "/clubs", label: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true' ? "Community" : "Clubs", icon: UsersRound, mobileTabId: "clubs" },
   { href: "/schedule", label: "Schedule", icon: ClipboardList, mobileTabId: "schedule" },
@@ -190,7 +190,7 @@ function getNavigationItems({
 
 function isActive(pathname: string, href: string) {
   return (
-    pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
+    pathname === href || (href !== "/" && pathname.startsWith(href))
   );
 }
 
@@ -518,7 +518,7 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   ).slice(0, MOBILE_TAB_DESTINATION_MAX);
 
   return [
-    { href: "/dashboard", label: "Home", icon: Home },
+    { href: "/", label: "Home", icon: Home },
     ...selectedIds.map((id) => {
       const item = availableById.get(id)!;
       return item.href === "/announcements" ? { ...item, label: "Feed" } : item;
@@ -626,7 +626,7 @@ function AppShellMobileTabBar({
 function AppLogo({ className }: { className: string }) {
   return (
     <Link
-      href="/dashboard"
+      href="/"
       aria-label="Home"
       className={cn(
         "flex shrink-0 items-center justify-center overflow-hidden rounded-xl",

@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -8,12 +10,13 @@ import {
 } from "../../lib/currentUser";
 import {
   auditEventValidator,
+  auditEventResolver,
   auditPageValidator,
   toAuditEvent,
   toAuditEvents,
 } from "./_lib";
 
-import { auditFilters, auditMatcher } from "./_filters";
+import { auditFilters, auditMatcher, auditRecordMatcher } from "./_filters";
 
 const auditFilterOptionsValidator = v.object({
   actions: v.array(v.string()),
@@ -105,7 +108,7 @@ export const list = query({
       .withIndex("by_createdAt")
       .order("desc")
       .take(Math.min(Math.max(args.limit ?? 100, 1), 500));
-    return (await toAuditEvents(ctx, rows)).filter(matches);
+    return (await toAuditEvents(ctx, rows.filter(auditRecordMatcher(args)))).filter(matches);
   },
 });
 
@@ -135,6 +138,25 @@ export const listFilterOptions = query({
 });
 
 export const listPage = query({
+  // Existing clients use native Convex cursors; retain this endpoint while
+  // open browser sessions transition to the stream cursor protocol below.
+  args: { paginationOpts: paginationOptsValidator, ...auditFilters },
+  returns: auditPageValidator,
+  handler: async (ctx, args) => {
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]))
+      return { page: [], isDone: true, continueCursor: "" };
+    const matches = auditMatcher(args);
+    const result = await ctx.db.query("auditEvents")
+      .withIndex("by_createdAt", (q) => {
+        const lower = args.startAt === undefined ? q : q.gte("createdAt", args.startAt);
+        return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt);
+      }).order("desc").paginate(args.paginationOpts);
+    return { ...result, page: (await toAuditEvents(ctx, result.page.filter(auditRecordMatcher(args)))).filter(matches) };
+  },
+});
+
+export const listFilteredPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
@@ -145,8 +167,18 @@ export const listPage = query({
     )
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
+    const requestedRows = args.paginationOpts.maximumRowsRead;
+    const maxRows = Number.isFinite(requestedRows)
+      ? Math.max(2, Math.min(Math.floor(requestedRows!), 100))
+      : 100;
+    const requestedItems = args.paginationOpts.numItems;
+    const numItems = Number.isFinite(requestedItems)
+      ? Math.max(1, Math.min(Math.floor(requestedItems), 100))
+      : 50;
     // Date controls use the browser's local day boundaries, then range the index.
-    const result = await ctx.db
+    const resolve = auditEventResolver(ctx);
+    const matchesRecord = auditRecordMatcher(args);
+    const result = await stream(ctx.db, schema)
       .query("auditEvents")
       .withIndex("by_createdAt", (q) => {
         const lower =
@@ -156,11 +188,18 @@ export const listPage = query({
           : lower.lte("createdAt", args.endAt);
       })
       .order("desc")
-      .paginate(args.paginationOpts);
-    return {
-      ...result,
-      page: (await toAuditEvents(ctx, result.page)).filter(matches),
-    };
+      .map(async (row) => {
+        if (!matchesRecord(row)) return null;
+        const event = await resolve(row);
+        return matches(event) ? event : null;
+      })
+      .paginate({
+        ...args.paginationOpts,
+        numItems,
+        maximumRowsRead: maxRows,
+        maximumBytesRead: 2 * 1024 * 1024,
+      });
+    return result;
   },
 });
 
@@ -182,9 +221,10 @@ export const get = query({
       return null;
     const row = await ctx.db.get(args.auditEventId);
     if (!row) return null;
-    return {
-      ...(await toAuditEvent(ctx, row)),
-      entityPreview: await resolveEntityPreview(ctx, row),
-    };
+    const [event, entityPreview] = await Promise.all([
+      toAuditEvent(ctx, row),
+      resolveEntityPreview(ctx, row),
+    ]);
+    return { ...event, entityPreview };
   },
 });

@@ -1,4 +1,5 @@
 import { displayName } from '../../../shared/user-name';
+import { canRetryGithubSync } from '../../../shared/feedback-sync';
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -26,6 +27,7 @@ import {
 import { contentRateLimiter } from "../rateLimits";
 import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
 import { canReviewFeedback } from "./feedbackAccess";
+import { requestGithubIssuePush } from "./feedbackGithub";
 
 const genericReportContentTypeValidator = v.union(
   v.literal("GENERAL"),
@@ -102,19 +104,37 @@ async function serializeReport(
   ctx: QueryCtx,
   report: Doc<"moderationReports">,
 ) {
-  const submitter = await ctx.db.get(report.submitterId);
-  const reportedUser = report.reportedUserId
-    ? await ctx.db.get(report.reportedUserId)
-    : null;
-  const club = report.clubId ? await ctx.db.get(report.clubId) : null;
-  const images = await ctx.db
-    .query("feedbackReportImages")
-    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
-    .take(3);
-  const responses = await ctx.db
-    .query("feedbackReportResponses")
-    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
-    .take(MAX_FEEDBACK_RESPONSES_PER_REPORT);
+  const [submitter, reportedUser, club, images, responses] = await Promise.all([
+    ctx.db.get(report.submitterId),
+    report.reportedUserId ? ctx.db.get(report.reportedUserId) : null,
+    report.clubId ? ctx.db.get(report.clubId) : null,
+    ctx.db.query("feedbackReportImages")
+      .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+      .take(3),
+    ctx.db.query("feedbackReportResponses")
+      .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+      .take(MAX_FEEDBACK_RESPONSES_PER_REPORT),
+  ]);
+  const [serializedImages, serializedResponses] = await Promise.all([
+    Promise.all(images.map(async (image) => ({
+      _id: image._id,
+      storageId: image.storageId,
+      mimeType: image.mimeType,
+      size: image.size,
+      url: (await ctx.storage.getUrl(image.storageId)) ?? "",
+    }))),
+    Promise.all(responses.map(async (response) => {
+      const author = await ctx.db.get(response.authorId);
+      return {
+        ...response,
+        author: {
+          firstName: author?.firstName ?? "School",
+          lastName: author?.lastName ?? "staff",
+          preferredName: author?.preferredName,
+        },
+      };
+    })),
+  ]);
 
   return {
     ...report,
@@ -137,28 +157,8 @@ async function serializeReport(
         }
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
-    images: await Promise.all(
-      images.map(async (image) => ({
-        _id: image._id,
-        storageId: image.storageId,
-        mimeType: image.mimeType,
-        size: image.size,
-        url: (await ctx.storage.getUrl(image.storageId)) ?? "",
-      })),
-    ),
-    responses: await Promise.all(
-      responses.map(async (response) => {
-        const author = await ctx.db.get(response.authorId);
-        return {
-          ...response,
-          author: {
-            firstName: author?.firstName ?? "School",
-            lastName: author?.lastName ?? "staff",
-            preferredName: author?.preferredName,
-          },
-        };
-      }),
-    ),
+    images: serializedImages,
+    responses: serializedResponses,
   };
 }
 
@@ -199,7 +199,9 @@ async function createReport(
     clubId: input.clubId,
     status: "PENDING",
     isEscalated: false,
-    ...(input.contentType === "GENERAL" ? { githubIssueSyncState: "PENDING" as const } : {}),
+    ...(input.contentType === "GENERAL"
+      ? { githubIssueSyncState: "PENDING" as const, githubIssueSyncQueuedAt: Date.now() }
+      : {}),
     createdAt: Date.now(),
   });
   if (input.imageUploadIds) {
@@ -457,11 +459,23 @@ export const update = mutation({
         : ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"],
     );
 
+    const now = Date.now();
+    const githubIssueNumber =
+      report.contentType === "GENERAL" ? report.githubIssueNumber : undefined;
+    const statusChanged = report.status !== args.status;
     await ctx.db.patch(args.reportId, {
       status: args.status,
       reviewNote: args.reviewNote,
-      reviewedAt: Date.now(),
+      reviewedAt: now,
+      // A staff decision is the latest word on the linked issue, so GitHub
+      // events describing an older issue state cannot overwrite it.
+      ...(githubIssueNumber !== undefined && statusChanged
+        ? { githubIssueStateUpdatedAt: now }
+        : {}),
     });
+    if (githubIssueNumber !== undefined && statusChanged) {
+      await requestGithubIssuePush(ctx, report);
+    }
 
     if (
       report.contentType === "GENERAL" &&
@@ -503,13 +517,16 @@ export const retryGithubIssueSync = mutation({
     if (report.githubIssueNumber) {
       throw new ConvexError("This feedback already has a GitHub issue");
     }
-    if (report.githubIssueSyncState === "PENDING") {
+    // A sync that died before recording an outcome would otherwise stay
+    // PENDING forever, so a queued sync only blocks a retry while it is recent.
+    if (!canRetryGithubSync(report, Date.now())) {
       throw new ConvexError("GitHub issue sync is already queued");
     }
 
     await ctx.db.patch(report._id, {
       githubIssueSyncState: "PENDING",
       githubIssueSyncError: null,
+      githubIssueSyncQueuedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.moderation.feedbackGithub.syncFeedbackIssue, {
       reportId: report._id,

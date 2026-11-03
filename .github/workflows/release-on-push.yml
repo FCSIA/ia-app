@@ -1,0 +1,67 @@
+name: Publish Release Tag
+
+on:
+  push:
+    branches: [main]
+    paths: [packages/devlog/data/releases.json]
+  workflow_dispatch:
+    inputs:
+      release_commit:
+        description: "Full SHA of the release commit already pushed to main"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  tag-release:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.release_commit || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Validate and publish release commit
+        id: release
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit || github.sha }}
+        run: |
+          set -euo pipefail
+          tag="$(node scripts/validate-release.mjs "$RELEASE_SHA")"
+          node scripts/devlog.mjs check
+
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            if [[ "$(git rev-parse "$tag^{commit}")" != "$RELEASE_SHA" ]]; then
+              echo "$tag already exists on a different commit; refusing to move it." >&2
+              exit 1
+            fi
+            echo "$tag already identifies this release; retrying deployment."
+          else
+            git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              tag -a "$tag" -m "Release $tag" "$RELEASE_SHA"
+            git push origin "$tag"
+          fi
+          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy released tag
+    needs: tag-release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/prod.yml
+    with:
+      release_tag: ${{ needs.tag-release.outputs.release_tag }}
+    secrets: inherit

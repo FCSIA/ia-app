@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseReleaseArgs } from "./release-args.mjs";
@@ -54,21 +52,6 @@ try {
   if (error.status !== 1) throw error;
 }
 
-const branch = `release/${tag}`;
-try {
-  capture("git", ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]);
-  fail(`${branch} already exists`);
-} catch (error) {
-  if (error.status !== 1) throw error;
-}
-try {
-  capture("git", ["ls-remote", "--exit-code", "--heads", "origin", branch]);
-  fail(`${branch} already exists on origin`);
-} catch (error) {
-  if (error.status !== 2) throw error;
-}
-
-run("git", ["switch", "-c", branch]);
 const cutArgs = ["scripts/devlog.mjs", "cut", ...releaseFlags];
 run(process.execPath, cutArgs);
 run("git", ["add", "packages/devlog/data/releases.json", "packages/devlog/src/releases.generated.ts", "CHANGELOG.md"]);
@@ -77,13 +60,7 @@ const allowed = new Set(["packages/devlog/data/releases.json", "packages/devlog/
 if (staged.length === 0) fail("release generation produced no files");
 if (staged.some((file) => !allowed.has(file))) fail(`unexpected staged file: ${staged.find((file) => !allowed.has(file))}`);
 run("git", ["commit", "-m", `release: ${tag}`, "-m", `Release-Base: ${local}`]);
-run("git", ["push", "--set-upstream", "origin", branch]);
-const directory = mkdtempSync(path.join(tmpdir(), "ia-release-"));
-try {
-  const bodyPath = path.join(directory, "body.md");
-  writeFileSync(bodyPath, `Merging this PR publishes ${tag} automatically.\n\nGenerated from packages/devlog/data/releases.json.\n`);
-  const pr = capture("gh", ["pr", "create", "--base", "main", "--head", branch, "--title", `release: ${tag}`, "--body-file", bodyPath]);
-  process.stdout.write(`\nRelease PR: ${pr}\nMerging it creates ${tag} and deploys that exact release.\n`);
-} finally {
-  rmSync(directory, { recursive: true, force: true });
-}
+// A concurrent push must fail rather than publishing metadata for a newer base.
+// Keep the local release commit on failure so the operator can inspect it.
+run("git", ["push", "origin", "HEAD:refs/heads/main"]);
+process.stdout.write(`\nPublished release commit for ${tag} to main.\nGitHub Actions validates, tags, and deploys this exact commit automatically.\n`);

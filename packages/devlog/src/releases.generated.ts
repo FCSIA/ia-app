@@ -7,6 +7,64 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.42",
+    "date": "2026-11-03",
+    "commit": "41419480",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Club presence and chat use fewer sequential loading steps.",
+        "commit": "0bfc95ea"
+      },
+      {
+        "category": "Improved",
+        "scope": "release",
+        "summary": "Publish directly from main commits.",
+        "commit": "42b316c9"
+      },
+      {
+        "category": "Improved",
+        "scope": "feedback",
+        "summary": "Feedback now connects to the school’s GitHub repository.",
+        "commit": "9ecd9277"
+      },
+      {
+        "category": "Fixed",
+        "scope": "audit",
+        "summary": "Audit history loads with less background work while preserving search and older activity.",
+        "commit": "56641cea"
+      },
+      {
+        "category": "Internal",
+        "summary": "Avoid interrupting production deployments.",
+        "commit": "c275b463"
+      },
+      {
+        "category": "Internal",
+        "summary": "Run contributor checks in parallel.",
+        "commit": "b6e53e52"
+      }
+    ]
+  },
+  {
+    "version": "0.8.41",
+    "date": "2026-10-31",
+    "commit": "1ce98109",
+    "changes": [
+      {
+        "category": "Internal",
+        "summary": "Add new requirements to Azure deployment plan.",
+        "commit": "1ce98109"
+      },
+      {
+        "category": "Internal",
+        "summary": "Add single-VM Azure deployment plan.",
+        "commit": "7e825788"
+      }
+    ]
+  },
+  {
     "version": "0.8.40",
     "date": "2026-10-31",
     "commit": "2ccd82f6",

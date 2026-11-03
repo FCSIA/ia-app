@@ -80,6 +80,10 @@ const nextConfig: NextConfig = {
     ),
   ],
 
+  async redirects() {
+    return [{ source: '/dashboard', destination: '/', permanent: true }];
+  },
+
   // `/_meta` is the documented deployment marker, but the App Router treats
   // folders starting with an underscore as private and never routes them, so
   // the handler lives at /api/meta and this serves it at the public URL.

@@ -7,14 +7,15 @@ import {
   auditRecordLabel,
   parseAuditSearch,
 } from '~/apps/shared/audit';
-import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
+import { usePaginatedQuery } from 'convex-helpers/react';
+import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope } from '../_lib/types';
 
-export function useAdminAudit(activeTab: AdminTabId) {
+export function useAdminAudit(activeTab: AdminTabId, filtersOpen: boolean) {
   const [auditSearch, setAuditSearch] = useState('');
   const deferredAuditSearch = useDeferredValue(auditSearch);
   const [auditActor, setAuditActor] = useState('');
@@ -78,7 +79,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     status: auditStatus,
     loadMore: loadMoreAuditEvents,
   } = usePaginatedQuery(
-    api.audit.events.listPage,
+    api.audit.events.listFilteredPage,
     activeTab === 'audit' ? auditQueryParams : 'skip',
     { initialNumItems: AUDIT_FETCH_LIMIT },
   );
@@ -89,7 +90,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
 
   const auditFilterOptions = useQuery(
     api.audit.events.listFilterOptions,
-    activeTab === 'audit' ? {} : 'skip',
+    activeTab === 'audit' && filtersOpen ? {} : 'skip',
   );
 
   const auditEventDetail = useQuery(
@@ -102,13 +103,19 @@ export function useAdminAudit(activeTab: AdminTabId) {
     !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(
-    () => auditFilterOptions?.actions ?? [],
-    [auditFilterOptions],
+    () => Array.from(new Set([
+      ...(auditFilterOptions?.actions ?? []),
+      ...(auditActionFilter === 'ALL' ? [] : [auditActionFilter]),
+    ])).sort(),
+    [auditFilterOptions, auditActionFilter],
   );
 
   const auditEntityTypeOptions = useMemo(
-    () => auditFilterOptions?.entityTypes ?? [],
-    [auditFilterOptions],
+    () => Array.from(new Set([
+      ...(auditFilterOptions?.entityTypes ?? []),
+      ...(auditEntityTypeFilter === 'ALL' ? [] : [auditEntityTypeFilter]),
+    ])).sort(),
+    [auditFilterOptions, auditEntityTypeFilter],
   );
 
   const hasActiveAuditFilters =
