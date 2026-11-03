@@ -1,5 +1,7 @@
 'use client';
 
+import { calendarEntryDays, calendarQueryRange } from '~/apps/shared/calendar-date';
+
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { FunctionReturnType } from 'convex/server';
@@ -35,18 +37,20 @@ export function CalendarWidget() {
   const calStart = startOfWeek(startOfMonth(currentMonth));
   const calEnd = endOfWeek(endOfMonth(currentMonth));
   const calendarEntries = useQuery(api.events.calendar.list, {
-    startDate: calStart.getTime(),
-    endDate: calEnd.getTime(),
+    ...calendarQueryRange(calStart.getTime(), calEnd.getTime()),
   });
 
   const entriesByDay = useMemo(() => {
     const grouped = new Map<string, CalendarEntry[]>();
     for (const entry of calendarEntries ?? []) {
-      const key = format(new Date(entry.startAt), 'yyyy-MM-dd');
-      grouped.set(key, [...(grouped.get(key) ?? []), entry]);
+      const allDay = entry.source === 'EXTERNAL' && entry.allDay === true;
+      for (const day of calendarEntryDays(entry.startAt, entry.endAt, allDay, calStart, calEnd)) {
+        const key = format(day, 'yyyy-MM-dd');
+        grouped.set(key, [...(grouped.get(key) ?? []), entry]);
+      }
     }
     return grouped;
-  }, [calendarEntries]);
+  }, [calendarEntries, calStart.getTime(), calEnd.getTime()]);
 
   const eventsForDay = (day: Date) => entriesByDay.get(format(day, 'yyyy-MM-dd')) ?? [];
   const selectedDayEvents = eventsForDay(selectedDay);
@@ -115,8 +119,10 @@ export function CalendarWidget() {
                 <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-foreground/70">
                   <span className="inline-flex items-center gap-1">
                     <Clock3 className="size-3.5" />
-                    {format(new Date(entry.startAt), 'h:mm a')}
-                    {entry.endAt ? ` - ${format(new Date(entry.endAt), 'h:mm a')}` : ''}
+                    {entry.source === 'EXTERNAL' && entry.allDay ? 'All day' : <>
+                      {format(new Date(entry.startAt), 'h:mm a')}
+                      {entry.endAt ? ` - ${format(new Date(entry.endAt), 'h:mm a')}` : ''}
+                    </>}
                   </span>
                   {entry.location ? (
                     <span className="inline-flex items-center gap-1">

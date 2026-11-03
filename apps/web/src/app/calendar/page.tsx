@@ -1,5 +1,7 @@
 'use client';
 
+import { calendarDisplayDate, calendarQueryRange } from '~/apps/shared/calendar-date';
+
 import { displayName } from '~/apps/shared/user-name';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -141,23 +143,23 @@ export default function CalendarPage() {
   }, [isMobile, view]);
 
   const entries = useQuery(api.events.calendar.list, {
-    startDate: range.start,
-    endDate: range.end,
+    ...calendarQueryRange(range.start, range.end),
   });
 
   const events = useMemo<CalendarEvent<CalendarEntry>[]>(
     () =>
       (entries ?? []).map((entry) => {
-        const start = new Date(entry.startAt);
-        const requestedEnd = entry.endAt ? new Date(entry.endAt) : null;
+        const isImportedAllDay = entry.source === 'EXTERNAL' && entry.allDay === true;
+        const start = calendarDisplayDate(entry.startAt, isImportedAllDay);
+        const requestedEnd = entry.endAt ? calendarDisplayDate(entry.endAt, isImportedAllDay) : null;
         const end =
           requestedEnd && requestedEnd.getTime() > start.getTime()
             ? requestedEnd
             : new Date(start.getTime() + 60 * 60 * 1000);
-        const allDay =
+        const allDay = isImportedAllDay || (entry.source !== 'EXTERNAL' &&
           start.getHours() === 0 &&
           start.getMinutes() === 0 &&
-          end.getTime() - start.getTime() >= 24 * 60 * 60 * 1000;
+          end.getTime() - start.getTime() >= 24 * 60 * 60 * 1000);
 
         return {
           id: entry._id,
@@ -305,7 +307,9 @@ export default function CalendarPage() {
             <DialogHeader>
               <DialogTitle>{externalEntry.title}</DialogTitle>
               <DialogDescription>
-                {format(new Date(externalEntry.startAt), 'EEEE, MMMM d · h:mm a')}
+                {externalEntry.allDay
+                  ? `${format(calendarDisplayDate(externalEntry.startAt, true), 'EEEE, MMMM d')} · All day`
+                  : format(new Date(externalEntry.startAt), 'EEEE, MMMM d · h:mm a')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 text-sm">

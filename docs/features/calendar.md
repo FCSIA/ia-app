@@ -63,7 +63,9 @@ External subscriptions and normalized events are private to their owner. The
 feed URL is not returned to clients after creation. A new connection starts its
 first sync immediately; ICS feeds then refresh every six hours. Imports retain
 events from the previous 31 days through the next year and mark failed
-connections with an error state for retry.
+connections with an error state for retry. Date-only ICS events retain their
+calendar dates in the viewer's time zone; their end date is exclusive. Existing
+subscriptions receive the corrected all-day data on their next successful refresh.
 
 ## Permissions
 

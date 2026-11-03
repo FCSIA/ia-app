@@ -1,3 +1,4 @@
+import { calendarEntryDays, calendarQueryRange } from '~/apps/shared/calendar-date';
 import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
@@ -57,8 +58,7 @@ export function MonthView() {
   const canShareWithFriends = getAppPersona(user) === "student";
   const range = monthRange(offset);
   const entries = useQuery(api.events.calendar.list, {
-    startDate: range.start.getTime(),
-    endDate: range.end.getTime(),
+    ...calendarQueryRange(range.start.getTime(), range.end.getTime()),
     sources: activeSources,
   });
   const createEntry = useMutation(api.events.calendar.create);
@@ -89,11 +89,13 @@ export function MonthView() {
   const groupedEntries = useMemo(() => {
     const groups = new Map<string, any[]>();
     for (const entry of filteredEntries) {
-      const key = new Date(entry.startAt).toDateString();
-      groups.set(key, [...(groups.get(key) ?? []), entry]);
+      for (const date of calendarEntryDays(entry.startAt, entry.endAt, entry.source === "EXTERNAL" && entry.allDay === true, range.start, range.end)) {
+        const key = date.toDateString();
+        groups.set(key, [...(groups.get(key) ?? []), entry]);
+      }
     }
-    return [...groups.entries()];
-  }, [filteredEntries]);
+    return [...groups.entries()].sort(([left], [right]) => new Date(left).getTime() - new Date(right).getTime());
+  }, [filteredEntries, range.start.getTime(), range.end.getTime()]);
 
   async function submit() {
     if (!form.title.trim() || !startAt) {
@@ -502,7 +504,7 @@ function CalendarEntryRow({
   const source =
     sourceDisplayLabels[entry.source as keyof typeof sourceDisplayLabels] ?? entry.source;
   const details = [
-    timeRange(entry.startAt, entry.endAt).replace(" - ", "–"),
+    entry.source === "EXTERNAL" && entry.allDay ? "All day" : timeRange(entry.startAt, entry.endAt).replace(" - ", "–"),
     entry.location,
   ]
     .filter(Boolean)

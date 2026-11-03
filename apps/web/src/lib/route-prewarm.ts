@@ -1,5 +1,7 @@
 'use client';
 
+import { calendarQueryRange } from '~/apps/shared/calendar-date';
+
 /**
  * Starts a tab's queries when the user points at it, not when they sign in.
  *
@@ -60,7 +62,7 @@ function queriesForRoute(pathname: string, user: AppUser): KeepAliveEntry[] {
       return [
         {
           query: api.events.calendar.list,
-          args: { startDate: range.start, endDate: range.end },
+          args: calendarQueryRange(range.start, range.end),
         },
         { query: api.events.calendar.listPendingInvites },
       ];

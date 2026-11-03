@@ -1,3 +1,4 @@
+import { calendarQueryRange } from '~/apps/shared/calendar-date';
 import { startOfDay } from "date-fns";
 
 /**
@@ -38,8 +39,5 @@ export const UPCOMING_CALENDAR_WINDOW_DAYS = 30;
  */
 export function upcomingCalendarWindow(now = new Date()) {
   const startDate = startOfDay(now).getTime();
-  return {
-    startDate,
-    endDate: startDate + UPCOMING_CALENDAR_WINDOW_DAYS * 24 * 60 * 60 * 1000,
-  };
+  return calendarQueryRange(startDate, startDate + UPCOMING_CALENDAR_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 }
