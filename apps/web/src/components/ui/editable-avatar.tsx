@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react';
 import { FileInput } from '@/components/ui/file-input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { UserAvatar, type AvatarPerson } from '@/components/ui/user-avatar';
 import { cn } from '@/lib/utils';
 
 type EditableAvatarProps = {
@@ -13,13 +14,17 @@ type EditableAvatarProps = {
   className?: string;
   containerClassName?: string;
   disabled?: boolean;
-  fallback: string;
+  /** Club/org marks: the text shown when there is no image. */
+  fallback?: string;
   fallbackClassName?: string;
   fallbackStyle?: CSSProperties;
   imageUrl?: string | null;
   loading?: boolean;
   onRemove?: () => void;
   onUpload?: (file: File) => void;
+  /** A person's avatar: renders the shared UserAvatar (photo or id gradient)
+   *  instead of the generic image/fallback pair. */
+  person?: AvatarPerson;
   removeLabel?: string;
   uploadLabel?: string;
   variant?: 'overlay' | 'inline';
@@ -38,6 +43,7 @@ export function EditableAvatar({
   loading = false,
   onRemove,
   onUpload,
+  person,
   removeLabel = 'Remove image',
   uploadLabel = 'Change image',
   variant = 'overlay',
@@ -47,6 +53,7 @@ export function EditableAvatar({
   const revealClass = loading
     ? 'opacity-100'
     : 'opacity-0 group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100 [@media(pointer:coarse)]:opacity-100';
+  const editRing = variant === 'overlay' && editable && 'cursor-pointer transition-shadow duration-150 motion-reduce:transition-none group-hover/avatar:ring-2 group-hover/avatar:ring-ring/25 group-focus-within/avatar:ring-2 group-focus-within/avatar:ring-ring/40';
   const interactionClass = loading
     ? 'pointer-events-auto'
     : 'pointer-events-none group-hover/avatar:pointer-events-auto group-focus-within/avatar:pointer-events-auto [@media(pointer:coarse)]:pointer-events-auto';
@@ -60,20 +67,29 @@ export function EditableAvatar({
         containerClassName,
       )}
     >
-      <Avatar
-        className={cn(
-          'border border-border/60 bg-background shadow-sm',
-          variant === 'overlay' &&
-            editable &&
-            'cursor-pointer transition-shadow duration-150 motion-reduce:transition-none group-hover/avatar:ring-2 group-hover/avatar:ring-ring/25 group-focus-within/avatar:ring-2 group-focus-within/avatar:ring-ring/40',
-          className,
-        )}
-      >
-        {imageUrl ? <AvatarImage src={imageUrl} alt={alt} /> : null}
-        <AvatarFallback className={cn('font-semibold', fallbackClassName)} style={fallbackStyle}>
-          {fallback}
-        </AvatarFallback>
-      </Avatar>
+      {person ? (
+        <UserAvatar
+          person={{ ...person, avatarUrl: imageUrl }}
+          className={cn(
+            editRing,
+            className,
+          )}
+          fallbackClassName={fallbackClassName}
+        />
+      ) : (
+        <Avatar
+          className={cn(
+            'border border-border/60 bg-background shadow-sm',
+            editRing,
+            className,
+          )}
+        >
+          {imageUrl ? <AvatarImage src={imageUrl} alt={alt} /> : null}
+          <AvatarFallback className={cn('font-semibold', fallbackClassName)} style={fallbackStyle}>
+            {fallback}
+          </AvatarFallback>
+        </Avatar>
+      )}
 
       {editable ? (
         variant === 'overlay' ? (

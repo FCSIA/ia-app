@@ -220,7 +220,7 @@ export function Panel({
                 {href ? (
                   <Link
                     href={href}
-                    className="flex min-h-8 items-center gap-2 rounded-sm focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+                    className="flex min-h-8 items-center gap-2 rounded-sm focus-visible:outline focus-visible:outline-ring touch-target"
                   >
                     <span className="min-w-0 truncate">{title}</span>
                     {countBadge}

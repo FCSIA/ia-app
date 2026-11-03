@@ -1,9 +1,11 @@
-import { ScheduleGroupWorkspace } from './schedule-group-workspace';
+import { redirect } from 'next/navigation';
 
-export default function ScheduleGroupPage({
+/** Groups are managed on the Friends page; keep old links and shares working. */
+export default async function ScheduleGroupPage({
   params,
 }: {
   params: Promise<{ groupId: string }>;
 }) {
-  return <ScheduleGroupWorkspace params={params} />;
+  const { groupId } = await params;
+  redirect(`/schedule?tab=friends&group=${encodeURIComponent(groupId)}`);
 }

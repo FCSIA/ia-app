@@ -546,7 +546,10 @@ export const run = internalMutation({
       const pollMessageId = await ctx.db.insert("clubChannelMessages", {
         channelId: roboticsGeneralId as any,
         authorId: roboticsLeaderId,
-        body: "Vote for the next drive practice. You can use **markdown**, tables, and math like $v = d/t$ in chat.",
+        // `body` is the plain-text copy (search, previews); `bodyMarkdown` is
+        // what chat renders. Seeding markdown into `body` showed it raw.
+        body: "Vote for the next drive practice. You can use markdown, tables, and math like v = d/t in chat.",
+        bodyMarkdown: "Vote for the next drive practice. You can use **markdown**, tables, and math like $v = d/t$ in chat.",
         pollQuestion: "When should we hold drive practice?",
         pollOptions,
         isPinned: false,

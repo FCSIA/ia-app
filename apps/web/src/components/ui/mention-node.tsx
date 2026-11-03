@@ -11,7 +11,7 @@ import {
   useReadOnly,
   useSelected,
 } from 'platejs/react';
-import { Avatar, AvatarFallback, AvatarImage } from './avatar';
+import { UserAvatar } from './user-avatar';
 import { cn } from '@/lib/utils';
 import { useMounted } from '@/hooks/use-mounted';
 import {
@@ -29,6 +29,8 @@ export type MentionableItem = {
   label?: string;
   detail?: string;
   avatarUrl?: string | null;
+  /** Stable person id for the avatar gradient (the user's `_id`). */
+  seed?: string;
   keywords?: string[];
   kind?: string;
 };
@@ -169,16 +171,12 @@ export function MentionInputElement(
                     onClick={() => onSelectItem(editor, item, search)}
                   >
                     {item.kind === 'person' ? (
-                      <Avatar className="size-5">
-                        <AvatarImage src={item.avatarUrl ?? undefined} />
-                        <AvatarFallback className="text-[9px]">
-                          {(item.label ?? item.text)
-                            .split(' ')
-                            .map((name) => name[0])
-                            .slice(0, 2)
-                            .join('')}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        name={item.label ?? item.text}
+                        avatarUrl={item.avatarUrl}
+                        seed={item.seed ?? item.key}
+                        size={20}
+                      />
                     ) : null}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">

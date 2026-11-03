@@ -16,18 +16,13 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { FriendLinkQr } from "@/components/schedule/friend-link-qr";
 import { Button } from "@/components/ui/button";
 import { InputCopy } from "@/components/ui/input-copy";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
 type ShareMode = "REQUEST" | "AUTO_ACCEPT";
 
-export function FriendCollaborationTools() {
+/** Create and manage friend invite links, inline (lives under friend search). */
+export function FriendLinkSection() {
   const { isAuthenticated } = useConvexAuth();
   const links = useQuery(
     api.schedule.shareLinks.listMine,
@@ -36,7 +31,6 @@ export function FriendCollaborationTools() {
   const createLink = useMutation(api.schedule.shareLinks.create);
   const revokeLink = useMutation(api.schedule.shareLinks.revoke);
   const { toast } = useToast();
-  const [shareOpen, setShareOpen] = useState(false);
   const [manageLinksOpen, setManageLinksOpen] = useState(false);
   const [shareMode, setShareMode] = useState<ShareMode>("REQUEST");
   const [createdUrl, setCreatedUrl] = useState<string | null>(null);
@@ -102,134 +96,115 @@ export function FriendCollaborationTools() {
   };
 
   return (
-    <div className="flex justify-end">
-      <Popover
-        open={shareOpen}
-        onOpenChange={(open) => {
-          setShareOpen(open);
-          if (!open) {
-            setCreatedUrl(null);
-            setManageLinksOpen(false);
-          }
-        }}
-      >
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" leadingIcon={Link2}>
-            Share link
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="max-h-[min(38rem,var(--radix-popover-content-available-height))] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto p-3"
-          aria-labelledby="share-friend-link-title"
+    <section
+      className="flex flex-col gap-2.5"
+      aria-labelledby="friend-link-title"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h3
+          id="friend-link-title"
+          className="text-xs font-medium text-muted-foreground"
         >
-          <div className="mb-2 flex items-baseline justify-between gap-3">
-            <h3
-              id="share-friend-link-title"
-              className="text-sm font-semibold text-foreground"
+          Or invite with a link
+        </h3>
+        <span className="text-xs text-muted-foreground">Lasts 7 days</span>
+      </div>
+
+      {createdUrl ? (
+        <div className="flex flex-col gap-2">
+          <FriendLinkQr value={createdUrl} />
+          <InputCopy value={createdUrl} variant="button" />
+          <div className="flex gap-2">
+            {typeof navigator !== "undefined" &&
+            typeof navigator.share === "function" ? (
+              <Button
+                variant="primary"
+                className="flex-1"
+                leadingIcon={Share2}
+                onClick={() => void handleNativeShare()}
+              >
+                Share
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              className="flex-1"
+              leadingIcon={Plus}
+              onClick={() => setCreatedUrl(null)}
             >
-              Friend link
-            </h3>
-            <span className="text-[11px] text-muted-foreground">7 days</span>
+              Create another
+            </Button>
           </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <Switch
+            label="Require approval"
+            checked={shareMode === "REQUEST"}
+            onCheckedChange={(checked) =>
+              setShareMode(checked ? "REQUEST" : "AUTO_ACCEPT")
+            }
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            leadingIcon={Link2}
+            loading={pending === "link"}
+            onClick={() => void handleCreateLink()}
+          >
+            Create link
+          </Button>
+        </div>
+      )}
+      {!createdUrl && shareMode === "AUTO_ACCEPT" ? (
+        <p className="text-xs text-muted-foreground">
+          Anyone with the link is added.
+        </p>
+      ) : null}
 
-          {createdUrl ? (
-            <div className="flex flex-col gap-2">
-              <FriendLinkQr value={createdUrl} />
-              <InputCopy value={createdUrl} variant="button" />
-              <div className="flex gap-2">
-                {typeof navigator !== "undefined" &&
-                typeof navigator.share === "function" ? (
+      {!createdUrl && activeLinks.length > 0 ? (
+        <div className="flex flex-col">
+          <Button
+            variant="ghost"
+            size="sm"
+            trailingIcon={manageLinksOpen ? ChevronUp : ChevronDown}
+            className="-mx-2 justify-between"
+            onClick={() => setManageLinksOpen((open) => !open)}
+          >
+            {activeLinks.length}{" "}
+            {activeLinks.length === 1 ? "active link" : "active links"}
+          </Button>
+          {manageLinksOpen ? (
+            <ul className="flex flex-col">
+              {activeLinks.map((link) => (
+                <li key={link.id} className="flex items-center gap-2 py-1.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
+                      …{link.tokenHint} ·{" "}
+                      {link.mode === "REQUEST" ? "Approval" : "Instant"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Expires{" "}
+                      {formatDistanceToNow(new Date(link.expiresAt), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
                   <Button
-                    variant="primary"
-                    className="flex-1"
-                    leadingIcon={Share2}
-                    onClick={() => void handleNativeShare()}
+                    variant="ghost"
+                    size="icon-sm"
+                    className="shrink-0 text-destructive hover:text-destructive"
+                    aria-label="Revoke friend link"
+                    onClick={() => void handleRevoke(link.id)}
                   >
-                    Share
+                    <Trash2 />
                   </Button>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  leadingIcon={Plus}
-                  onClick={() => setCreatedUrl(null)}
-                >
-                  Create another
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              <Switch
-                label="Require approval"
-                checked={shareMode === "REQUEST"}
-                onCheckedChange={(checked) =>
-                  setShareMode(checked ? "REQUEST" : "AUTO_ACCEPT")
-                }
-              />
-              {shareMode === "AUTO_ACCEPT" ? (
-                <p className="text-xs text-muted-foreground">
-                  Anyone with the link is added.
-                </p>
-              ) : null}
-              <Button
-                className="w-full"
-                loading={pending === "link"}
-                onClick={() => void handleCreateLink()}
-              >
-                Create
-              </Button>
-            </div>
-          )}
-
-          {!createdUrl && activeLinks.length > 0 ? (
-            <>
-              <Separator className="my-2" />
-              <Button
-                variant="ghost"
-                size="sm"
-                trailingIcon={manageLinksOpen ? ChevronUp : ChevronDown}
-                className="w-full justify-between"
-                onClick={() => setManageLinksOpen((open) => !open)}
-              >
-                {activeLinks.length}{" "}
-                {activeLinks.length === 1 ? "active link" : "active links"}
-              </Button>
-              {manageLinksOpen ? (
-                <div className="mt-1 divide-y divide-border/40">
-                  {activeLinks.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex items-center gap-2 py-2 pl-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium">
-                          ...{link.tokenHint} ({link.mode === "REQUEST" ? "Approval" : "Instant"})
-                        </p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(link.expiresAt), {
-                            addSuffix: true,
-                          })}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="shrink-0 text-destructive hover:text-destructive"
-                        aria-label="Revoke friend link"
-                        onClick={() => void handleRevoke(link.id)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </>
+                </li>
+              ))}
+            </ul>
           ) : null}
-        </PopoverContent>
-      </Popover>
-    </div>
+        </div>
+      ) : null}
+    </section>
   );
 }

@@ -15,7 +15,7 @@ import {
   Shield,
   Presentation,
   Ticket,
-  UsersRound,
+  Waypoints,
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
@@ -42,7 +42,7 @@ import { schoolDateKey } from '@/lib/school-date';
 const staticActions: CommandAction[] = [
   { id: 'route-dashboard', label: 'Home', detail: 'Your widgets', href: '/home', Icon: Home },
   { id: 'route-announcements', label: 'Announcements', detail: 'Official updates', href: '/announcements', Icon: Megaphone },
-  { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: UsersRound },
+  { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: Waypoints },
   { id: 'route-schedule', label: 'Schedule', detail: 'Classes and friends', href: '/schedule', Icon: ClipboardList },
   { id: 'route-events', label: 'Events', detail: 'School and club events', href: '/events', Icon: Ticket },
   { id: 'route-calendar', label: 'Calendar', detail: 'Shared calendar', href: '/calendar', Icon: CalendarRange },

@@ -307,6 +307,7 @@ describe('chat audit repairs', () => {
     expect(message?.author.clubRole).toEqual({
       name: 'Leader',
       isSponsor: false,
+      isDefault: false,
     });
     await member.mutation(api.clubs.channels.updateMessage, {
       messageId,

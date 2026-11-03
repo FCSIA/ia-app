@@ -190,9 +190,9 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
                 <DialogPrimitive.Close asChild>
                   <Button
                     variant="ghost"
-                    size="icon-lg"
+                    size="icon-sm"
                     className={cn(
-                      "absolute right-1.5 top-1.5 sm:right-3 sm:top-3 sm:size-8",
+                      "absolute right-3 top-3",
                       closeButtonClassName,
                     )}
                   >
@@ -223,7 +223,7 @@ function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "mt-6 flex flex-col-reverse gap-2 [&>button]:min-h-11 sm:flex-row sm:justify-end sm:[&>button]:min-h-0",
+        "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

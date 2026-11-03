@@ -292,7 +292,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           }
         }}
         className={cn(
-          `relative z-10 flex h-8 w-full touch-manipulation items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none pointer-coarse:h-11`,
+          `relative z-10 flex h-8 w-full touch-manipulation items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none`,
           disabled && "cursor-not-allowed opacity-50",
           className
         )}

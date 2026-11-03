@@ -330,7 +330,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         className={cn(
           // Fixed heights (was py-2 around a 19.5px line box ≈ 35.5px) so the
           // text-box trim on the label doesn't shrink the tab.
-          "relative z-10 flex touch-manipulation items-center cursor-pointer bg-transparent border-none outline-none pointer-coarse:min-h-11",
+          "relative z-10 flex touch-manipulation items-center cursor-pointer bg-transparent border-none outline-none touch-target",
           sizeClasses.control,
           sizeClasses.px,
           !collapseLabel && sizeClasses.gap,

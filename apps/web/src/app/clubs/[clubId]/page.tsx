@@ -6,8 +6,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -15,7 +15,6 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import {
   Check,
-  ChevronDown,
   Clock3,
   KeyRound,
   Megaphone,
@@ -34,11 +33,9 @@ import {
   UserProfileAvatar,
   type UserProfilePerson,
 } from "@/components/users/user-profile-avatar";
-import { PersonTrigger } from "@/components/users/person-trigger";
-import { ClubPersonAvatar } from "@/components/clubs/club-person-avatar";
+import { PersonRow } from "@/components/users/person-row";
+import { DisclosureSection } from "@/components/ui/disclosure-section";
 import {
-  PresenceAvatar,
-  useMemberPresence,
   useOnlineMemberCount,
 } from "@/components/presence/club-presence";
 import { ClubHero } from "@/components/clubs/club-hero";
@@ -48,11 +45,6 @@ import { useAnnouncementFeedClock } from "@/components/announcements/use-announc
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
 import { Card, CardGroup, CardHeader, CardContent } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Empty,
   EmptyDescription,
@@ -125,79 +117,6 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
   );
 }
 
-function OverviewSidebarSection({
-  title,
-  meta,
-  children,
-}: {
-  title: ReactNode;
-  meta?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <Collapsible defaultOpen className="group">
-      <section>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <span className="min-w-0 truncate text-sm font-medium text-foreground">
-              {title}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              {meta ? (
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {meta}
-                </span>
-              ) : null}
-              <ChevronDown
-                className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
-                aria-hidden
-              />
-            </span>
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="overflow-hidden [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none">
-          <div className="px-4 pb-4">{children}</div>
-        </CollapsibleContent>
-      </section>
-    </Collapsible>
-  );
-}
-
-function OverviewPerson({
-  person,
-  roleName,
-}: {
-  person: UserProfilePerson;
-  roleName?: string;
-}) {
-  const presence = useMemberPresence(person._id);
-  return (
-    <PersonTrigger
-      person={person}
-      roleName={roleName}
-      trigger={
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full justify-start"
-          aria-label={`View ${fullName(person)} profile`}
-        >
-          <PresenceAvatar status={presence}>
-            <ClubPersonAvatar
-              person={{ ...person, avatarUrl: person.avatarUrl ?? null }}
-              className="size-7"
-            />
-          </PresenceAvatar>
-          <span className="truncate">{fullName(person)}</span>
-        </Button>
-      }
-    />
-  );
-}
-
 function OverviewRoster({
   title,
   people,
@@ -210,20 +129,20 @@ function OverviewRoster({
   const onlineCount = useOnlineMemberCount(people.map((person) => person._id));
   if (people.length === 0) return null;
   return (
-    <OverviewSidebarSection
+    <DisclosureSection
       title={title}
       meta={onlineCount === undefined ? undefined : `${onlineCount} online`}
     >
-      <div className="flex flex-col">
+      <CardGroup orientation="inline" separated className="gap-0">
         {people.map((person) => (
-          <OverviewPerson
+          <PersonRow
             key={person._id}
             person={person}
             roleName={roleName}
           />
         ))}
-      </div>
-    </OverviewSidebarSection>
+      </CardGroup>
+    </DisclosureSection>
   );
 }
 
@@ -232,12 +151,12 @@ function OverviewMembers({ club }: { club: ClubDetail }) {
     club.members.map((member) => member.userId),
   );
   return (
-    <OverviewSidebarSection
+    <DisclosureSection
       title="Members"
       meta={onlineCount === undefined ? undefined : `${onlineCount} online`}
     >
       <MemberLimitMeter club={club} />
-    </OverviewSidebarSection>
+    </DisclosureSection>
   );
 }
 
@@ -563,7 +482,6 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     <UserProfileAvatar
                       person={sponsor.user}
                       size="md"
-                      fallbackClassName="text-sm"
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">
@@ -615,7 +533,6 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                           <UserProfileAvatar
                             person={member.user}
                             size="md"
-                            fallbackClassName="text-sm"
                           />
                           <p className="min-w-0 truncate text-sm font-semibold text-foreground">
                             {fullName(member.user)}
@@ -756,30 +673,33 @@ export default function ClubOverviewPage() {
     </div>
   );
 
-  const rightPane = (
-    <ScrollArea className="size-full">
-      <div className="flex flex-col gap-1 py-2">
-        <OverviewMembers club={club} />
+  // Members, sponsors, and roles: a side pane on wide screens, and inline
+  // under the announcements everywhere else (phones reach this page from the
+  // club list's "Club name ›" title, so it is also the club's people page).
+  const roster = (
+    <div className="flex flex-col gap-1 py-2">
+      <OverviewMembers club={club} />
 
-        {club.viewer.permissions.manageJoinRequests &&
-        club.pendingJoinRequests.length > 0 ? (
-          <OverviewSidebarSection
-            title={`Pending requests (${club.pendingJoinRequests.length})`}
-          >
-            <RequestsPanel club={club} />
-          </OverviewSidebarSection>
-        ) : null}
+      {club.viewer.permissions.manageJoinRequests &&
+      club.pendingJoinRequests.length > 0 ? (
+        <DisclosureSection
+          title={`Pending requests (${club.pendingJoinRequests.length})`}
+        >
+          <RequestsPanel club={club} />
+        </DisclosureSection>
+      ) : null}
 
-        <OverviewRoster
-          title="Sponsors"
-          people={club.sponsors.map((sponsor) => sponsor.user)}
-          roleName="Sponsor"
-        />
+      <OverviewRoster
+        title="Sponsors"
+        people={club.sponsors.map((sponsor) => sponsor.user)}
+        roleName="Sponsor"
+      />
 
-        <RoleRoster club={club} />
-      </div>
-    </ScrollArea>
+      <RoleRoster club={club} />
+    </div>
   );
+
+  const rightPane = <ScrollArea className="size-full">{roster}</ScrollArea>;
 
   return (
     <ClubWorkspace title={title} rightPane={rightPane}>
@@ -877,6 +797,13 @@ export default function ClubOverviewPage() {
             </CardContent>
           </Card>
         </CardGroup>
+
+        <section aria-label="People" className="xl:hidden">
+          {roster}
+          <Button asChild variant="ghost" size="sm" className="mt-1">
+            <Link href={`/clubs/${clubId}/people`}>All people</Link>
+          </Button>
+        </section>
       </div>
 
       <AnnouncementDialog

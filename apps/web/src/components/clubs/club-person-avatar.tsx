@@ -1,27 +1,19 @@
 'use client';
 
-import { UserAvatar } from '@/components/ui/user-avatar';
-import { cn } from '@/lib/utils';
-import { ClubUserRef } from './types';
+import { UserAvatar, type AvatarPerson, type UserAvatarSize } from '@/components/ui/user-avatar';
 
 type ClubPersonAvatarProps = {
-  person: Pick<ClubUserRef, 'firstName' | 'lastName' | 'preferredName' | 'avatarUrl'>;
+  person: AvatarPerson;
+  /** Defaults to `person._id`; see UserAvatar. */
+  seed?: string | null;
+  size?: UserAvatarSize;
   className?: string;
   fallbackClassName?: string;
 };
 
-export function ClubPersonAvatar({ person, className, fallbackClassName }: ClubPersonAvatarProps) {
+/** Club surfaces' name for the shared person avatar. Prefer `UserAvatar`. */
+export function ClubPersonAvatar({ person, seed, size = 40, className, fallbackClassName }: ClubPersonAvatarProps) {
   return (
-    <UserAvatar
-      firstName={person.firstName}
-      lastName={person.lastName}
-      preferredName={person.preferredName}
-      avatarUrl={person.avatarUrl}
-      className={cn('size-10', className)}
-      fallbackClassName={cn(
-        'text-xs font-semibold',
-        fallbackClassName,
-      )}
-    />
+    <UserAvatar person={person} seed={seed} size={size} className={className} fallbackClassName={fallbackClassName} />
   );
 }

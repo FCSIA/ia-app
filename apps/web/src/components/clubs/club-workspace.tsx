@@ -1,12 +1,12 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   animate,
-  motion,
   useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
-  useTransform,
 } from "framer-motion";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Home,
   HeartHandshake,
+  BellOff,
   Menu,
   Plus,
   Settings,
@@ -68,8 +69,12 @@ import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
 import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
-import { isMobilePwaDisplay } from "@/lib/pwa";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { DisclosureTitle } from "@/components/ui/pressable";
+import {
+  formatMuteRemaining,
+  useMutedChannels,
+} from "@/components/notifications/channel-notification-settings";
 import { cn } from "@/lib/utils";
 import type {
   ClubNavigationChannel,
@@ -195,17 +200,27 @@ export function ClubWorkspace({
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const mobileNavigationReveal = useMotionValue(0);
   const navigationAnimationId = useRef(0);
-  const mobileNavigationX = useTransform(
-    mobileNavigationReveal,
-    [0, 1],
-    ["-100%", "0%"],
-  );
-  const mobileNavigationEdgeOpacity = useTransform(
-    mobileNavigationReveal,
-    [0, 0.02, 0.95, 1],
-    [0, 1, 1, 0],
-  );
   const reduceMotion = useReducedMotion();
+  const mobileNavigationRef = useRef<HTMLElement>(null);
+  // Phones stack two layers inside the app root: the club's channel list (and
+  // the app tab bar) underneath, the current page on top. Revealing slides the
+  // page layer right by `--club-nav-reveal` of its width (globals.css), so the
+  // list and tab bar are uncovered rather than drawn over the composer. Written
+  // to the DOM directly so a drag doesn't re-render the workspace every frame.
+  const [appRoot, setAppRoot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>(".app-root");
+    setAppRoot(root);
+    return () => {
+      root?.removeAttribute("data-club-nav-revealed");
+      root?.style.removeProperty("--club-nav-reveal");
+    };
+  }, []);
+  useMotionValueEvent(mobileNavigationReveal, "change", (reveal) => {
+    if (!appRoot) return;
+    appRoot.style.setProperty("--club-nav-reveal", String(reveal));
+    appRoot.toggleAttribute("data-club-nav-revealed", reveal > 0);
+  });
 
   const settleMobileNavigation = useCallback((open: boolean) => {
     const animationId = ++navigationAnimationId.current;
@@ -216,10 +231,10 @@ export function ClubWorkspace({
       if (!open) setMobileNavigationOpen(false);
       return;
     }
+    // vaul's curve, so pages and sheets move as one family.
     void animate(mobileNavigationReveal, open ? 1 : 0, {
-      type: "spring",
-      stiffness: 460,
-      damping: 42,
+      duration: 0.32,
+      ease: [0.32, 0.72, 0, 1],
     }).then(() => {
       if (!open && animationId === navigationAnimationId.current) {
         setMobileNavigationOpen(false);
@@ -240,6 +255,11 @@ export function ClubWorkspace({
     mobileNavigationReveal.stop();
     mobileNavigationReveal.set(progress);
   }, [mobileNavigationReveal]);
+
+  useCloseSwipe(mobileNavigationRef, appRoot, {
+    onProgress: updateMobileNavigation,
+    onSettle: settleMobileNavigation,
+  });
 
   useEffect(() => {
     if (!resizableRightPane) return;
@@ -510,6 +530,29 @@ export function ClubWorkspace({
   );
 
   if (navigationOnly) {
+    const navigationProps = {
+      density: "mobile" as const,
+      clubId,
+      viewerId: user?._id ?? null,
+      club,
+      myClubs,
+      showClubPicker,
+      nav,
+      pathname,
+      channels,
+      units: navigation?.units ?? [],
+      activeChannelId,
+      canCreateChannels,
+      canEditChannels,
+      canDeleteChannels,
+      onDeleteChannel: (channel: ClubNavigationChannel) => {
+        if (confirm(`Delete #${channel.name}?`)) {
+          void deleteChannel({ channelId: channel._id }).then(() =>
+            toast({ title: "Channel deleted" }),
+          );
+        }
+      },
+    };
     return (
       <AppShell
         headerSlot={headerSlot}
@@ -517,30 +560,24 @@ export function ClubWorkspace({
         pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
         viewportMode="visual"
       >
-        <div className="min-h-0 flex-1">
-          <MobileClubNavigation
-            density="mobile"
-            clubId={clubId}
-            viewerId={user?._id ?? null}
-            club={club}
-            myClubs={myClubs}
-            showClubPicker={showClubPicker}
-            nav={nav}
-            pathname={pathname}
-            channels={channels}
-            units={navigation?.units ?? []}
-            activeChannelId={activeChannelId}
-            canCreateChannels={canCreateChannels}
-            canEditChannels={canEditChannels}
-            canDeleteChannels={canDeleteChannels}
-            onDeleteChannel={(channel) => {
-              if (confirm(`Delete #${channel.name}?`)) {
-                void deleteChannel({ channelId: channel._id }).then(() =>
-                  toast({ title: "Channel deleted" }),
-                );
-              }
-            }}
-          />
+        {/* Phones get the exact screen a swipe from a channel uncovers: the
+            same layer, over the app header, so the club page never has two
+            looks depending on how you arrived. */}
+        {appRoot
+          ? createPortal(
+              <div
+                className={cn(
+                  "fixed inset-x-0 top-0 bottom-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] z-[25] bg-background pt-[env(safe-area-inset-top)] md:hidden",
+                  CARD_SURFACE_FOREGROUND,
+                )}
+              >
+                <MobileClubNavigation {...navigationProps} />
+              </div>,
+              appRoot,
+            )
+          : null}
+        <div className="hidden min-h-0 flex-1 md:block">
+          <MobileClubNavigation {...navigationProps} />
         </div>
       </AppShell>
     );
@@ -560,52 +597,49 @@ export function ClubWorkspace({
       viewportMode="visual"
     >
       <div className="flex min-h-0 flex-1">
-        <motion.aside
-          data-mobile-navigation-panel
-          aria-label="Club navigation"
-          aria-hidden={!mobileNavigationOpen}
-          inert={!mobileNavigationOpen}
-          className={cn(
-            "fixed inset-x-0 bottom-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] top-[calc(3.5rem+env(safe-area-inset-top))] z-30 bg-card md:hidden",
-            CARD_SURFACE_FOREGROUND,
-            mobileNavigationOpen
-              ? "pointer-events-auto"
-              : "pointer-events-none",
-          )}
-          initial={false}
-          style={{ x: mobileNavigationX }}
-        >
-          <MobileClubNavigation
-            density="mobile"
-            clubId={clubId}
-            viewerId={user?._id ?? null}
-            club={club}
-            myClubs={myClubs}
-            showClubPicker={showClubPicker}
-            nav={nav}
-            pathname={pathname}
-            channels={channels}
-            units={navigation?.units ?? []}
-            activeChannelId={activeChannelId}
-            canCreateChannels={canCreateChannels}
-            canEditChannels={canEditChannels}
-            canDeleteChannels={canDeleteChannels}
-            onClose={() => settleMobileNavigation(false)}
-            onNavigate={() => settleMobileNavigation(false)}
-            onDeleteChannel={(channel) => {
-              if (confirm(`Delete #${channel.name}?`)) {
-                void deleteChannel({ channelId: channel._id }).then(() =>
-                  toast({ title: "Channel deleted" }),
-                );
-              }
-            }}
-          />
-          <motion.span
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-px bg-border/70"
-            style={{ opacity: mobileNavigationEdgeOpacity }}
-          />
-        </motion.aside>
+        {appRoot
+          ? createPortal(
+              <aside
+                ref={mobileNavigationRef}
+                data-mobile-navigation-panel
+                aria-label="Club navigation"
+                aria-hidden={!mobileNavigationOpen}
+                inert={!mobileNavigationOpen}
+                className={cn(
+                  // The bottom layer: the whole screen above the tab bar. The
+                  // page layer covers it until a reveal slides that away.
+                  "club-mobile-navigation fixed inset-x-0 top-0 bottom-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] z-[15] bg-background pt-[env(safe-area-inset-top)] md:hidden",
+                  CARD_SURFACE_FOREGROUND,
+                )}
+              >
+                <MobileClubNavigation
+                  density="mobile"
+                  clubId={clubId}
+                  viewerId={user?._id ?? null}
+                  club={club}
+                  myClubs={myClubs}
+                  showClubPicker={showClubPicker}
+                  nav={nav}
+                  pathname={pathname}
+                  channels={channels}
+                  units={navigation?.units ?? []}
+                  activeChannelId={activeChannelId}
+                  canCreateChannels={canCreateChannels}
+                  canEditChannels={canEditChannels}
+                  canDeleteChannels={canDeleteChannels}
+                  onNavigate={() => settleMobileNavigation(false)}
+                  onDeleteChannel={(channel) => {
+                    if (confirm(`Delete #${channel.name}?`)) {
+                      void deleteChannel({ channelId: channel._id }).then(() =>
+                        toast({ title: "Channel deleted" }),
+                      );
+                    }
+                  }}
+                />
+              </aside>,
+              appRoot,
+            )
+          : null}
 
         <Sheet
           open={!!rightPane && !!mobileRightPane && !isResizablePaneViewport}
@@ -675,6 +709,80 @@ export function ClubWorkspace({
   );
 }
 
+/**
+ * Swiping left on the revealed club list slides the page layer back over it.
+ * The finger maps 1:1 to the page's travel; release past 28% of the width (or
+ * a quick flick) closes, anything less springs back open.
+ */
+function useCloseSwipe(
+  panelRef: RefObject<HTMLElement | null>,
+  ready: unknown,
+  {
+    onProgress,
+    onSettle,
+  }: { onProgress: (progress: number) => void; onSettle: (open: boolean) => void },
+) {
+  const callbacks = useRef({ onProgress, onSettle });
+  useEffect(() => {
+    callbacks.current = { onProgress, onSettle };
+  }, [onProgress, onSettle]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    let start: { x: number; y: number; at: number; claimed: boolean } | null = null;
+
+    const onTouchStart = (event: TouchEvent) => {
+      start =
+        event.touches.length === 1
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY, at: event.timeStamp, claimed: false }
+          : null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (!start) return;
+      const deltaX = event.touches[0].clientX - start.x;
+      const deltaY = Math.abs(event.touches[0].clientY - start.y);
+      if (!start.claimed) {
+        if (deltaX < 0 && -deltaX > deltaY * 1.4) start.claimed = true;
+        else {
+          if (Math.max(-deltaX, deltaY) >= 10) start = null;
+          return;
+        }
+      }
+      if (!event.cancelable) {
+        start = null;
+        callbacks.current.onSettle(true);
+        return;
+      }
+      event.preventDefault();
+      callbacks.current.onProgress(Math.max(0, Math.min(1, 1 + deltaX / window.innerWidth)));
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      const finished = start;
+      start = null;
+      if (!finished?.claimed) return;
+      const deltaX = event.changedTouches[0].clientX - finished.x;
+      const velocity = deltaX / Math.max(1, event.timeStamp - finished.at);
+      callbacks.current.onSettle(!(deltaX < -window.innerWidth * 0.28 || velocity < -0.5));
+    };
+    const onTouchCancel = () => {
+      if (start?.claimed) callbacks.current.onSettle(true);
+      start = null;
+    };
+
+    panel.addEventListener("touchstart", onTouchStart, { passive: true });
+    panel.addEventListener("touchmove", onTouchMove, { passive: false });
+    panel.addEventListener("touchend", onTouchEnd, { passive: true });
+    panel.addEventListener("touchcancel", onTouchCancel, { passive: true });
+    return () => {
+      panel.removeEventListener("touchstart", onTouchStart);
+      panel.removeEventListener("touchmove", onTouchMove);
+      panel.removeEventListener("touchend", onTouchEnd);
+      panel.removeEventListener("touchcancel", onTouchCancel);
+    };
+  }, [panelRef, ready]);
+}
+
 type NavigationItem = {
   href: string;
   label: string;
@@ -703,46 +811,60 @@ type ClubNavigationPanelProps = {
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
   hideBrowseClubs?: boolean;
   hideClubHeader?: boolean;
+  /** Phones: the list is only channels, so it carries no "Channels" heading;
+   *  creating one moves to the screen's header. */
+  hideChannelsHeading?: boolean;
+  sidebarClassName?: string;
 };
 
+/**
+ * Phones: the club is a full screen of its own, like a chat app's server
+ * list. The rail switches clubs; the title ("Club name ›") opens the club's
+ * page (overview and people), so those don't repeat as rows here.
+ */
 function MobileClubNavigation(props: ClubNavigationPanelProps) {
-  const [isMobilePwa, setIsMobilePwa] = useState(false);
-
-  useEffect(() => {
-    const mobileQuery = window.matchMedia("(max-width: 767px)");
-    const displayQueries = [
-      window.matchMedia("(display-mode: standalone)"),
-      window.matchMedia("(display-mode: fullscreen)"),
-      window.matchMedia("(display-mode: minimal-ui)"),
-    ];
-    const sync = () => setIsMobilePwa(isMobilePwaDisplay());
-    sync();
-    mobileQuery.addEventListener("change", sync);
-    for (const query of displayQueries) query.addEventListener("change", sync);
-    return () => {
-      mobileQuery.removeEventListener("change", sync);
-      for (const query of displayQueries)
-        query.removeEventListener("change", sync);
-    };
-  }, []);
-
-  if (!isMobilePwa) return <ClubNavigationPanel {...props} />;
-
+  const clubRoot = `/clubs/${props.clubId}`;
+  const nav = props.nav.filter(
+    (item) => item.href !== clubRoot && item.href !== `${clubRoot}/people`,
+  );
   return (
     <div
-      className={cn("flex size-full min-h-0 bg-card", CARD_SURFACE_FOREGROUND)}
+      className={cn("flex size-full min-h-0 bg-background", CARD_SURFACE_FOREGROUND)}
     >
       <ClubRail
         clubId={props.clubId}
         myClubs={props.myClubs}
         onNavigate={props.onNavigate}
       />
-      <ClubNavigationPanel
-        {...props}
-        showClubPicker={false}
-        hideBrowseClubs
-        hideClubHeader
-      />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex h-14 shrink-0 items-center justify-between gap-2 pl-4 pr-2">
+          {props.club ? (
+            <DisclosureTitle
+              as="h2"
+              href={clubRoot}
+              onClick={props.onNavigate}
+              title={props.club.name}
+              aria-label={`${props.club.name} overview and people`}
+            />
+          ) : (
+            <Skeleton className="h-5 w-32" />
+          )}
+          {props.canCreateChannels ? (
+            <CreateChannelTrigger clubId={props.clubId} />
+          ) : null}
+        </div>
+        <div className="min-h-0 flex-1">
+          <ClubNavigationPanel
+            {...props}
+            nav={nav}
+            showClubPicker={false}
+            hideBrowseClubs
+            hideClubHeader
+            hideChannelsHeading
+            sidebarClassName="bg-transparent"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -823,6 +945,8 @@ function ClubNavigationPanel({
   onDeleteChannel,
   hideBrowseClubs = false,
   hideClubHeader = false,
+  hideChannelsHeading = false,
+  sidebarClassName,
 }: ClubNavigationPanelProps) {
   const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
   const [openUnitIds, setOpenUnitIds] = useState<string[]>([]);
@@ -885,6 +1009,7 @@ function ClubNavigationPanel({
     <WorkspaceSidebar
       aria-label="Club pages and channels"
       bordered={bordered}
+      className={sidebarClassName}
       header={!hideClubHeader ? (
         <div className="flex min-w-0 items-center gap-1">
           <div className="min-w-0 flex-1">
@@ -960,11 +1085,12 @@ function ClubNavigationPanel({
             onClick={onNavigate}
             icon={Compass}
             label="Browse clubs"
-            className={density === "mobile" ? "min-h-11" : undefined}
+            className={density === "mobile" ? "min-h-9" : undefined}
           />
         </SidebarMenu>
       ) : undefined}
     >
+      {nav.length > 0 ? (
       <SidebarGroup>
       <SidebarMenu aria-label="Club pages">
         {nav.map((item) => (
@@ -975,15 +1101,21 @@ function ClubNavigationPanel({
             label={item.label}
             icon={item.icon}
             selected={item.match(pathname)}
-            className={density === "mobile" ? "min-h-11" : undefined}
+            className={density === "mobile" ? "min-h-9" : undefined}
           />
         ))}
       </SidebarMenu>
       </SidebarGroup>
+      ) : null}
 
       <WorkspaceSidebarSection
         title="Channels"
-        action={canCreateChannels ? <CreateChannelTrigger clubId={clubId} /> : undefined}
+        titleHidden={hideChannelsHeading}
+        action={
+          canCreateChannels && !hideChannelsHeading ? (
+            <CreateChannelTrigger clubId={clubId} />
+          ) : undefined
+        }
       >
         {!club ? (
           <div className="flex flex-col gap-2 p-2">
@@ -1116,9 +1248,12 @@ function ChannelRow({
   nestedChannelsLabel?: string;
 }) {
   const active = channel._id === activeChannelId;
+  const mutedChannels = useMutedChannels();
+  const muted = mutedChannels.has(channel._id);
+  const mutedUntil = mutedChannels.get(channel._id) ?? null;
   const rowClassName =
     density === "mobile"
-      ? "min-h-9 pointer-coarse:min-h-11"
+      ? "min-h-9"
       : "min-h-8 pointer-coarse:min-h-11";
   const secondaryControlClassName =
     density === "mobile"
@@ -1165,8 +1300,29 @@ function ChannelRow({
           />
         )}
       </div>
-      <span className="min-w-0 flex-1 -translate-x-1.5 truncate">
-        {channel.name}
+      <span
+        className={cn(
+          "flex min-w-0 flex-1 -translate-x-1.5 items-center gap-1",
+          muted && "text-muted-foreground",
+        )}
+      >
+        <span className="truncate">{channel.name}</span>
+        {muted ? (
+          <span
+            className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-xs font-medium tabular-nums text-destructive"
+            aria-label={
+              mutedUntil
+                ? `Muted, ${formatMuteRemaining(mutedUntil)} left`
+                : "Muted"
+            }
+            role="img"
+          >
+            {mutedUntil ? (
+              <span aria-hidden>{formatMuteRemaining(mutedUntil)}</span>
+            ) : null}
+            <BellOff aria-hidden className="size-3.5" />
+          </span>
+        ) : null}
       </span>
       <div className="relative z-30 flex shrink-0 items-center gap-0.5">
         {canEditChannels || canDeleteChannels ? (
@@ -1248,7 +1404,7 @@ function UnitChannelTree({
   const unitRowClassName = cn(
     "flex w-full items-center gap-1.5 rounded-md px-2 text-[13px] font-medium",
     density === "mobile"
-      ? "min-h-9 pointer-coarse:min-h-11"
+      ? "min-h-9"
       : "min-h-8 pointer-coarse:min-h-11",
   );
   return (

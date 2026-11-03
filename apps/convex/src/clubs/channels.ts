@@ -170,7 +170,7 @@ const messagePollValidator = v.union(
 );
 const messageAuthorValidator = v.object({
   ...clubUserRefValidator.fields,
-  clubRole: v.optional(v.union(v.object({ name: v.string(), isSponsor: v.boolean() }), v.null())),
+  clubRole: v.optional(v.union(v.object({ name: v.string(), isSponsor: v.boolean(), isDefault: v.optional(v.boolean()) }), v.null())),
 });
 const messageSummaryValidator = v.object({
   _id: v.id("clubChannelMessages"),
@@ -1649,7 +1649,7 @@ async function messageMentionsUser(
   return directMention !== null;
 }
 
-type MessageAuthor = Doc<"users"> & { clubRole?: { name: string; isSponsor: boolean } | null };
+type MessageAuthor = Doc<"users"> & { clubRole?: { name: string; isSponsor: boolean; isDefault?: boolean } | null };
 
 async function loadClubRole(ctx: QueryCtx, clubId: Id<"clubs">, userId: Id<"users">) {
   const [sponsor, member] = await Promise.all([
@@ -1658,7 +1658,12 @@ async function loadClubRole(ctx: QueryCtx, clubId: Id<"clubs">, userId: Id<"user
   ]);
   if (sponsor) return { name: "Sponsor", isSponsor: true };
   const role = member?.roleId ? await ctx.db.get(member.roleId) : null;
-  return role ? { name: role.name, isSponsor: false } : member ? { name: member.role === "LEADER" ? "Leader" : "Member", isSponsor: false } : null;
+  // `isDefault` marks the role every member gets, so clients can leave it unlabeled.
+  if (role) return { name: role.name, isSponsor: false, isDefault: role.isDefault === true };
+  if (!member) return null;
+  return member.role === "LEADER"
+    ? { name: "Leader", isSponsor: false, isDefault: false }
+    : { name: "Member", isSponsor: false, isDefault: true };
 }
 
 async function loadMessageAuthors(ctx: QueryCtx, messages: Doc<"clubChannelMessages">[]) {
@@ -1690,6 +1695,7 @@ async function getReadableChannel(
 }
 
 const channelContextMemberValidator = v.object({
+  _id: v.id("users"),
   avatarUrl: v.union(v.string(), v.null()),
   clubRole: v.union(v.string(), v.null()),
   uniqueId: v.string(),
@@ -1873,6 +1879,93 @@ export const listPinned = query({
   },
 });
 
+const MAX_LIBRARY_SCAN_MESSAGES = 200;
+const MAX_LIBRARY_ITEMS = 60;
+const LIBRARY_URL_PATTERN = /https?:\/\/[^\s<>()\[\]"'`]+/g;
+
+const channelLibraryAttachmentValidator = v.object({
+  _id: v.id("clubChannelMessageAttachments"),
+  messageId: v.id("clubChannelMessages"),
+  threadRootId: v.optional(v.id("clubChannelMessages")),
+  fileName: v.string(),
+  fileUrl: v.string(),
+  mimeType: v.optional(v.string()),
+  size: v.optional(v.number()),
+  createdAt: v.number(),
+});
+
+/** Media, files, and links shared in a channel's recent history, for the
+ * channel details sheet. Bounded to the latest messages rather than paging the
+ * whole channel; `scannedAll` says whether older history was left out. */
+export const getChannelLibrary = query({
+  args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
+  returns: v.object({
+    media: v.array(channelLibraryAttachmentValidator),
+    files: v.array(channelLibraryAttachmentValidator),
+    links: v.array(
+      v.object({
+        url: v.string(),
+        messageId: v.id("clubChannelMessages"),
+        threadRootId: v.optional(v.id("clubChannelMessages")),
+        createdAt: v.number(),
+      }),
+    ),
+    scannedAll: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const empty = { media: [], files: [], links: [], scannedAll: true };
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !(await getReadableChannel(ctx, user, args.clubId, args.channelId))) return empty;
+    const rows = await ctx.db
+      .query("clubChannelMessages")
+      .withIndex("by_channelId_and_createdAt", (q) => q.eq("channelId", args.channelId))
+      .order("desc")
+      .take(MAX_LIBRARY_SCAN_MESSAGES + 1);
+    const messages = rows.slice(0, MAX_LIBRARY_SCAN_MESSAGES).filter((row) => !row.deletedAt);
+
+    const media: Array<typeof channelLibraryAttachmentValidator.type> = [];
+    const files: Array<typeof channelLibraryAttachmentValidator.type> = [];
+    const links: Array<{ url: string; messageId: Id<"clubChannelMessages">; threadRootId?: Id<"clubChannelMessages">; createdAt: number }> = [];
+    const seenLinks = new Set<string>();
+
+    for (const message of messages) {
+      const threadRootId = message.parentMessageId ?? undefined;
+      if (media.length < MAX_LIBRARY_ITEMS || files.length < MAX_LIBRARY_ITEMS) {
+        const attachments = await ctx.db
+          .query("clubChannelMessageAttachments")
+          .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
+          .take(MAX_SUMMARY_ATTACHMENTS);
+        for (const attachment of attachments) {
+          const item = {
+            _id: attachment._id,
+            messageId: message._id,
+            threadRootId,
+            fileName: attachment.fileName,
+            fileUrl: attachment.fileUrl,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+            createdAt: attachment.createdAt,
+          };
+          const isMedia = /^(image|video)\//.test(attachment.mimeType ?? "");
+          const bucket = isMedia ? media : files;
+          if (bucket.length < MAX_LIBRARY_ITEMS) bucket.push(item);
+        }
+      }
+      if (links.length < MAX_LIBRARY_ITEMS) {
+        for (const match of (message.bodyMarkdown ?? message.body).matchAll(LIBRARY_URL_PATTERN)) {
+          const url = match[0].replace(/[.,;:!?]+$/, "");
+          if (seenLinks.has(url)) continue;
+          seenLinks.add(url);
+          links.push({ url, messageId: message._id, threadRootId, createdAt: message.createdAt });
+          if (links.length >= MAX_LIBRARY_ITEMS) break;
+        }
+      }
+    }
+
+    return { media, files, links, scannedAll: rows.length <= MAX_LIBRARY_SCAN_MESSAGES };
+  },
+});
+
 export const getMentionContext = query({
   args: {
     clubId: v.id("clubs"),
@@ -1918,6 +2011,7 @@ export const getMentionContext = query({
           const member = await ctx.db.get(userId);
           if (!member) return null;
           return {
+            _id: member._id,
             avatarUrl: member.avatarUrl ?? null,
             clubRole: (await loadClubRole(ctx, channel.clubId, userId))?.name ?? null,
             uniqueId: member.uniqueId,

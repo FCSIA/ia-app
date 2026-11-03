@@ -62,9 +62,8 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
   welcome: {
     id: 'welcome',
     icon: Home,
-    label: 'Overview',
-    description:
-      'Greeting, time, and class info.',
+    label: 'Now and next',
+    description: 'Your current and next class or workshop, then a look at tomorrow.',
     size: 'full',
     Component: WelcomeWidget,
     isFixed: true,

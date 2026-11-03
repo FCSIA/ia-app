@@ -68,7 +68,7 @@ export function AdminMobileNavigation(props: AdminNavigationProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon-lg" className="lg:hidden" aria-label="Open admin sections">
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open admin sections">
           <Menu />
         </Button>
       </SheetTrigger>

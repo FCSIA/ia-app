@@ -24,8 +24,7 @@ import {
   Star,
   Ticket,
   UsersRound,
-  Users,
-  UserRound,
+  Waypoints,
   type LucideIcon,
 } from "lucide-react";
 
@@ -121,9 +120,8 @@ const primaryNav: NavItem[] = [
 ];
 
 const socialNav: NavItem[] = [
-  { href: "/clubs", label: process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === "true" ? "Community" : "Clubs", icon: UsersRound, mobileTabId: "clubs" },
-  { href: "/schedule?tab=friends", label: "Friends", icon: UserRound },
-  { href: "/schedule?tab=groups", label: "Friend Groups", icon: Users },
+  { href: "/clubs", label: process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === "true" ? "Community" : "Clubs", icon: Waypoints, mobileTabId: "clubs" },
+  { href: "/schedule?tab=friends", label: "Friends", icon: UsersRound },
 ];
 
 const dayPlanNav: Array<NavItem & { section: string }> = [
@@ -175,9 +173,9 @@ function getSocialItems({ showFriends }: Pick<AppShellNavigationProps, "showFrie
 function isActive(pathname: string, href: string, scheduleTab?: string) {
   const [target, query] = href.split("?");
   if (target === "/schedule" && pathname.startsWith("/schedule")) {
-    const tab = pathname.startsWith("/schedule/groups/") ? "groups" : scheduleTab;
+    const tab = pathname.startsWith("/schedule/groups/") ? "friends" : scheduleTab;
     const targetTab = new URLSearchParams(query).get("tab");
-    return targetTab ? tab === targetTab : tab !== "friends" && tab !== "groups";
+    return targetTab ? tab === targetTab : tab !== "friends";
   }
   return pathname === target || (target !== "/home" && pathname.startsWith(`${target}/`));
 }

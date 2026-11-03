@@ -1,6 +1,6 @@
 "use client";
 
-import { nameInitials, nameSearchValues } from "~/apps/shared/user-name";
+import { nameSearchValues } from "~/apps/shared/user-name";
 
 import {
   useDeferredValue,
@@ -32,6 +32,7 @@ import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubPersonAvatar } from "@/components/clubs/club-person-avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   PresenceAvatar,
   useMemberPresence,
@@ -369,9 +370,7 @@ function ManagePeopleDialog({
             <div className="flex flex-col gap-3">
               {selected ? (
                 <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
-                    {nameInitials(selected).toUpperCase()}
-                  </div>
+                  <UserAvatar person={selected} className="size-9" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{fullName(selected)}</p>
                   </div>
@@ -430,9 +429,7 @@ function ManagePeopleDialog({
                             onSelect={() => setSelected(student)}
                             className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
                           >
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                              {nameInitials(student).toUpperCase()}
-                            </div>
+                            <UserAvatar person={student} size={32} />
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">
                                 {fullName(student)}

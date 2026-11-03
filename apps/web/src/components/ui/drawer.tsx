@@ -5,6 +5,12 @@ import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
 import { useFixedBottomVisualViewportOffset } from "@/components/ui/use-fixed-bottom-visual-viewport"
+import { SurfaceProvider, useSurface } from "@/lib/surface-context"
+import { surfaceClasses } from "@/lib/surface-classes"
+
+// Same step as a dialog: a sheet is a modal layer, and popovers opened inside
+// it must rise above it rather than computing their level from the page.
+const DRAWER_OFFSET = 4
 
 const Drawer = ({
   shouldScaleBackground = true,
@@ -40,6 +46,7 @@ const DrawerContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
   const contentRef = useFixedBottomVisualViewportOffset(ref)
+  const level = Math.min(useSurface() + DRAWER_OFFSET, 8)
 
   return (
     <DrawerPortal>
@@ -47,13 +54,16 @@ const DrawerContent = React.forwardRef<
       <DrawerPrimitive.Content
         ref={contentRef}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[min(88dvh,46rem)] flex-col overscroll-contain rounded-t-2xl border bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl outline-none [translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:0_0]",
+          surfaceClasses(level),
+          "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[min(88dvh,46rem)] flex-col overscroll-contain rounded-t-2xl border pb-[env(safe-area-inset-bottom)] outline-none [translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:0_0]",
           className
         )}
         {...props}
       >
-        <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-muted-foreground/35" />
-        {children}
+        <SurfaceProvider value={level}>
+          <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-muted-foreground/35" />
+          {children}
+        </SurfaceProvider>
       </DrawerPrimitive.Content>
     </DrawerPortal>
   )

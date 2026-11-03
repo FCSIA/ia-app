@@ -28,7 +28,7 @@ function ThemeChrome() {
   useEffect(() => {
     const update = () => {
       const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-      const background = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+      const background = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
       if (meta && background) meta.content = `hsl(${background})`;
     };
     const observer = new MutationObserver(update);

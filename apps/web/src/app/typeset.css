@@ -20,7 +20,8 @@
     --typeset-list-item-flow: 0.125em;
 
     @media (max-width: 47.999rem) {
-      --typeset-leading: 1.4;
+      /* ≈18px lines at 13.5px: the same line pitch as Discord's mobile chat. */
+      --typeset-leading: 1.33;
     }
   }
 }

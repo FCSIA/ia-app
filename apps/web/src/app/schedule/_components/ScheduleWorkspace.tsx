@@ -6,10 +6,9 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageFrame } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { FriendSchedulesPanel } from "./FriendSchedulesPanel";
+import { FriendsDayPanel } from "./FriendsDayPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
 import { MySchedulePanel } from "./MySchedulePanel";
-import { ScheduleGroupsPanel } from "./ScheduleGroupsPanel";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 import { ScheduleWorkspaceSkeleton } from "./ScheduleWorkspaceSkeleton";
 
@@ -28,7 +27,7 @@ export function ScheduleWorkspace() {
   } = useScheduleWorkspace();
   const requestedSection = searchParams?.get("section");
   const section = requestedSection === "templates" || requestedSection === "config" ? requestedSection : "dates";
-  const heading = selectedTab === "friends" ? "Friends" : selectedTab === "groups" ? "Friend Groups" : selectedTab === "admin" ? ({ dates: "Calendar dates", templates: "Templates", config: "School config" }[section]) : "Schedule";
+  const heading = selectedTab === "friends" ? "Friends" : selectedTab === "admin" ? ({ dates: "Calendar dates", templates: "Templates", config: "School config" }[section]) : "Schedule";
 
   if (isLoading) return <ScheduleWorkspaceSkeleton />;
 
@@ -64,8 +63,7 @@ export function ScheduleWorkspace() {
             <MySchedulePanel />
           </>
         ) : null}
-        {canEditOwnSchedule && selectedTab === "friends" ? <FriendSchedulesPanel /> : null}
-        {canEditOwnSchedule && selectedTab === "groups" ? <ScheduleGroupsPanel /> : null}
+        {canEditOwnSchedule && selectedTab === "friends" ? <FriendsDayPanel /> : null}
         {canManageBlocks && selectedTab === "admin" ? <ManageBlocksPanel /> : null}
       </PageFrame>
     </AppShell>

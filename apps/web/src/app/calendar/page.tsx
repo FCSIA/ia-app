@@ -69,11 +69,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownContent,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  DropdownTrigger,
+} from '@/components/ui/dropdown';
+import { MenuItem } from '@/components/ui/menu-item';
 import { Empty } from '@/components/ui/empty';
 import {
   FilterToggleGroup,
@@ -599,25 +599,29 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                   }
                 />
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Calendar options"
-                    >
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setFeedsOpen(true)}>
-                      Calendar feeds
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
+                  <DropdownTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Calendar options"
+                      >
+                        <MoreHorizontal />
+                      </Button>
+                    }
+                  />
+                  <DropdownContent align="end">
+                    <MenuItem
+                      index={0}
+                      label="Calendar feeds"
+                      onSelect={() => setFeedsOpen(true)}
+                    />
+                    <MenuItem
+                      index={1}
+                      label="Go to today"
                       onSelect={() => navigate(view, new Date())}
-                    >
-                      Go to today
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
+                    />
+                  </DropdownContent>
                 </DropdownMenu>
               </div>
             </div>

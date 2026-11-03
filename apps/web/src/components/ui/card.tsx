@@ -345,14 +345,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     const emphasized = selected;
 
     // A standalone card (no group) is its own tile — always rounded + clipped.
-    // Inside a group, a separated tile carries its own rounding + clip only when
-    // it draws a visible frame; a borderless separated tile has no surface to
-    // hug, so it stays unclipped and its media reads as a plain square, and a
-    // card in a continuous block leans on the shared group frame for both.
+    // Separated tiles carry the group shape for child focus and state surfaces.
+    // Only outlined tiles clip their media; borderless media stays unclipped.
+    // Continuous cards lean on the shared group frame for shape and clipping.
     const tileShape = !group
       ? cn(containerShape, "overflow-hidden")
-      : separated && outlined
-        ? cn(containerShape, "overflow-hidden border border-border/60")
+      : separated
+        ? cn(containerShape, outlined && "overflow-hidden border border-border/60")
         : "";
 
     // Stretched overlay makes the whole card the click target while keeping
@@ -427,7 +426,8 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
                 // column beside it (see the wrapper in the body below).
                 "flex flex-row items-center gap-3"
               : isInline
-                ? "flex flex-row items-center gap-3 pl-4"
+                ? // A CardDetail wraps onto its own line inside the same card.
+                  "flex flex-row items-center gap-3 pl-4 has-[>[data-slot=card-detail]]:flex-wrap"
                 : "flex flex-col pb-4",
             // Standalone (no group) cards can't lean on the group highlight, so
             // they carry their own hover tint when interactive.
@@ -629,6 +629,25 @@ const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 );
 
 CardContent.displayName = "CardContent";
+
+// ── CardDetail ───────────────────────────────────────────
+// Expanded content for an inline card: a full-width second line inside the
+// same card (and the same selected fill), indented to the title column by the
+// caller. Sits above the stretched overlay so its text stays selectable and
+// any controls in it stay clickable.
+
+const CardDetail = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card-detail"
+      className={cn("relative z-30 min-w-0 basis-full pb-4 pr-4", className)}
+      {...props}
+    />
+  )
+);
+
+CardDetail.displayName = "CardDetail";
 
 // ── CardFooter ───────────────────────────────────────────
 // Actions row. Rises above the stretched overlay (z-30) so buttons stay
@@ -933,6 +952,7 @@ export {
   CardDescription,
   CardAction,
   CardContent,
+  CardDetail,
   CardFooter,
   CardMedia,
   CardImage,

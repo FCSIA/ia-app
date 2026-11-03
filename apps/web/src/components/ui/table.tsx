@@ -176,7 +176,7 @@ const TableHead = forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 px-3 py-1 text-left text-foreground pointer-coarse:h-11",
+      "h-9 px-3 py-1 text-left text-foreground",
       className
     )}
     {...props}
@@ -194,7 +194,7 @@ const TableCell = forwardRef<
   <td
     ref={ref}
     className={cn(
-      "h-9 px-3 py-1 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground pointer-coarse:h-11",
+      "h-9 px-3 py-1 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
       className
     )}
     {...props}

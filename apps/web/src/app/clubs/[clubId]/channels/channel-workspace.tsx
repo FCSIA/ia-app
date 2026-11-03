@@ -24,6 +24,8 @@ import {
 } from 'next/navigation';
 import { format, isSameDay } from 'date-fns';
 import { formatMessageTime } from '@/lib/message-time';
+import { useAppFrameActions } from '@/components/layout/app-frame-context';
+import { ChannelDetailsSheet } from '@/components/clubs/channel-details-sheet';
 
 import {
   useAction,
@@ -32,7 +34,7 @@ import {
   useQuery,
 } from '@/lib/convex-react';
 import {
-  BarChart3,
+  Check,
   Copy,
   FileText,
   Link2,
@@ -50,6 +52,7 @@ import {
   CircleAlert,
   X,
 } from 'lucide-react';
+import { DisclosureTitle } from '@/components/ui/pressable';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -599,6 +602,7 @@ function ChannelSearch({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const query = useDeferredValue(search.trim());
+  const { openGlobalSearch } = useAppFrameActions();
   const results = useQuery(
     api.clubs.channels.searchMessages,
     open && query.length >= 2 ? { clubId, channelId, search: query } : 'skip',
@@ -693,6 +697,20 @@ function ChannelSearch({
             </>
           )}
         </div>
+        {/* Phones show one search control in a channel; this keeps the
+            app-wide search one tap away. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          leadingIcon={Search}
+          className="mt-1 w-full justify-start text-muted-foreground lg:hidden"
+          onClick={() => {
+            setOpen(false);
+            openGlobalSearch();
+          }}
+        >
+          Search everything
+        </Button>
       </PopoverContent>
     </Popover>
   );
@@ -736,7 +754,11 @@ function MessageAuthorPreview({
       <button
         type="button"
         aria-label={`View ${name} profile`}
-        className="shrink-0 rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+        className={cn(
+          'relative shrink-0 rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]',
+          // A compact avatar keeps a 44px touch target without a wider gutter.
+          compact && "after:absolute after:-inset-2 after:content-['']",
+        )}
       >
         <PresenceAvatar status={presence}>
           <ClubPersonAvatar
@@ -791,16 +813,23 @@ function PollCard({
   isPending: boolean;
 }) {
   if (!message.poll) return null;
-  const total = Math.max(message.poll.totalVotes, 1);
+  const { question, options, totalVotes } = message.poll;
+  const total = Math.max(totalVotes, 1);
+  // The poll belongs to the message: its question sits in the text column at
+  // body size, and the options are one bordered group of 44px rows, so the
+  // message keeps a single left edge instead of a card nested inside it.
   return (
-    <div className="mt-2 rounded-lg border bg-muted/20 p-2.5 sm:p-3">
-      <div className="flex items-center gap-2 text-[13px] font-semibold sm:text-sm">
-        <BarChart3 className="size-4 text-primary" />
-        {message.poll.question}
-      </div>
-      <div className="mt-2 space-y-1 sm:mt-3 sm:space-y-2">
-        {message.poll.options.map((option) => {
+    <div className="mt-1.5 max-w-md">
+      <p className="flex items-baseline justify-between gap-3 text-[13.5px] md:text-sm">
+        <span className="font-semibold text-foreground">{question}</span>
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
+        </span>
+      </p>
+      <div className="mt-1.5 divide-y overflow-hidden rounded-md border">
+        {options.map((option) => {
           const percent = Math.round((option.count / total) * 100);
+          const voted = option.votedByCurrentUser;
           return (
             <button
               key={option.id}
@@ -808,18 +837,37 @@ function PollCard({
               disabled={isPending}
               onClick={() => onVote(message._id, option.id)}
               className={cn(
-                'relative min-h-11 w-full overflow-hidden rounded-md border px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-hover sm:min-h-0 sm:py-2 sm:text-sm pointer-coarse:min-h-11',
-                option.votedByCurrentUser && 'border-primary/50 bg-primary/10',
+                'relative flex min-h-11 w-full items-center px-3 text-left text-[13.5px] transition-colors hover:bg-hover md:text-sm',
+                voted && 'shadow-[inset_2px_0_0_hsl(var(--primary))]',
               )}
             >
               <span
                 aria-hidden
-                className="absolute inset-y-0 left-0 bg-primary/10"
+                className={cn(
+                  'absolute inset-y-0 left-0',
+                  voted ? 'bg-primary/25' : 'bg-primary/15',
+                )}
                 style={{ width: `${percent}%` }}
               />
-              <span className="relative flex items-center justify-between gap-3">
-                <span>{option.label}</span>
-                <span className="text-xs text-muted-foreground">
+              <span className="relative flex min-w-0 flex-1 items-center justify-between gap-3">
+                <span
+                  className={cn(
+                    'flex min-w-0 items-center gap-1.5',
+                    voted && 'font-semibold',
+                  )}
+                >
+                  {voted ? (
+                    <Check
+                      className="size-3.5 shrink-0 text-primary"
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span className="min-w-0">
+                    {option.label}
+                    {voted ? <span className="sr-only">, your vote</span> : null}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {option.count} · {percent}%
                 </span>
               </span>
@@ -844,7 +892,8 @@ function FailedSendRow({
   onRetry,
   onDiscard,
 }: {
-  author: Parameters<typeof ClubPersonAvatar>[0]['person'];
+  author: Parameters<typeof ClubPersonAvatar>[0]['person'] &
+    Parameters<typeof fullName>[0];
   grouped: boolean;
   payload: Pick<
     ComposerSubmitArgs,
@@ -1736,7 +1785,8 @@ function MessageRow({
                 grouped={groupedWithPrevious}
                 data-replying={replying || undefined}
                 className={cn(
-                  'rounded-md gap-3 px-3 transition-colors duration-150 hover:bg-hover',
+                  'rounded-md px-3 transition-colors duration-150 hover:bg-hover',
+                  dense ? 'gap-2.5' : 'gap-3',
                   // Pressed (set by the press handlers) and selected (sheet open).
                   'group-data-[pressed]/row:bg-active group-data-[pressed]/row:duration-75 group-data-[selected]/row:bg-active',
                   pingsViewer &&
@@ -1750,6 +1800,7 @@ function MessageRow({
                 <MessageAvatar
                   className={cn(
                     'self-start overflow-visible bg-transparent',
+                    dense && 'w-7',
                     // Level with the author's name below the reply line.
                     message.replyToMessageId && !groupedWithPrevious && 'mt-6',
                   )}
@@ -1767,7 +1818,7 @@ function MessageRow({
                   ) : (
                     <time
                       dateTime={message.createdAt}
-                      className="block pt-0.5 text-center text-[11px] tabular-nums text-muted-foreground opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100 pointer-coarse:opacity-100"
+                      className="block pt-0.5 text-center text-[10px] tabular-nums tracking-tight text-muted-foreground opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100 pointer-coarse:opacity-100"
                     >
                       {format(new Date(message.createdAt), 'h:mm')}
                     </time>
@@ -1795,7 +1846,8 @@ function MessageRow({
                         friendRequestPendingId={friendRequestPendingId}
                         onSendFriendRequest={onSendFriendRequest}
                       />
-                      {message.author.clubRole ? (
+                      {message.author.clubRole &&
+                      !message.author.clubRole.isDefault ? (
                         <span className="text-xs text-muted-foreground">
                           · {message.author.clubRole.name}
                         </span>
@@ -2280,6 +2332,7 @@ export function ChannelWorkspace() {
       channelId,
     },
   );
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const pinnedResult = useQuery(api.clubs.channels.listPinned, {
     clubId,
     channelId,
@@ -3043,8 +3096,8 @@ export function ChannelWorkspace() {
   // the title instead of drifting against the global search (their old
   // position moved with the width of the account name).
   const title: ReactNode = (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
+      <div className="hidden min-w-0 items-center gap-2 sm:flex">
         <ClubChannelVisibilityIcon
           visibility={channel.visibility}
           className="shrink-0 text-muted-foreground"
@@ -3053,6 +3106,19 @@ export function ChannelWorkspace() {
           {channel.name}
         </h1>
       </div>
+      {/* Phones: the title is the way into the channel's details. It dims the
+          instant a finger lands and recovers on release, so the press reads
+          before the sheet opens. */}
+      <DisclosureTitle
+        as="h1"
+        aria-haspopup="dialog"
+        aria-label={`#${channel.name} details`}
+        onClick={() => setDetailsOpen(true)}
+        className="flex-1 sm:hidden"
+        icon={<ClubChannelVisibilityIcon visibility={channel.visibility} />}
+        title={channel.name}
+        subtitle={channel.description || undefined}
+      />
       <div className="flex shrink-0 items-center gap-1">
         <div className="hidden items-center gap-1 sm:flex">
           {whiteboardsEnabled ? (
@@ -3083,44 +3149,26 @@ export function ChannelWorkspace() {
           channelName={channel.name}
           onJump={jumpToMessage}
         />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              className="sm:hidden"
-              variant="ghost"
-              size="icon-sm"
-              badge={pinnedMessages.length ? '·' : undefined}
-              aria-label="Channel options"
-            >
-              <MoreHorizontal />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 p-3">
-            <div className="flex items-center gap-2">
-              <ChannelNotificationSettings
-                clubId={clubId}
-                channelId={channelId}
-                channelName={channel.name}
-              />
-              <PinnedMessagesButton
-                messages={pinnedMessages}
-                hasMore={pinnedResult?.hasMore}
-                onJump={jumpToMessage}
-              />
-              {whiteboardsEnabled ? (
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    setChannelView(showWhiteboard ? 'chat' : 'whiteboard')
-                  }
-                >
-                  {showWhiteboard ? 'Chat' : 'Whiteboards'}
-                </Button>
-              ) : null}
-            </div>
-          </PopoverContent>
-        </Popover>
       </div>
+      <ChannelDetailsSheet
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        clubId={clubId}
+        channelId={channelId}
+        channel={channel}
+        pinnedMessages={pinnedMessages}
+        pinnedHasMore={pinnedResult?.hasMore}
+        onJump={jumpToMessage}
+        whiteboard={
+          whiteboardsEnabled
+            ? {
+                showing: showWhiteboard,
+                onToggle: () =>
+                  setChannelView(showWhiteboard ? 'chat' : 'whiteboard'),
+              }
+            : undefined
+        }
+      />
     </div>
   );
 

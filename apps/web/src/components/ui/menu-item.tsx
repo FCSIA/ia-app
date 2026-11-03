@@ -85,6 +85,9 @@ interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   /** Popup-only (inside DropdownContent): whether activating the item closes
    *  the menu. Ignored in the inline Dropdown panel. @default true */
   closeOnClick?: boolean;
+  /** Destructive action (remove, delete): label and icon in the destructive
+   *  colour instead of the muted/foreground pair. */
+  destructive?: boolean;
 }
 
 const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
@@ -97,6 +100,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       onSelect,
       disabled,
       closeOnClick,
+      destructive = false,
       className,
       onClick,
       ...props
@@ -138,7 +142,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       // text-box trim on the label doesn't shrink the row. shrink-0 because
       // menu popups are max-height flex columns — without it a long list
       // compresses rows to fit instead of scrolling.
-      `relative z-10 flex h-9 shrink-0 touch-manipulation items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none pointer-coarse:h-11`,
+      `relative z-10 flex h-9 shrink-0 touch-manipulation items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none`,
       disabled && "opacity-50 pointer-events-none",
       className
     );
@@ -155,9 +159,11 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
               strokeWidth={isActive || checked ? 2 : 1.5}
               className={cn(
                 "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
-                isActive || checked
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                destructive
+                  ? "text-destructive"
+                  : isActive || checked
+                    ? "text-foreground"
+                    : "text-muted-foreground"
               )}
             />
           </span>
@@ -175,9 +181,11 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           <span
             className={cn(
               "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
-              isActive || checked
-                ? "text-foreground"
-                : "text-muted-foreground"
+              destructive
+                ? "text-destructive"
+                : isActive || checked
+                  ? "text-foreground"
+                  : "text-muted-foreground"
             )}
             style={{
               fontVariationSettings: checked

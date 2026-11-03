@@ -16,7 +16,7 @@ import { useShape } from "@/lib/shape-context";
 
 const buttonVariants = cva(
   [
-    "group relative isolate inline-flex touch-manipulation items-center justify-center outline-none cursor-pointer",
+    "group group/button relative isolate inline-flex touch-manipulation touch-target items-center justify-center outline-none cursor-pointer",
     "whitespace-nowrap align-middle [&_svg]:shrink-0",
     "transition-colors duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
@@ -32,15 +32,17 @@ const buttonVariants = cva(
         destructive: "text-destructive-foreground",
       },
       size: {
-        sm: "h-7 px-3 text-[12px] gap-1 pointer-coarse:min-h-11",
-        md: "h-8 px-4 text-[13px] gap-1.5 pointer-coarse:min-h-11",
-        lg: "h-9 px-5 text-[14px] gap-1.5 pointer-coarse:min-h-11",
-        "icon-compact":
-          "h-7 w-7 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
-        "icon-sm":
-          "h-8 w-8 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-4 [&_svg]:w-4",
-        icon: "h-9 w-9 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-4 [&_svg]:w-4",
-        "icon-lg": "h-11 w-11 p-0 [&_svg]:h-5 [&_svg]:w-5",
+        // Painted sizes are identical on every pointer. On touch, the base
+        // `touch-target` utility adds an invisible 44px hit area instead.
+        sm: "h-7 px-3 text-[12px] gap-1",
+        md: "h-8 px-4 text-[13px] gap-1.5",
+        lg: "h-9 px-5 text-[14px] gap-1.5",
+        "icon-compact": "h-7 w-7 p-0 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        "icon-sm": "h-8 w-8 p-0 [&_svg]:h-4 [&_svg]:w-4",
+        icon: "h-9 w-9 p-0 [&_svg]:h-4 [&_svg]:w-4",
+        /** @deprecated Former 44px phone size. Renders exactly like `icon`;
+         *  use `icon` (or a smaller step) in new code. */
+        "icon-lg": "h-9 w-9 p-0 [&_svg]:h-4 [&_svg]:w-4",
       },
     },
     defaultVariants: {
@@ -52,7 +54,7 @@ const buttonVariants = cva(
 
 /** Glyph geometry shared by labeled and icon controls on the 28/32/36 scale. */
 export function iconSizeFor(size: VariantProps<typeof buttonVariants>["size"] = "md") {
-  return size === "sm" || size === "icon-compact" ? 14 : size === "icon-lg" ? 20 : 16;
+  return size === "sm" || size === "icon-compact" ? 14 : 16;
 }
 
 interface ButtonProps
@@ -73,13 +75,13 @@ interface ButtonProps
 
 const bgVariants: Record<string, string> = {
   primary:
-    "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
-  secondary: "bg-accent group-hover:bg-accent/80 group-active:bg-accent",
+    "bg-foreground group-hover/button:bg-foreground/90 group-active/button:bg-foreground/80",
+  secondary: "bg-accent group-hover/button:bg-accent/80 group-active/button:bg-accent",
   tertiary:
-    "border border-border bg-transparent group-hover:bg-hover group-active:bg-active",
-  ghost: "bg-transparent group-hover:bg-hover group-active:bg-active",
+    "border border-border bg-transparent group-hover/button:bg-hover group-active/button:bg-active",
+  ghost: "bg-transparent group-hover/button:bg-hover group-active/button:bg-active",
   destructive:
-    "bg-destructive group-hover:bg-destructive/90 group-active:bg-destructive/80",
+    "bg-destructive group-hover/button:bg-destructive/90 group-active/button:bg-destructive/80",
 };
 
 const activeBgVariants: Record<string, string> = {
@@ -131,11 +133,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const spinnerSizeClass =
       size === "sm" || size === "icon-compact"
         ? "h-7 w-7"
-        : size === "lg" || size === "icon"
+        : size === "lg" || size === "icon" || size === "icon-lg"
           ? "h-9 w-9"
-          : size === "icon-lg"
-            ? "h-11 w-11"
-            : "h-8 w-8";
+          : "h-8 w-8";
     const shape = useShape();
     const bgClass = active
       ? activeBgVariants[variant ?? "primary"]
@@ -146,7 +146,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         <span
           aria-hidden
           className={cn(
-            "absolute inset-0 rounded-[inherit] transition-[background-color,scale] duration-80 group-active:scale-[0.98] motion-reduce:scale-none motion-reduce:transition-none",
+            "absolute inset-0 rounded-[inherit] transition-[background-color,scale] duration-80 group-active/button:scale-[0.98] motion-reduce:scale-none motion-reduce:transition-none",
             bgClass,
           )}
         />
@@ -186,7 +186,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               </span>
             </>
           ) : isIconOnly ? (
-            <span className="inline-flex shrink-0 items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
+            <span className="inline-flex shrink-0 items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover/button:[&_svg]:stroke-[2]">
               {label}
             </span>
           ) : (
@@ -196,7 +196,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   size={iconSize}
                   strokeWidth={1.5}
                   aria-hidden="true"
-                  className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+                  className="transition-[stroke-width] duration-80 group-hover/button:stroke-[2]"
                 />
               )}
               {/* text-box only applies to block containers, so the trim lives
@@ -211,7 +211,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   size={iconSize}
                   strokeWidth={1.5}
                   aria-hidden="true"
-                  className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+                  className="transition-[stroke-width] duration-80 group-hover/button:stroke-[2]"
                 />
               )}
             </>

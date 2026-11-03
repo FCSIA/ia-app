@@ -586,6 +586,58 @@
   }
 }
 
+/* A channel gives the conversation the whole screen on phones, like a chat
+   app: the tab bar steps aside and the composer takes the home-indicator
+   inset. The header's club navigation button is the way back out. Unlayered
+   so it outranks the shell's resting padding utilities; the keyboard rules
+   below are more specific and still win while typing. */
+@media (max-width: 1023.98px) {
+  .app-root:has(.channel-chat-surface) .app-mobile-tabbar,
+  .app-root:has(.channel-chat-surface) .app-header-mobile-search {
+    display: none;
+  }
+
+  .app-root:has(.channel-chat-surface) .app-main-surface {
+    padding-bottom: 0;
+  }
+
+  .app-root:has(.channel-chat-surface) .channel-composer-dock {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+}
+
+/* Club navigation on phones is two layers inside the app root: the club's
+   channel list (z 15) and the tab bar (z 40) underneath, the page (header and
+   content) on top. A reveal slides the page right by --club-nav-reveal of its
+   width, uncovering both; nothing is ever drawn over the composer. On a
+   channel the page sits above the tab bar (which it hides); elsewhere the
+   tab bar stays on top, since both layers show it. Only while revealing, so a
+   resting page keeps no transform (fixed descendants stay viewport-bound). */
+@media (max-width: 767.98px) {
+  .app-root[data-club-nav-revealed] .app-main-surface {
+    position: relative;
+    z-index: 35;
+    background-color: hsl(var(--background));
+    transform: translate3d(calc(var(--club-nav-reveal, 0) * 100%), 0, 0);
+    box-shadow: -1px 0 0 hsl(var(--border));
+  }
+
+  .app-root[data-club-nav-revealed]:has(.channel-chat-surface)
+    .app-main-surface {
+    z-index: 45;
+  }
+
+  .app-root[data-club-nav-revealed]:has(.channel-chat-surface)
+    .app-mobile-tabbar {
+    display: grid;
+  }
+
+  .app-root:not([data-club-nav-revealed]) .club-mobile-navigation {
+    visibility: hidden;
+  }
+}
+
 /* These keyboard-state overrides must remain unlayered so they outrank the
    Tailwind utilities that provide the shell and dock's resting padding. */
 @media (hover: none) and (pointer: coarse) {
@@ -858,4 +910,73 @@
   --shadow-6: var(--shadow-1);
   --shadow-7: var(--shadow-1);
   --shadow-8: var(--shadow-1);
+}
+
+/* Popup motion: one entrance/exit for every anchored popup (popover, menus,
+   hover cards). Radix sets data-state and data-side on the content; the popup
+   rises 4px away from its trigger and settles in 100ms, and fades out in 80ms
+   so dismissal never lags the next tap. `animate-in`/`zoom-in-*` utilities
+   are not installed in this Tailwind v4 setup, so popups had no motion. */
+@layer components {
+  .popup-motion[data-state="open"] {
+    animation: popup-in 100ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .popup-motion[data-state="closed"] {
+    animation: popup-out 80ms ease-in forwards;
+  }
+  .popup-motion[data-side="bottom"] { --popup-dy: -4px; }
+  .popup-motion[data-side="top"] { --popup-dy: 4px; }
+  .popup-motion[data-side="left"] { --popup-dx: 4px; }
+  .popup-motion[data-side="right"] { --popup-dx: -4px; }
+  @media (prefers-reduced-motion: reduce) {
+    .popup-motion[data-state="open"] { animation-name: popup-fade-in; }
+  }
+}
+
+@keyframes popup-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--popup-dx, 0), var(--popup-dy, 0)) scale(0.97);
+  }
+}
+@keyframes popup-fade-in {
+  from { opacity: 0; }
+}
+@keyframes popup-out {
+  to { opacity: 0; }
+}
+
+/* ---------------------------------------------------------------------------
+   Touch target: invisible hit area, unchanged painted size.
+
+   Controls keep their desktop geometry on phones. On a coarse pointer, an
+   invisible ::after centred on the control grows the tappable area to at
+   least 44×44px; taps on it land on the control itself. Nothing paints, so a
+   28px icon button still looks 28px.
+
+   - Add `touch-target` to the control (Button already includes it).
+   - The host needs a positioning context. The components-layer rule below
+     supplies `position: relative` at the lowest utility priority, so a host
+     that is `absolute`, `fixed` or `sticky` keeps that position.
+   - The host must not use its own ::after, and an ancestor with overflow
+     clipping trims the hit area.
+   - Adjacent icon buttons need gap >= 8px (gap-2) so one control's hit area
+     does not reach into its neighbour's painted box.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .touch-target {
+    position: relative;
+  }
+}
+
+@utility touch-target {
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      /* Negative only when the box is under 44px; never shrinks a larger one. */
+      inset-block: min(0px, calc((100% - 44px) / 2));
+      inset-inline: min(0px, calc((100% - 44px) / 2));
+    }
+  }
 }

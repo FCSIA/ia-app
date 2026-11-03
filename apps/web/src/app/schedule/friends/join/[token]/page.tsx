@@ -108,12 +108,7 @@ export default function FriendLinkRedemptionPage({
           ) : (
             <div>
               <div className="flex flex-col items-center bg-surface-3 px-6 py-6 text-center">
-                <UserAvatar
-                  firstName={preview.owner!.firstName}
-                  lastName={preview.owner!.lastName}
-                  preferredName={preview.owner!.preferredName}
-                  className="size-14"
-                />
+                <UserAvatar person={preview.owner!} className="size-14" />
                 <h1 className="mt-3 text-lg font-semibold">
                   Add {displayName(preview.owner!)}
                 </h1>

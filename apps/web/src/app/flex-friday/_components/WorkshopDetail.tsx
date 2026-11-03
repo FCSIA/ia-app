@@ -388,7 +388,7 @@ export function WorkshopDetail({
                 <TableCell className="align-top">
                   <Link
                     href={`/flex-friday?${new URLSearchParams({ friday: friday._id, session: session._id, view: 'schedule' })}`}
-                    className="inline-flex min-h-8 items-center break-words text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+                    className="inline-flex min-h-8 items-center break-words text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring touch-target"
                   >
                     {session.title}
                   </Link>

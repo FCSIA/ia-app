@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserProfileContent, UserProfileDialog, type UserProfilePerson } from '@/components/clubs/user-profile-dialog';
 import { displayName } from '~/apps/shared/user-name';
-import { useCurrentUser } from '@/lib/auth';
+import { isAdmin, useCurrentUser } from '@/lib/auth';
 import { copyText } from '@/lib/share';
 
 /** Click/tap profile preview shared by activity tables and person references. */
@@ -38,10 +38,10 @@ export function PersonTrigger({ person, actions, usersHref, roleName, trigger }:
             {actions}
             <Button type="button" size="sm" variant="ghost" leadingIcon={UserRound} onClick={() => { setPreviewOpen(false); setProfileOpen(true); }}>Open profile</Button>
             {usersHref ? <Button asChild size="sm" variant="ghost"><Link href={usersHref}>Open in Users</Link></Button> : null}
-            <Button type="button" size="sm" variant="ghost" leadingIcon={Copy} onClick={async () => {
+            {isAdmin(currentUser) ? <Button type="button" size="sm" variant="ghost" leadingIcon={Copy} onClick={async () => {
               try { await copyText(person._id); toast({ title: 'Person ID copied' }); }
               catch { toast({ title: 'Could not copy the person ID', variant: 'destructive' }); }
-            }}>Copy ID</Button>
+            }}>Copy ID</Button> : null}
           </div>
         </PopoverContent>
       </Popover>

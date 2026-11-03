@@ -963,7 +963,10 @@ export function DashboardLayout({
             if (!widget) return null;
             const Component = widget.Component;
             return (
-              <div key={id} className={cn(editing ? "opacity-90" : "")}>
+              <div
+                key={id}
+                className={cn("empty:hidden", editing && "opacity-90")}
+              >
                 <Component />
               </div>
             );

@@ -2,7 +2,7 @@
 
 import { displayName } from '~/apps/shared/user-name';
 import { Button } from '@/components/ui/button';
-import { ClubPersonAvatar } from '@/components/clubs/club-person-avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { type UserProfilePerson } from '@/components/clubs/user-profile-dialog';
 import { PersonTrigger } from './person-trigger';
 
@@ -30,7 +30,7 @@ export function UserProfileAvatar({ person, size = 'sm', className, fallbackClas
           className={className}
           aria-label={`View ${name} profile`}
         >
-          <ClubPersonAvatar person={{ ...person, avatarUrl: person.avatarUrl ?? null }} className={size === 'md' ? 'size-10' : 'size-8'} fallbackClassName={fallbackClassName} />
+          <UserAvatar person={person} size={size === 'md' ? 40 : 32} fallbackClassName={fallbackClassName} />
         </Button>
       }
     />

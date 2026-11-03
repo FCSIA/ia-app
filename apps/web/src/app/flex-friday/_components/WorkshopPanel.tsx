@@ -109,7 +109,7 @@ export function WorkshopPanel({
                             <h3 className="text-base font-semibold leading-tight text-foreground">
                               <Link
                                 href={workshopDetailHref(selectedSession.flexFridayId, w._id, selectedSession._id)}
-                                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+                                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring touch-target"
                               >
                                 {w.title}
                               </Link>

@@ -48,7 +48,8 @@ export function resolveScheduleTab(
   canManageBlocks: boolean,
 ): ScheduleTab {
   if (requestedTab === 'friends' && canEditOwnSchedule) return 'friends';
-  if (requestedTab === 'groups' && canEditOwnSchedule) return 'groups';
+  // Groups live on the Friends page now; keep old links working.
+  if (requestedTab === 'groups' && canEditOwnSchedule) return 'friends';
   if (requestedTab === 'admin' && canManageBlocks) return 'admin';
   if (requestedTab === 'my' && canEditOwnSchedule) return 'my';
   if (canEditOwnSchedule) return 'my';

@@ -782,7 +782,15 @@ export function ChannelMessageComposer({
               </PopoverContent>
             </Popover>
 
-            <InputControl className={cn('h-auto min-h-10 overflow-hidden')}>
+            <InputControl
+              className={cn(
+                'h-auto min-h-10 overflow-hidden',
+                // In a channel the fill alone marks the composer; an outline
+                // here was the highest-contrast edge on the screen.
+                !isComment &&
+                  'border-transparent bg-muted shadow-none dark:bg-muted',
+              )}
+            >
               {isSourceInput ? (
                 <InputControlTextarea
                   ref={markdownSourceRef}

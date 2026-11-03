@@ -27,8 +27,8 @@ export const ReactionToggle = forwardRef<
     className={cn(
       'aria-pressed:bg-primary/15 aria-pressed:ring-1 aria-pressed:ring-primary/50',
       kind === 'emoji'
-        ? 'size-8 min-w-8 rounded-full p-0 text-xl pointer-coarse:size-11 pointer-coarse:min-w-11'
-        : 'h-7 min-w-8 gap-1 rounded-full bg-muted/50 px-2 text-xs pointer-coarse:min-h-11 pointer-coarse:min-w-11',
+        ? 'size-8 min-w-8 rounded-full p-0 text-xl'
+        : 'h-7 min-w-8 gap-1 rounded-full bg-muted/50 px-2 text-xs',
       className,
     )}
     {...props}

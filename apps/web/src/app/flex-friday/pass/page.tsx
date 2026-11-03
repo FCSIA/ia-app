@@ -329,7 +329,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
             {friday ? (
               <Link
                 href={workshopDetailHref(friday._id, workshop._id, first?._id)}
-                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring touch-target"
               >
                 {workshop.title}
               </Link>

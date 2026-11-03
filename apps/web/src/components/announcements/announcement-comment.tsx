@@ -1,7 +1,7 @@
 'use client';
 
 import { MoreHorizontal, Trash2 } from 'lucide-react';
-import { ClubPersonAvatar } from '@/components/clubs/club-person-avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import type { UserProfilePerson } from '@/components/clubs/user-profile-dialog';
 import { PersonTrigger } from '@/components/users/person-trigger';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,7 @@ export function AnnouncementComment({
                 aria-label={`View ${name}'s profile`}
                 className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <ClubPersonAvatar person={person} className="size-9" />
+                <UserAvatar person={person} className="size-9" />
               </button>
             }
           />

@@ -57,19 +57,29 @@ export function WorkspaceSidebar({
 
 export function WorkspaceSidebarSection({
   title,
+  titleHidden = false,
   action,
   children,
 }: {
   title: string;
+  /** Keep the title for assistive tech only, when the screen already says
+   *  what the list is. */
+  titleHidden?: boolean;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <SidebarGroup>
-      <div className="flex min-w-0 items-center justify-between gap-2 pr-1">
-        <SidebarGroupLabel render={<h2 />}>{title}</SidebarGroupLabel>
-        {action}
-      </div>
+      {titleHidden && !action ? (
+        <h2 className="sr-only">{title}</h2>
+      ) : (
+        <div className="flex min-w-0 items-center justify-between gap-2 pr-1">
+          <SidebarGroupLabel render={<h2 />} className={titleHidden ? "sr-only" : undefined}>
+            {title}
+          </SidebarGroupLabel>
+          {action}
+        </div>
+      )}
       <SidebarGroupContent>{children}</SidebarGroupContent>
     </SidebarGroup>
   );
@@ -96,7 +106,7 @@ export function WorkspaceSidebarItem({
         render={<Link href={href} onClick={onClick} />}
         icon={icon}
         isActive={selected}
-        className={cn("pointer-coarse:min-h-11", className)}
+        className={className}
       >
         {label}
       </SidebarMenuButton>

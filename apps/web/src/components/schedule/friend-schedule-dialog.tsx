@@ -35,12 +35,17 @@ type FriendScheduleDialogProps = {
   friend: ScheduleFriend;
   blocks: SchoolDayBlock[];
   trigger?: React.ReactNode;
+  /** Controlled mode, for opening the dialog from a menu instead of a trigger. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export function FriendScheduleDialog({
   friend,
   blocks,
   trigger,
+  open,
+  onOpenChange,
 }: FriendScheduleDialogProps) {
   const [selectedDateKey, setSelectedDateKey] = useState(localDateKey);
   const selectedWeekday = getWeekdayForDate(
@@ -62,14 +67,16 @@ export function FriendScheduleDialog({
     : [];
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="tertiary" size="sm" leadingIcon={CalendarDays}>
-            Compare
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open === undefined ? (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="tertiary" size="sm" leadingIcon={CalendarDays}>
+              Compare
+            </Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         size="lg"
         padding="none"

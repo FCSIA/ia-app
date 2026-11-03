@@ -164,7 +164,9 @@ function AppShellHeader({
       className={cn(
         "app-main-header sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] md:h-[calc(4rem+env(safe-area-inset-top))] md:gap-3 md:pl-[max(1.5rem,env(safe-area-inset-left))] md:pr-[max(1.5rem,env(safe-area-inset-right))] lg:pl-[max(2rem,env(safe-area-inset-left))] lg:pr-[max(2rem,env(safe-area-inset-right))]",
         CARD_SURFACE_FOREGROUND,
-        "bg-card",
+        // Phones: the true page background, so the header is continuous with
+        // the strip iOS paints behind the status bar.
+        "bg-background lg:bg-card",
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -190,8 +192,10 @@ function AppShellHeader({
         <Button
           type="button"
           variant="ghost"
-          size="icon-lg"
-          className="shrink-0 lg:hidden"
+          size="icon"
+          // Channel screens hide this on phones in favor of the channel's own
+          // search, which links back to searching everything.
+          className="app-header-mobile-search shrink-0 lg:hidden"
           aria-label="Search"
           onClick={onOpenGlobalSearch}
         >
@@ -215,14 +219,7 @@ function AppShellHeader({
                     doNotDisturb.doNotDisturb ? "doNotDisturb" : undefined
                   }
                 >
-                  <UserAvatar
-                    firstName={user.firstName}
-                    lastName={user.lastName}
-                    preferredName={user.preferredName}
-                    avatarUrl={user.avatarUrl}
-                    className="size-9"
-                    fallbackClassName="text-xs"
-                  />
+                  <UserAvatar person={user} className="size-9" />
                 </PresenceAvatar>
                 <span className="hidden truncate pl-1 sm:inline">
                   {displayName(user)}

@@ -37,7 +37,10 @@ const PopoverContent = React.forwardRef<
             // Select, Dropdown, or Popover can paint above its parent.
             "z-50 w-72 border-0 p-4 outline-none origin-(--radix-popover-content-transform-origin)",
             POPOVER_SURFACE_FOREGROUND,
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1 motion-reduce:animate-none",
+            "popup-motion",
+            // A hairline edge: dark shadows vanish against dark sheets, so the
+            // popup needs its own boundary to read as a separate layer.
+            "dark:ring-1 dark:ring-white/10",
             popupShape.container,
             className
           )}

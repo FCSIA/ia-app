@@ -15,5 +15,9 @@ export function formatMessageTime(
         : 'EEE, MMM d, yyyy · h:mm a',
     );
   if (isSameDay(date, now)) return format(date, 'h:mm a');
-  return format(date, isSameYear(date, now) ? 'MMM d' : 'MMM d, yyyy');
+  // Older rows keep their time: touch screens have no hover to reveal it.
+  return format(
+    date,
+    isSameYear(date, now) ? 'MMM d, h:mm a' : 'MMM d, yyyy, h:mm a',
+  );
 }
