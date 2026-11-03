@@ -425,6 +425,14 @@
     backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
   }
 
+  .custom[data-custom-wallpaper] .app-main-header[data-mode="editing"] {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  .app-main-header[data-mode="editing"] {
+    background-image: linear-gradient(hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.2));
+  }
+
   .custom[data-custom-wallpaper] .app-mobile-tabbar {
     background-color: hsl(var(--card) / 0.88) !important;
     backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
