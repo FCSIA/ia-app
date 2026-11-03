@@ -56,26 +56,28 @@ export async function toAuditEvents(
   ctx: QueryCtx,
   events: Doc<"auditEvents">[],
 ) {
-  const actorIds = Array.from(
-    new Set(events.flatMap((event) => (event.actorId ? [event.actorId] : []))),
-  );
-  const actorsPromise = Promise.all(
-    actorIds.map(
-      async (actorId) => [actorId, await ctx.db.get(actorId)] as const,
-    ),
-  );
+  const resolve = auditEventResolver(ctx);
+  return await Promise.all(events.map(resolve));
+}
+
+/** Reuse related-document reads across all rows scanned in one query. */
+export function auditEventResolver(ctx: QueryCtx) {
+  const actors = new Map<Id<"users">, Promise<Doc<"users"> | null>>();
   const resolveContext = auditContextResolver(ctx);
-  const [actorEntries, contexts] = await Promise.all([
-    actorsPromise,
-    Promise.all(events.map(resolveContext)),
-  ]);
-  const actors = new Map(actorEntries);
-  return events.map((event, index) => {
-    const actor = event.actorId ? actors.get(event.actorId) : null;
+  return async (event: Doc<"auditEvents">) => {
+    let actorPromise = event.actorId ? actors.get(event.actorId) : undefined;
+    if (event.actorId && !actorPromise) {
+      actorPromise = ctx.db.get(event.actorId);
+      actors.set(event.actorId, actorPromise);
+    }
+    const [actor, context] = await Promise.all([
+      actorPromise ?? null,
+      resolveContext(event),
+    ]);
     return {
       id: event._id,
       actorId: event.actorId ?? null,
-      context: contexts[index]!,
+      context,
       action: event.action,
       entityType: event.entityType,
       entityId: event.entityId ?? null,
@@ -91,7 +93,7 @@ export async function toAuditEvents(
           }
         : null,
     };
-  });
+  };
 }
 
 export function includes(value: string | null | undefined, needle: string) {
