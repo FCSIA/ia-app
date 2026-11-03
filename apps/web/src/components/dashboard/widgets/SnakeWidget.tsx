@@ -30,6 +30,8 @@ const initial = (width: number, height: number): Game => {
   const head = Math.floor(height / 2) * width + Math.floor(width / 2);
   return { snake: [head, head - 1, head - 2], food: head + 3, direction: "right", status: "ready" };
 };
+// Starts slow, speeds up fastest over the first few foods, then levels off near the floor.
+const tickMs = (score: number) => Math.round(80 + 100 * Math.exp(-score / 8));
 const opposite: Record<Direction, Direction> = { up: "down", down: "up", left: "right", right: "left" };
 const keys: Partial<Record<string, Direction>> = {
   arrowup: "up", arrowdown: "down", arrowleft: "left", arrowright: "right",
@@ -129,9 +131,9 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
         if (!free.length) return { ...prev, snake, direction, status: "won" };
         return { ...prev, snake, direction, food: free[Math.floor(random * free.length)] };
       });
-    }, 120);
+    }, tickMs(score));
     return () => window.clearInterval(timer);
-  }, [game.status, layoutEditing, view, width, height]);
+  }, [game.status, layoutEditing, view, width, height, score]);
 
   useEffect(() => {
     if (!finished || score === 0 || !mode) return;
