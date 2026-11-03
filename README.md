@@ -186,4 +186,4 @@ The detailed architecture and feature list starts in [docs/architecture/overview
 
 ## License
 
-Private project for FCS Innovation Academy.
+Public project for FCS Innovation Academy.
