@@ -2,6 +2,74 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.43",
+      "date": "2026-11-03",
+      "commit": "54a0de8a",
+      "changes": [
+        {
+          "category": "Improved",
+          "summary": "Upgrade turbo deps.",
+          "commit": "54a0de8a"
+        },
+        {
+          "category": "Improved",
+          "summary": "Find your school day, friends, announcements, and personal widgets more easily with an updated Home and simpler navigation.",
+          "commit": "1269110e",
+          "pr": 186
+        },
+        {
+          "category": "Improved",
+          "scope": "profile",
+          "summary": "The preferred name field now stays outlined so it is easier to find before hovering.",
+          "commit": "4d4ff52e"
+        },
+        {
+          "category": "Improved",
+          "summary": "Change project status from private to public.",
+          "commit": "89ed015f"
+        },
+        {
+          "category": "Improved",
+          "scope": "audit",
+          "summary": "Audit activity searches now find matching records across pages more reliably.",
+          "commit": "fa1f1a69",
+          "pr": 189
+        },
+        {
+          "category": "Improved",
+          "scope": "app",
+          "summary": "Make implicit state machines explicit.",
+          "commit": "99be87c8",
+          "pr": 208
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Your dashboard now opens at the app’s main address.",
+          "commit": "3a83c666"
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Announcements load more efficiently.",
+          "commit": "e178b636",
+          "pr": 206
+        },
+        {
+          "category": "Fixed",
+          "scope": "calendar",
+          "summary": "Calendar imports now retain ongoing all-day events and report oversized feeds without removing saved events.",
+          "commit": "dd0a7387",
+          "pr": 192
+        },
+        {
+          "category": "Internal",
+          "summary": "Cache builds and run mobile and sharded tests.",
+          "commit": "1796b888"
+        }
+      ]
+    },
+    {
       "version": "0.8.42",
       "date": "2026-11-03",
       "commit": "41419480",

@@ -12,6 +12,27 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.43 — 2026-11-03 (alpha)
+
+### Improved
+
+- Upgrade turbo deps. ([`54a0de8a`](https://github.com/FCSIA/ia-app/commit/54a0de8a))
+- Find your school day, friends, announcements, and personal widgets more easily with an updated Home and simpler navigation. ([#186](https://github.com/FCSIA/ia-app/pull/186), [`1269110e`](https://github.com/FCSIA/ia-app/commit/1269110e))
+- **profile** — The preferred name field now stays outlined so it is easier to find before hovering. ([`4d4ff52e`](https://github.com/FCSIA/ia-app/commit/4d4ff52e))
+- Change project status from private to public. ([`89ed015f`](https://github.com/FCSIA/ia-app/commit/89ed015f))
+- **audit** — Audit activity searches now find matching records across pages more reliably. ([#189](https://github.com/FCSIA/ia-app/pull/189), [`fa1f1a69`](https://github.com/FCSIA/ia-app/commit/fa1f1a69))
+- **app** — Make implicit state machines explicit. ([#208](https://github.com/FCSIA/ia-app/pull/208), [`99be87c8`](https://github.com/FCSIA/ia-app/commit/99be87c8))
+- **web** — Your dashboard now opens at the app’s main address. ([`3a83c666`](https://github.com/FCSIA/ia-app/commit/3a83c666))
+- **announcements** — Announcements load more efficiently. ([#206](https://github.com/FCSIA/ia-app/pull/206), [`e178b636`](https://github.com/FCSIA/ia-app/commit/e178b636))
+
+### Fixed
+
+- **calendar** — Calendar imports now retain ongoing all-day events and report oversized feeds without removing saved events. ([#192](https://github.com/FCSIA/ia-app/pull/192), [`dd0a7387`](https://github.com/FCSIA/ia-app/commit/dd0a7387))
+
+### Internal
+
+- Cache builds and run mobile and sharded tests. ([`1796b888`](https://github.com/FCSIA/ia-app/commit/1796b888))
+
 ## v0.8.42 — 2026-11-03 (alpha)
 
 ### Improved
