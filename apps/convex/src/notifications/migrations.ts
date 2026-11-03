@@ -27,3 +27,23 @@ export const backfillChannelDeliveryMetadata = migrations.define({
     };
   },
 });
+
+/**
+ * Retire `notificationPreferences.enabled`. `level` already records the choice;
+ * an old `enabled: false` row becomes level OFF so it stays off, and the field
+ * is removed. Once this has run, the staged validator in the schema reports the
+ * table as validated and `enabled` can leave the schema.
+ *
+ *   cd apps/convex && npx convex run notifications/migrations:foldPreferenceEnabledIntoLevel
+ */
+export const foldPreferenceEnabledIntoLevel = migrations.define({
+  table: "notificationPreferences",
+  batchSize: 200,
+  migrateOne: (_ctx, preference) => {
+    if (preference.enabled === undefined) return;
+    return {
+      enabled: undefined,
+      ...(preference.enabled === false ? { level: "OFF" as const } : {}),
+    };
+  },
+});

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
-import { env, httpAction, internalAction, internalMutation, internalQuery } from "../_generated/server";
+import { env, httpAction, internalAction, internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
 import { deliverNotification } from "../notifications/delivery";
 import { logAuditEvent } from "../audit/_lib";
 
@@ -9,6 +9,54 @@ const GITHUB_REPOSITORY = "FCSIA/ia-app";
 const GITHUB_API_VERSION = "2022-11-28";
 
 type FeedbackStatus = "PENDING" | "RESOLVED" | "DISMISSED";
+
+// PATCHes one push run sends before handing over to a fresh run.
+const MAX_PUSH_ROUNDS = 3;
+// Each PATCH gives up after this, so a round never outlives the lease.
+const PUSH_REQUEST_TIMEOUT_MS = 30 * 1000;
+// A push renews this lease every round; one that stops renewing has died.
+const PUSH_LEASE_MS = 5 * 60 * 1000;
+const PUSH_HANDOFF_DELAY_MS = 5 * 1000;
+
+/** Whether a push is mirroring the app's status onto the issue. */
+function isPushInFlight(report: Doc<"moderationReports">, now: number) {
+  return (
+    report.githubIssuePushingSince !== undefined &&
+    now - report.githubIssuePushingSince < PUSH_LEASE_MS
+  );
+}
+
+/**
+ * Mirrors the report's status onto its GitHub issue. At most one push runs per
+ * report: while one is in flight it picks up any newer status before it
+ * finishes, so pushes never overlap or land out of order.
+ */
+export async function requestGithubIssuePush(
+  ctx: MutationCtx,
+  report: Doc<"moderationReports">,
+) {
+  const now = Date.now();
+  if (isPushInFlight(report, now)) return;
+  await ctx.db.patch(report._id, { githubIssuePushingSince: now });
+  await ctx.scheduler.runAfter(0, internal.moderation.feedbackGithub.pushGithubIssueState, {
+    reportId: report._id,
+  });
+}
+
+const feedbackStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("RESOLVED"),
+  v.literal("DISMISSED"),
+);
+
+/** The GitHub issue state that matches a feedback status set in the app. */
+export function githubIssueStateFor(status: FeedbackStatus) {
+  if (status === "PENDING") return { state: "open" as const };
+  return {
+    state: "closed" as const,
+    state_reason: status === "DISMISSED" ? ("not_planned" as const) : ("completed" as const),
+  };
+}
 
 function githubHeaders(token: string) {
   return {
@@ -131,6 +179,11 @@ export const saveGithubIssue = internalMutation({
       githubIssueCreatedAt: Date.now(),
       githubIssueSyncError: null,
     });
+    // Staff may have decided before the issue existed; new issues open as
+    // PENDING, so carry any other decision over.
+    if (report.status !== "PENDING") {
+      await requestGithubIssuePush(ctx, report);
+    }
     await logAuditEvent(ctx, {
       action: "FEEDBACK_GITHUB_ISSUE_CREATED",
       entityType: "Report",
@@ -156,6 +209,139 @@ export const saveGithubIssueFailure = internalMutation({
       entityType: "Report",
       entityId: args.reportId,
     });
+    return null;
+  },
+});
+
+export const loadGithubIssueState = internalQuery({
+  args: { reportId: v.id("moderationReports") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      issueNumber: v.number(),
+      status: feedbackStatusValidator,
+      stateUpdatedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const report = await ctx.db.get(args.reportId);
+    if (!report || report.contentType !== "GENERAL" || report.githubIssueNumber === undefined) {
+      return null;
+    }
+    return {
+      issueNumber: report.githubIssueNumber,
+      status: report.status,
+      ...(report.githubIssueStateUpdatedAt !== undefined
+        ? { stateUpdatedAt: report.githubIssueStateUpdatedAt }
+        : {}),
+    };
+  },
+});
+
+/**
+ * Records a push round. `githubUpdatedAt` is the issue's `updated_at` after
+ * our PATCH, so later-arriving echoes of it count as older events. The push is
+ * finished only if the report still has the status that was sent and no newer
+ * GitHub change arrived during the round (it was ignored, so it must be
+ * overwritten). `seenStateUpdatedAt` is the stored timestamp when the round
+ * read the report: only a change to it during the round counts, because the
+ * stored value may be a staff decision time from Convex's millisecond clock
+ * that is later than GitHub's whole-second `updated_at` for the same moment.
+ * The check runs in the same transaction that clears the in-flight marker;
+ * otherwise the lease is renewed and the push keeps going. `status: null`
+ * ends the push without a match (it failed).
+ */
+export const finishGithubIssuePushRound = internalMutation({
+  args: {
+    reportId: v.id("moderationReports"),
+    status: v.union(feedbackStatusValidator, v.null()),
+    githubUpdatedAt: v.optional(v.number()),
+    seenStateUpdatedAt: v.optional(v.number()),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const report = await ctx.db.get(args.reportId);
+    if (!report) return true;
+    const stored = report.githubIssueStateUpdatedAt;
+    const newerGithubChange =
+      args.githubUpdatedAt !== undefined &&
+      stored !== args.seenStateUpdatedAt &&
+      (stored ?? 0) > args.githubUpdatedAt;
+    const done =
+      args.status === null || (report.status === args.status && !newerGithubChange);
+    await ctx.db.patch(report._id, {
+      ...(args.githubUpdatedAt !== undefined &&
+      (report.githubIssueStateUpdatedAt ?? 0) < args.githubUpdatedAt
+        ? { githubIssueStateUpdatedAt: args.githubUpdatedAt }
+        : {}),
+      githubIssuePushingSince: done ? undefined : Date.now(),
+    });
+    return done;
+  },
+});
+
+function issueUpdatedAt(body: unknown) {
+  if (!body || typeof body !== "object") return undefined;
+  const value = (body as Record<string, unknown>).updated_at;
+  const parsed = typeof value === "string" ? Date.parse(value) : Number.NaN;
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+/** The single push run for a report; see `requestGithubIssuePush`. */
+export const pushGithubIssueState = internalAction({
+  args: { reportId: v.id("moderationReports") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const finish = (
+      status: FeedbackStatus | null,
+      githubUpdatedAt?: number,
+      seenStateUpdatedAt?: number,
+    ) =>
+      ctx.runMutation(internal.moderation.feedbackGithub.finishGithubIssuePushRound, {
+        reportId: args.reportId,
+        status,
+        ...(githubUpdatedAt !== undefined ? { githubUpdatedAt } : {}),
+        ...(seenStateUpdatedAt !== undefined ? { seenStateUpdatedAt } : {}),
+      });
+    const token = env.GITHUB_FEEDBACK_TOKEN;
+    try {
+      for (let round = 0; round < MAX_PUSH_ROUNDS; round += 1) {
+        const current = await ctx.runQuery(internal.moderation.feedbackGithub.loadGithubIssueState, args);
+        if (!current || !token) {
+          await finish(null);
+          return null;
+        }
+        const sentAt = Date.now();
+        const response = await fetch(
+          `https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${current.issueNumber}`,
+          {
+            method: "PATCH",
+            headers: { ...githubHeaders(token), "Content-Type": "application/json" },
+            body: JSON.stringify(githubIssueStateFor(current.status)),
+            signal: AbortSignal.timeout(PUSH_REQUEST_TIMEOUT_MS),
+          },
+        );
+        if (!response.ok) {
+          // The app status stays authoritative; the issue is only a mirror.
+          console.warn(`GitHub issue #${current.issueNumber} state update failed (${response.status})`);
+          await finish(null);
+          return null;
+        }
+        const body: unknown = await response.json().catch(() => null);
+        if (await finish(current.status, issueUpdatedAt(body) ?? sentAt, current.stateUpdatedAt)) {
+          return null;
+        }
+      }
+    } catch (error) {
+      // Release the lease so the next staff decision can push again.
+      console.warn(`GitHub issue state push failed: ${error instanceof Error ? error.message : String(error)}`);
+      await finish(null).catch(() => {});
+      return null;
+    }
+    // Staff kept changing the status; continue in a fresh run so the issue
+    // still ends on the latest decision. The pause caps the PATCH rate if the
+    // run ever fails to settle.
+    await ctx.scheduler.runAfter(PUSH_HANDOFF_DELAY_MS, internal.moderation.feedbackGithub.pushGithubIssueState, args);
     return null;
   },
 });
@@ -210,7 +396,7 @@ export const syncFeedbackIssue = internalAction({
 export const applyGithubIssueState = internalMutation({
   args: {
     issueNumber: v.number(),
-    status: v.union(v.literal("PENDING"), v.literal("RESOLVED"), v.literal("DISMISSED")),
+    status: feedbackStatusValidator,
     githubUpdatedAt: v.number(),
     stateReason: v.optional(v.string()),
   },
@@ -225,6 +411,19 @@ export const applyGithubIssueState = internalMutation({
       report.contentType !== "GENERAL" ||
       (report.githubIssueStateUpdatedAt !== undefined && report.githubIssueStateUpdatedAt >= args.githubUpdatedAt)
     ) {
+      return null;
+    }
+    // GitHub agreeing with the current status (including the echo of a staff
+    // change pushed to the issue) must not replace the staff review note.
+    if (report.status === args.status) {
+      await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
+      return null;
+    }
+    // While a push is mirroring the app's status onto the issue, a disagreeing
+    // event is either the echo of an earlier push or a change that push is
+    // about to overwrite, so the app's status stands.
+    if (isPushInFlight(report, Date.now())) {
+      await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
       return null;
     }
 

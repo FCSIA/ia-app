@@ -22,6 +22,46 @@ For breaking data changes:
 Do not run one giant mutation over a large table. Batch work and schedule
 continuation when needed.
 
+### Staging the narrow step
+
+Since Convex 1.47, `defineTable(...).staged({...})` declares the narrowed
+validator next to the widened one. The widened validator stays enforced while
+Convex checks existing documents and new writes against the staged one, so the
+narrowing can land with the widen release without blocking a deploy.
+`npx convex deploy --dry-run` reports each staged table as validating,
+validated, or failed. Run the backfill, and once a table reports validated,
+move the staged fields into `defineTable` and drop `.staged()`.
+
+To rehearse on real data first, create a throwaway deployment with
+`npx convex deployment create dev/<name> --type dev --expiration "in 2 days"`,
+import a prod snapshot into it, push, run the migration there, and check the
+staged status before touching prod. Delete the local snapshot afterwards.
+
+Staged now, each waiting on its migration in production:
+
+| Table | Staged change | Migration |
+| --- | --- | --- |
+| `announcements` | drop the `EXPIRED` status | `announcements/migrations:retireExpiredStatus` |
+| `events` | drop `isInactive`, `deactivatedAt`, `DRAFT`, `APPROVED` | `events/migrations:dropUnusedLifecycleFields` |
+| `notificationPreferences` | drop `enabled` (use `level`) | `notifications/migrations:foldPreferenceEnabledIntoLevel` |
+
+When a table reports validated, apply the staged change: move the staged
+fields into `defineTable`, drop `.staged()`, and delete the finished migration
+along with any code that still reads the removed field or status (for example
+`preferenceIsOn` honoring a legacy `enabled: false`), since those no longer
+typecheck against the narrowed schema.
+
+Rolling back past the release that started these changes needs a backfill
+first. Older releases require `events.isInactive` and
+`notificationPreferences.enabled`, while this release stops writing them
+immediately: every event created or preference changed afterwards lacks the
+field, and so does every row the migrations touched. An older tag's
+`npx convex deploy` is then rejected by schema validation. The same goes for
+the fields this release adds to `moderationReports`, which older schemas do
+not declare. Before deploying an older tag, set `isInactive: false` on every
+event and `enabled: level !== "OFF"` on every preference, and unset
+`githubIssueSyncQueuedAt` and `githubIssuePushingSince` on every report.
+
 ## Running Backfills
 
 Migrations live beside the domain they belong to (`src/announcements/migrations.ts`,

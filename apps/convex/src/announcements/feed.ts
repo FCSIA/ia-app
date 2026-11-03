@@ -35,6 +35,14 @@ function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: 
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
 }
 
+// Approval is a one-time decision: approving again would re-notify the whole
+// audience, and archived or rejected posts must not come back through it.
+function assertAwaitingApproval(ann: { status: string }) {
+  if (ann.status !== "PENDING_APPROVAL") {
+    throw new ConvexError("This announcement is no longer waiting for approval");
+  }
+}
+
 export const ANNOUNCEMENT_PAST_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
 function isPastByAge(ann: { createdAt: number }, now: number) {
@@ -443,6 +451,7 @@ export const approve = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    assertAwaitingApproval(ann);
 
     await ctx.db.patch(args.announcementId, {
       status: "ACTIVE",
@@ -487,6 +496,7 @@ export const reject = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    assertAwaitingApproval(ann);
     const note = normalizeOptionalBoundedText(
       args.note,
       "Rejection note",

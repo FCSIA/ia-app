@@ -1,6 +1,19 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { NotificationCategory } from "../validators";
+import { isMuteActive } from "../../../shared/notification-mute";
+
+type PreferenceSwitch = { enabled?: boolean; level: "OFF" | "IN_APP" | "PUSH" | "TIME_SENSITIVE" };
+
+/**
+ * Whether a preference lets notifications through. `level` is the source of
+ * truth, with OFF meaning off. `enabled` is a legacy mirror of it that
+ * `migrations:foldPreferenceEnabledIntoLevel` removes; until that has run,
+ * an old `enabled: false` row still counts as off.
+ */
+export function preferenceIsOn(preference: PreferenceSwitch) {
+  return preference.enabled !== false && preference.level !== "OFF";
+}
 
 type NotificationDbCtx = QueryCtx | MutationCtx;
 
@@ -23,10 +36,7 @@ export async function resolveNotificationPreference(
           .eq("scopeKey", `mute:channel:${channelId}`),
       )
       .unique();
-    if (
-      mutePreference?.isMuted &&
-      (mutePreference.mutedUntil == null || mutePreference.mutedUntil > Date.now())
-    ) {
+    if (mutePreference && isMuteActive(mutePreference, Date.now())) {
       return mutePreference;
     }
   }
@@ -58,5 +68,5 @@ export async function resolveNotificationPreference(
 }
 
 export function preferenceAllowsPush(preference: Awaited<ReturnType<typeof resolveNotificationPreference>>) {
-  return !!preference?.enabled && (preference.level === "PUSH" || preference.level === "TIME_SENSITIVE");
+  return !!preference && preferenceIsOn(preference) && (preference.level === "PUSH" || preference.level === "TIME_SENSITIVE");
 }

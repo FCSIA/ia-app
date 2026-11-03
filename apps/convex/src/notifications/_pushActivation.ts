@@ -1,6 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { resolveNotificationPreference } from "./deliveryPreference";
+import { preferenceIsOn, resolveNotificationPreference } from "./deliveryPreference";
 import type { NotificationCategory } from "../validators";
 
 const pushDefaultCategories: NotificationCategory[] = [
@@ -21,10 +21,9 @@ const pushDefaultCategories: NotificationCategory[] = [
 const maxScopedPreferencesPerCategory = 50;
 
 export function preferenceNeedsPushUpgrade(
-  preference: Pick<Doc<"notificationPreferences">, "enabled" | "level">,
+  preference: Parameters<typeof preferenceIsOn>[0],
 ) {
-  return preference.enabled
-    && preference.level !== "OFF"
+  return preferenceIsOn(preference)
     && preference.level !== "PUSH"
     && preference.level !== "TIME_SENSITIVE";
 }
@@ -50,7 +49,7 @@ export async function activatePushPreferences(
 
     // A global OFF preference is an explicit opt-out and wins over a
     // device-level opt-in for the whole category.
-    if (effectivePreference?.enabled === false || effectivePreference?.level === "OFF") {
+    if (effectivePreference && !preferenceIsOn(effectivePreference)) {
       continue;
     }
 
@@ -58,7 +57,6 @@ export async function activatePushPreferences(
       await ctx.db.insert("notificationPreferences", {
         userId,
         category,
-        enabled: true,
         level: "PUSH",
         locked: false,
         scopeKey: "global",
