@@ -70,6 +70,7 @@ import type * as courses_seed from "../courses/seed.js";
 import type * as crons from "../crons.js";
 import type * as dashboard_flexFriday from "../dashboard/flexFriday.js";
 import type * as dashboard_needsYou from "../dashboard/needsYou.js";
+import type * as dashboard_snake from "../dashboard/snake.js";
 import type * as events_approvals from "../events/approvals.js";
 import type * as events_calendar from "../events/calendar.js";
 import type * as events_calendarInvitePolicy from "../events/calendarInvitePolicy.js";
@@ -222,6 +223,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   "dashboard/flexFriday": typeof dashboard_flexFriday;
   "dashboard/needsYou": typeof dashboard_needsYou;
+  "dashboard/snake": typeof dashboard_snake;
   "events/approvals": typeof events_approvals;
   "events/calendar": typeof events_calendar;
   "events/calendarInvitePolicy": typeof events_calendarInvitePolicy;

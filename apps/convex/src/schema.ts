@@ -43,6 +43,11 @@ import {
 } from "./validators";
 
 export const schema = defineSchema({
+  snakeScores: defineTable({
+    userId: v.id("users"),
+    mode: v.union(v.literal("small"), v.literal("medium"), v.literal("large"), v.literal("extra-large")),
+    score: v.number(),
+  }).index("by_user_mode", ["userId", "mode"]).index("by_mode_score", ["mode", "score"]),
   appStats: defineTable({
     key: v.string(),
     users: v.number(),
