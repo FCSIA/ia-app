@@ -314,6 +314,13 @@ their existing mappings. Native modal scroll locking must not add a second body
 margin when the root already reserves a stable scrollbar gutter; the global
 `body[data-scroll-locked]` rule handles that supported-browser case.
 
+The document scroll owner is `html`. Radix's RemoveScroll sets
+`overflow: hidden` on `body`, which creates a nearer scroll container and makes
+the sticky header and sidebar jump offscreen when a popup opens after scrolling.
+The shared scroll-lock CSS uses `overflow: clip` on supported browsers so those
+elements keep their viewport anchor. Retain RemoveScroll's wheel/touch isolation
+and Radix's focus handling; do not disable modal behavior at individual callers.
+
 Fluid proximity components register item geometry. A component can render with
 no errors while silently losing the shared moving highlight if an index or ref
 is swallowed by an intermediate component.

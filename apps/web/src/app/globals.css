@@ -535,6 +535,16 @@
     }
   }
 
+  @supports (overflow: clip) {
+    body[data-scroll-locked] {
+      /* The document scrolls on html. RemoveScroll's body overflow:hidden
+         creates a nearer scroll container and unpins sticky shell elements
+         at the document's scroll offset. Clip without creating that container;
+         RemoveScroll still owns wheel/touch isolation and focus stays in Radix. */
+      overflow: clip !important;
+    }
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
