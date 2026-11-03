@@ -4,6 +4,7 @@ import {
   Component,
   Suspense,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -356,8 +357,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
   // calendar is mounted, so they keep working after a dialog or popover
   // closes and returns focus to the page body. Typing targets, open overlays
   // and navigation controls are left alone.
-  const onShortcut = useRef<(event: KeyboardEvent) => void>(undefined);
-  onShortcut.current = (event) => {
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target as HTMLElement | null;
     if (
@@ -382,10 +382,10 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       event.preventDefault();
       navigate(shortcut[key], date);
     }
-  };
+  });
   useEffect(() => {
     if (isMobile) return;
-    const listener = (event: KeyboardEvent) => onShortcut.current?.(event);
+    const listener = (event: KeyboardEvent) => onShortcut(event);
     document.addEventListener('keydown', listener);
     return () => document.removeEventListener('keydown', listener);
   }, [isMobile]);

@@ -7,6 +7,8 @@ import { hasRole, useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery } from '@/lib/search';
 import { FlexFridayDoc, FlexSessionDoc, FlexWorkshopDoc } from '../_types';
 
+const EMPTY_REGISTRATIONS: never[] = [];
+
 export function useFlexFriday() {
   const user = useCurrentUser();
   const searchParams = useSearchParams();
@@ -86,7 +88,7 @@ export function useFlexFriday() {
     ) ?? [];
 
   const myRegs =
-    useQuery(api.flexFriday.registration.getMyRegistrations, {}) ?? [];
+    useQuery(api.flexFriday.registration.getMyRegistrations, {}) ?? EMPTY_REGISTRATIONS;
   const myRegWorkshopIds = useMemo(
     () => new Set((myRegs as any[]).map((r: any) => r.workshopId)),
     [myRegs],
