@@ -150,6 +150,11 @@ Popup primitives compose `POPOVER_SURFACE_FOREGROUND` instead. Keep page Text
 local to transparent wallpaper substrates; do not add page-specific text-color
 patches for opaque surfaces.
 
+Custom inset sidebar labels, icons, and section headings use the page Text
+color, including inactive rows. Their transparent backdrop must not inherit
+the card palette's muted text color. Elevated sidebar peek surfaces retain
+their own card foreground scope.
+
 Fluid elevation uses the unlayered `--surface-1` through `--surface-8` and
 `--shadow-1` through `--shadow-8` token families. They derive from the active
 semantic page and card tokens, with dark themes receiving Fluid's progressive
