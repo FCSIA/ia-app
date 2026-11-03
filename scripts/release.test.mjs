@@ -40,7 +40,7 @@ function releaseFixture() {
   mkdirSync(path.join(checkout, "packages/devlog/src"), { recursive: true });
   mkdirSync(bin);
   mkdirSync(path.join(directory, "hooks"));
-  for (const file of ["release.mjs", "release-args.mjs", "devlog.mjs"]) {
+  for (const file of ["release.mjs", "release-args.mjs", "devlog.mjs", "validate-release.mjs"]) {
     copyFileSync(path.join(root, "scripts", file), path.join(checkout, "scripts", file));
   }
   const { scripts } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
@@ -109,94 +109,110 @@ describe("release arguments", () => {
 });
 
 describe("release publishing workflow", () => {
-  const workflow = Bun.YAML.parse(readFileSync(path.join(root, ".github/workflows/release-on-merge.yml"), "utf8"));
-  const resolve = workflow.jobs["tag-release"].steps.find((step) => step.id === "pr").run;
+  const workflow = Bun.YAML.parse(readFileSync(path.join(root, ".github/workflows/release-on-push.yml"), "utf8"));
   const publish = workflow.jobs["tag-release"].steps.find((step) => step.id === "release").run;
-
-  test("retry resolves only a merged release from this repository into main", () => {
-    const { shell, directory } = releaseFixture();
-    const output = path.join(directory, "output");
-    const metadataPath = path.join(directory, "pr.json");
-    const metadata = {
-      merged: true,
-      base: { ref: "main", repo: { full_name: "example/fixture" } },
-      head: { ref: "release/v0.1.1", sha: "a".repeat(40), repo: { full_name: "example/fixture" } },
-      merge_commit_sha: "b".repeat(40),
-    };
-    const variables = {
-      PR_NUMBER: "160",
-      GITHUB_REPOSITORY: "example/fixture",
-      RUNNER_TEMP: directory,
-      GITHUB_OUTPUT: output,
-      RELEASE_TEST_PR_JSON: metadataPath,
-    };
-    writeFileSync(metadataPath, JSON.stringify(metadata));
-    const result = shell(resolve, variables);
+  function prepared() {
+    const fixture = releaseFixture();
+    const result = fixture.run("release");
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: expect.any(String) });
-    expect(readFileSync(output, "utf8").trim().split("\n")).toEqual([
-      `merge_sha=${metadata.merge_commit_sha}`,
-      `head_sha=${metadata.head.sha}`,
-      "branch=release/v0.1.1",
-      "pr_number=160",
-    ]);
-    rmSync(output);
+    return fixture;
+  }
+  function variables(fixture) {
+    return { RELEASE_SHA: fixture.git("rev-parse", "HEAD"), GITHUB_OUTPUT: path.join(fixture.directory, "published-output") };
+  }
 
-    for (const invalid of [
-      { ...metadata, merged: false },
-      { ...metadata, base: { ...metadata.base, ref: "dev" } },
-      { ...metadata, head: { ...metadata.head, repo: { full_name: "outside/fork" } } },
-      { ...metadata, head: { ...metadata.head, ref: "fix/unrelated" } },
-      { ...metadata, merge_commit_sha: null },
-    ]) {
-      writeFileSync(metadataPath, JSON.stringify(invalid));
-      expect(shell(resolve, variables).status).not.toBe(0);
-      expect(existsSync(output)).toBe(false);
-    }
-    expect(shell(resolve, { ...variables, PR_NUMBER: "160/other" }).status).not.toBe(0);
-    expect(existsSync(output)).toBe(false);
-  });
-
-  test("publishes an immutable tag as the Actions bot without a configured Git identity", () => {
-    const { run, git, shell, directory, main } = releaseFixture();
-    const preparation = run("release");
-    expect({ status: preparation.status, stderr: preparation.stderr }).toEqual({ status: 0, stderr: expect.any(String) });
-    const releaseHead = git("rev-parse", "HEAD");
-    git("push", "origin", "HEAD:refs/pull/160/head");
-    git("switch", "main");
-    git("merge", "--squash", "release/v0.1.1");
-    git("commit", "-m", "release: v0.1.1");
-    git("push", "origin", "main");
-    const merged = git("rev-parse", "HEAD");
+  test("publishes the exact main release as the Actions bot and safely retries", () => {
+    const fixture = prepared();
+    const { git, shell } = fixture;
+    const env = variables(fixture);
     git("config", "--unset", "user.name");
     git("config", "--unset", "user.email");
-    const variables = {
-      MERGE_SHA: merged,
-      RELEASE_HEAD_SHA: releaseHead,
-      RELEASE_BRANCH: "release/v0.1.1",
-      PR_NUMBER: "160",
-      GITHUB_OUTPUT: path.join(directory, "published-output"),
-    };
-
-    // A changed PR head must be refused before creating or pushing a tag.
-    const changed = shell(publish, { ...variables, RELEASE_HEAD_SHA: main });
-    expect(changed.status).not.toBe(0);
-    expect(changed.stderr).toContain("head changed");
-    expect(git("tag", "--list", "v0.1.1")).toBe("");
-    const result = shell(publish, variables);
+    const result = shell(publish, env);
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: expect.any(String) });
     expect(git("cat-file", "-t", "v0.1.1")).toBe("tag");
-    expect(git("rev-parse", "v0.1.1^{commit}")).toBe(merged);
+    expect(git("rev-parse", "v0.1.1^{commit}")).toBe(env.RELEASE_SHA);
     expect(git("for-each-ref", "--format=%(taggername) <%(taggeremail:trim)>", "refs/tags/v0.1.1")).toBe(
       "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
     );
-    expect(git("ls-remote", "origin", "refs/tags/v0.1.1^{}").split(/\s+/)[0]).toBe(merged);
-    expect(readFileSync(variables.GITHUB_OUTPUT, "utf8")).toBe("release_tag=v0.1.1\n");
+    expect(git("ls-remote", "origin", "refs/tags/v0.1.1^{}").split(/\s+/)[0]).toBe(env.RELEASE_SHA);
+    expect(readFileSync(env.GITHUB_OUTPUT, "utf8")).toBe("release_tag=v0.1.1\n");
     const tag = git("rev-parse", "v0.1.1");
-    const duplicate = shell(publish, variables);
-    expect(duplicate.status).not.toBe(0);
-    expect(duplicate.stderr).toContain("refusing to move it");
+    expect(shell(publish, env).status).toBe(0);
     expect(git("rev-parse", "v0.1.1")).toBe(tag);
   }, 15_000);
+
+  test("refuses to move a tag pointing at another commit", () => {
+    const fixture = prepared();
+    fixture.git("tag", "v0.1.1", fixture.main);
+    const result = fixture.shell(publish, variables(fixture));
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("refusing to move it");
+    expect(fixture.git("rev-parse", "v0.1.1^{commit}")).toBe(fixture.main);
+  });
+
+  test.each(["wrong base", "wrong subject", "mixed code", "changed history", "unchanged version", "generated drift"])("rejects %s before publishing", (kind) => {
+    const fixture = prepared();
+    const { git, directory } = fixture;
+    const checkout = path.join(directory, "checkout");
+    let subject = "release: v0.1.1";
+    let base = fixture.main;
+    if (kind === "wrong base") base = "a".repeat(40);
+    if (kind === "wrong subject") subject = "docs: update releases";
+    if (kind === "mixed code") writeFileSync(path.join(checkout, "feature.txt"), "Unreviewed extra change\n");
+    if (kind === "generated drift") writeFileSync(path.join(checkout, "CHANGELOG.md"), "Out of sync\n");
+    if (kind === "changed history" || kind === "unchanged version") {
+      const dataPath = path.join(checkout, "packages/devlog/data/releases.json");
+      const log = JSON.parse(readFileSync(dataPath, "utf8"));
+      if (kind === "changed history") log.releases[1].changes[0].summary = "Rewritten history";
+      else { log.releases[0].version = "0.1.0"; subject = "release: v0.1.0"; }
+      writeFileSync(dataPath, JSON.stringify(log));
+    }
+    git("add", ".");
+    git("commit", "--amend", "-m", subject, "-m", `Release-Base: ${base}`);
+    // Force is confined to this test's disposable local bare repository.
+    git("push", "--force", "origin", "main");
+    const env = variables(fixture);
+    expect(fixture.shell(publish, env).status).not.toBe(0);
+    expect(git("tag", "--list", "v0.1.1")).toBe("");
+    expect(existsSync(env.GITHUB_OUTPUT)).toBe(false);
+  });
+
+  test("rejects a non-main commit, a mismatched checkout, and invalid SHA input", () => {
+    const fixture = prepared();
+    const env = variables(fixture);
+    expect(fixture.shell(publish, { ...env, RELEASE_SHA: fixture.main }).status).not.toBe(0);
+    expect(fixture.shell(publish, { ...env, RELEASE_SHA: "main" }).status).not.toBe(0);
+    fixture.git("update-ref", "refs/remotes/origin/main", fixture.main);
+    expect(fixture.shell(publish, env).status).not.toBe(0);
+    expect(fixture.git("tag", "--list", "v0.1.1")).toBe("");
+  });
+});
+
+describe("production release validation", () => {
+  const workflow = Bun.YAML.parse(readFileSync(path.join(root, ".github/workflows/prod.yml"), "utf8"));
+  const resolve = workflow.jobs.resolve.steps.find((step) => step.id === "release").run;
+
+  test("resolves an existing main tag to the full commit used for CI and deployment", () => {
+    const fixture = releaseFixture();
+    expect(fixture.run("release").status).toBe(0);
+    const sha = fixture.git("rev-parse", "HEAD");
+    fixture.git("tag", "v0.1.1");
+    const output = path.join(fixture.directory, "resolved-output");
+    expect(fixture.shell(resolve, { RELEASE_TAG: "v0.1.1", GITHUB_OUTPUT: output }).status).toBe(0);
+    expect(readFileSync(output, "utf8")).toContain(`full_sha=${sha}\n`);
+    fixture.git("checkout", fixture.main);
+    expect(fixture.shell(resolve, { RELEASE_TAG: "v0.1.1", GITHUB_OUTPUT: output }).status).not.toBe(0);
+    expect(fixture.shell(resolve, { RELEASE_TAG: "main", GITHUB_OUTPUT: output }).status).not.toBe(0);
+  });
+
+  test("deployment waits for full CI on the same immutable SHA", () => {
+    expect(workflow.jobs.validate.needs).toBe("resolve");
+    expect(workflow.jobs.validate.uses).toBe("./.github/workflows/contributor-validation.yml");
+    expect(workflow.jobs.validate.with.checkout_ref).toBe("${{ needs.resolve.outputs.sha }}");
+    expect(workflow.jobs.deploy.needs).toEqual(["resolve", "validate"]);
+    expect(workflow.jobs.deploy.steps[0].with.ref).toBe("${{ needs.resolve.outputs.sha }}");
+    expect(workflow.concurrency["cancel-in-progress"]).toBe(false);
+  });
 });
 
 describe("release CLI", () => {
@@ -232,27 +248,46 @@ describe("release CLI", () => {
     expect(existsSync(ghArgsPath)).toBe(false);
   });
 
-  test.each(["release", "release:ship"])("%s prepares a release PR without pushing main or creating a tag", (command) => {
+  test.each(["release", "release:ship"])("%s commits and pushes main without a PR or local tag", (command) => {
     const { run, git, main, ghArgsPath } = releaseFixture();
     const result = run(command);
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: expect.any(String) });
-    expect(result.stdout).toContain("Release PR: https://github.com/example/fixture/pull/1");
-    expect(git("branch", "--show-current")).toBe("release/v0.1.1");
+    expect(result.stdout).toContain("Published release commit for v0.1.1 to main.");
+    expect(git("branch", "--show-current")).toBe("main");
     expect(git("rev-parse", "HEAD^1")).toBe(main);
+    expect(git("log", "-1", "--format=%s")).toBe("release: v0.1.1");
     expect(git("log", "-1", "--format=%(trailers:key=Release-Base,valueonly)")).toBe(main);
-    expect(git("diff", "--name-only", "main...HEAD").split("\n")).toEqual([
-      "CHANGELOG.md",
-      "packages/devlog/data/releases.json",
-      "packages/devlog/src/releases.generated.ts",
+    expect(git("diff", "--name-only", "HEAD^1", "HEAD").split("\n")).toEqual([
+      "CHANGELOG.md", "packages/devlog/data/releases.json", "packages/devlog/src/releases.generated.ts",
     ]);
-    expect(git("rev-parse", "main")).toBe(main);
-    expect(git("ls-remote", "origin", "refs/heads/main").split(/\s+/)[0]).toBe(main);
-    expect(git("ls-remote", "origin", "refs/heads/release/v0.1.1").split(/\s+/)[0]).toBe(git("rev-parse", "HEAD"));
+    expect(git("ls-remote", "origin", "refs/heads/main").split(/\s+/)[0]).toBe(git("rev-parse", "HEAD"));
+    expect(git("branch", "--list", "release/*")).toBe("");
     expect(git("tag", "--list")).toBe("v0.1.0");
     expect(git("ls-remote", "--tags", "origin")).toBe("");
     expect(git("status", "--porcelain")).toBe("");
-    expect(JSON.parse(readFileSync(ghArgsPath, "utf8")).slice(0, 6)).toEqual([
-      "pr", "create", "--base", "main", "--head", "release/v0.1.1",
-    ]);
+    expect(existsSync(ghArgsPath)).toBe(false);
+  });
+
+  test("a rejected push preserves the local release without changing remote main", () => {
+    const fixture = releaseFixture();
+    writeFileSync(path.join(fixture.directory, "origin.git/hooks/pre-receive"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    const result = fixture.run("release");
+    expect(result.status).not.toBe(0);
+    expect(fixture.git("log", "-1", "--format=%s")).toBe("release: v0.1.1");
+    expect(fixture.git("rev-parse", "HEAD^1")).toBe(fixture.main);
+    expect(fixture.git("ls-remote", "origin", "refs/heads/main").split(/\s+/)[0]).toBe(fixture.main);
+    expect(fixture.git("tag", "--list", "v0.1.1")).toBe("");
+  });
+
+  test("refuses dirty and unsynchronized main before release generation", () => {
+    const fixture = releaseFixture();
+    writeFileSync(path.join(fixture.directory, "checkout/dirty.txt"), "Keep this work\n");
+    expect(fixture.run("release").status).not.toBe(0);
+    fixture.git("add", ".");
+    fixture.git("commit", "-m", "local: unpushed work");
+    const result = fixture.run("release");
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("not synchronized");
+    expect(fixture.git("ls-remote", "origin", "refs/heads/main").split(/\s+/)[0]).toBe(fixture.main);
   });
 });

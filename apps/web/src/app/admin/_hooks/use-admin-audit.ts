@@ -15,7 +15,7 @@ import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope } from '../_lib/types';
 
-export function useAdminAudit(activeTab: AdminTabId) {
+export function useAdminAudit(activeTab: AdminTabId, filtersOpen: boolean) {
   const [auditSearch, setAuditSearch] = useState('');
   const deferredAuditSearch = useDeferredValue(auditSearch);
   const [auditActor, setAuditActor] = useState('');
@@ -90,7 +90,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
 
   const auditFilterOptions = useQuery(
     api.audit.events.listFilterOptions,
-    activeTab === 'audit' ? {} : 'skip',
+    activeTab === 'audit' && filtersOpen ? {} : 'skip',
   );
 
   const auditEventDetail = useQuery(
@@ -103,13 +103,19 @@ export function useAdminAudit(activeTab: AdminTabId) {
     !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(
-    () => auditFilterOptions?.actions ?? [],
-    [auditFilterOptions],
+    () => Array.from(new Set([
+      ...(auditFilterOptions?.actions ?? []),
+      ...(auditActionFilter === 'ALL' ? [] : [auditActionFilter]),
+    ])).sort(),
+    [auditFilterOptions, auditActionFilter],
   );
 
   const auditEntityTypeOptions = useMemo(
-    () => auditFilterOptions?.entityTypes ?? [],
-    [auditFilterOptions],
+    () => Array.from(new Set([
+      ...(auditFilterOptions?.entityTypes ?? []),
+      ...(auditEntityTypeFilter === 'ALL' ? [] : [auditEntityTypeFilter]),
+    ])).sort(),
+    [auditFilterOptions, auditEntityTypeFilter],
   );
 
   const hasActiveAuditFilters =

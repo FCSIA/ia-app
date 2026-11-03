@@ -268,6 +268,47 @@ describe('audit history and context', () => {
     expect(oversized.page).toHaveLength(100);
     expect(oversized.isDone).toBe(false);
   });
+  test('prefiltering stored fields preserves hydrated search results and cursor boundaries', async () => {
+    const f = await fixture();
+    const { toAuditEvents } = await import('./_lib');
+    const { auditMatcher } = await import('./_filters');
+    const all = await f.t.run(async (ctx) => toAuditEvents(ctx,
+      await ctx.db.query('auditEvents').withIndex('by_createdAt').order('desc').collect(),
+    ));
+    const filters = [
+      { action: 'FLEX_WORKSHOP_CREATED' },
+      { action: 'missing-action' },
+      { entityType: 'FLEX_WORKSHOP' },
+      { category: 'general' as const },
+      { category: 'flex' as const },
+      { actorScope: 'USER' as const },
+      { actorScope: 'SYSTEM' as const },
+      { entityId: 'OVED-MESS' },
+      { startDate: '1970-01-01', endDate: '1970-01-01' },
+      { action: 'CLUB_CHANNEL_MESSAGE_POSTED', actor: 'Eniola' },
+      { category: 'general' as const, advancedQuery: 'record:Robotics text:"room assignments"' },
+    ];
+    for (const filter of filters) {
+      const expected = all.filter(auditMatcher(filter)).map((event) => event.id);
+      expect((await f.adminClient.query(api.audit.events.list, filter)).map((event) => event.id))
+        .toEqual(expected);
+      expect((await f.adminClient.query(api.audit.events.listFilteredPage, {
+        ...filter, paginationOpts: { cursor: null, numItems: 20 },
+      })).page.map((event) => event.id)).toEqual(expected);
+      let cursor: string | null = null;
+      const actual: string[] = [];
+      for (let page = 0; page < 4; page++) {
+        const result: FunctionReturnType<typeof api.audit.events.listPage> =
+          await f.adminClient.query(api.audit.events.listPage, {
+            ...filter, paginationOpts: { cursor, numItems: 2 },
+          });
+        actual.push(...result.page.map((event) => event.id));
+        if (result.isDone) break;
+        cursor = result.continueCursor;
+      }
+      expect(actual).toEqual(expected);
+    }
+  });
   test('displays preferred names while retaining regular-name and structured person searches', async () => {
     const f = await fixture();
     await f.t.run(async (ctx) => {

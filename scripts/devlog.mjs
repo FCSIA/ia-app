@@ -518,8 +518,8 @@ function commandCut(flags, { previewOnly }) {
     [
       `devlog: cut v${release.version} (${release.changes.length} changes)`,
       "",
-      "Review generated release files through a release PR; merging it publishes the tag.",
-      "For automatic PR preparation, use `bun run release` from a clean main checkout.",
+      "Publish a dedicated release commit on main to create the tag and deploy.",
+      "Use `bun run release` from a clean, synchronized main checkout to commit and push.",
       "",
     ].join("\n"),
   );

@@ -16,7 +16,7 @@ import {
   toAuditEvents,
 } from "./_lib";
 
-import { auditFilters, auditMatcher } from "./_filters";
+import { auditFilters, auditMatcher, auditRecordMatcher } from "./_filters";
 
 const auditFilterOptionsValidator = v.object({
   actions: v.array(v.string()),
@@ -108,7 +108,7 @@ export const list = query({
       .withIndex("by_createdAt")
       .order("desc")
       .take(Math.min(Math.max(args.limit ?? 100, 1), 500));
-    return (await toAuditEvents(ctx, rows)).filter(matches);
+    return (await toAuditEvents(ctx, rows.filter(auditRecordMatcher(args)))).filter(matches);
   },
 });
 
@@ -152,7 +152,7 @@ export const listPage = query({
         const lower = args.startAt === undefined ? q : q.gte("createdAt", args.startAt);
         return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt);
       }).order("desc").paginate(args.paginationOpts);
-    return { ...result, page: (await toAuditEvents(ctx, result.page)).filter(matches) };
+    return { ...result, page: (await toAuditEvents(ctx, result.page.filter(auditRecordMatcher(args)))).filter(matches) };
   },
 });
 
@@ -177,6 +177,7 @@ export const listFilteredPage = query({
       : 50;
     // Date controls use the browser's local day boundaries, then range the index.
     const resolve = auditEventResolver(ctx);
+    const matchesRecord = auditRecordMatcher(args);
     const result = await stream(ctx.db, schema)
       .query("auditEvents")
       .withIndex("by_createdAt", (q) => {
@@ -188,9 +189,7 @@ export const listFilteredPage = query({
       })
       .order("desc")
       .map(async (row) => {
-        // Reject inexpensive exact predicates before resolving related documents.
-        if (args.action && row.action !== args.action) return null;
-        if (args.entityType && row.entityType !== args.entityType) return null;
+        if (!matchesRecord(row)) return null;
         const event = await resolve(row);
         return matches(event) ? event : null;
       })
@@ -222,9 +221,10 @@ export const get = query({
       return null;
     const row = await ctx.db.get(args.auditEventId);
     if (!row) return null;
-    return {
-      ...(await toAuditEvent(ctx, row)),
-      entityPreview: await resolveEntityPreview(ctx, row),
-    };
+    const [event, entityPreview] = await Promise.all([
+      toAuditEvent(ctx, row),
+      resolveEntityPreview(ctx, row),
+    ]);
+    return { ...event, entityPreview };
   },
 });

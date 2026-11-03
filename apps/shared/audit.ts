@@ -189,6 +189,7 @@ export function matchesAuditSearch(
   event: SearchableAuditEvent,
   terms: AuditSearchTerm[],
 ): boolean {
+  if (terms.length === 0) return true;
   const person = [
     auditPersonName(event),
     ...nameSearchValues(event.actor),

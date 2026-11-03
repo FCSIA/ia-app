@@ -70,11 +70,14 @@ export function auditEventResolver(ctx: QueryCtx) {
       actorPromise = ctx.db.get(event.actorId);
       actors.set(event.actorId, actorPromise);
     }
-    const actor = actorPromise ? await actorPromise : null;
+    const [actor, context] = await Promise.all([
+      actorPromise ?? null,
+      resolveContext(event),
+    ]);
     return {
       id: event._id,
       actorId: event.actorId ?? null,
-      context: await resolveContext(event),
+      context,
       action: event.action,
       entityType: event.entityType,
       entityId: event.entityId ?? null,

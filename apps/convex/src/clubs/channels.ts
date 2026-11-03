@@ -1414,15 +1414,22 @@ async function serializeMessageSummary(
   if (!author) return null;
   const isDeleted = !!message.deletedAt;
 
-  const reactionRows = isDeleted
-    ? []
-    : await ctx.db
+  const [reactionRows, attachmentRowsNewest] = await Promise.all([
+    isDeleted ? [] : ctx.db
         .query("clubChannelMessageReactions")
         .withIndex("by_messageId_and_createdAt", (q) =>
           q.eq("messageId", message._id),
         )
         .order("desc")
-        .take(MAX_SUMMARY_REACTION_ROWS + 1);
+        .take(MAX_SUMMARY_REACTION_ROWS + 1),
+    isDeleted ? [] : ctx.db
+      .query("clubChannelMessageAttachments")
+      .withIndex("by_messageId_and_createdAt", (q) =>
+        q.eq("messageId", message._id),
+      )
+      .order("desc")
+      .take(MAX_SUMMARY_ATTACHMENTS + 1),
+  ]);
   const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
   const reactionMap = new Map<
     string,
@@ -1447,15 +1454,6 @@ async function serializeMessageSummary(
     reactionMap.set(emoji, entry);
   }
 
-  const attachmentRowsNewest = isDeleted
-    ? []
-    : await ctx.db
-        .query("clubChannelMessageAttachments")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .order("desc")
-        .take(MAX_SUMMARY_ATTACHMENTS + 1);
   const attachmentsTruncated =
     attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
   const attachments = chronologicalFromNewest(

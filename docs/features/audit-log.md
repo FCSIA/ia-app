@@ -50,7 +50,8 @@ Supported fields: `person`, `action`, `type`, `record`, `text`, `source`, `after
 - `api.audit.events.list` (bounded legacy/mobile read)
 - `api.audit.events.listFilteredPage` (bounded, pre-filtered cursor history)
 - `api.audit.events.listPage` (legacy native-cursor history for existing clients)
-- `api.audit.events.listFilterOptions` (suggestions from the latest 500 events)
+- `api.audit.events.listFilterOptions` (suggestions from the latest 500 events;
+  the web client subscribes only while Filters is open)
 - `api.audit.events.get`
 
 ## Data Model and Permissions
@@ -65,7 +66,7 @@ does not retain comment text or migrate older events that lack the relationship.
 
 ## Known Limits
 
-Full-name, metadata, category, and advanced filters run on hydrated rows during a bounded scan of the timestamp index. Date controls range that index; exact action and record-type checks run before hydration. Each query stops after at most 100 audit rows or once audit-document bytes reach 2 MiB (which may be exceeded by the last row), so sparse searches can still require multiple older-history requests. Related records are memoized within each query, but their reads and bytes are additional to those audit-row limits. Search cost grows with the history scanned; add dedicated indexed/search fields before large production audit search. Unavailable records retain the type and original ID.
+Stored-field filters (action, type, category, source, record ID, and dates) reject nonmatching rows before hydration. Full-name, metadata, and advanced search run on hydrated rows during a bounded scan of the timestamp index. Date controls range that index. Each query stops after at most 100 audit rows or once audit-document bytes reach 2 MiB (which may be exceeded by the last row), so sparse searches can still require multiple older-history requests. Related records are memoized within each query, but their reads and bytes are additional to those audit-row limits. Actor and context reads run concurrently, and an empty search skips search-field construction. Search cost grows with the history scanned; add dedicated indexed/search fields before large production audit search. Unavailable records retain the type and original ID.
 
 ## Related
 

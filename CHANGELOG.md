@@ -12,6 +12,23 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.42 — 2026-11-03 (alpha)
+
+### Improved
+
+- **clubs** — Club presence and chat use fewer sequential loading steps. ([`0bfc95ea`](https://github.com/FCSIA/ia-app/commit/0bfc95ea))
+- **release** — Publish directly from main commits. ([`42b316c9`](https://github.com/FCSIA/ia-app/commit/42b316c9))
+- **feedback** — Feedback now connects to the school’s GitHub repository. ([`9ecd9277`](https://github.com/FCSIA/ia-app/commit/9ecd9277))
+
+### Fixed
+
+- **audit** — Audit history loads with less background work while preserving search and older activity. ([`56641cea`](https://github.com/FCSIA/ia-app/commit/56641cea))
+
+### Internal
+
+- Avoid interrupting production deployments. ([`c275b463`](https://github.com/FCSIA/ia-app/commit/c275b463))
+- Run contributor checks in parallel. ([`b6e53e52`](https://github.com/FCSIA/ia-app/commit/b6e53e52))
+
 ## v0.8.41 — 2026-10-31 (alpha)
 
 ### Internal

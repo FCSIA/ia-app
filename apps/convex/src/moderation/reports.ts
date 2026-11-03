@@ -102,19 +102,37 @@ async function serializeReport(
   ctx: QueryCtx,
   report: Doc<"moderationReports">,
 ) {
-  const submitter = await ctx.db.get(report.submitterId);
-  const reportedUser = report.reportedUserId
-    ? await ctx.db.get(report.reportedUserId)
-    : null;
-  const club = report.clubId ? await ctx.db.get(report.clubId) : null;
-  const images = await ctx.db
-    .query("feedbackReportImages")
-    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
-    .take(3);
-  const responses = await ctx.db
-    .query("feedbackReportResponses")
-    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
-    .take(MAX_FEEDBACK_RESPONSES_PER_REPORT);
+  const [submitter, reportedUser, club, images, responses] = await Promise.all([
+    ctx.db.get(report.submitterId),
+    report.reportedUserId ? ctx.db.get(report.reportedUserId) : null,
+    report.clubId ? ctx.db.get(report.clubId) : null,
+    ctx.db.query("feedbackReportImages")
+      .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+      .take(3),
+    ctx.db.query("feedbackReportResponses")
+      .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+      .take(MAX_FEEDBACK_RESPONSES_PER_REPORT),
+  ]);
+  const [serializedImages, serializedResponses] = await Promise.all([
+    Promise.all(images.map(async (image) => ({
+      _id: image._id,
+      storageId: image.storageId,
+      mimeType: image.mimeType,
+      size: image.size,
+      url: (await ctx.storage.getUrl(image.storageId)) ?? "",
+    }))),
+    Promise.all(responses.map(async (response) => {
+      const author = await ctx.db.get(response.authorId);
+      return {
+        ...response,
+        author: {
+          firstName: author?.firstName ?? "School",
+          lastName: author?.lastName ?? "staff",
+          preferredName: author?.preferredName,
+        },
+      };
+    })),
+  ]);
 
   return {
     ...report,
@@ -137,28 +155,8 @@ async function serializeReport(
         }
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
-    images: await Promise.all(
-      images.map(async (image) => ({
-        _id: image._id,
-        storageId: image.storageId,
-        mimeType: image.mimeType,
-        size: image.size,
-        url: (await ctx.storage.getUrl(image.storageId)) ?? "",
-      })),
-    ),
-    responses: await Promise.all(
-      responses.map(async (response) => {
-        const author = await ctx.db.get(response.authorId);
-        return {
-          ...response,
-          author: {
-            firstName: author?.firstName ?? "School",
-            lastName: author?.lastName ?? "staff",
-            preferredName: author?.preferredName,
-          },
-        };
-      }),
-    ),
+    images: serializedImages,
+    responses: serializedResponses,
   };
 }
 

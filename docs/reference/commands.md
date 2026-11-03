@@ -25,8 +25,8 @@ tags: [commands, development]
 | `bun run devlog:check`    | Verify `CHANGELOG.md` and the in-app devlog match the source   |
 | `bun run devlog:preview`  | Show the release the current commits would produce             |
 | `bun run devlog:generate` | Regenerate both outputs after editing `releases.json` by hand  |
-| `bun run release`         | Prepare a release PR (`--minor`, `--set=`, or `--dry-run`)     |
-| `bun run release:ship`    | Prepare a release PR using the same flow as `release`         |
+| `bun run release`         | Commit and push a release on main (`--minor`, `--set=`, or `--dry-run`)     |
+| `bun run release:ship`    | Commit and push a release using the same flow as `release`         |
 
 See [versioning and the devlog](versioning.md) for the version scheme and how
 commit subjects become changelog entries.
@@ -45,18 +45,17 @@ bunx localtunnel --port 3000 --subdomain ia-app-dev
 
 ## Deploy
 
-[`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys an
-existing `vMAJOR.MINOR.PATCH` tag whose commit has already merged into `main`.
-Prepare the generated release data with `bun run release`; merging its PR
-creates and pushes the matching tag automatically. Humans do not create or
-push release tags.
+Run `bun run release` from clean, synchronized `main` to commit and push the
+generated release data directly. GitHub creates the tag, runs full validation,
+and deploys Convex followed by Vercel. No release PR or manual tag is needed.
+See [Versioning](./versioning.md) for validation and recovery details.
 
 Production URL: `https://app.fcsia.com`
 
-Manual deploy from the repo root:
+Retry an existing release through the same validation and deployment pipeline:
 
 ```bash
-bunx vercel --prod --yes --archive=tgz
+gh workflow run prod.yml --ref main -f release_tag=v0.8.42
 ```
 
 GitHub Actions needs `VERCEL_TOKEN` (secret) plus `VERCEL_ORG_ID` and
