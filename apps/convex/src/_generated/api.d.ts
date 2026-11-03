@@ -113,6 +113,8 @@ import type * as notifications_push from "../notifications/push.js";
 import type * as notifications_pushDevices from "../notifications/pushDevices.js";
 import type * as notifications_pushExpo from "../notifications/pushExpo.js";
 import type * as notifications_pushNode from "../notifications/pushNode.js";
+import type * as onboarding_setup from "../onboarding/setup.js";
+import type * as onboarding_validators from "../onboarding/validators.js";
 import type * as presence__activity from "../presence/_activity.js";
 import type * as presence__status from "../presence/_status.js";
 import type * as presence_status from "../presence/status.js";
@@ -267,6 +269,8 @@ declare const fullApi: ApiFromModules<{
   "notifications/pushDevices": typeof notifications_pushDevices;
   "notifications/pushExpo": typeof notifications_pushExpo;
   "notifications/pushNode": typeof notifications_pushNode;
+  "onboarding/setup": typeof onboarding_setup;
+  "onboarding/validators": typeof onboarding_validators;
   "presence/_activity": typeof presence__activity;
   "presence/_status": typeof presence__status;
   "presence/status": typeof presence_status;

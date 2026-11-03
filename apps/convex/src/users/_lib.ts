@@ -7,6 +7,7 @@ import type { Doc } from "../_generated/dataModel";
 import { type AppRole } from "../../lib/roles";
 import { incrementUserCounts } from "../stats";
 import { schema } from "../schema";
+import { ONBOARDING_VERSION } from '../../../shared/onboarding';
 
 const userProfileValidator = schema
   .doc("users")
@@ -416,6 +417,7 @@ export async function createLinkedUser(
   });
 
   const userId = await ctx.db.insert("users", {
+    onboardingVersion: ONBOARDING_VERSION,
     authUserId: authUser.user.id,
     uniqueId,
     firstName: args.firstName.trim(),
