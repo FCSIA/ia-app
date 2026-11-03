@@ -8,7 +8,7 @@ import { useAction, useMutation } from "@/lib/convex-react";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateField } from "@/components/forms/date-field";
 import {
   Dialog,
   DialogContent,
@@ -203,7 +203,7 @@ export function VolunteerSubmission({ clubId }: { clubId: Id<"clubs"> }) {
             <Field data-disabled={busy}>
               <FieldTitle id="volunteer-date-label">Date of service</FieldTitle>
               <div role="group" aria-labelledby="volunteer-date-label">
-                <DatePicker
+                <DateField
                   value={date}
                   onChange={setDate}
                   placeholder="Choose service date"

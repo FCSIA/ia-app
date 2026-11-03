@@ -77,6 +77,10 @@ const CommandInput = React.forwardRef<
 
 CommandInput.displayName = CommandPrimitive.Input.displayName
 
+/** Command keyboard/search behavior on an existing input adapter. The child
+ * must forward its input props and ref; it owns its existing control anatomy. */
+const CommandInputSlot = CommandPrimitive.Input
+
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
@@ -174,6 +178,7 @@ export {
   Command,
   CommandDialog,
   CommandInput,
+  CommandInputSlot,
   CommandList,
   CommandEmpty,
   CommandGroup,

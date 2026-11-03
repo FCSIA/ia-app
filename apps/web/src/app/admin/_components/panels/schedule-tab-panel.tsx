@@ -8,12 +8,20 @@ export function ScheduleTabPanel() {
 
   return (
     <AdminScheduleTab
+      fileName={schedule.fileName}
+      isReading={schedule.isReading}
+      fileError={schedule.fileError}
+      clearFile={schedule.clearFile}
+      preview={schedule.preview}
+      mode={schedule.mode}
+      onModeChange={schedule.setMode}
       studentCsvInputKey={schedule.studentCsvInputKey}
       onStudentCsvFileChange={schedule.setStudentCsvFile}
       canImport={schedule.canImport}
       isImporting={schedule.isImporting}
       onImport={schedule.onImport}
       isExporting={schedule.isExporting}
+      canExport={schedule.canExport}
       onExport={schedule.onExport}
       lastStudentImport={schedule.lastStudentImport}
       onExportGeneratedPasswords={schedule.onExportGeneratedPasswords}

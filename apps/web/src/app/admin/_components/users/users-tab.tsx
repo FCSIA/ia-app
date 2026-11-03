@@ -2,10 +2,10 @@
 
 import { displayName } from '~/apps/shared/user-name';
 
-import { useState, type ReactNode } from 'react';
+import { forwardRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
@@ -22,6 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { formatPathwayLabel, formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
@@ -29,12 +30,27 @@ import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
 import { InputCopy } from '@/components/ui/input-copy';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ROLE_BADGE_LIMIT = 2;
 const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Major', 'Minor', 'Roles', 'Status', 'Actions'] as const;
 
 function roleLabel(role: string) {
   return formatRoleLabel(role);
+}
+
+function PathwayCell({ value }: { value?: string | null }) {
+  const label = formatPathwayLabel(value);
+  const codes: Record<string, string> = {
+    INFORMATION_TECHNOLOGY: 'IT',
+    HEALTH_SCIENCE: 'HS',
+    ENGINEERING: 'ENG',
+  };
+  return (
+    <abbr title={label} aria-label={label} className="block truncate no-underline">
+      {(value && codes[value]) || label}
+    </abbr>
+  );
 }
 
 function RoleSummary({ roles }: { roles: string[] }) {
@@ -44,7 +60,7 @@ function RoleSummary({ roles }: { roles: string[] }) {
 
   return (
     <div
-      className="flex max-w-full flex-wrap items-center gap-1"
+      className="flex max-w-full items-center gap-1 overflow-hidden"
       aria-label={fullLabel}
       title={fullLabel}
     >
@@ -62,36 +78,25 @@ function RoleSummary({ roles }: { roles: string[] }) {
   );
 }
 
-function IconActionButton({
-  label,
-  children,
-  onClick,
-  disabled,
-  className,
-}: {
-  label: string;
-  children: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
-}) {
-  return (
-    <Tooltip content={label} side="top" delayDuration={250}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label={label}
-        title={label}
-        onClick={onClick}
-        disabled={disabled}
-        className={className}
-      >
-        {children}
-      </Button>
-    </Tooltip>
-  );
-}
+const IconActionButton = forwardRef<HTMLButtonElement, ButtonProps & { label: string }>(
+  function IconActionButton({ label, children, ...props }, ref) {
+    return (
+      <Tooltip content={label} side="top" delayDuration={250}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          {...props}
+          ref={ref}
+          aria-label={label}
+          title={label}
+        >
+          {children}
+        </Button>
+      </Tooltip>
+    );
+  },
+);
 
 function ResetPasswordAction({
   user,
@@ -121,13 +126,11 @@ function ResetPasswordAction({
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <IconActionButton
-        label={label}
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        <KeyRound className="size-4" />
-      </IconActionButton>
+      <AlertDialogTrigger asChild>
+        <IconActionButton label={label} disabled={disabled}>
+          <KeyRound className="size-4" />
+        </IconActionButton>
+      </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{temporaryPassword ? 'Temporary password created' : 'Reset password?'}</AlertDialogTitle>
@@ -168,17 +171,18 @@ function BulkDeleteUsersAction({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <Button
-        type="button"
-        variant="tertiary"
-        size="sm"
-        leadingIcon={Trash2}
-        disabled={disabled || selectedCount === 0}
-        onClick={() => setOpen(true)}
-        className="text-destructive hover:text-destructive"
-      >
-        Delete {selectedCount} selected
-      </Button>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="tertiary"
+          size="sm"
+          leadingIcon={Trash2}
+          disabled={disabled || selectedCount === 0}
+          className="text-destructive hover:text-destructive"
+        >
+          Delete {selectedCount} selected
+        </Button>
+      </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete {selectedCount} user {selectedCount === 1 ? 'account' : 'accounts'}?</AlertDialogTitle>
@@ -209,6 +213,9 @@ function UserTableSection({
   emptyMessage,
   users,
   totalCount,
+  isLoading,
+  errorMessage,
+  onRetry,
   search,
   onSearchChange,
   userRoleGroup,
@@ -237,6 +244,9 @@ function UserTableSection({
   emptyMessage: string;
   users: AdminUserRecord[];
   totalCount?: number;
+  isLoading: boolean;
+  errorMessage?: string;
+  onRetry: () => void;
   search: string;
   onSearchChange: (value: string) => void;
   userRoleGroup: AdminUserRoleGroup;
@@ -261,7 +271,7 @@ function UserTableSection({
   loadNextPage: () => void;
   loadPreviousPage: () => void;
 }) {
-  const d = dataTableClasses('comfortable');
+  const d = dataTableClasses('compact');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
   const selectableUsers = canDeleteUsers ? users.filter((user) => user._id !== currentUserId) : [];
   const selectedCount = selectedUserIds.size;
@@ -313,7 +323,7 @@ function UserTableSection({
           onValueChange={onSearchChange}
           size="sm"
         />
-        <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
+        <Select size="compact" value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
           <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" aria-label="Filter users by role" />
           <SelectContent>
             <SelectItem index={0} value="students">Students</SelectItem>
@@ -351,14 +361,14 @@ function UserTableSection({
   const pagination = (
     <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
       <span role="status">
-        Page {pageIndex + 1} · {users.length} user{users.length === 1 ? '' : 's'} shown
+        {isLoading ? 'Loading users…' : `Page ${pageIndex + 1} · ${users.length} ${search.trim() ? 'matches' : users.length === 1 ? 'user' : 'users'} shown`}
       </span>
       <div className="flex items-center gap-1.5">
         <Button
           variant="tertiary"
           size="sm"
           onClick={loadPreviousPage}
-          disabled={!canLoadPrevious || status === 'LoadingMore'}
+          disabled={isLoading || !canLoadPrevious || status === 'LoadingMore'}
           leadingIcon={ChevronLeft}
         >
           Previous
@@ -380,24 +390,22 @@ function UserTableSection({
     <DataTablePanel
       title={title}
       count={totalCount}
-      density="comfortable"
+      shownCount={!isLoading && !search.trim() ? users.length : undefined}
+      density="compact"
       fillHeight
       toolbar={toolbar}
       footer={pagination}
     >
-      {users.length === 0 ? (
-        <AdminNotice message={emptyMessage} />
-      ) : (
-        <Table aria-label={title} className={`${d.table} min-w-[1104px] table-fixed`}>
+        <Table aria-label={title} aria-busy={isLoading || status === 'LoadingMore'} className={`${d.table} min-w-[820px] table-fixed`}>
           <colgroup>
             <col className="w-10" />
-            <col className="w-[200px]" />
-            <col className="w-[72px]" />
+            <col className="w-[180px]" />
+            <col className="w-[56px]" />
+            <col className="w-[60px]" />
+            <col className="w-[60px]" />
             <col className="w-[156px]" />
-            <col className="w-[156px]" />
-            <col className="w-[156px]" />
-            <col className="w-[92px]" />
-            <col className="w-[232px]" />
+            <col className="w-[80px]" />
+            <col className="w-[160px]" />
           </colgroup>
           <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
             <TableRow>
@@ -417,8 +425,14 @@ function UserTableSection({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user, index) => (
-              <TableRow key={user._id} index={index} className="h-10">
+            {isLoading ? Array.from({ length: 8 }, (_, index) => (
+              <TableRow key={index}><TableCell colSpan={8} className={d.cell}><Skeleton className="h-7 w-full" /></TableCell></TableRow>
+            )) : errorMessage ? (
+              <TableRow><TableCell colSpan={8} className={d.cell}><AdminNotice tone="danger" title="Could not load users." message={errorMessage} actionLabel="Try again" onAction={onRetry} /></TableCell></TableRow>
+            ) : users.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className={d.cell}><AdminNotice message={emptyMessage} /></TableCell></TableRow>
+            ) : users.map((user, index) => (
+              <TableRow key={user._id} index={index} className="group">
                 <TableCell className={d.cell}>
                   <Checkbox
                     checked={selectedUserIds.has(user._id)}
@@ -429,7 +443,7 @@ function UserTableSection({
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
-                    <span className="min-w-0 break-words">{displayName(user)}</span>
+                    <span className="min-w-0 truncate" title={displayName(user)}>{displayName(user)}</span>
                     <DeveloperBadge user={user} size={13} />
                   </span>
                 </TableCell>
@@ -437,14 +451,10 @@ function UserTableSection({
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block break-words">
-                    {formatPathwayLabel(user.major)}
-                  </span>
+                  <PathwayCell value={user.major} />
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block break-words">
-                    {formatPathwayLabel(user.minor)}
-                  </span>
+                  <PathwayCell value={user.minor} />
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <RoleSummary roles={getUserRoles(user)} />
@@ -455,7 +465,7 @@ function UserTableSection({
                   </Badge>
                 </TableCell>
                 <TableCell className={`${d.cell} overflow-hidden`}>
-                  <div className="grid grid-flow-col auto-cols-[2rem] items-center justify-end gap-1 pointer-coarse:auto-cols-[2.75rem]">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
                     <UserPermissionsPopover
                       user={user}
                       isSuperAdmin={isSuperAdmin}
@@ -469,17 +479,13 @@ function UserTableSection({
                         disabled={isResetPasswordPending}
                         onResetPassword={onResetPassword}
                       />
-                    ) : (
-                      <span aria-hidden className="size-8" />
-                    )}
+                    ) : null}
                     {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
                       <ImpersonateUserAction
                         userId={user._id}
                         name={displayName(user)}
                       />
-                    ) : (
-                      <span aria-hidden className="size-8" />
-                    )}
+                    ) : null}
                     {user.isActive ? (
                       canDeactivate(user) && user._id !== currentUserId ? (
                         <IconActionButton
@@ -489,9 +495,7 @@ function UserTableSection({
                         >
                           <UserX className="size-4" />
                         </IconActionButton>
-                      ) : (
-                        <span aria-hidden className="size-8" />
-                      )
+                      ) : null
                     ) : (
                       <IconActionButton
                         label={`Activate ${displayName(user)}`}
@@ -507,7 +511,6 @@ function UserTableSection({
             ))}
           </TableBody>
         </Table>
-      )}
     </DataTablePanel>
   );
 }
@@ -578,24 +581,15 @@ export function AdminUsersTab({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {isUsersLoading ? (
-          <AdminNotice className="min-h-0 flex-1" message="Loading users..." />
-        ) : isUsersError ? (
-          <AdminNotice
-            className="min-h-0 flex-1"
-            tone="danger"
-            title="Could not load users."
-            message={(usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
-            actionLabel="Try again"
-            onAction={refetchUsers}
-          />
-        ) : (
           <UserTableSection
             key={`${userRoleGroup}:${pageIndex}`}
             title={selectedUserRoleMeta.label}
             emptyMessage={selectedUserRoleMeta.emptyMessage}
             users={users}
             totalCount={totalCount}
+            isLoading={isUsersLoading}
+            errorMessage={isUsersError ? (usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.' : undefined}
+            onRetry={refetchUsers}
             search={search}
             onSearchChange={onSearchChange}
             userRoleGroup={userRoleGroup}
@@ -620,7 +614,6 @@ export function AdminUsersTab({
             loadNextPage={loadNextPage}
             loadPreviousPage={loadPreviousPage}
           />
-        )}
       </div>
     </div>
   );

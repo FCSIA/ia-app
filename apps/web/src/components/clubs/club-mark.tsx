@@ -2,12 +2,6 @@
 
 import { cn } from '@/lib/utils';
 
-function resolveMediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith('http')) return url;
-  return url;
-}
-
 export function ClubMark({
   club,
   size,
@@ -27,7 +21,7 @@ export function ClubMark({
       {club.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={resolveMediaUrl(club.logoUrl)}
+          src={club.logoUrl}
           alt=""
           className="size-full object-cover"
         />

@@ -10,6 +10,8 @@ export function ModerationTabPanel() {
 
   return (
     <ModerationTab
+      isLoading={moderation.isLoading}
+      isKeywordsLoading={moderation.isKeywordsLoading}
       keyword={moderation.keyword}
       onKeywordChange={moderation.setKeyword}
       keywords={moderation.keywords}

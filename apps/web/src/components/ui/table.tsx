@@ -12,10 +12,12 @@ import {
   type TdHTMLAttributes,
   type ThHTMLAttributes,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { spring } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { ListFilter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // ── Context ──────────────────────────────────────────────
 
@@ -35,7 +37,6 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
 const Table = forwardRef<HTMLTableElement, TableProps>(
   ({ children, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const shouldReduceMotion = useReducedMotion();
 
     const {
       activeIndex,
@@ -66,34 +67,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
         >
-          {/* Hover background */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                className="absolute bg-hover pointer-events-none"
-                initial={{
-                  opacity: 0,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                animate={{
-                  opacity: 1,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
-                transition={shouldReduceMotion ? { duration: 0 } : {
-                  ...spring.fast,
-                  opacity: { duration: 0.08 },
-                }}
-              />
-            )}
-          </AnimatePresence>
+          {/* Hover background — the shared highlight travels on a transform
+              (not top/left) and keeps its fade under reduced motion. */}
+          <FluidHoverHighlight rect={activeRect ?? null} session={sessionRef.current} />
 
           <table
             ref={ref}
@@ -136,10 +112,12 @@ TableBody.displayName = "TableBody";
 
 interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
   index?: number;
+  interactive?: boolean;
+  selected?: boolean;
 }
 
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ index, className, style, ...props }, ref) => {
+  ({ index, interactive = false, selected = false, className, style, ...props }, ref) => {
     const internalRef = useRef<HTMLTableRowElement>(null);
     const ctx = useContext(TableContext);
 
@@ -164,10 +142,14 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLTableRowElement | null>).current = node;
         }}
         data-proximity-index={index}
+        data-selected={selected || undefined}
+        aria-selected={selected || undefined}
         className={cn(
           "group/row relative z-10 border-b transition-[border-color] duration-80",
-          hideBorder ? "border-transparent" : "border-accent/40",
+          hideBorder ? "border-transparent" : isBodyRow ? "border-border/60" : "border-border",
           isBodyRow && activeIdx === index && "is-active",
+          interactive && "cursor-pointer",
+          selected && "bg-active",
           className
         )}
         style={{
@@ -194,7 +176,7 @@ const TableHead = forwardRef<
   <th
     ref={ref}
     className={cn(
-      "px-3 py-2 text-left text-foreground",
+      "h-9 px-3 py-1 text-left text-foreground",
       className
     )}
     {...props}
@@ -212,7 +194,7 @@ const TableCell = forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-3 py-2 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
+      "h-9 px-3 py-1 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
       className
     )}
     {...props}
@@ -221,6 +203,39 @@ const TableCell = forwardRef<
 
 TableCell.displayName = "TableCell";
 
+/** A column's filter belongs to its header, including in an empty table. */
+function TableHeadFilter({ label, active = false, children }: {
+  label: string;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span>{label}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="ghost" size="icon-compact" active={active} aria-label={`Filter ${label.toLowerCase()}`}>
+            <ListFilter aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" aria-label={`${label} filters`}>
+          {children}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function TableGroupRow({ children, colSpan }: { children: ReactNode; colSpan: number }) {
+  return (
+    <tr className="border-b border-border/60">
+      <th colSpan={colSpan} scope="rowgroup" className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+        {children}
+      </th>
+    </tr>
+  );
+}
+
 // ── Exports ──────────────────────────────────────────────
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableHeadFilter, TableGroupRow };

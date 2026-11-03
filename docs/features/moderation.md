@@ -114,8 +114,8 @@ rules. No role bypasses preferred-name filtering.
 ## Known Limits
 
 The former API backend's automatic filtering for other content surfaces has not
-been ported to Convex. Existing admin copy describing automatic club-channel
-monitoring does not establish that behavior. Preferred-name enforcement is
+been ported to Convex. The admin rules dialog describes the current preferred-name
+scope. Preferred-name enforcement is
 server-side on both web and native; other surfaces retain their current manual
 reporting behavior. The filter uses its English dictionary and school rules,
 not every available language or optional ML/toxicity detection.

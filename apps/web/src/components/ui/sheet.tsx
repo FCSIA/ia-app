@@ -101,12 +101,12 @@ const SheetContent = React.forwardRef<
       >
         <SheetPrimitive.Close
           className={cn(
-            // Matches the ghost icon-sm button: compact for pointers, a full
-            // 44px target on touch. The ring shows for keyboard focus only,
-            // not for the focus Radix moves here when the sheet opens. It is
-            // centered on the first line of a default-padded SheetTitle at
-            // every target size.
-            "absolute right-[calc(1rem+env(safe-area-inset-right))] z-10 flex size-8 -translate-y-1/2 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] hover:bg-hover hover:text-foreground active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none pointer-coarse:size-11",
+            // Matches the ghost icon-sm button: the same 32px box on every
+            // pointer, with an invisible 44px hit area on touch. The ring
+            // shows for keyboard focus only, not for the focus Radix moves
+            // here when the sheet opens. It is centered on the first line of
+            // a default-padded SheetTitle.
+            "absolute right-[calc(1rem+env(safe-area-inset-right))] z-10 flex size-8 -translate-y-1/2 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] hover:bg-hover hover:text-foreground active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none touch-target",
             side === "left"
               ? "top-[calc(2.375rem+env(safe-area-inset-top))]"
               : "top-[2.375rem] sm:top-[calc(2.375rem+env(safe-area-inset-top))]",
@@ -142,7 +142,7 @@ const SheetFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-2 [&>button]:min-h-11 sm:flex-row sm:justify-end sm:[&>button]:min-h-0",
+      "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
       className
     )}
     {...props}

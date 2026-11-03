@@ -12,17 +12,23 @@
  * then finds the value already in the client store and renders it on the first
  * frame, while the socket keeps the value fresh in the background.
  *
- * Import `useQuery` from here rather than from `convex/react`; everything else
- * `convex/react` exports is re-exported unchanged. The provider that owns the
- * cache lives in `@/components/layout/convex-query-cache-provider`.
+ * Import `useQuery` from here rather than from `convex/react`. Paginated queries
+ * additionally support opt-in previous results while filters refresh; other
+ * exports are unchanged. The provider that owns the subscription cache lives
+ * in `@/components/layout/convex-query-cache-provider`.
  */
 
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   useQuery as useConvexQuery,
+  usePaginatedQuery as useConvexPaginatedQuery,
+  type PaginatedQueryReference,
+  type PaginatedQueryArgs,
+  type UsePaginatedQueryReturnType,
   type ConvexReactClient,
   type OptionalRestArgsOrSkip,
 } from 'convex/react';
+import { usePaginatedQuery as useHelpersPaginatedQuery } from 'convex-helpers/react';
 import { getFunctionName, type FunctionReference } from 'convex/server';
 import { convexToJson, type Value } from 'convex/values';
 
@@ -216,4 +222,44 @@ export function useQuery<Query extends FunctionReference<'query'>>(
   const queryArgs = args[0] === 'skip' ? null : ((args[0] ?? {}) as QueryArgs);
   useKeepAliveQueries(queryArgs ? [{ query, args: queryArgs }] : NO_ENTRIES);
   return useConvexQuery(query, ...args);
+}
+
+type PaginatedOptions = { initialNumItems: number; keepPreviousResults?: boolean; scopeKey?: string };
+
+/** Preserve a settled list during a filter refresh, explicitly opted in by
+ * the feature. A changed query/scope or skip never exposes another list. */
+function useSettledPages<Query extends PaginatedQueryReference>(
+  query: Query,
+  args: PaginatedQueryArgs<Query> | 'skip',
+  options: PaginatedOptions,
+  current: UsePaginatedQueryReturnType<Query>,
+): UsePaginatedQueryReturnType<Query> & { isStale: boolean } {
+  const scope = `${getFunctionName(query)}|${options.scopeKey ?? ''}`;
+  const [settled, setSettled] = useState<{ scope: string; results: typeof current.results } | null>(null);
+  const skipped = args === 'skip';
+  const retainPrevious = !!options.keepPreviousResults;
+  useEffect(() => {
+    if (skipped || !retainPrevious) setSettled(null);
+    else if (current.status !== 'LoadingFirstPage') setSettled({ scope, results: current.results });
+  }, [skipped, retainPrevious, current.results, current.status, scope]);
+  const isStale = !!options.keepPreviousResults && args !== 'skip' && current.status === 'LoadingFirstPage' && settled?.scope === scope;
+  return { ...current, results: isStale ? settled.results : current.results, isStale };
+}
+
+export function usePaginatedQuery<Query extends PaginatedQueryReference>(
+  query: Query,
+  args: PaginatedQueryArgs<Query> | 'skip',
+  options: PaginatedOptions,
+): UsePaginatedQueryReturnType<Query> & { isStale: boolean } {
+  return useSettledPages(query, args, options, useConvexPaginatedQuery(query, args, options));
+}
+
+/** For queries paginated with convex-helpers streams, whose bounded scans can
+ * return split or empty pages that the native hook does not reassemble. */
+export function useStreamPaginatedQuery<Query extends PaginatedQueryReference>(
+  query: Query,
+  args: PaginatedQueryArgs<Query> | 'skip',
+  options: PaginatedOptions,
+): UsePaginatedQueryReturnType<Query> & { isStale: boolean } {
+  return useSettledPages(query, args, options, useHelpersPaginatedQuery(query, args, options));
 }

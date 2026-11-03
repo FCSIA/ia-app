@@ -74,7 +74,7 @@ interface EventCalendarTimeGridProps extends HTMLAttributes<HTMLDivElement> {
   view: Extract<CalendarView, "week" | "day" | "days">
   dayStartHour?: number
   dayEndHour?: number
-  showAllDay?: boolean
+  showAllDay?: boolean | "auto"
   /** Gutter/gridline interval in minutes; defaults to the interval view config. */
   interval?: number
   asChild?: boolean
@@ -86,7 +86,7 @@ function EventCalendarTimeGrid({
   asChild = false,
   dayStartHour,
   dayEndHour,
-  showAllDay = true,
+  showAllDay = "auto",
   interval: intervalProp,
   style,
   ...props
@@ -212,15 +212,14 @@ function EventCalendarTimeGrid({
     return result
   }, [startHour, endHour, interval])
 
-  // Section-level all-day segments for renderAllDaySection - reads the same
-  // per-day index buckets the cells subscribe to; inert (stable empty array,
-  // so the subscription never re-renders) while the override is unset.
+  // Read the same indexed segments for an override or auto lane visibility.
+  // Other modes remain inert unless a section renderer needs the segments.
   const allDaySegments = useEventCalendarSelector<
     unknown,
     EventCalendarSegment[]
   >(
     () => {
-      if (!viewConfig.renderAllDaySection) return EMPTY_ALL_DAY_SEGMENTS
+      if (showAllDay !== "auto" && !viewConfig.renderAllDaySection) return EMPTY_ALL_DAY_SEGMENTS
       const byDay = instance.internals.getIndex().byDay
       const result = days.flatMap(
         (day) => byDay.get(getDayKey(day, settings.timeZone))?.allDay ?? []
@@ -273,7 +272,7 @@ function EventCalendarTimeGrid({
         data-slot="event-calendar-time-grid"
         data-view={view}
         className={cn(
-          "flex flex-col border-t",
+          "flex flex-col border-t [--ec-gutter-width:3.25rem] sm:[--ec-gutter-width:4.5rem]",
           contained && "min-h-0 flex-1 overflow-hidden",
           viewConfig.classNames?.timeGrid,
           className
@@ -285,9 +284,9 @@ function EventCalendarTimeGrid({
         {...props}
       >
         {/* Day-header row (sticky below the nav in page scroll mode) */}
-        <div
+        {view !== "day" && <div
           className={cn(
-            "flex border-b pe-(--ec-scrollbar-w,0px)",
+            "flex border-b bg-muted/60 pe-(--ec-scrollbar-w,0px)",
             !contained &&
               "bg-background sticky top-(--ec-sticky-offset,0px) z-20",
             viewConfig.classNames?.timeGridHeader
@@ -303,9 +302,9 @@ function EventCalendarTimeGrid({
               />
             ))}
           </div>
-        </div>
+        </div>}
         {/* All-day row */}
-        {showAllDay && (
+        {(showAllDay === true || (showAllDay === "auto" && allDaySegments.length > 0)) && (
           <div
             data-slot="event-calendar-all-day-section"
             className={cn(
@@ -378,16 +377,14 @@ function EventCalendarDayHeader({
       data-slot="event-calendar-day-header"
       data-today={isToday || undefined}
       className={cn(
-        "data-today:text-primary min-w-0 truncate border-e px-2 py-1.5 font-medium last:border-e-0",
+        "flex min-w-0 flex-col items-center border-e px-2 py-1.5 last:border-e-0",
         isToday && viewConfig.todayClassName
       )}
     >
-      {viewConfig.renderDayHeader?.({ day, view, isToday }) ??
-        format(
-          toZoned(day, settings.timeZone),
-          settings.i18n.formats.timeGridDayHeader,
-          { locale: settings.locale }
-        )}
+      {viewConfig.renderDayHeader?.({ day, view, isToday }) ?? <>
+        <span className="text-xs text-muted-foreground">{format(toZoned(day, settings.timeZone), "EEE", { locale: settings.locale })}</span>
+        <span className={cn("flex size-6 items-center justify-center rounded-full font-semibold", isToday && "bg-primary/20 text-foreground ring-1 ring-primary")}>{format(toZoned(day, settings.timeZone), "d", { locale: settings.locale })}</span>
+      </>}
     </div>
   )
 }
@@ -1089,15 +1086,17 @@ function EventCalendarDayColumn({
       className={cn(
         "relative min-w-0 border-e last:border-e-0",
         isOff && offClassName,
-        // time grid keeps today's column on the normal background (the header
-        // marks today); only a consumer todayClassName can tint it
-        isToday && viewConfig.todayClassName,
+        // Match the month cell's subtle today surface where it distinguishes
+        // today from neighbouring columns; a single Day view has none, so
+        // tinting its whole canvas would only discolour it.
+        isToday &&
+          cn(view !== "day" && "bg-primary/[0.06]", viewConfig.todayClassName),
         viewConfig.dayClassName?.(day),
         viewConfig.classNames?.dayColumn
       )}
       style={{
         height: `calc(var(--ec-hour-height) * ${boundsMinutes / 60})`,
-        backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent calc(var(--ec-hour-height) * ${interval / 60} - var(--ec-slot-line-width, 1px)), var(--ec-slot-line-color, var(--color-border)) calc(var(--ec-hour-height) * ${interval / 60} - var(--ec-slot-line-width, 1px)), var(--ec-slot-line-color, var(--color-border)) calc(var(--ec-hour-height) * ${interval / 60}))`,
+        backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent calc(var(--ec-hour-height) * ${interval / 60} - var(--ec-slot-line-width, 1px)), var(--ec-slot-line-color, hsl(var(--foreground) / 0.07)) calc(var(--ec-hour-height) * ${interval / 60} - var(--ec-slot-line-width, 1px)), var(--ec-slot-line-color, hsl(var(--foreground) / 0.07)) calc(var(--ec-hour-height) * ${interval / 60}))`,
       }}
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) gestures.beginCreate(e, day, false)
@@ -1140,7 +1139,7 @@ function EventCalendarDayColumn({
             // min-h keeps 15-min chips readable (Google-style: the block may
             // slightly outgrow its true window); hover raises a squeezed
             // cascade chip above its overlapping neighbors
-            className="absolute z-(--ec-z) min-h-(--ec-event-min-h,1.5rem) px-0.5 hover:z-40"
+            className={cn("absolute z-(--ec-z) min-h-(--ec-event-min-h,1.5rem) px-0.5 hover:z-40", view === "day" && "max-w-[36rem]")}
             style={
               {
                 ...minuteBlockStyle(startMin, endMin, boundsStartMin),

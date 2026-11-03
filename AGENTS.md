@@ -55,6 +55,8 @@ without explicit authorization.
 
 ## Git
 
+- Name branches for the work; avoid agent-specific prefixes such as `codex/`
+  and `agent/`.
 - Commit coherent slices regularly.
 - Use `subsystem: concise change` subjects.
 - Do not stage or revert unrelated work.

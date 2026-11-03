@@ -79,8 +79,8 @@ serialized count rather than the obsolete relation-count field. With no comments
 the action uses its recognizable icon instead of a redundant Reply label, keeping
 the four touch actions together at 320px. Actions remain
 visible in the dashboard. Read actions use icons with tooltips and accessible
-labels. The full feed keeps the sender's name beside a reusable clickable avatar
-that opens the existing profile dialog. Its author projection includes photo and
+labels. The feed and detail author row uses one profile-dialog trigger for the
+avatar, name, and metadata. Its author projection includes photo and
 roles without adding sign-in identifiers or contact fields. Failed read/save
 writes surface a toast so users can retry.
 

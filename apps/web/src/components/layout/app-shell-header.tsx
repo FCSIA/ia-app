@@ -1,4 +1,4 @@
-import { displayName } from '~/apps/shared/user-name';
+import { displayName } from "~/apps/shared/user-name";
 import type { ReactNode } from "react";
 import {
   ArrowLeftRight,
@@ -22,6 +22,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { PresenceAvatar } from "@/components/presence/club-presence";
 import { useDoNotDisturbMenu } from "@/components/presence/do-not-disturb";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { cn } from "@/lib/utils";
 
 export type ChannelSearchControl = {
   channelName: string;
@@ -33,6 +34,8 @@ export type SearchScope = "everything" | "channel";
 
 type AppShellHeaderProps = {
   headerSlot?: ReactNode;
+  mode?: "default" | "editing";
+  globalSearchInSidebar?: boolean;
   channelSearch?: ChannelSearchControl;
   searchScope: SearchScope;
   commandHint: boolean;
@@ -81,7 +84,7 @@ function ChannelSearch({
   onToggleScope: () => void;
 }) {
   return (
-    <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-[#6B97FF] lg:flex">
+    <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-ring lg:flex">
       <label className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
         <Search className="size-4 shrink-0" />
         <span className="sr-only">Search #{channelSearch.channelName}</span>
@@ -142,6 +145,8 @@ function GlobalSearch({
 
 function AppShellHeader({
   headerSlot,
+  mode = "default",
+  globalSearchInSidebar = false,
   channelSearch,
   searchScope,
   commandHint,
@@ -154,62 +159,71 @@ function AppShellHeader({
   const doNotDisturb = useDoNotDisturbMenu();
 
   return (
-    <header className={`app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card px-4 pt-[env(safe-area-inset-top)] md:px-6 lg:px-8 ${CARD_SURFACE_FOREGROUND}`}>
+    <header
+      data-mode={mode}
+      className={cn(
+        "app-main-header sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] md:h-[calc(4rem+env(safe-area-inset-top))] md:gap-3 md:pl-[max(1.5rem,env(safe-area-inset-left))] md:pr-[max(1.5rem,env(safe-area-inset-right))] lg:pl-[max(2rem,env(safe-area-inset-left))] lg:pr-[max(2rem,env(safe-area-inset-right))]",
+        CARD_SURFACE_FOREGROUND,
+        // Phones: the true page background, so the header is continuous with
+        // the strip iOS paints behind the status bar.
+        "bg-background lg:bg-card",
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-4">
         {headerSlot ?? <div className="min-w-0 flex-1" />}
       </div>
 
-      {channelSearch && searchScope === "channel" ? (
-        <ChannelSearch
-          channelSearch={channelSearch}
-          onToggleScope={onToggleSearchScope}
-        />
-      ) : (
-        <GlobalSearch
-          channelSearch={channelSearch}
-          commandHint={commandHint}
-          onOpen={onOpenGlobalSearch}
-          onToggleScope={onToggleSearchScope}
-        />
-      )}
+      {mode !== "editing" &&
+        (channelSearch && searchScope === "channel" ? (
+          <ChannelSearch
+            channelSearch={channelSearch}
+            onToggleScope={onToggleSearchScope}
+          />
+        ) : !globalSearchInSidebar || channelSearch ? (
+          <GlobalSearch
+            channelSearch={channelSearch}
+            commandHint={commandHint}
+            onOpen={onOpenGlobalSearch}
+            onToggleScope={onToggleSearchScope}
+          />
+        ) : null)}
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-lg"
-        className="shrink-0 lg:hidden"
-        aria-label="Search"
-        onClick={onOpenGlobalSearch}
-      >
-        <Search />
-      </Button>
+      {mode !== "editing" ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          // Channel screens hide this on phones in favor of the channel's own
+          // search, which links back to searching everything.
+          className="app-header-mobile-search shrink-0 lg:hidden"
+          aria-label="Search"
+          onClick={onOpenGlobalSearch}
+        >
+          <Search />
+        </Button>
+      ) : null}
 
-      {user ? (
+      {mode !== "editing" && user ? (
         <DropdownMenu>
           <DropdownTrigger
             render={
               <Button
                 variant="ghost"
-                size="icon-lg"
-                className="shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:w-auto sm:min-w-11 sm:px-0 sm:pr-3"
+                size="md"
+                trailingIcon={ChevronDown}
+                aria-label={`${displayName(user)} account menu`}
+                className="h-11 shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:min-w-11 sm:pr-3"
               >
-                <PresenceAvatar status={doNotDisturb.doNotDisturb ? "doNotDisturb" : undefined}>
-                  <UserAvatar
-                    firstName={user.firstName}
-                    lastName={user.lastName}
-                    preferredName={user.preferredName}
-                    avatarUrl={user.avatarUrl}
-                    className="size-11 sm:size-9"
-                    fallbackClassName="text-xs"
-                  />
+                <PresenceAvatar
+                  status={
+                    doNotDisturb.doNotDisturb ? "doNotDisturb" : undefined
+                  }
+                >
+                  <UserAvatar person={user} className="size-9" />
                 </PresenceAvatar>
                 <span className="hidden truncate pl-1 sm:inline">
                   {displayName(user)}
                 </span>
-                <ChevronDown
-                  aria-hidden
-                  className="hidden size-4 text-muted-foreground sm:block"
-                />
               </Button>
             }
           />

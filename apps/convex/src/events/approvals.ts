@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { mutation, query, type MutationCtx } from "../_generated/server";
@@ -128,12 +129,11 @@ export const approveEvent = mutation({
       });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "EVENT_APPROVED",
       entityId: args.eventId,
       entityType: "EVENT",
-      createdAt: Date.now(),
     });
     return null;
   },
@@ -174,12 +174,11 @@ export const rejectEvent = mutation({
     });
     await clearPendingApprovals(ctx, args.eventId);
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "EVENT_REJECTED",
       entityId: args.eventId,
       entityType: "EVENT",
-      createdAt: Date.now(),
     });
     return null;
   },

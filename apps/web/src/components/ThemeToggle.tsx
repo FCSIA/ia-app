@@ -21,8 +21,8 @@ export function ThemeToggle() {
       aria-label="Toggle theme"
       className="relative flex size-11 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white/8 hover:text-white"
     >
-      <Sun className="size-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" strokeWidth={1.75} />
-      <Moon className="absolute size-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" strokeWidth={1.75} />
+      <Sun className="size-5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" strokeWidth={1.75} />
+      <Moon className="absolute size-5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" strokeWidth={1.75} />
       <span className="sr-only">Toggle theme</span>
     </button>
   );

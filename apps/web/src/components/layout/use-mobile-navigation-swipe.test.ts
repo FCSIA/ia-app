@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { attachMobileNavigationSwipe } from "./use-mobile-navigation-swipe";
 
 class TouchSurface extends EventTarget {
-  closest = vi.fn((): Element | null => null);
+  closest = vi.fn<(selector: string) => Element | null>(() => null);
 }
 
 type Point = { clientX: number; clientY: number };
@@ -13,13 +13,14 @@ function touch(
   surface: TouchSurface,
   type: string,
   points: Point[],
-  { cancelable = true, prevented = false } = {},
+  { cancelable = true, prevented = false, at }: { cancelable?: boolean; prevented?: boolean; at?: number } = {},
 ) {
   const event = new Event(type, { cancelable });
   Object.defineProperties(event, {
     touches: { value: type === "touchend" ? [] : points },
     changedTouches: { value: points },
   });
+  if (at !== undefined) Object.defineProperty(event, "timeStamp", { value: at });
   if (prevented) event.preventDefault();
   surface.dispatchEvent(event);
   return event;
@@ -76,7 +77,7 @@ describe("mobile navigation gesture ownership", () => {
     Object.defineProperty(move, "touches", { value: [point(6, 101)] });
     surface.dispatchEvent(move);
     expect(move.defaultPrevented).toBe(true);
-    expect(onProgress).toHaveBeenCalledWith(0);
+    expect(onProgress).toHaveBeenCalledWith(0.01);
 
     touch(surface, "touchmove", [point(150)]);
     touch(surface, "touchend", [point(150)]);
@@ -104,6 +105,68 @@ describe("mobile navigation gesture ownership", () => {
     expect(callbacks.onProgress).toHaveBeenLastCalledWith(0);
     touch(surface, "touchend", [point(110)]);
     expect(callbacks.onCancel).toHaveBeenCalledOnce();
+    expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
+  });
+
+  it("maps the movement to the full panel width", () => {
+    const { surface, callbacks } = setup();
+    touch(surface, "touchstart", [point(0)]);
+    touch(surface, "touchmove", [point(100)]);
+    expect(callbacks.onProgress).toHaveBeenLastCalledWith(0.25);
+  });
+
+  it("opens on a short quick flick but cancels the same slow drag", () => {
+    const { surface, callbacks } = setup();
+
+    touch(surface, "touchstart", [point(0)], { at: 0 });
+    touch(surface, "touchmove", [point(40)], { at: 40 });
+    touch(surface, "touchend", [point(40)], { at: 45 });
+    expect(callbacks.onSwipeRight).toHaveBeenCalledOnce();
+
+    touch(surface, "touchstart", [point(0)], { at: 1000 });
+    touch(surface, "touchmove", [point(40)], { at: 1500 });
+    touch(surface, "touchend", [point(40)], { at: 1700 });
+    expect(callbacks.onCancel).toHaveBeenCalledOnce();
+    expect(callbacks.onSwipeRight).toHaveBeenCalledOnce();
+  });
+
+  it("respects a fast reversal even after crossing the distance threshold", () => {
+    const { surface, callbacks } = setup();
+    touch(surface, "touchstart", [point(0)], { at: 0 });
+    touch(surface, "touchmove", [point(170)], { at: 50 });
+    touch(surface, "touchmove", [point(120)], { at: 70 });
+    touch(surface, "touchend", [point(120)], { at: 75 });
+    expect(callbacks.onCancel).toHaveBeenCalledOnce();
+    expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
+  });
+
+  it("includes a reversal between the last move and release", () => {
+    const { surface, callbacks } = setup();
+    touch(surface, "touchstart", [point(0)], { at: 0 });
+    touch(surface, "touchmove", [point(170)], { at: 50 });
+    touch(surface, "touchend", [point(50)], { at: 75 });
+    expect(callbacks.onCancel).toHaveBeenCalledOnce();
+    expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
+  });
+
+  it("does not treat a tiny final twitch during a slow drag as a flick", () => {
+    const { surface, callbacks } = setup();
+    touch(surface, "touchstart", [point(0)], { at: 0 });
+    touch(surface, "touchmove", [point(20)], { at: 200 });
+    touch(surface, "touchmove", [point(39)], { at: 400 });
+    touch(surface, "touchmove", [point(40)], { at: 401 });
+    touch(surface, "touchend", [point(40)], { at: 405 });
+    expect(callbacks.onCancel).toHaveBeenCalledOnce();
+    expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
+  });
+
+  it("leaves one-finger panning alone while zoomed in", () => {
+    const { surface, callbacks } = setup();
+    Object.defineProperty(window, "visualViewport", { value: { scale: 2 } });
+    touch(surface, "touchstart", [point(0)]);
+    expect(touch(surface, "touchmove", [point(160)]).defaultPrevented).toBe(false);
+    touch(surface, "touchend", [point(160)]);
+    expect(callbacks.onProgress).not.toHaveBeenCalled();
     expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
   });
 
@@ -156,6 +219,23 @@ describe("mobile navigation gesture ownership", () => {
     touch(surface, "touchend", [point(160)]);
     expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
   });
+
+  it.each(["pre", ".typeset-scroll"])(
+    "leaves horizontal scrolling in %s to the content",
+    (scrollableSelector) => {
+      const { surface, callbacks } = setup();
+      surface.closest.mockImplementation((selector) =>
+        selector.split(",").some((part) => part.trim() === scrollableSelector)
+          ? (surface as unknown as Element)
+          : null,
+      );
+      touch(surface, "touchstart", [point(20)]);
+      expect(touch(surface, "touchmove", [point(180)]).defaultPrevented).toBe(false);
+      touch(surface, "touchend", [point(180)]);
+      expect(callbacks.onProgress).not.toHaveBeenCalled();
+      expect(callbacks.onSwipeRight).not.toHaveBeenCalled();
+    },
+  );
 
   it("respects a gesture already claimed by a child control", () => {
     const { surface, callbacks } = setup();

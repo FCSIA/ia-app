@@ -7,6 +7,7 @@ export default defineConfig({
   tsconfig: fileURLToPath(new URL("./src/tsconfig.json", import.meta.url)),
   test: {
     environment: "edge-runtime",
+    setupFiles: ["./test/setup.ts"],
     include: ["src/**/*.test.ts"],
     // convex-test scheduled-function tests use Vitest's process-global fake
     // timers. Keep files isolated so two scheduler tests cannot advance each

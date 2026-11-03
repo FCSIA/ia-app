@@ -10,12 +10,16 @@ import {
   type ReactNode,
   type HTMLAttributes,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import {
+  FluidHoverHighlight,
+  resolveHighlightTransition,
+} from "@/components/ui/fluid-hover-highlight";
 import { useShape } from "@/lib/shape-context";
 
 interface CheckboxGroupContextValue {
@@ -99,6 +103,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
     const isHoveringOther =
       activeIndex !== null && !checkedIndices.has(activeIndex);
     const shape = useShape();
+    const reduceMotion = useReducedMotion() ?? false;
 
     return (
       <CheckboxGroupContext.Provider value={{ registerItem, activeIndex }}>
@@ -173,71 +178,44 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
               return (
                 <motion.div
                   key={`group-${group.id}`}
-                  className={`absolute ${shape.mergedBg} bg-active pointer-events-none`}
+                  className={`absolute left-0 top-0 ${shape.mergedBg} bg-active pointer-events-none`}
                   initial={false}
                   animate={{
-                    top: mergedTop,
-                    left: mergedLeft,
+                    x: mergedLeft,
+                    y: mergedTop,
                     width: mergedWidth,
                     height: mergedHeight,
                     opacity: isHoveringOther ? 0.8 : 1,
                   }}
                   exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                  transition={{
-                    ...spring.moderate,
-                    opacity: { duration: 0.08 },
-                  }}
+                  transition={resolveHighlightTransition(spring.moderate, reduceMotion)}
                 />
               );
             })}
           </AnimatePresence>
 
-          {/* Hover background */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-                initial={{
-                  opacity: 0,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                animate={{
-                  opacity: 1,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                exit={{ opacity: 0, transition: { duration: 0.06 } }}
-                transition={{
-                  ...spring.fast,
-                  opacity: { duration: 0.08 },
-                }}
-              />
-            )}
-          </AnimatePresence>
+          {/* Hover background — the shared transform-based highlight
+              (drops its travel under reduced motion). */}
+          <FluidHoverHighlight
+            rect={activeRect ?? null}
+            session={sessionRef.current}
+            className={shape.bg}
+          />
 
           {/* Focus ring */}
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
+                className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
                 initial={false}
                 animate={{
-                  left: focusRect.left - 2,
-                  top: focusRect.top - 2,
+                  x: focusRect.left - 2,
+                  y: focusRect.top - 2,
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
                 exit={{ opacity: 0, transition: { duration: 0.06 } }}
-                transition={{
-                  ...spring.fast,
-                  opacity: { duration: 0.08 },
-                }}
+                transition={resolveHighlightTransition(spring.fast, reduceMotion)}
               />
             )}
           </AnimatePresence>
@@ -314,7 +292,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           }
         }}
         className={cn(
-          `relative z-10 flex h-8 w-full touch-manipulation items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none pointer-coarse:h-11`,
+          `relative z-10 flex h-8 w-full touch-manipulation items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none`,
           disabled && "cursor-not-allowed opacity-50",
           className
         )}
@@ -335,7 +313,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           {/* Border */}
           <div
             className={cn(
-              "absolute inset-0 rounded-[5px] border-solid transition-all duration-80",
+              "absolute inset-0 rounded-[5px] border-solid transition-colors duration-80",
               checked
                 ? "border-[1.5px] border-transparent"
                 : isActive
@@ -377,7 +355,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
                       pathLength: 0,
                       transition: {
                         duration: 0.04,
-                        ease: "easeIn",
+                        ease: "easeOut",
                       },
                     }}
                   />
@@ -388,9 +366,9 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         </CheckboxPrimitive.Root>
 
         {/* Label */}
-        <span className="inline-grid text-[13px]">
+        <span className="inline-grid min-w-0 text-[13px]">
           <span
-            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
+            className="col-start-1 row-start-1 truncate invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -398,7 +376,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
+              "col-start-1 row-start-1 truncate transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               checked || isActive
                 ? "text-foreground"
                 : "text-muted-foreground"

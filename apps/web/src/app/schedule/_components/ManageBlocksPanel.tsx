@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { usePathname, useSearchParams } from "next/navigation";
-import { DayButton } from "react-day-picker";
 import {
   ArrowLeft,
   CalendarPlus,
@@ -22,8 +21,8 @@ import {
 } from "lucide-react";
 import { Badge, badgeColors } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Calendar } from "@/components/ui/calendar";
+import { DateField } from "@/components/forms/date-field";
 import {
   Empty,
   EmptyContent,
@@ -42,7 +41,6 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Sortable,
@@ -360,35 +358,11 @@ function calendarDayState(workspace: AdminWorkspace, date: Date) {
   return { kind: "default" as const, detail: regular?.name ?? "Default template" };
 }
 
-function AdminCalendarDayButton({
-  workspace,
-  ...props
-}: ComponentProps<typeof DayButton> & { workspace: AdminWorkspace }) {
-  const state = calendarDayState(workspace, props.day.date);
-  return (
-    <Tooltip content={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
-      <CalendarDayButton {...props} aria-label={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
-        {props.children}
-        {state.kind === "outside" || state.kind === "weekend" || state.kind === "default" ? null : (
-          <span
-            aria-hidden="true"
-            className="h-1.5 w-5 rounded-full"
-            style={{
-              backgroundColor:
-                state.kind === "assigned"
-                  ? badgeColors.blue
-                  : state.kind === "unassigned"
-                    ? badgeColors.orange
-                    : state.kind === "no-school"
-                      ? badgeColors.red
-                      : "var(--muted-foreground)",
-            }}
-          />
-        )}
-      </CalendarDayButton>
-    </Tooltip>
-  );
-}
+const DAY_PLAN_MARKERS = [
+  { kind: "assigned", label: "Assigned", color: badgeColors.blue },
+  { kind: "no-school", label: "No school", color: badgeColors.red },
+  { kind: "unassigned", label: "Unassigned Friday", color: badgeColors.orange },
+] as const;
 
 function AcademicYearSetup({
   regularTemplate,
@@ -446,11 +420,11 @@ function AcademicYearSetup({
         <FieldGroup className="grid gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel>Starts</FieldLabel>
-            <DatePicker value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
+            <DateField aria-label="Academic year start" value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
           </Field>
           <Field>
             <FieldLabel>Ends</FieldLabel>
-            <DatePicker value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
+            <DateField aria-label="Academic year end" value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
           </Field>
         </FieldGroup>
 
@@ -518,12 +492,19 @@ function DatePlanWorkspace({
   const canAssign = isWeekday && isInAcademicYear && !workspace.setupRequired;
   const currentOverride = isDateLoading ? null : workspace.override;
   const canAssignFriday = canAssign && weekday === 5 && !currentOverride;
-  const CalendarDay = useCallback(
-    (props: ComponentProps<typeof DayButton>) => (
-      <AdminCalendarDayButton workspace={workspace} {...props} />
-    ),
-    [workspace],
-  );
+  const dayDetail = useCallback((date: Date) => {
+    const state = calendarDayState(workspace, date);
+    const marker = DAY_PLAN_MARKERS.find(({ kind }) => kind === state.kind);
+    if (!marker) return null;
+    return (
+      <Tooltip content={state.detail}>
+        <span className="inline-flex items-center justify-center">
+          <span aria-hidden="true" className="size-1 rounded-full" style={{ backgroundColor: marker.color }} />
+          <span className="sr-only">{state.detail}</span>
+        </span>
+      </Tooltip>
+    );
+  }, [workspace]);
 
   useEffect(() => {
     setDisplayMonth(selectedDate);
@@ -535,10 +516,7 @@ function DatePlanWorkspace({
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">
           <section className={`overflow-hidden rounded-xl bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <header className="flex items-center justify-between gap-3 bg-surface-3 px-4 py-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">School calendar</h3>
-                <p className="text-xs text-muted-foreground">Select a school date.</p>
-              </div>
+              <h3 className="text-sm font-semibold text-foreground">School calendar</h3>
               <Tooltip content="Monday–Thursday inherit the default template. Fridays remain unassigned until an administrator assigns one.">
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="How schedule inheritance works">
                   <Info />
@@ -547,15 +525,25 @@ function DatePlanWorkspace({
             </header>
             <Calendar
               mode="single"
+              required
               selected={selectedDate}
               month={displayMonth}
               onSelect={(date) => date && onDateKeyChange(dateKeyFromDate(date))}
               onMonthChange={setDisplayMonth}
               startMonth={workspace.academicYearStartDateKey ? dateFromKey(workspace.academicYearStartDateKey) : undefined}
               endMonth={workspace.academicYearEndDateKey ? dateFromKey(workspace.academicYearEndDateKey) : undefined}
-              className="w-full"
-              components={{ DayButton: CalendarDay }}
+              fill
+              cellSize={56}
+              dayDetail={dayDetail}
             />
+            <ul aria-label="School calendar legend" className="flex flex-wrap gap-x-4 gap-y-2 px-4 pb-4 text-xs text-muted-foreground">
+              {DAY_PLAN_MARKERS.map((marker) => (
+                <li key={marker.kind} className="inline-flex items-center gap-1.5">
+                  <span aria-hidden="true" className="size-1 shrink-0 rounded-full" style={{ backgroundColor: marker.color }} />
+                  {marker.label}
+                </li>
+              ))}
+            </ul>
           </section>
         </aside>
 
@@ -598,8 +586,8 @@ function DatePlanWorkspace({
                     </SelectContent>
                 </Select>
                 <Tooltip content="Link this Friday to the selected template. Future template edits will update this date.">
-                  <Button type="button" variant="tertiary" size="lg" aria-label="Assign selected template" disabled={!selectedApplyTemplate || pending !== null} loading={pending === "apply-date"} onClick={onApplyTemplate}>
-                    <CalendarPlus />
+                  <Button type="button" leadingIcon={CalendarPlus} aria-label="Assign selected template" disabled={!selectedApplyTemplate || pending !== null} loading={pending === "apply-date"} onClick={onApplyTemplate}>
+                    Assign
                   </Button>
                 </Tooltip>
               </div>
@@ -898,11 +886,11 @@ function SchoolConfigWorkspace({
         <FieldGroup className="grid gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel>First day</FieldLabel>
-            <DatePicker value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" />
+            <DateField aria-label="Academic year start" value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" />
           </Field>
           <Field>
             <FieldLabel>Last day</FieldLabel>
-            <DatePicker value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" />
+            <DateField aria-label="Academic year end" value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" />
           </Field>
         </FieldGroup>
         <Button type="button" className="self-start" leadingIcon={Save} disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null} loading={pending === "configure-year"} onClick={onSave}>
@@ -918,7 +906,8 @@ export function ManageBlocksPanel() {
   const { toast } = useToast();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"dates" | "templates" | "config">("dates");
+  const requestedSection = searchParams?.get("section");
+  const mode = requestedSection === "templates" || requestedSection === "config" ? requestedSection : "dates";
   const [setupView, setSetupView] = useState<"year" | "template">("year");
   const urlDateKey = searchParams?.get("date") ?? null;
   const [dateKey, setDateKey] = useState(() =>
@@ -1164,21 +1153,12 @@ export function ManageBlocksPanel() {
 
   return (
     <div className="space-y-5">
-      <Tabs
-        value={mode}
-        onValueChange={(value) => setMode(value as "dates" | "templates" | "config")}
-      >
-        <TabsList>
-          <TabItem value="dates" label="Calendar dates" icon={CalendarDays} />
-          <TabItem value="templates" label="Templates" icon={LayoutTemplate} />
-          <TabItem value="config" label="School config" icon={School} />
-        </TabsList>
 
         {workspace === undefined ? (
           <div className="mt-5 h-48 animate-pulse rounded-xl bg-muted/30" />
         ) : (
           <>
-            <TabPanel value="dates">
+            {mode === "dates" ? <section aria-label="Calendar dates">
               <DatePlanWorkspace
                 workspace={workspace}
                 dateKey={dateKey}
@@ -1239,8 +1219,8 @@ export function ManageBlocksPanel() {
                   )
                 }
               />
-            </TabPanel>
-            <TabPanel value="templates">
+            </section> : null}
+            {mode === "templates" ? <section aria-label="Templates">
               <TemplateWorkspace
                 workspace={workspace}
                 selectedTemplateId={selectedTemplateId}
@@ -1310,8 +1290,8 @@ export function ManageBlocksPanel() {
                   );
                 }}
               />
-            </TabPanel>
-            <TabPanel value="config">
+            </section> : null}
+            {mode === "config" ? <section aria-label="School config">
               <SchoolConfigWorkspace
                 regularTemplate={regularTemplate}
                 academicStart={academicStart}
@@ -1328,10 +1308,9 @@ export function ManageBlocksPanel() {
                   );
                 }}
               />
-            </TabPanel>
+            </section> : null}
           </>
         )}
-      </Tabs>
     </div>
   );
 }

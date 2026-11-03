@@ -45,4 +45,10 @@ describe("channel unread boundary", () => {
     const iso = [{ _id: "iso", createdAt: new Date(20).toISOString() }];
     expect(firstUnreadChannelMessageId(iso, captureChannelUnreadBoundary(undefined, "b", 10, iso))).toBe("iso");
   });
+  test("never labels the viewer's own or pending messages as unread", () => {
+    const rows = [{ _id: "own", authorId: "viewer", createdAt: 20 }, { _id: "optimistic:pending", authorId: "other", createdAt: 25 }, { _id: "other", author: { _id: "other" }, createdAt: 30 }];
+    const boundary = captureChannelUnreadBoundary(undefined, "channel:viewer", 10, rows);
+    expect(firstUnreadChannelMessageId(rows, boundary, "viewer")).toBe("other");
+    expect(firstUnreadChannelMessageId(rows.slice(0, 2), boundary, "viewer")).toBeNull();
+  });
 });

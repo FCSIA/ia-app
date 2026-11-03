@@ -1,0 +1,267 @@
+{
+  "measuredAt": "2026-10-29",
+  "sourceBaseCommit": "bd922e76f2364819c127c08c7c286f6f344c35d0",
+  "sourceNote": "Working-tree implementation in this PR; USER_BATCH_SIZE changed to 1, 4, or 8 for each cached variant. Original variants use unchanged parent seed code. The final-8 run additionally uses bounded announcement cleanup.",
+  "deployment": {
+    "kind": "separate isolated local",
+    "apiPort": 3214,
+    "httpPort": 3215
+  },
+  "versions": {
+    "convex": "1.46.0",
+    "betterAuth": "1.6.22",
+    "node": "v24.22.1",
+    "architecture": "arm64",
+    "os": "Darwin"
+  },
+  "timing": "Seed-run completedAt minus startedAt; excludes setup, build, deployment, and CLI startup.",
+  "caveats": [
+    "One observation per configuration, in order; no confidence intervals or cloud extrapolation. The final-code run happened after full-profile recovery.",
+    "The first run started empty. All other timed development variants started with 169 users; the batch-of-4 run followed HTTP auth verification and also cleared its test sessions.",
+    "The full-profile run verifies correctness and limits only: no original full-profile timing was measured, and some validation commands plus a diagnostic-helper type correction ran concurrently."
+  ],
+  "runs": [
+    {
+      "id": "baseline-empty",
+      "label": "Original code, empty deployment",
+      "batchSize": 1,
+      "hashing": "per account",
+      "elapsedMs": 37077,
+      "status": {
+        "completedAt": 1793312706854,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "development",
+        "runId": "1793312669769",
+        "startedAt": 1793312669777,
+        "status": "COMPLETE",
+        "updatedAt": 1793312706854
+      },
+      "cleanup": "original single transaction"
+    },
+    {
+      "id": "baseline-reset",
+      "label": "Original code, existing fixtures",
+      "batchSize": 1,
+      "hashing": "per account",
+      "elapsedMs": 45323,
+      "status": {
+        "completedAt": 1793312784509,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "development",
+        "runId": "1793312739179",
+        "startedAt": 1793312739186,
+        "status": "COMPLETE",
+        "updatedAt": 1793312784509
+      },
+      "cleanup": "original single transaction"
+    },
+    {
+      "id": "cached-1",
+      "label": "One hash per run, batch of 1",
+      "batchSize": 1,
+      "hashing": "per run",
+      "elapsedMs": 17348,
+      "status": {
+        "completedAt": 1793312885120,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "development",
+        "runId": "1793312867762",
+        "startedAt": 1793312867772,
+        "status": "COMPLETE",
+        "updatedAt": 1793312885120
+      },
+      "cleanup": "original single transaction"
+    },
+    {
+      "id": "cached-4",
+      "label": "One hash per run, batch of 4",
+      "batchSize": 4,
+      "hashing": "per run",
+      "elapsedMs": 13591,
+      "status": {
+        "completedAt": 1793312976547,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "development",
+        "runId": "1793312962949",
+        "startedAt": 1793312962956,
+        "status": "COMPLETE",
+        "updatedAt": 1793312976547
+      },
+      "cleanup": "original single transaction"
+    },
+    {
+      "id": "cached-8",
+      "label": "One hash per run, batch of 8",
+      "batchSize": 8,
+      "hashing": "per run",
+      "elapsedMs": 13136,
+      "status": {
+        "completedAt": 1793313037738,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "development",
+        "runId": "1793313024596",
+        "startedAt": 1793313024602,
+        "status": "COMPLETE",
+        "updatedAt": 1793313037738
+      },
+      "cleanup": "original single transaction"
+    },
+    {
+      "id": "full-8",
+      "label": "Full profile validation",
+      "batchSize": 8,
+      "hashing": "per run",
+      "elapsedMs": 141673,
+      "status": {
+        "completedAt": 1793313250282,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "full",
+        "runId": "1793313108601",
+        "startedAt": 1793313108609,
+        "status": "COMPLETE",
+        "updatedAt": 1793313250282
+      },
+      "cleanup": "original single transaction"
+    },
+    {
+      "id": "final-8",
+      "label": "Final code: one hash, batches of 8, bounded cleanup",
+      "batchSize": 8,
+      "hashing": "per run",
+      "cleanup": "bounded batches of 200",
+      "elapsedMs": 16220,
+      "status": {
+        "completedAt": 1793314253660,
+        "credentialsAvailable": false,
+        "cursor": null,
+        "error": null,
+        "phase": "complete",
+        "profile": "development",
+        "runId": "1793314237435",
+        "startedAt": 1793314237440,
+        "status": "COMPLETE",
+        "updatedAt": 1793314253660
+      }
+    }
+  ],
+  "developmentCounts": {
+    "authUsers": 169,
+    "credentialAccounts": 169,
+    "distinctPasswordHashes": 1,
+    "domains": {
+      "announcements": 15,
+      "clubs": 26,
+      "courses": 104,
+      "moderationKeywordRules": 3,
+      "studentScheduleFriends": 29,
+      "studentSchedules": 50
+    },
+    "linkedUsers": 169,
+    "missingPasswords": 0,
+    "mustResetPassword": 0,
+    "staff": 119,
+    "students": 50,
+    "trackedStaff": 119,
+    "trackedStudents": 50,
+    "trackedUsers": 169,
+    "users": 169
+  },
+  "fullCounts": {
+    "authUsers": 1619,
+    "credentialAccounts": 1619,
+    "distinctPasswordHashes": 1,
+    "domains": {
+      "announcements": 15,
+      "clubs": 26,
+      "courses": 104,
+      "moderationKeywordRules": 3,
+      "studentScheduleFriends": 184,
+      "studentSchedules": 1500
+    },
+    "linkedUsers": 1619,
+    "missingPasswords": 0,
+    "mustResetPassword": 0,
+    "staff": 119,
+    "students": 1500,
+    "trackedStaff": 119,
+    "trackedStudents": 1500,
+    "trackedUsers": 1619,
+    "users": 1619
+  },
+  "httpVerification": {
+    "wrongPasswordRejected": true,
+    "demoLogin": true,
+    "passwordChange": true,
+    "oldPasswordRejected": true,
+    "newPasswordLogin": true,
+    "otherSessionRevoked": true
+  },
+  "cleanupRegression": {
+    "before": {
+      "completedAt": null,
+      "credentialsAvailable": false,
+      "cursor": null,
+      "error": null,
+      "phase": "clubs",
+      "profile": "development",
+      "runId": "1793313284492",
+      "startedAt": 1793313284499,
+      "status": "RUNNING",
+      "updatedAt": 1793313300798
+    },
+    "failure": "Announcement reset exceeded 4,096 documents read while reading notificationPreferences; the failed transaction left the prior committed clubs phase visible.",
+    "after": {
+      "completedAt": 1793314082300,
+      "credentialsAvailable": false,
+      "cursor": null,
+      "error": null,
+      "phase": "complete",
+      "profile": "development",
+      "runId": "1793313956293",
+      "startedAt": 1793313956299,
+      "status": "COMPLETE",
+      "updatedAt": 1793314082300
+    },
+    "countsAfter": {
+      "authUsers": 169,
+      "credentialAccounts": 169,
+      "distinctPasswordHashes": 1,
+      "domains": {
+        "announcements": 15,
+        "clubs": 26,
+        "courses": 104,
+        "moderationKeywordRules": 3,
+        "studentScheduleFriends": 29,
+        "studentSchedules": 50
+      },
+      "linkedUsers": 169,
+      "missingPasswords": 0,
+      "mustResetPassword": 0,
+      "staff": 119,
+      "students": 50,
+      "trackedStaff": 119,
+      "trackedStudents": 50,
+      "trackedUsers": 169,
+      "users": 169
+    },
+    "note": "Recovery followed diagnostic mutations on this disposable backend; its elapsed time is not a performance comparison."
+  }
+}

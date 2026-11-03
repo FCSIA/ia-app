@@ -1,15 +1,27 @@
 'use client';
 
-import { Download, Upload } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileInput } from '@/components/ui/file-input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import type { RosterCsvPreview } from '../_lib/roster-csv';
 import type { AdministratorImportResult } from '../_lib/types';
-import { AdminMetric, AdminPanel } from './admin-ui';
-
-const administratorCsvExample = `first_name,last_name,administrator_id,email
-Ada,Lovelace,ADM001,ada.lovelace@example.org`;
+import { AdminPanel } from './admin-ui';
+import {
+  RosterCsvHelp,
+  RosterCsvReview,
+  RosterImportResult,
+} from './roster-csv-review';
 
 export function AdministratorRosterTab({
   fileInputKey,
@@ -19,6 +31,11 @@ export function AdministratorRosterTab({
   onImport,
   lastImport,
   onExportGeneratedPasswords,
+  fileName,
+  isReading,
+  fileError,
+  clearFile,
+  preview,
 }: {
   fileInputKey: number;
   onFileChange: (file: File | null) => void;
@@ -27,92 +44,123 @@ export function AdministratorRosterTab({
   onImport: () => void;
   lastImport: AdministratorImportResult | null;
   onExportGeneratedPasswords: () => void;
+  fileName?: string;
+  isReading: boolean;
+  fileError?: string;
+  clearFile: () => void;
+  preview: RosterCsvPreview<unknown> | null;
 }) {
+  const count = preview?.rows.length ?? 0;
+  const accountLabel = count === 1 ? 'administrator' : 'administrators';
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-      <AdminPanel title="Administrator Roster Import" contentClassName="space-y-5">
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            {['First Name', 'Last Name', 'Administrator ID', 'Email'].map((field) => (
-              <Badge key={field} variant="solid" size="sm">
-                {field}
-              </Badge>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Every row creates an <span className="text-foreground">Admin</span> account. Student and Super Admin roles are never imported here.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-foreground">Example CSV</p>
-          <pre className="overflow-x-auto rounded-lg bg-muted/30 p-3 font-mono text-xs leading-5 text-foreground">
-            <code>{administratorCsvExample}</code>
-          </pre>
-          <p className="text-xs text-muted-foreground">
-            Use the first line as your header row. An administrator ID and email are required for every account.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <Input
+    <div className="space-y-4">
+      <AdminPanel title="Administrator roster" contentClassName="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Choose a CSV to validate and review before creating administrator
+          accounts.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <FileInput
             key={fileInputKey}
-            type="file"
-            accept=".csv"
-            onChange={(event) => onFileChange(event.target.files?.[0] || null)}
+            accept=".csv,text/csv"
+            label={fileName ? 'Replace CSV' : 'Choose CSV'}
+            onFileSelect={onFileChange}
+            disabled={isImporting}
+            loading={isReading}
           />
-          <Button
-            type="button"
-            onClick={onImport}
-            disabled={!canImport}
-            loading={isImporting}
-            leadingIcon={Upload}
-          >
-            Import administrators
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            New administrators receive a random temporary password. Export it immediately and share it through an approved secure channel.
-          </p>
-        </div>
-      </AdminPanel>
-
-      <div className="space-y-4">
-        <AdminPanel title="Import Safeguards" contentClassName="space-y-3 text-sm text-muted-foreground">
-          <p>Only Super Admins can import this roster.</p>
-          <p>Existing administrator IDs are skipped, never overwritten.</p>
-          <p>One CSV can contain up to 200 administrators.</p>
-        </AdminPanel>
-
-        {lastImport ? (
-          <AdminPanel title="Latest Import" contentClassName="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <AdminMetric label="Created" value={lastImport.created} />
-              <AdminMetric label="Skipped" value={lastImport.skipped} />
-              <AdminMetric label="Temp Passwords" value={lastImport.generatedCredentials.length} />
-            </div>
-
-            {lastImport.generatedCredentials.length > 0 ? (
-              <Button type="button" onClick={onExportGeneratedPasswords} leadingIcon={Download}>
-                Export temp passwords CSV
+          {fileName ? (
+            <>
+              <span className="min-w-0 break-all text-sm text-muted-foreground">
+                {fileName}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={isImporting}
+                onClick={clearFile}
+              >
+                Clear file
               </Button>
-            ) : null}
-
-            {lastImport.errors.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Skipped rows</p>
-                <ScrollArea
-                  className="rounded-lg border bg-muted/30 text-xs text-muted-foreground"
-                  viewportClassName="max-h-48 p-3"
-                >
-                  {lastImport.errors.map((error, index) => (
-                    <p key={`${error}-${index}`} className="leading-5">{error}</p>
-                  ))}
-                </ScrollArea>
-              </div>
-            ) : null}
-          </AdminPanel>
+            </>
+          ) : null}
+        </div>
+        {fileError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {fileError}
+          </p>
         ) : null}
-      </div>
+        {preview ? (
+          <div className="space-y-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  leadingIcon={Upload}
+                  disabled={!canImport || isImporting}
+                  loading={isImporting}
+                >
+                  Review import
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Import {count} {accountLabel}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Create Admin accounts from {fileName}. Existing IDs will be
+                    skipped. This grants administrator access. Export new
+                    temporary passwords immediately after import.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={!canImport || isImporting}
+                    onClick={onImport}
+                  >
+                    Import {count} {accountLabel}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <p className="text-xs text-muted-foreground">
+              {canImport
+                ? 'File validation passed. Existing accounts are checked when submitted.'
+                : 'Correct the validation errors below, then replace this CSV.'}
+            </p>
+          </div>
+        ) : null}
+        <RosterCsvHelp>
+          <p>
+            Only Super Admins can import this roster. Every row creates an Admin
+            account. Student and Super Admin roles are never imported here.
+          </p>
+          <p>
+            First name, last name, administrator ID, and email are required. Up
+            to 200 rows per CSV. Existing IDs are skipped.
+          </p>
+          <pre className="overflow-x-auto font-mono text-xs">
+            <code>
+              {
+                'first_name,last_name,administrator_id,email\nAda,Lovelace,ADM001,ada.lovelace@example.org'
+              }
+            </code>
+          </pre>
+          <p>
+            New administrators receive a temporary password. Export it after
+            import and share it through an approved secure channel.
+          </p>
+        </RosterCsvHelp>
+      </AdminPanel>
+      {preview ? <RosterCsvReview preview={preview} /> : null}
+      {lastImport ? (
+        <RosterImportResult
+          result={lastImport}
+          onExportPasswords={onExportGeneratedPasswords}
+        />
+      ) : null}
     </div>
   );
 }

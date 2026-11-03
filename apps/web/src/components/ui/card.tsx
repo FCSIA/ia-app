@@ -15,13 +15,12 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { shapeMap, useShape } from "@/lib/shape-context";
 import { useIcon, type IconComponent } from "@/lib/icon-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // ---------------------------------------------------------------------------
 // Card is shadcn/ui's compositional card — the same parts and `data-slot`
@@ -103,9 +102,10 @@ interface CardGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, "onDrag"> 
   /** Split the group into individually-shaped cards with a gap between them
    *  (a grid of tiles) instead of one continuous divided block. @default false */
   separated?: boolean;
-  /** Tighter 12px surface corners for dense or inset groups. Controls retain
-   *  their surrounding shape. @default "default" */
-  corners?: "default" | "compact";
+  /** Compact uses 12px corners; panel follows a flush Panel's inset shape for
+   *  hover, focus and persistent surfaces. Controls retain their own shape.
+   *  @default "default" */
+  corners?: "default" | "compact" | "panel";
   /** Enable the magnetic proximity-hover highlight. @default true */
   proximityHover?: boolean;
 }
@@ -127,7 +127,9 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
-    const containerShape = corners === "compact" ? shapeMap.rounded.container : shape.container;
+    const containerShape = corners === "panel"
+      ? "rounded-[var(--panel-card-radius,0.75rem)]"
+      : corners === "compact" ? shapeMap.rounded.container : shape.container;
 
     // >1 column wraps into a grid, where nearest-item must be resolved in two
     // dimensions; a single column is a plain vertical list.
@@ -220,32 +222,14 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
           onMouseLeave={proximityHover ? handlers.onMouseLeave : undefined}
         >
           {/* Proximity highlight — a single magnetic layer that springs to the
-              card nearest the cursor, previewing where a click will land. */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                aria-hidden
-                className={cn("absolute bg-hover pointer-events-none z-0", containerShape)}
-                initial={{
-                  opacity: 0,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                animate={{
-                  opacity: 1,
-                  top: activeRect.top,
-                  left: activeRect.left,
-                  width: activeRect.width,
-                  height: activeRect.height,
-                }}
-                exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={{ ...spring.fast, opacity: { duration: 0.08 } }}
-              />
-            )}
-          </AnimatePresence>
+              card nearest the cursor, previewing where a click will land. The
+              shared highlight travels on a transform (not top/left) and drops
+              the travel under reduced motion, keeping the same spring tiers. */}
+          <FluidHoverHighlight
+            rect={activeRect ?? null}
+            session={sessionRef.current}
+            className={cn("z-0", containerShape)}
+          />
 
           {indexed}
         </div>
@@ -361,14 +345,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     const emphasized = selected;
 
     // A standalone card (no group) is its own tile — always rounded + clipped.
-    // Inside a group, a separated tile carries its own rounding + clip only when
-    // it draws a visible frame; a borderless separated tile has no surface to
-    // hug, so it stays unclipped and its media reads as a plain square, and a
-    // card in a continuous block leans on the shared group frame for both.
+    // Separated tiles carry the group shape for child focus and state surfaces.
+    // Only outlined tiles clip their media; borderless media stays unclipped.
+    // Continuous cards lean on the shared group frame for shape and clipping.
     const tileShape = !group
       ? cn(containerShape, "overflow-hidden")
-      : separated && outlined
-        ? cn(containerShape, "overflow-hidden border border-border/60")
+      : separated
+        ? cn(containerShape, outlined && "overflow-hidden border border-border/60")
         : "";
 
     // Stretched overlay makes the whole card the click target while keeping
@@ -443,7 +426,8 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
                 // column beside it (see the wrapper in the body below).
                 "flex flex-row items-center gap-3"
               : isInline
-                ? "flex flex-row items-center gap-3 pl-4"
+                ? // A CardDetail wraps onto its own line inside the same card.
+                  "flex flex-row items-center gap-3 pl-4 has-[>[data-slot=card-detail]]:flex-wrap"
                 : "flex flex-col pb-4",
             // Standalone (no group) cards can't lean on the group highlight, so
             // they carry their own hover tint when interactive.
@@ -645,6 +629,25 @@ const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 );
 
 CardContent.displayName = "CardContent";
+
+// ── CardDetail ───────────────────────────────────────────
+// Expanded content for an inline card: a full-width second line inside the
+// same card (and the same selected fill), indented to the title column by the
+// caller. Sits above the stretched overlay so its text stays selectable and
+// any controls in it stay clickable.
+
+const CardDetail = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card-detail"
+      className={cn("relative z-30 min-w-0 basis-full pb-4 pr-4", className)}
+      {...props}
+    />
+  )
+);
+
+CardDetail.displayName = "CardDetail";
 
 // ── CardFooter ───────────────────────────────────────────
 // Actions row. Rises above the stretched overlay (z-30) so buttons stay
@@ -949,6 +952,7 @@ export {
   CardDescription,
   CardAction,
   CardContent,
+  CardDetail,
   CardFooter,
   CardMedia,
   CardImage,

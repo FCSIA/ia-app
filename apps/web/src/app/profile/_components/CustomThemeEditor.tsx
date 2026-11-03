@@ -151,7 +151,7 @@ function CustomBackgroundPanel() {
           aria-hidden
         >
           {!preview ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground/60">
+            <div className="flex h-full items-center justify-center text-muted-foreground">
               {uploading ? (
                 <Loader2 className="size-5 animate-spin" />
               ) : (

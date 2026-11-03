@@ -9,7 +9,7 @@ import {
   InputControlInput,
 } from '@/components/ui/input-control-group';
 
-type PasswordInputProps = Omit<ComponentProps<'input'>, 'type'>;
+type PasswordInputProps = Omit<ComponentProps<typeof InputControlInput>, 'type'>;
 
 export function PasswordInput(props: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
@@ -21,7 +21,7 @@ export function PasswordInput(props: PasswordInputProps) {
         <InputControlButton
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="icon-compact"
           aria-label={visible ? 'Hide password' : 'Show password'}
           title={visible ? 'Hide password' : 'Show password'}
           aria-pressed={visible}

@@ -57,6 +57,8 @@ interface CalendarEvent<TData = unknown> {
   /** Per-event overrides; defaults come from interactions.drag / .resize. */
   draggable?: boolean
   resizable?: boolean
+  /** Disable built-in selection when the event opens details instead. */
+  selectable?: boolean
   /** Packing prominence; feeds getEventPriority ordering. */
   priority?: number
   /** Verbatim stacking override; replaces the computed 10 + column. */

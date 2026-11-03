@@ -55,7 +55,7 @@ export function AttendancePanel({
 
   if (!roster) {
     return (
-      <Empty className="border border-border/60 py-8">
+      <Empty size="inline" frame="panel">
         <EmptyHeader>
           <EmptyTitle>No roster available</EmptyTitle>
           <EmptyDescription>This workshop does not have roster data yet.</EmptyDescription>

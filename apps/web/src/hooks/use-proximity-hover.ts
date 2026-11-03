@@ -208,6 +208,9 @@ export function useProximityHover<T extends HTMLElement>(
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
+      // Touch browsers may synthesize mouse events after a tap. They do not
+      // provide a corresponding leave until the next interaction.
+      if (!window.matchMedia("(hover: hover)").matches) return;
       const mouseX = e.clientX;
       const mouseY = e.clientY;
 

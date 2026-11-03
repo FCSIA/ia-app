@@ -1,24 +1,18 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
-import gsap from 'gsap';
+import { useEffect, useRef } from 'react';
+import { startAmbientLoops } from '../../_lib/motion';
 
 export function BlobsGraphic() {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.to('.blob', {
-        rotate: 360,
-        duration: 30,
-        ease: 'none',
-        repeat: -1,
-        transformOrigin: 'center',
-        stagger: 2,
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  useEffect(
+    () =>
+      startAmbientLoops(ref.current, '.blob', (_, i) => ({
+        keyframes: [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+        options: { duration: 30_000, delay: i * 2000, easing: 'linear' },
+      })),
+    [],
+  );
   return (
     <div ref={ref} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <svg

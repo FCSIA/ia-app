@@ -6,7 +6,7 @@ import { useQuery } from "@/lib/convex-react";
 import { ArrowLeft, Plus, SearchX, UsersRound } from "lucide-react";
 
 import { api } from "~/apps/convex/src/_generated/api";
-import { ClubListRow } from "@/app/clubs/_components/club-list-row";
+import { ClubListRow } from "@/components/clubs/club-list-row";
 import { CreateClubDialog } from "@/components/clubs/dialogs/create-club-dialog";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,7 @@ export default function DiscoverClubsPage() {
             </CardGroup>
           </ScrollArea>
         ) : deferredSearch.trim() ? (
-          <Empty className="border-0 py-10">
+          <Empty size="inline">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <SearchX />
@@ -152,7 +152,7 @@ export default function DiscoverClubsPage() {
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="border-0 py-10">
+          <Empty size="inline">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <UsersRound />

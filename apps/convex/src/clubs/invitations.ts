@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { displayName } from '../../../shared/user-name';
 import { v } from "convex/values";
 import {
@@ -228,12 +229,12 @@ export const joinOpenClub = mutation({
 
     const result = await addClubMember(ctx, args.clubId, user._id);
     if (result.kind === "added") {
-      await ctx.db.insert("auditEvents", {
+      await logAuditEvent(ctx, {
+      actorId: user._id,
         action: "CLUB_JOINED",
         entityType: "Club",
         entityId: args.clubId,
         meta: { userId: user._id },
-        createdAt: Date.now(),
       });
     }
     return result;
@@ -343,13 +344,13 @@ export const respondToJoinRequest = mutation({
       subject: { kind: "club", clubId: args.clubId },
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: args.accept
         ? "CLUB_JOIN_REQUEST_APPROVED"
         : "CLUB_JOIN_REQUEST_DECLINED",
       entityType: "ClubJoinRequest",
       entityId: args.requestId,
-      createdAt: Date.now(),
     });
     return args.accept
       ? { kind: "approved" as const }
@@ -438,13 +439,12 @@ export const addMemberDirectly = mutation({
       });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_MEMBER_ADDED_DIRECTLY",
       entityType: "Club",
       entityId: args.clubId,
       meta: { userId: recipient._id },
-      createdAt: now,
     });
     return memberResult;
   },
@@ -637,7 +637,7 @@ export const logBulkDirectMemberImport = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: args.actorId,
       action: "CLUB_MEMBERS_BULK_ADDED_DIRECTLY",
       entityType: "Club",
@@ -647,7 +647,6 @@ export const logBulkDirectMemberImport = internalMutation({
         alreadyMember: args.alreadyMember,
         skipped: args.skipped,
       },
-      createdAt: Date.now(),
     });
     return null;
   },
@@ -707,12 +706,12 @@ export const bulkInvite = mutation({
       }
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_INVITES_BULK_IMPORTED",
       entityType: "Club",
       entityId: args.clubId,
       meta: { invited: results.invited, skipped: results.skipped },
-      createdAt: Date.now(),
     });
 
     return results;
@@ -765,12 +764,11 @@ export const generateJoinCode = mutation({
       joinCodeUpdatedAt: now,
       joinCodeExpiresAt: now + JOIN_CODE_TTL_MS,
     });
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_JOIN_CODE_GENERATED",
       entityType: "Club",
       entityId: args.clubId,
-      createdAt: now,
     });
     return code;
   },
@@ -789,12 +787,11 @@ export const revokeJoinCode = mutation({
       joinCodeUpdatedAt: Date.now(),
       joinCodeExpiresAt: undefined,
     });
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_JOIN_CODE_REVOKED",
       entityType: "Club",
       entityId: args.clubId,
-      createdAt: Date.now(),
     });
     return null;
   },
@@ -823,12 +820,11 @@ export const redeemJoinCode = mutation({
     }
     const memberResult = await addClubMember(ctx, args.clubId, user._id);
     if (memberResult.kind === "added")
-      await ctx.db.insert("auditEvents", {
+      await logAuditEvent(ctx, {
         actorId: user._id,
         action: "CLUB_JOIN_CODE_REDEEMED",
         entityType: "Club",
         entityId: args.clubId,
-        createdAt: Date.now(),
       });
     return memberResult;
   },

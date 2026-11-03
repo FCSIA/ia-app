@@ -46,7 +46,7 @@ export function resolveAdminTab(
 export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const requestedTab = searchParams?.get('tab') ?? null;
+  const requestedTab = pathname?.split('/')[2] ?? searchParams?.get('tab') ?? null;
 
   const activeTab = resolveAdminTab(requestedTab, isSuperAdmin, canManageWrapped);
 
@@ -64,18 +64,14 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
     (tab: AdminTabId) => {
       const next = resolveAdminTab(tab, isSuperAdmin, canManageWrapped);
 
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      if (next === 'users') {
-        params.delete('tab');
-      } else {
-        params.set('tab', next);
-      }
+      const params = new URLSearchParams(window.location.search);
+      params.delete('tab');
 
       const query = params.toString();
-      const path = pathname ?? '/admin';
-      window.history.replaceState(null, '', query ? `${path}?${query}` : path);
+      const path = `/admin/${next}`;
+      window.history.pushState(null, '', query ? `${path}?${query}` : path);
     },
-    [canManageWrapped, isSuperAdmin, pathname, searchParams],
+    [canManageWrapped, isSuperAdmin],
   );
 
   return {

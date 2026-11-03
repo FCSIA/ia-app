@@ -1,8 +1,10 @@
 import { v } from "convex/values";
+import { betterAuth } from "better-auth/minimal";
 import { internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createLinkedUser } from "./users/_lib";
 import { incrementUserCounts } from "./stats";
+import { createAuthOptions } from "./auth";
 import { type AppRole } from "../lib/roles";
 import {
   seedProfileValidator,
@@ -443,6 +445,7 @@ function getSeedUsers(profile: SeedProfile) {
 
 export const run = internalMutation({
   args: {
+    passwordHash: v.string(),
     reset: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),
@@ -489,6 +492,23 @@ export const run = internalMutation({
     }
 
     let upserted = 0;
+    // Only this local-demo factory reuses the run's hash. Normal auth and
+    // password changes retain Better Auth's standard hashing and verifier.
+    const options = createAuthOptions(ctx);
+    const auth = betterAuth({
+      ...options,
+      emailAndPassword: {
+        ...options.emailAndPassword,
+        password: {
+          hash: async (password: string) => {
+            if (password !== LOCAL_DEMO_PASSWORD) {
+              throw new Error("The prepared hash is only for the local demo password.");
+            }
+            return args.passwordHash;
+          },
+        },
+      },
+    });
     const generatedCredentials: Array<{
       uniqueId: string;
       temporaryPassword: string;
@@ -502,11 +522,15 @@ export const run = internalMutation({
         upserted += 1;
         continue;
       }
-      const result = await createLinkedUser(ctx, {
-        ...student,
-        password: LOCAL_DEMO_PASSWORD,
-        mustResetPassword: false,
-      });
+      const result = await createLinkedUser(
+        ctx,
+        {
+          ...student,
+          password: LOCAL_DEMO_PASSWORD,
+          mustResetPassword: false,
+        },
+        auth.api,
+      );
       if (result.temporaryPassword) {
         generatedCredentials.push({
           uniqueId: student.uniqueId,

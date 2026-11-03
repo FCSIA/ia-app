@@ -1,7 +1,9 @@
+import { mergedStream, stream } from "convex-helpers/server/stream";
+import schema from "../schema";
+import { AUDIT_ACTIONS, AUDIT_CATEGORIES, AUDIT_ENTITY_TYPES, auditEntityKey, auditCategory, isFlexAudit, type AuditCategory } from "../../../shared/audit";
+import { auditByActor, auditByCategory, auditIndexReady } from "./_aggregates";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { stream } from "convex-helpers/server/stream";
-import schema from "../schema";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -12,6 +14,7 @@ import {
   auditEventValidator,
   auditEventResolver,
   auditPageValidator,
+  auditEventSerializer,
   toAuditEvent,
   toAuditEvents,
 } from "./_lib";
@@ -122,17 +125,9 @@ export const listFilterOptions = query({
       !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
     )
       return { actions: [], entityTypes: [] };
-    // Suggestions only; advanced search accepts older and future action/type codes too.
-    const rows = await ctx.db
-      .query("auditEvents")
-      .withIndex("by_createdAt")
-      .order("desc")
-      .take(500);
     return {
-      actions: Array.from(new Set(rows.map((row) => row.action))).sort(),
-      entityTypes: Array.from(
-        new Set(rows.map((row) => row.entityType)),
-      ).sort(),
+      actions: Object.keys(AUDIT_ACTIONS).sort((a, b) => AUDIT_ACTIONS[a]!.label.localeCompare(AUDIT_ACTIONS[b]!.label)),
+      entityTypes: AUDIT_ENTITY_TYPES.filter((type, index, types) => types.findIndex((candidate) => auditEntityKey(candidate) === auditEntityKey(type)) === index),
     };
   },
 });
@@ -167,39 +162,55 @@ export const listFilteredPage = query({
     )
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
-    const requestedRows = args.paginationOpts.maximumRowsRead;
-    const maxRows = Number.isFinite(requestedRows)
-      ? Math.max(2, Math.min(Math.floor(requestedRows!), 100))
-      : 100;
-    const requestedItems = args.paginationOpts.numItems;
-    const numItems = Number.isFinite(requestedItems)
-      ? Math.max(1, Math.min(Math.floor(requestedItems), 100))
-      : 50;
-    // Date controls use the browser's local day boundaries, then range the index.
-    const resolve = auditEventResolver(ctx);
+    const db = stream(ctx.db, schema);
+    const actorId = args.actorId ? ctx.db.normalizeId("users", args.actorId) : null;
+    if (args.actorId && !actorId) return { page: [], isDone: true, continueCursor: "" };
+    const ready = (await ctx.db.query("auditIndexState").withIndex("by_key", (q) => q.eq("key", "v1")).unique())?.ready;
+    // Prefer exact identities/records; never page a global feed and then
+    // discard a sparse batch in the browser. Legacy text filters remain supported.
+    const source = actorId
+      ? db.query("auditEvents").withIndex("by_actorId_and_createdAt", (q) => { const lower = args.startAt === undefined ? q.eq("actorId", actorId) : q.eq("actorId", actorId).gte("createdAt", args.startAt); return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt); })
+      : args.entityType && args.recordId
+        ? db.query("auditEvents").withIndex("by_entityType_and_entityId_and_createdAt", (q) => { const lower = args.startAt === undefined ? q.eq("entityType", args.entityType!).eq("entityId", args.recordId!) : q.eq("entityType", args.entityType!).eq("entityId", args.recordId!).gte("createdAt", args.startAt); return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt); })
+        : args.category && args.category !== "general" && args.category !== "flex" && ready
+          ? db.query("auditEvents").withIndex("by_category_and_createdAt", (q) => { const lower = args.startAt === undefined ? q.eq("category", args.category!) : q.eq("category", args.category!).gte("createdAt", args.startAt); return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt); })
+          : args.action
+            ? db.query("auditEvents").withIndex("by_action_and_createdAt", (q) => { const lower = args.startAt === undefined ? q.eq("action", args.action!) : q.eq("action", args.action!).gte("createdAt", args.startAt); return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt); })
+            : args.entityType
+              ? db.query("auditEvents").withIndex("by_entityType_and_createdAt", (q) => { const lower = args.startAt === undefined ? q.eq("entityType", args.entityType!) : q.eq("entityType", args.entityType!).gte("createdAt", args.startAt); return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt); })
+              : db.query("auditEvents").withIndex("by_createdAt", (q) => { const lower = args.startAt === undefined ? q : q.gte("createdAt", args.startAt); return args.endAt === undefined ? lower : lower.lte("createdAt", args.endAt); });
+    // Legacy lower-case and FLEX_* spellings remain queryable under one label.
+    // Merge their ordered indexes before pagination rather than losing old rows.
+    const aliases = args.entityType ? [...new Set([args.entityType, ...AUDIT_ENTITY_TYPES.filter((type) => auditEntityKey(type) === auditEntityKey(args.entityType!))])] : [];
+    const actions = [...new Set(args.actions ?? [])];
+    const categories = [...new Set(args.categories ?? [])];
+    const ordered = aliases.length && !actorId
+      ? mergedStream(aliases.map((type) => args.recordId
+        ? db.query('auditEvents').withIndex('by_entityType_and_entityId_and_createdAt', (q) => { const lower = args.startAt === undefined ? q.eq('entityType', type).eq('entityId', args.recordId!) : q.eq('entityType', type).eq('entityId', args.recordId!).gte('createdAt', args.startAt); return args.endAt === undefined ? lower : lower.lte('createdAt', args.endAt); }).order('desc')
+        : db.query('auditEvents').withIndex('by_entityType_and_createdAt', (q) => { const lower = args.startAt === undefined ? q.eq('entityType', type) : q.eq('entityType', type).gte('createdAt', args.startAt); return args.endAt === undefined ? lower : lower.lte('createdAt', args.endAt); }).order('desc')), ['createdAt'])
+      : actions.length && !actorId
+        ? mergedStream(actions.map((action) => db.query('auditEvents').withIndex('by_action_and_createdAt', (q) => { const lower = args.startAt === undefined ? q.eq('action', action) : q.eq('action', action).gte('createdAt', args.startAt); return args.endAt === undefined ? lower : lower.lte('createdAt', args.endAt); }).order('desc')), ['createdAt'])
+        : categories.length && ready && !actorId
+          ? mergedStream(categories.map((category) => db.query('auditEvents').withIndex('by_category_and_createdAt', (q) => { const lower = args.startAt === undefined ? q.eq('category', category) : q.eq('category', category).gte('createdAt', args.startAt); return args.endAt === undefined ? lower : lower.lte('createdAt', args.endAt); }).order('desc')), ['createdAt'])
+          : source.order('desc');
+    // Reject stored-field mismatches before reading actors and related records.
     const matchesRecord = auditRecordMatcher(args);
-    const result = await stream(ctx.db, schema)
-      .query("auditEvents")
-      .withIndex("by_createdAt", (q) => {
-        const lower =
-          args.startAt === undefined ? q : q.gte("createdAt", args.startAt);
-        return args.endAt === undefined
-          ? lower
-          : lower.lte("createdAt", args.endAt);
-      })
-      .order("desc")
-      .map(async (row) => {
-        if (!matchesRecord(row)) return null;
-        const event = await resolve(row);
-        return matches(event) ? event : null;
-      })
+    return ordered
+      .filterWith(async (row) => matchesRecord(row))
+      .map(auditEventSerializer(ctx))
+      .filterWith(async (row) => matches(row))
       .paginate({
         ...args.paginationOpts,
-        numItems,
-        maximumRowsRead: maxRows,
+        // Clients choose page and scan sizes; keep both bounded so sparse
+        // filters return a cursor instead of reading the whole history.
+        numItems: Number.isFinite(args.paginationOpts.numItems)
+          ? Math.max(1, Math.min(Math.floor(args.paginationOpts.numItems), 100))
+          : 50,
+        maximumRowsRead: Number.isFinite(args.paginationOpts.maximumRowsRead)
+          ? Math.max(2, Math.min(Math.floor(args.paginationOpts.maximumRowsRead!), 100))
+          : 100,
         maximumBytesRead: 2 * 1024 * 1024,
       });
-    return result;
   },
 });
 
@@ -226,5 +237,31 @@ export const get = query({
       resolveEntityPreview(ctx, row),
     ]);
     return { ...event, entityPreview };
+  },
+});
+
+/** Counts remain unavailable until every historical row has been indexed. */
+export const counts = query({
+  args: auditFilters,
+  returns: v.object({ total: v.union(v.number(), v.null()), exact: v.boolean(), byCategory: v.array(v.object({ category: v.string(), count: v.number() })) }),
+  handler: async (ctx, args) => {
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) return { total: null, exact: false, byCategory: [] };
+    if (!(await auditIndexReady(ctx))) return { total: null, exact: false, byCategory: [] };
+    const byCategory = await Promise.all((Object.keys(AUDIT_CATEGORIES) as AuditCategory[]).map(async (category) => ({
+      category,
+      count: args.actorId
+        ? await auditByActor.count(ctx, { namespace: args.actorId, bounds: {
+          lower: { key: [category, args.startAt ?? -Number.MAX_VALUE], inclusive: true },
+          upper: { key: [category, args.endAt ?? Number.MAX_VALUE], inclusive: true },
+        } })
+        : await auditByCategory.count(ctx, { namespace: category, bounds: {
+          ...(args.startAt === undefined ? {} : { lower: { key: args.startAt, inclusive: true } }),
+          ...(args.endAt === undefined ? {} : { upper: { key: args.endAt, inclusive: true } }),
+        } }),
+    })));
+    const total = byCategory.filter((row) => (!args.categories?.length || args.categories.includes(row.category)) && (!args.category || (args.category === 'general' ? row.category !== 'flex-events' : args.category === 'flex' ? row.category === 'flex-events' : row.category === args.category))).reduce((sum, row) => sum + row.count, 0);
+    const exact = !args.query && !args.advancedQuery && !args.actor && !args.action && !args.actions?.length && !args.entityType && !args.entityId && !args.recordId && !args.actorScope;
+    return { total, exact, byCategory };
   },
 });

@@ -71,6 +71,15 @@ interface DialogContentProps
    *  docs preview. Defaults to the document body / full-viewport behaviour. */
   container?: HTMLElement | null;
   mobilePosition?: "center" | "top";
+  /** Official Fluid composition: omit the close control when the child owns
+   * its own dismissal hints. Existing dialogs keep the control by default. */
+  showCloseButton?: boolean;
+  /** Official top-anchored panel placement; distinct from phone-only placement. */
+  position?: "center" | "top";
+  /** `false` opens and closes instantly, through the same path reduced
+   *  motion uses. For keyboard-summoned surfaces (the ⌘K command menu),
+   *  where any open/close duration reads as delay. */
+  animated?: boolean;
 }
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
@@ -83,6 +92,9 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       closeButtonClassName,
       container,
       mobilePosition = "center",
+      showCloseButton = true,
+      position = "center",
+      animated = true,
       ...props
     },
     ref,
@@ -94,12 +106,14 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     const [mounted, setMounted] = useState(false);
     const reduceMotion = useReducedMotion();
+    const instant = reduceMotion || !animated;
     // We remove the framer-motion x/y transforms and use tailwind classes for
     // position so we can use sm: variants for desktop/mobile differences.
+    const isTop = position === "top";
     const isMobileTop = mobilePosition === "top";
     const contentRef = useFixedBottomVisualViewportOffset(
       ref,
-      !container && !isMobileTop,
+      !container && !isMobileTop && !isTop,
     );
 
     useEffect(() => {
@@ -133,7 +147,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             )}
             initial={{ opacity: 0 }}
             animate={{ opacity: open ? 1 : 0 }}
-            transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
+            transition={instant ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
           />
         </DialogPrimitive.Overlay>
         <DialogPrimitive.Content ref={contentRef} asChild forceMount {...props}>
@@ -147,16 +161,18 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               // single `translate` value — a separate `sm:[translate:0_0]`
               // reset would override the centering and park the panel's
               // top-left at the viewport center.
-              "[translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:-50%_-50%]",
-              isMobileTop
+              isTop
+                ? "left-1/2 top-[12dvh] w-[calc(100%-2rem)] [translate:-50%_0]"
+                : "[translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:-50%_-50%]",
+              !isTop && (isMobileTop
                 ? "inset-x-2 top-[calc(.5rem+env(safe-area-inset-top))] w-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)]"
-                : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)]",
+                : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)]"),
               surfaceClasses(dialogLevel),
               "max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain focus:outline-none",
               padding === "default" && "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",
               padding === "none" && "p-0",
-              size === "sm" && "sm:max-w-[400px]",
-              size === "lg" && "sm:max-w-[540px]",
+              size === "sm" && (isTop ? "max-w-[400px]" : "sm:max-w-[400px]"),
+              size === "lg" && (isTop ? "max-w-[540px]" : "sm:max-w-[540px]"),
               shape.container,
               className
             )}
@@ -165,24 +181,26 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               opacity: open ? 1 : 0,
               scale: open ? 1 : 0.97,
             }}
-            transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
+            transition={instant ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
             onAnimationComplete={handleExitComplete}
           >
             <SurfaceProvider value={dialogLevel}>
               {children}
-              <DialogPrimitive.Close asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  className={cn(
-                    "absolute right-1.5 top-1.5 sm:right-3 sm:top-3 sm:size-8",
-                    closeButtonClassName,
-                  )}
-                >
-                  <XIcon />
-                  <span className="sr-only">Close</span>
-                </Button>
-              </DialogPrimitive.Close>
+              {showCloseButton && (
+                <DialogPrimitive.Close asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      "absolute right-3 top-3",
+                      closeButtonClassName,
+                    )}
+                  >
+                    <XIcon />
+                    <span className="sr-only">Close</span>
+                  </Button>
+                </DialogPrimitive.Close>
+              )}
             </SurfaceProvider>
           </motion.div>
         </DialogPrimitive.Content>
@@ -205,7 +223,7 @@ function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "mt-6 flex flex-col-reverse gap-2 [&>button]:min-h-11 sm:flex-row sm:justify-end sm:[&>button]:min-h-0",
+        "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

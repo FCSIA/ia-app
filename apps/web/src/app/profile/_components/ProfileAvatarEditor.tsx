@@ -1,13 +1,13 @@
 'use client';
 
-import { displayName, nameInitials } from '~/apps/shared/user-name';
+import { displayName } from '~/apps/shared/user-name';
 
 import { useEffect, useState } from 'react';
 import { useAction, useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { EditableAvatar } from '@/components/ui/editable-avatar';
 import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import {
   Dialog,
   DialogContent,
@@ -106,24 +106,19 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
     }
   }
 
-  const initials = nameInitials(user).toUpperCase();
-  const alt = displayName(user);
+  const person = { ...user, avatarUrl };
 
   return (
     <>
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
         <DialogTrigger asChild>
-          <Avatar
-            asChild
-            className="size-16 cursor-pointer border border-border/60 bg-background shadow-sm transition-shadow hover:ring-2 hover:ring-ring/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          <button
+            type="button"
+            aria-label="Edit profile picture"
+            className="w-fit shrink-0 cursor-pointer rounded-full transition-shadow hover:ring-2 hover:ring-ring/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
           >
-            <button type="button" aria-label="Edit profile picture">
-              {avatarUrl ? <AvatarImage src={avatarUrl} alt={alt} /> : null}
-              <AvatarFallback className="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white">
-                {initials}
-              </AvatarFallback>
-            </button>
-          </Avatar>
+            <UserAvatar person={person} className="size-16" />
+          </button>
         </DialogTrigger>
         <DialogContent size="sm">
           <DialogHeader>
@@ -131,12 +126,11 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
             <DialogDescription>Choose a new picture or remove the current one.</DialogDescription>
           </DialogHeader>
           <EditableAvatar
-            alt={alt}
+            alt={displayName(user)}
             canEdit
             variant="inline"
             className="size-16"
-            fallback={initials}
-            fallbackClassName="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white"
+            person={person}
             imageUrl={avatarUrl}
             loading={uploading}
             onRemove={() => {

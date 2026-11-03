@@ -33,7 +33,7 @@ export function TextField({
           borderRadius: compact ? 10 : 14,
           borderWidth: 1,
           borderColor:
-            state === "invalid" ? color("destructive") : color("border"),
+            state === "invalid" ? color("destructive") : color("input"),
           backgroundColor: color("card"),
           color: color("foreground"),
           paddingHorizontal: compact ? 12 : 14,

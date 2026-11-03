@@ -253,14 +253,10 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     const shouldReduceMotion = useReducedMotion();
 
     // Strip non-HTML props before spreading
-    const {
-      value: _value,
-      defaultValue: _defaultValue,
-      onValueChange: _onValueChange,
-      collapsible: _collapsible,
-      type: _type,
-      ...htmlProps
-    } = rest as Record<string, unknown>;
+    const htmlProps = { ...rest } as Record<string, unknown>;
+    for (const key of ["value", "defaultValue", "onValueChange", "collapsible", "type"]) {
+      delete htmlProps[key];
+    }
 
     // Build Radix root props
     const radixProps =

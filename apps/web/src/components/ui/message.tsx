@@ -15,14 +15,16 @@ function MessageGroup({ className, ...props }: React.ComponentProps<"div">) {
 function Message({
   className,
   align = "start",
+  grouped = false,
   ...props
-}: React.ComponentProps<"div"> & { align?: "start" | "end" }) {
+}: React.ComponentProps<"div"> & { align?: "start" | "end"; grouped?: boolean }) {
   return (
     <div
       data-slot="message"
       data-align={align}
+      data-grouped={grouped || undefined}
       className={cn(
-        "group/message relative flex w-full min-w-0 gap-2 text-sm data-[align=end]:flex-row-reverse",
+        "group/message relative flex w-full min-w-0 gap-2 pt-2.5 pb-0.5 text-sm data-[grouped]:py-0.5 data-[align=end]:flex-row-reverse",
         className
       )}
       {...props}
@@ -35,7 +37,7 @@ function MessageAvatar({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="message-avatar"
       className={cn(
-        "flex w-fit min-w-8 shrink-0 items-center justify-center self-end overflow-hidden rounded-full bg-muted group-has-data-[slot=message-footer]/message:-translate-y-8",
+        "flex w-9 shrink-0 items-center justify-center self-start group-has-data-[slot=message-footer]/message:-translate-y-8",
         className
       )}
       {...props}
@@ -61,7 +63,7 @@ function MessageActions({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="message-actions"
       className={cn(
-        "absolute end-2 top-1 z-20 flex items-center",
+        "absolute end-3 -top-4 z-20 flex items-center",
         className
       )}
       {...props}

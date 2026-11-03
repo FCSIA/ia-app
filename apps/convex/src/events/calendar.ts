@@ -6,6 +6,7 @@ import {
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
 import { createDocLoader } from "../../lib/docLoader";
+import { schoolDaySpan, schoolTimestamp } from "../../lib/schoolTime";
 import { calendarSourceValidator } from "../validators";
 import { schema } from "../schema";
 import {
@@ -43,6 +44,7 @@ const externalCalendarEntryOutputValidator = v.object({
   source: v.literal("EXTERNAL"),
   subscriptionId: v.id("externalCalendarSubscriptions"),
   readOnly: v.literal(true),
+  url: v.optional(v.string()),
 });
 const calendarListEntryValidator = v.union(
   calendarEntryOutputValidator,
@@ -63,6 +65,8 @@ export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvent
     source: "EXTERNAL" as const,
     subscriptionId: entry.subscriptionId,
     readOnly: true as const,
+    allDay: entry.allDay,
+    url: entry.url,
   };
 }
 
@@ -115,6 +119,9 @@ export const list = query({
   },
   returns: v.array(calendarListEntryValidator),
   handler: async (ctx, args) => {
+    if (!Number.isFinite(args.startDate) || !Number.isFinite(args.endDate)) {
+      throw new ConvexError("Choose a valid calendar range.");
+    }
     if (args.endDate < args.startDate) {
       throw new Error("Calendar end date must be after start date");
     }
@@ -124,56 +131,60 @@ export const list = query({
 
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
+    if (args.sources?.length === 0) return [];
 
-    const entries = await ctx.db
-      .query("calendarEntries")
-      .withIndex("by_startAt", (q) =>
-        q.gte("startAt", args.startDate).lte("startAt", args.endDate),
-      )
-      .collect();
-
-    const requested =
-      args.sources && args.sources.length > 0
-        ? args.sources
-        : ["DISTRICT", "SCHOOL", "CLUB", "PERSONAL", "FLEX_FRIDAY", "EXTERNAL"];
-
+    const requested = args.sources?.length
+      ? args.sources
+      : ["DISTRICT", "SCHOOL", "CLUB", "PERSONAL", "FLEX_FRIDAY", "EXTERNAL"];
     const allowed = new Set(requested);
     const includePersonal = allowed.has("PERSONAL");
-
-    const visibleEntries = entries.filter((entry) => {
-      if (!allowed.has(entry.source)) return false;
-      if (entry.source === "PERSONAL") {
-        return includePersonal && user && entry.createdById === user._id;
+    const limit = 1_000;
+    const assertBounded = <T>(rows: T[]) => {
+      if (rows.length > limit) {
+        throw new ConvexError("This calendar range contains too many entries. Choose a shorter range or fewer sources.");
       }
-      return true;
-    });
-
-    // Day-only values use UTC midnight as a calendar-date encoding, not an
-    // instant. Clients send their local day bounds separately from timestamps.
-    const startDay = args.startDay ?? args.startDate;
-    const endDay = args.endDay ?? args.endDate;
-    if ((args.startDay === undefined) !== (args.endDay === undefined) ||
-        endDay < startDay || Math.abs(startDay - args.startDate) > 2 * 86400000 ||
-        Math.abs(endDay - args.endDate) > 2 * 86400000) {
-      throw new Error("Invalid calendar day range");
-    }
-    const [externalEntries, overlappingDays] = allowed.has("EXTERNAL") ? await Promise.all([
-      ctx.db.query("externalCalendarEvents")
-        .withIndex("by_userId_and_startAt", (q) => q.eq("userId", user._id)
-          .gte("startAt", Math.min(args.startDate, startDay))
-          .lte("startAt", Math.max(args.endDate, endDay)))
-        .take(500),
-      ctx.db.query("externalCalendarEvents")
-        .withIndex("by_userId_and_allDay_and_endAt", (q) => q.eq("userId", user._id)
-          .eq("allDay", true).gt("endAt", startDay))
-        .filter((q) => q.lte(q.field("startAt"), endDay))
-        .take(500),
+      return rows;
+    };
+    const sourceEntries = await Promise.all(
+      (["DISTRICT", "SCHOOL", "CLUB", "PERSONAL", "FLEX_FRIDAY"] as const)
+        .filter((source) => allowed.has(source) || (source === "SCHOOL" && allowed.has("FLEX_FRIDAY")))
+        .map(async (source) => {
+          const [starting, spanning] = await Promise.all(source === "PERSONAL" ? [
+            ctx.db.query("calendarEntries").withIndex("by_createdById_and_source_and_startAt", (q) =>
+              q.eq("createdById", user._id).eq("source", source).gte("startAt", args.startDate).lte("startAt", args.endDate),
+            ).take(limit + 1),
+            ctx.db.query("calendarEntries").withIndex("by_createdById_and_source_and_endAt", (q) =>
+              q.eq("createdById", user._id).eq("source", source).gt("endAt", args.startDate),
+            ).take(limit + 1),
+          ] : [
+            ctx.db.query("calendarEntries").withIndex("by_source_and_startAt", (q) =>
+              q.eq("source", source).gte("startAt", args.startDate).lte("startAt", args.endDate),
+            ).take(limit + 1),
+            ctx.db.query("calendarEntries").withIndex("by_source_and_endAt", (q) =>
+              q.eq("source", source).gt("endAt", args.startDate),
+            ).take(limit + 1),
+          ]);
+          return [...assertBounded(starting), ...assertBounded(spanning).filter((entry) => entry.startAt < args.startDate)];
+        }),
+    );
+    const visibleEntries = sourceEntries.flat().map((entry) => entry.flexFridayId ? {
+      ...entry,
+      source: "FLEX_FRIDAY" as const,
+      // Historical Flex rows were zero-length SCHOOL entries. Project their
+      // school day without requiring a live migration to render them correctly.
+      ...(entry.allDay ? {} : schoolDaySpan(entry.startAt)),
+      allDay: true,
+    } : entry).filter((entry) => allowed.has(entry.source));
+    const [externalStarting, externalSpanning] = allowed.has("EXTERNAL") ? await Promise.all([
+      ctx.db.query("externalCalendarEvents").withIndex("by_userId_and_startAt", (q) =>
+        q.eq("userId", user._id).gte("startAt", args.startDate).lte("startAt", args.endDate),
+      ).take(limit + 1),
+      ctx.db.query("externalCalendarEvents").withIndex("by_userId_and_endAt", (q) =>
+        q.eq("userId", user._id).gt("endAt", args.startDate),
+      ).take(limit + 1),
     ]) : [[], []];
-    const importedEntries = Array.from(new Map([...externalEntries, ...overlappingDays]
-      .filter((entry) => entry.allDay
-        ? entry.startAt <= endDay && (entry.endAt ?? entry.startAt + 86400000) > startDay
-        : entry.startAt >= args.startDate && entry.startAt <= args.endDate)
-      .map((entry) => [entry._id, entry])).values()).map(serializeExternalCalendarEntry);
+    const importedEntries = [...assertBounded(externalStarting), ...assertBounded(externalSpanning).filter((entry) => entry.startAt < args.startDate)]
+      .map(serializeExternalCalendarEntry);
 
     if (!includePersonal) return [...visibleEntries, ...importedEntries];
 
@@ -182,7 +193,8 @@ export const list = query({
       .withIndex("by_recipientId_and_status_and_createdAt", (q) =>
         q.eq("recipientId", user._id).eq("status", "ACCEPTED"),
       )
-      .take(100);
+      .take(limit + 1);
+    assertBounded(acceptedInvites);
     // Resolved together rather than one invite at a time: a month with fifty
     // shared entries used to cost fifty sequential round trips inside the query.
     // The loader collapses the repeated sender lookups a prolific sharer causes.
@@ -197,7 +209,7 @@ export const list = query({
         if (!entry || entry.source !== "PERSONAL" || entry.createdById !== invite.senderId || !sender || friendship?.status !== "ACCEPTED") {
           return null;
         }
-        if (entry.startAt < args.startDate || entry.startAt > args.endDate) return null;
+        if (entry.startAt > args.endDate || (entry.endAt ?? entry.startAt) < args.startDate) return null;
         return { ...entry, inviteId: invite._id, sharedBy: serializeUser(sender) };
       }),
     );
@@ -383,6 +395,20 @@ export const respondToInvite = mutation({
   },
 });
 
+export const removeSharedEntry = mutation({
+  args: { inviteId: v.id("calendarInvites") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const invite = await ctx.db.get(args.inviteId);
+    if (!invite || invite.recipientId !== user._id || invite.status !== "ACCEPTED") {
+      throw new ConvexError("Shared calendar entry not found.");
+    }
+    await ctx.db.patch(invite._id, { status: "DECLINED", respondedAt: Date.now() });
+    return null;
+  },
+});
+
 export const create = mutation({
   args: {
     title: v.string(),
@@ -390,6 +416,7 @@ export const create = mutation({
     location: v.optional(v.string()),
     startAt: v.number(),
     endAt: v.optional(v.number()),
+    allDay: v.optional(v.boolean()),
     tags: v.optional(v.array(v.string())),
     source: v.optional(calendarSourceValidator),
   },
@@ -404,7 +431,10 @@ export const create = mutation({
 
     const title = normalizeEventTitle(args.title);
     const description = normalizeOptionalEventDescription(args.description);
-    if (args.endAt !== undefined && args.endAt < args.startAt) {
+    if (!Number.isFinite(args.startAt) || (args.endAt !== undefined && !Number.isFinite(args.endAt))) {
+      throw new ConvexError("Choose a valid start and end time");
+    }
+    if (args.endAt !== undefined && args.endAt <= args.startAt) {
       throw new ConvexError("End time must be after start time");
     }
 
@@ -414,6 +444,7 @@ export const create = mutation({
       location: args.location?.trim(),
       startAt: args.startAt,
       endAt: args.endAt,
+      allDay: args.allDay,
       tags: args.tags ?? ["personal"],
       source: "PERSONAL",
       createdById: user._id,
@@ -448,6 +479,49 @@ export const remove = mutation({
   },
 });
 
+/** Move an owned reminder without overwriting fields changed in another editor. */
+function schoolDateParts(timestamp: number) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(timestamp).map(({ type, value }) => [type, Number(value)]));
+  return { year: parts.year, month: parts.month, day: parts.day };
+}
+
+export const reschedule = mutation({
+  args: {
+    entryId: v.id("calendarEntries"),
+    expectedStartAt: v.number(),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.source !== "PERSONAL" || entry.createdById !== user._id) {
+      throw new ConvexError("You can only edit your own personal entries");
+    }
+    if (entry.startAt !== args.expectedStartAt) {
+      throw new ConvexError("This reminder changed. Please try again.");
+    }
+    if (!Number.isFinite(args.startAt)) throw new ConvexError("Choose a valid start time");
+    let endAt = entry.endAt === undefined ? undefined : args.startAt + entry.endAt - entry.startAt;
+    if (entry.allDay && entry.endAt !== undefined) {
+      const originalStart = schoolDateParts(entry.startAt);
+      const originalEnd = schoolDateParts(entry.endAt);
+      const target = schoolDateParts(args.startAt);
+      const days = (Date.UTC(originalEnd.year, originalEnd.month - 1, originalEnd.day) - Date.UTC(originalStart.year, originalStart.month - 1, originalStart.day)) / 86_400_000;
+      const expectedEnd = schoolTimestamp({ ...target, day: target.day + days });
+      if (days < 1 || schoolTimestamp(target) !== args.startAt || args.endAt !== expectedEnd) {
+        throw new ConvexError("Choose a valid end time");
+      }
+      endAt = expectedEnd;
+    }
+    await ctx.db.patch(args.entryId, { startAt: args.startAt, endAt });
+    return null;
+  },
+});
+
 export const update = mutation({
   args: {
     entryId: v.id("calendarEntries"),
@@ -456,6 +530,7 @@ export const update = mutation({
     location: v.optional(v.string()),
     startAt: v.number(),
     endAt: v.optional(v.number()),
+    allDay: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -469,7 +544,10 @@ export const update = mutation({
 
     const title = normalizeEventTitle(args.title);
     const description = normalizeOptionalEventDescription(args.description);
-    if (args.endAt !== undefined && args.endAt < args.startAt) {
+    if (!Number.isFinite(args.startAt) || (args.endAt !== undefined && !Number.isFinite(args.endAt))) {
+      throw new ConvexError("Choose a valid start and end time");
+    }
+    if (args.endAt !== undefined && args.endAt <= args.startAt) {
       throw new ConvexError("End time must be after start time");
     }
 
@@ -478,7 +556,9 @@ export const update = mutation({
       description,
       location: args.location?.trim(),
       startAt: args.startAt,
-      endAt: args.endAt,
+      // Older callers may omit endAt; preserve duration when moving a reminder.
+      endAt: args.endAt ?? (entry.endAt === undefined ? undefined : args.startAt + entry.endAt - entry.startAt),
+      allDay: args.allDay ?? entry.allDay,
     });
     return null;
   },

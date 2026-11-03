@@ -11,7 +11,7 @@ export function ErrorState() {
         href="/"
         className="rounded-full border border-white/30 bg-white/10 px-5 py-2 text-sm font-medium backdrop-blur hover:bg-white/20 transition"
       >
-        Back to dashboard
+        Back to home
       </Link>
     </div>
   );

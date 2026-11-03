@@ -1,0 +1,30 @@
+// Run from the repository root: node --input-type=module < docs/backend/seed-benchmark-2026-10-29/verify-login.mjs.txt
+// Only for the verified disposable local backend on 3214/3215. Changes a demo password; reseed afterward.
+import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+
+const seed = readFileSync("apps/convex/src/seed.ts", "utf8");
+const password = seed.match(/LOCAL_DEMO_PASSWORD = "([^"]+)"/)[1];
+const base = "http://127.0.0.1:3215/api/auth";
+const headers = { "content-type": "application/json", origin: "http://localhost:3000", "x-forwarded-host": "localhost:3000" };
+const signIn = (value) => fetch(`${base}/sign-in/username`, { method: "POST", headers, body: JSON.stringify({ username: "STU001", password: value }) });
+const cookie = (response) => response.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
+
+assert.equal((await signIn("incorrect-password")).status, 401);
+const first = await signIn(password);
+assert.equal(first.status, 200);
+const second = await signIn(password);
+assert.equal(second.status, 200);
+const changedPassword = randomBytes(24).toString("hex");
+const changed = await fetch(`${base}/change-password`, {
+  method: "POST", headers: { ...headers, cookie: cookie(first) },
+  body: JSON.stringify({ currentPassword: password, newPassword: changedPassword, revokeOtherSessions: true }),
+});
+assert.equal(changed.status, 200);
+assert.equal((await signIn(password)).status, 401);
+assert.equal((await signIn(changedPassword)).status, 200);
+const otherSession = await fetch(`${base}/get-session?disableCookieCache=true`, { headers: { ...headers, cookie: cookie(second) } });
+assert.equal(otherSession.status, 200);
+assert.equal(await otherSession.json(), null);
+console.log(JSON.stringify({ wrongPasswordRejected: true, demoLogin: true, passwordChange: true, oldPasswordRejected: true, newPasswordLogin: true, otherSessionRevoked: true }));

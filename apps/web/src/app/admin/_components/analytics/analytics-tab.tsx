@@ -73,15 +73,14 @@ export function AnalyticsTab() {
         <TabsSubtle
           selectedIndex={sectionIndex}
           onSelect={(index) => setSection(sections[index].id)}
-          className="rounded-lg border border-border/70 bg-muted/30 px-1"
         >
           {sections.map((item, index) => (
-            <TabsSubtleItem key={item.id} index={index} label={item.label} className="py-1.5" />
+            <TabsSubtleItem key={item.id} index={index} label={item.label} />
           ))}
         </TabsSubtle>
       </div>
       <Select value={String(days)} onValueChange={(value) => setDays(Number(value) as typeof days)}>
-        <SelectTrigger className="w-full sm:w-[150px]" placeholder="Range" />
+        <SelectTrigger aria-label="Analytics date range" className="w-full sm:w-[150px]" placeholder="Range" />
         <SelectContent>
           {rangeOptions.map((option, index) => (
             <SelectItem key={option} index={index} value={String(option)}>
@@ -144,7 +143,7 @@ function CoverageNotice({
 
   if (!canFill) {
     return (
-      <div className="rounded-lg border bg-background p-4">
+      <div className="py-3">
         <p className="text-sm font-medium text-foreground">
           {formatCount(coverage.coveredDays)} of {formatCount(coverage.rangeDays)} days counted
         </p>
@@ -156,7 +155,7 @@ function CoverageNotice({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="text-sm font-medium text-foreground">
           {formatCount(coverage.coveredDays)} of {formatCount(coverage.rangeDays)} days counted

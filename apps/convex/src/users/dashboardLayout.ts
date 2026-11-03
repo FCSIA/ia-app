@@ -6,18 +6,19 @@
 export const dashboardWidgetIds = [
   "welcome",
   "calendar",
-  "upcoming-events",
   "announcements",
   "pending-approvals",
-  "admin-stats",
-  "quick-actions",
-  "day-progress",
   "flex-friday",
   "my-clubs",
   "fun-fact",
+  "snake",
 ] as const;
 
 const dashboardWidgetIdSet = new Set<string>(dashboardWidgetIds);
+
+export function isDashboardNoteId(id: string): boolean {
+  return /^note:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
 
 /**
  * Drops retired/unknown IDs and keeps the first occurrence of each widget,
@@ -27,7 +28,7 @@ export function normalizeDashboardLayout(layout: readonly string[]): string[] {
   const seen = new Set<string>();
 
   return layout.filter((id) => {
-    if (!dashboardWidgetIdSet.has(id) || seen.has(id)) return false;
+    if ((!dashboardWidgetIdSet.has(id) && !isDashboardNoteId(id)) || seen.has(id)) return false;
     seen.add(id);
     return true;
   });
@@ -59,4 +60,50 @@ export function normalizeDashboardColumns(
       result[result[0].length <= result[1].length ? 0 : 1].push(id);
   }
   return result;
+}
+
+const dashboardReviewerRoles = new Set([
+  "SPONSOR",
+  "TEACHER",
+  "ADMIN",
+  "SUPER_ADMIN",
+  "SUPPORT_STAFF",
+]);
+
+/** Roles that approve other people's work keep their queue visible when empty. */
+export function isDashboardReviewer(roles: readonly string[] = []): boolean {
+  return roles.some((role) => dashboardReviewerRoles.has(role));
+}
+
+/**
+ * Authored role defaults are shared with clients; no measurement or re-packing.
+ * Every role starts with the work queue. Reviewers always see it; everyone else
+ * sees it only while a sent-back post or an invitation is waiting.
+ */
+export function getDefaultDashboardLayout(
+  roles: readonly string[] = [],
+): string[] {
+  const ids = [
+    "welcome",
+    "pending-approvals",
+    "announcements",
+    "calendar",
+    "my-clubs",
+  ];
+  return roles.includes("SUPER_ADMIN")
+    ? ids.filter((id) => id !== "my-clubs")
+    : ids;
+}
+
+const defaultRightColumn = new Set(["calendar", "my-clubs"]);
+
+/** Work and news on the left, time and clubs on the right, so neither column runs empty. */
+export function getDefaultDashboardColumns(
+  roles: readonly string[] = [],
+): string[][] {
+  const ids = getDefaultDashboardLayout(roles).filter((id) => id !== "welcome");
+  return [
+    ids.filter((id) => !defaultRightColumn.has(id)),
+    ids.filter((id) => defaultRightColumn.has(id)),
+  ];
 }

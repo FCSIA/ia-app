@@ -8,6 +8,7 @@ export function FeedbackTabPanel({ canUpdateFeedback = true }: { canUpdateFeedba
 
   return (
     <FeedbackTab
+      isLoading={feedback.isLoading}
       feedbackSearch={feedback.feedbackSearch}
       onFeedbackSearchChange={feedback.setFeedbackSearch}
       deferredFeedbackSearch={feedback.deferredFeedbackSearch}

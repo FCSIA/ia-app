@@ -1,23 +1,25 @@
 'use client';
 
-import { useId, useRef, useState, type ReactElement } from 'react';
-import { ArrowLeft, UserPlus } from 'lucide-react';
+import { useId, useRef, useState, type ComponentProps, type ReactElement } from 'react';
+import { ArrowLeft, Copy, UserPlus } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { ClubMark } from '@/components/clubs/club-mark';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { fullName, formatClubRole } from '@/components/clubs/types';
 import type { ClubUserRef } from '@/components/clubs/types';
 import { cn } from '@/lib/utils';
 import { regularName } from '~/apps/shared/user-name';
+import { isAdmin, useCurrentUser } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
+import { copyText } from '@/lib/share';
 
 export type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
@@ -107,16 +109,12 @@ export function UserProfileContent({
       className={cn(
         'min-w-0',
         isPreview
-          ? 'max-h-[min(34rem,var(--radix-hover-card-content-available-height))] overflow-y-auto'
+          ? 'max-h-[min(34rem,var(--radix-popover-content-available-height))] overflow-y-auto'
           : 'flex flex-col gap-5',
       )}
     >
-      <div className={cn('flex min-w-0 items-start gap-3', isPreview ? 'p-3' : 'pr-8')}>
-        <ClubAvatar
-          person={{ ...person, avatarUrl: person.avatarUrl ?? null }}
-          className={isPreview ? 'size-12' : 'size-14'}
-          fallbackClassName="text-sm"
-        />
+    <div className={cn('flex min-w-0 items-start gap-3', isPreview ? 'p-3' : 'pr-8')}>
+        <UserAvatar person={person} className={isPreview ? 'size-12' : 'size-14'} />
         <div className="min-w-0 flex-1">
           <div id={headingId} className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-foreground">
             <span className="truncate">{name}</span>
@@ -176,7 +174,7 @@ export function UserProfileContent({
                       label={`Open ${fullName(friend)}'s profile`}
                       onClick={() => onOpenPerson?.(friend)}
                     >
-                      <ClubAvatar person={friend} className="size-8" fallbackClassName="text-[10px]" />
+                      <UserAvatar person={friend} size={32} />
                       <CardHeader>
                         <CardTitle className="truncate">{fullName(friend)}</CardTitle>
                       </CardHeader>
@@ -189,7 +187,7 @@ export function UserProfileContent({
             <div className="mt-2 flex flex-col gap-1.5">
               {profileContext.mutualFriends.map((friend) => (
                 <div key={friend._id} className="flex min-w-0 items-center gap-2">
-                  <ClubAvatar person={friend} className="size-7" fallbackClassName="text-[10px]" />
+                  <UserAvatar person={friend} size={24} />
                   <span className="truncate text-xs text-foreground">{fullName(friend)}</span>
                 </div>
               ))}
@@ -255,12 +253,6 @@ export function UserProfileContent({
         </section>
       ) : null}
 
-      {isPreview ? (
-        <>
-          <Separator />
-          <p className="px-3 py-2 text-[11px] text-muted-foreground">Click or tap to open the full profile</p>
-        </>
-      ) : null}
     </div>
   );
 }
@@ -269,10 +261,13 @@ type UserProfileDialogProps = Omit<UserProfileContentProps, 'active' | 'variant'
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger?: ReactElement;
+  onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus'];
 };
 
-export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps }: UserProfileDialogProps) {
+export function UserProfileDialog({ open, onOpenChange, trigger, onCloseAutoFocus, ...contentProps }: UserProfileDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const currentUser = useCurrentUser();
+  const { toast } = useToast();
   // Profiles opened from inside this one (mutual friends), newest last. The
   // trail belongs to the person the dialog was opened for and clears on close.
   const [trail, setTrail] = useState<{ rootId: string; people: UserProfilePerson[] }>({
@@ -298,6 +293,7 @@ export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps
         ref={contentRef}
         size="lg"
         className="gap-0"
+        onCloseAutoFocus={onCloseAutoFocus}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           contentRef.current?.focus();
@@ -334,6 +330,12 @@ export function UserProfileDialog({ open, onOpenChange, trigger, ...contentProps
           onNavigate={() => onOpenChange(false)}
           onOpenPerson={openPerson}
         />
+        {isAdmin(currentUser) ? (
+          <Button type="button" variant="ghost" size="sm" leadingIcon={Copy} className="mt-4 self-start" onClick={async () => {
+            try { await copyText(shownPerson._id); toast({ title: 'Person ID copied' }); }
+            catch { toast({ title: 'Could not copy the person ID', variant: 'destructive' }); }
+          }}>Copy ID</Button>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

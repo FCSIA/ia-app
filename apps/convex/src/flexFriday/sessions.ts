@@ -1,3 +1,4 @@
+import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -48,12 +49,11 @@ export const create = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_SESSION_CREATED",
       entityId: sessionId,
       entityType: "FLEX_SESSION",
-      createdAt: Date.now(),
     });
 
     return sessionId;
@@ -87,12 +87,11 @@ export const update = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_SESSION_UPDATED",
       entityId: args.sessionId,
       entityType: "FLEX_SESSION",
-      createdAt: Date.now(),
     });
   },
 });
@@ -118,12 +117,11 @@ export const remove = mutation({
     await adjustFlexSessionCount(ctx, session.flexFridayId, -1);
     await ctx.db.delete(args.sessionId);
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
       actorId: user._id,
       action: "FLEX_SESSION_DELETED",
       entityId: args.sessionId,
       entityType: "FLEX_SESSION",
-      createdAt: Date.now(),
     });
   },
 });

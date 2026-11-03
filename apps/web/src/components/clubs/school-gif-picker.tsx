@@ -1,13 +1,11 @@
-"use client";
+'use client';
 
-import Image from "next/image";
+import Image from 'next/image';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from '@/components/ui/popover';
 import {
   Command,
   CommandInput,
@@ -15,8 +13,8 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from "@/components/ui/command";
-import { SCHOOL_GIFS, type SchoolGif } from "~/apps/shared/chat/school-gifs";
+} from '@/components/ui/command';
+import { SCHOOL_GIFS, type SchoolGif } from '~/apps/shared/chat/school-gifs';
 
 export function SchoolGifPicker({
   open,
@@ -28,15 +26,14 @@ export function SchoolGifPicker({
   onSelect: (gif: SchoolGif) => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" mobilePosition="top">
-        <DialogHeader>
-          <DialogTitle>Choose a GIF</DialogTitle>
-          <DialogDescription>
-            Reaction GIFs from Tenor, selected for school. Choose one to add to
-            your message.
-          </DialogDescription>
-        </DialogHeader>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverAnchor className="absolute bottom-0 left-0 size-px" />
+      <PopoverContent
+        side="top"
+        align="start"
+        className="w-96 max-w-[calc(100vw-2rem)] p-2"
+        aria-label="Choose a GIF"
+      >
         <Command surface="inherit">
           <CommandInput
             placeholder="Search GIFs…"
@@ -46,32 +43,31 @@ export function SchoolGifPicker({
             <CommandEmpty>
               No GIFs found. Try “study” or “celebrate”.
             </CommandEmpty>
-            <CommandGroup heading="Reactions">
+            <CommandGroup className="[&_[cmdk-group-items]]:grid [&_[cmdk-group-items]]:grid-cols-3 [&_[cmdk-group-items]]:gap-1">
               {SCHOOL_GIFS.map((gif) => (
                 <CommandItem
                   key={gif.id}
                   value={gif.id}
                   keywords={[gif.label, gif.category, ...gif.keywords]}
+                  title={gif.label}
+                  aria-label={gif.label}
+                  className="aspect-video overflow-hidden p-0"
                   onSelect={() => onSelect(gif)}
                 >
                   <Image
                     src={gif.poster}
                     alt=""
-                    width={80}
-                    height={60}
+                    width={160}
+                    height={90}
                     unoptimized
-                    className="shrink-0"
+                    className="size-full object-cover"
                   />
-                  <span>{gif.label}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {gif.category}
-                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
           </CommandList>
         </Command>
-      </DialogContent>
-    </Dialog>
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -1,8 +1,60 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDefaultDashboardColumns,
+  getDefaultDashboardLayout,
+  isDashboardReviewer,
   normalizeDashboardColumns,
   normalizeDashboardLayout,
 } from "./dashboardLayout";
+
+describe("authored dashboard defaults", () => {
+  it("starts every role with the work queue, then unread news", () => {
+    for (const role of [
+      "STUDENT",
+      "STUDENT_LEADER",
+      "STUDENT_ADMIN",
+      "TEACHER",
+      "SPONSOR",
+      "ADMIN",
+      "SUPPORT_STAFF",
+    ]) {
+      expect(getDefaultDashboardLayout([role])).toEqual([
+        "welcome",
+        "pending-approvals",
+        "announcements",
+        "calendar",
+        "my-clubs",
+      ]);
+    }
+    expect(getDefaultDashboardLayout(["SUPER_ADMIN"])).not.toContain(
+      "my-clubs",
+    );
+  });
+
+  it("balances work and news against time and clubs", () => {
+    expect(getDefaultDashboardColumns(["STUDENT"])).toEqual([
+      ["pending-approvals", "announcements"],
+      ["calendar", "my-clubs"],
+    ]);
+    expect(getDefaultDashboardColumns(["SUPER_ADMIN"])).toEqual([
+      ["pending-approvals", "announcements"],
+      ["calendar"],
+    ]);
+  });
+
+  it("keeps an empty queue visible only for roles that approve work", () => {
+    for (const role of [
+      "TEACHER",
+      "SPONSOR",
+      "ADMIN",
+      "SUPER_ADMIN",
+      "SUPPORT_STAFF",
+    ])
+      expect(isDashboardReviewer([role])).toBe(true);
+    for (const role of ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"])
+      expect(isDashboardReviewer([role])).toBe(false);
+  });
+});
 
 describe("normalizeDashboardLayout", () => {
   it("keeps the first valid occurrence of every widget in order", () => {
@@ -16,7 +68,7 @@ describe("normalizeDashboardLayout", () => {
         "retired-widget",
         "calendar",
       ]),
-    ).toEqual(["fun-fact", "calendar", "day-progress", "announcements"]);
+    ).toEqual(["fun-fact", "calendar", "announcements"]);
   });
 });
 

@@ -1,0 +1,46 @@
+import { v } from "convex/values";
+import { components } from "./_generated/api";
+import { internalQuery } from "./_generated/server";
+
+export const snapshot = internalQuery({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    if (process.env.ALLOW_LOCAL_DEMO_SEED !== "true") throw new Error("Local demo only");
+    const users = await ctx.db.query("users").withIndex("by_uniqueId").take(2000);
+    const counts = await ctx.db.query("appStats").withIndex("by_key", (q) => q.eq("key", "user-counts")).unique();
+    const authUsers: Array<{ _id: string }> = [];
+    const accounts: Array<{ userId?: string; providerId?: string; password?: string | null }> = [];
+    for (const model of ["user", "account"] as const) {
+      let cursor: string | null = null;
+      for (let i = 0; i < 3; i++) {
+        const page: { page: Array<{ _id: string; userId?: string; providerId?: string; password?: string | null }>; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, { model, paginationOpts: { cursor, numItems: 1000 } });
+        if (model === "user") authUsers.push(...page.page);
+        else accounts.push(...page.page);
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+    }
+    const authIds = new Set(authUsers.map((user) => user._id));
+    const credentialIds = new Set(accounts.filter((account) => account.providerId === "credential").map((account) => account.userId));
+    const domains: Record<string, number> = {};
+    for (const table of ["courses", "clubs", "announcements", "studentSchedules", "studentScheduleFriends", "moderationKeywordRules"] as const) {
+      domains[table] = (await ctx.db.query(table).take(2000)).length;
+    }
+    return {
+      users: users.length,
+      students: users.filter((user) => user.isStudent).length,
+      staff: users.filter((user) => !user.isStudent).length,
+      trackedUsers: counts?.users,
+      trackedStudents: counts?.students,
+      trackedStaff: counts?.staff,
+      authUsers: authUsers.length,
+      credentialAccounts: accounts.filter((account) => account.providerId === "credential").length,
+      linkedUsers: users.filter((user) => !!user.authUserId && authIds.has(user.authUserId) && credentialIds.has(user.authUserId)).length,
+      distinctPasswordHashes: new Set(accounts.map((account) => account.password)).size,
+      missingPasswords: accounts.filter((account) => !account.password).length,
+      mustResetPassword: users.filter((user) => user.mustResetPassword).length,
+      domains,
+    };
+  },
+});

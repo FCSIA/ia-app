@@ -1,0 +1,118 @@
+{
+  "measuredAt": "2026-10-29",
+  "deployment": {
+    "kind": "isolated local",
+    "apiPort": 3212,
+    "httpPort": 3213
+  },
+  "source": {
+    "measurementCommit": "41b7a885d3309ad3638be7a7033aa510ca0f6f09",
+    "reportParentCommit": "26a0263ceae280393d40b014ecb40bdbb3d97d58",
+    "convex": "1.46.0",
+    "betterAuth": "1.6.22",
+    "node": "v24.22.1",
+    "os": "Darwin",
+    "architecture": "arm64"
+  },
+  "seed": {
+    "profile": "development",
+    "students": 50,
+    "staff": 119,
+    "users": 169,
+    "startedAtMs": 1793301843019,
+    "completedAtMs": 1793301891919,
+    "elapsedMs": 48900
+  },
+  "diskSnapshot": {
+    "sqliteApproxMiB": 13,
+    "modulesApproxMiB": 11,
+    "deploymentApproxMiB": 24,
+    "note": "Rounded du output captured after seeding and subsequent use; not logical fixture size or an immediate post-seed snapshot."
+  },
+  "measurement": {
+    "warmups": 2,
+    "samplesPerOperation": 12,
+    "timer": "Wall clock in an action around awaited mutations; includes dispatch and commit. Millisecond resolution."
+  },
+  "samplesMs": {
+    "noopMs": [
+      14,
+      12,
+      14,
+      11,
+      17,
+      14,
+      15,
+      12,
+      14,
+      13,
+      15,
+      12
+    ],
+    "hashMs": [
+      133,
+      155,
+      129,
+      126,
+      134,
+      130,
+      127,
+      131,
+      129,
+      129,
+      129,
+      130
+    ],
+    "createMs": [
+      206,
+      237,
+      198,
+      195,
+      236,
+      224,
+      213,
+      192,
+      201,
+      199,
+      213,
+      205
+    ]
+  },
+  "scheduledChain": {
+    "steps": 25,
+    "elapsedMs": 404,
+    "progressWritePerStep": true,
+    "repetitions": 1
+  },
+  "hostHash": {
+    "samplesMs": [
+      81.19699999999997,
+      80.84883400000001,
+      80.99795800000004,
+      80.719,
+      81.51579200000003,
+      81.21337499999993,
+      83.29383299999995,
+      79.04541700000004,
+      78.48712499999999,
+      82.30104099999994,
+      80.80220800000006,
+      81.9672079999998
+    ],
+    "timer": "Host Node performance.now around Better Auth hashPassword; synthetic password; no Convex dispatch or transaction."
+  },
+  "cleanup": {
+    "createdAndDeletedAccounts": 14,
+    "before": {
+      "benchmarkUsers": 0,
+      "trackedUsers": 169,
+      "users": 169
+    },
+    "after": {
+      "benchmarkUsers": 0,
+      "trackedUsers": 169,
+      "users": 169
+    },
+    "temporaryFunctionsRemoved": true
+  }
+}

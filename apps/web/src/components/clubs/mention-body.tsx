@@ -2,8 +2,7 @@
 
 import { Fragment, type ReactNode } from 'react';
 import type { Value } from 'platejs';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownBody } from '@/components/ui/markdown-body';
 import { cn } from '@/lib/utils';
 import { extractChatGifLinks, hideChatGifLinks } from '~/apps/shared/chat/gifs';
 import {
@@ -131,8 +130,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
           className,
         )}
       >
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
+        <MarkdownBody
           urlTransform={messageUrlTransform}
           components={{
             img: () => null,
@@ -164,7 +162,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
           }}
         >
           {bodyMarkdown}
-        </ReactMarkdown>
+        </MarkdownBody>
       </div>
     );
   }

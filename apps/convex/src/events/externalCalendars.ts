@@ -180,6 +180,7 @@ export const applySync = internalMutation({
       startAt: v.number(),
       endAt: v.optional(v.number()),
       allDay: v.optional(v.boolean()),
+      url: v.optional(v.string()),
     })),
   },
   returns: v.null(),

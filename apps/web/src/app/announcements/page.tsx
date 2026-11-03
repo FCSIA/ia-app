@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { DateTimeField } from '@/components/forms/date-time-field';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ToggleGroup } from '@/components/ui/toggle-group';
@@ -590,7 +590,7 @@ export default function AnnouncementsPage() {
 
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Expires (optional)</label>
-                  <DateTimePicker value={form.expiresAt} onChange={(expiresAt) => setForm({ ...form, expiresAt })} allowClear />
+                  <DateTimeField aria-label="Announcement expiry" value={form.expiresAt} onChange={(expiresAt) => setForm({ ...form, expiresAt })} allowClear />
                 </div>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-3">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
@@ -654,11 +654,11 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
         ) : !hasActiveFilters && dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
-          <Empty className="min-h-32 border">
+          <Empty size="inline" frame="panel">
             <EmptyHeader><EmptyTitle>No announcements yet</EmptyTitle></EmptyHeader>
           </Empty>
         ) : filtered.length === 0 ? (
-          <Empty className="min-h-32 border">
+          <Empty size="inline" frame="panel">
             <EmptyHeader><EmptyTitle>No announcements match your filters.</EmptyTitle></EmptyHeader>
             {canLoadMore || pinnedStatus === 'CanLoadMore' ? <EmptyContent>
                 {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}

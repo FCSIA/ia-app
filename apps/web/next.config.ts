@@ -81,7 +81,10 @@ const nextConfig: NextConfig = {
   ],
 
   async redirects() {
-    return [{ source: '/dashboard', destination: '/', permanent: true }];
+    return [
+      { source: '/dashboard', destination: '/', permanent: true },
+      { source: '/home', destination: '/', permanent: true },
+    ];
   },
 
   // `/_meta` is the documented deployment marker, but the App Router treats

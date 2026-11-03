@@ -6,8 +6,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -15,7 +15,6 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import {
   Check,
-  ChevronDown,
   Clock3,
   KeyRound,
   Megaphone,
@@ -30,7 +29,15 @@ import type { ClubDetail } from "@/components/clubs/types";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { AnnouncementDialog } from "@/components/clubs/dialogs/announcement-dialog";
-import { UserProfileAvatar } from "@/components/users/user-profile-avatar";
+import {
+  UserProfileAvatar,
+  type UserProfilePerson,
+} from "@/components/users/user-profile-avatar";
+import { PersonRow } from "@/components/users/person-row";
+import { DisclosureSection } from "@/components/ui/disclosure-section";
+import {
+  useOnlineMemberCount,
+} from "@/components/presence/club-presence";
 import { ClubHero } from "@/components/clubs/club-hero";
 import { fullName } from "@/components/clubs/types";
 import { AnnouncementCard } from "@/components/announcements/announcement-card";
@@ -38,11 +45,6 @@ import { useAnnouncementFeedClock } from "@/components/announcements/use-announc
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
 import { Card, CardGroup, CardHeader, CardContent } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Empty,
   EmptyDescription,
@@ -84,7 +86,7 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
           <Users className="size-4 shrink-0 text-primary" />
           <span className="truncate">Capacity</span>
         </span>
-        <span className="shrink-0 tabular-nums text-muted-foreground">
+        <span className="shrink-0 tabular-nums text-foreground">
           {memberLimit == null
             ? `${memberCount} joined`
             : `${memberCount}/${memberLimit}`}
@@ -115,35 +117,46 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
   );
 }
 
-function OverviewSidebarSection({
+function OverviewRoster({
   title,
-  children,
+  people,
+  roleName,
 }: {
-  title: ReactNode;
-  children: ReactNode;
+  title: string;
+  people: UserProfilePerson[];
+  roleName?: string;
 }) {
+  const onlineCount = useOnlineMemberCount(people.map((person) => person._id));
+  if (people.length === 0) return null;
   return (
-    <Collapsible defaultOpen className="group">
-      <section>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {title}
-            </span>
-            <ChevronDown
-              className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
-              aria-hidden
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="overflow-hidden [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none">
-          <div className="px-4 pb-4">{children}</div>
-        </CollapsibleContent>
-      </section>
-    </Collapsible>
+    <DisclosureSection
+      title={title}
+      meta={onlineCount === undefined ? undefined : `${onlineCount} online`}
+    >
+      <CardGroup orientation="inline" separated className="gap-0">
+        {people.map((person) => (
+          <PersonRow
+            key={person._id}
+            person={person}
+            roleName={roleName}
+          />
+        ))}
+      </CardGroup>
+    </DisclosureSection>
+  );
+}
+
+function OverviewMembers({ club }: { club: ClubDetail }) {
+  const onlineCount = useOnlineMemberCount(
+    club.members.map((member) => member.userId),
+  );
+  return (
+    <DisclosureSection
+      title="Members"
+      meta={onlineCount === undefined ? undefined : `${onlineCount} online`}
+    >
+      <MemberLimitMeter club={club} />
+    </DisclosureSection>
   );
 }
 
@@ -244,21 +257,12 @@ function RoleRoster({ club }: { club: ClubDetail }) {
   });
 
   return groups.map(({ role, members }) => (
-    <OverviewSidebarSection key={role._id} title={role.name}>
-      <div className="space-y-1.5">
-        {members.map((member) => (
-          <div key={member._id} className="flex items-center gap-2.5">
-            <UserProfileAvatar
-              person={member}
-              fallbackClassName="text-[10px]"
-            />
-            <p className="min-w-0 truncate text-sm font-medium">
-              {fullName(member)}
-            </p>
-          </div>
-        ))}
-      </div>
-    </OverviewSidebarSection>
+    <OverviewRoster
+      key={role._id}
+      title={role.name}
+      people={members}
+      roleName={role.name}
+    />
   ));
 }
 
@@ -336,7 +340,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-5 sm:py-8">
-      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+      <CardGroup
+        border="outlined"
+        className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
+      >
         <Card className="bg-transparent">
           <CardContent className="p-5 sm:p-6">
             <section className="space-y-5">
@@ -394,8 +401,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                       ) : null}
                     </div>
                   </div>
-                  <p className="max-w-3xl text-[15px] leading-6 text-foreground/70">
-                    {club.overview || club.description || "No club description yet."}
+                  <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">
+                    {club.overview ||
+                      club.description ||
+                      "No club description yet."}
                   </p>
                 </div>
                 <MemberLimitMeter club={club} />
@@ -451,7 +460,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
         </Card>
       </CardGroup>
 
-      <CardGroup border="outlined" className={`mb-6 overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+      <CardGroup
+        border="outlined"
+        className={`mb-6 overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
+      >
         <Card className="bg-transparent">
           <CardHeader className="pb-3 border-b border-border/40 mb-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -470,28 +482,34 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     <UserProfileAvatar
                       person={sponsor.user}
                       size="md"
-                      fallbackClassName="text-sm"
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">
                         {fullName(sponsor.user)}
                       </p>
-                      <p className="text-xs text-muted-foreground">Club Sponsor</p>
+                      <p className="text-xs text-muted-foreground">
+                        Club Sponsor
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-6">
-                <Users className="mx-auto size-8 text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
+                <Users className="mx-auto size-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  No sponsors assigned yet.
+                </p>
               </div>
             )}
           </CardContent>
         </Card>
       </CardGroup>
 
-      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+      <CardGroup
+        border="outlined"
+        className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
+      >
         <Card className="bg-transparent">
           <CardContent className="p-5 sm:p-6">
             <div className="space-y-6">
@@ -515,7 +533,6 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                           <UserProfileAvatar
                             person={member.user}
                             size="md"
-                            fallbackClassName="text-sm"
                           />
                           <p className="min-w-0 truncate text-sm font-semibold text-foreground">
                             {fullName(member.user)}
@@ -656,62 +673,49 @@ export default function ClubOverviewPage() {
     </div>
   );
 
-  const rightPane = (
-    <ScrollArea className="size-full">
-      <div className="divide-y divide-border">
-        <OverviewSidebarSection title="Members">
-          <MemberLimitMeter club={club} />
-        </OverviewSidebarSection>
+  // Members, sponsors, and roles: a side pane on wide screens, and inline
+  // under the announcements everywhere else (phones reach this page from the
+  // club list's "Club name ›" title, so it is also the club's people page).
+  const roster = (
+    <div className="flex flex-col gap-1 py-2">
+      <OverviewMembers club={club} />
 
-        {club.viewer.permissions.manageJoinRequests &&
-        club.pendingJoinRequests.length > 0 ? (
-          <OverviewSidebarSection
-            title={`Pending requests (${club.pendingJoinRequests.length})`}
-          >
-            <RequestsPanel club={club} />
-          </OverviewSidebarSection>
-        ) : null}
+      {club.viewer.permissions.manageJoinRequests &&
+      club.pendingJoinRequests.length > 0 ? (
+        <DisclosureSection
+          title={`Pending requests (${club.pendingJoinRequests.length})`}
+        >
+          <RequestsPanel club={club} />
+        </DisclosureSection>
+      ) : null}
 
-        <OverviewSidebarSection title="Sponsors">
-          <div className="space-y-1.5">
-            {club.sponsors.map((sponsor) => (
-              <div key={sponsor.userId} className="flex items-center gap-2.5">
-                <UserProfileAvatar
-                  person={sponsor.user}
-                  fallbackClassName="text-[10px]"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {fullName(sponsor.user)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </OverviewSidebarSection>
+      <OverviewRoster
+        title="Sponsors"
+        people={club.sponsors.map((sponsor) => sponsor.user)}
+        roleName="Sponsor"
+      />
 
-        <RoleRoster club={club} />
-      </div>
-    </ScrollArea>
+      <RoleRoster club={club} />
+    </div>
   );
+
+  const rightPane = <ScrollArea className="size-full">{roster}</ScrollArea>;
 
   return (
     <ClubWorkspace title={title} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
-          <Card className="bg-transparent">
-            <CardContent className="p-0">
-              <ClubHero
-                club={club}
-                canEdit={club.viewer.permissions.manageClubSettings}
-              />
-            </CardContent>
-          </Card>
-        </CardGroup>
+        <ClubHero
+          club={club}
+          canEdit={club.viewer.permissions.manageClubSettings}
+        />
 
-        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
+        <CardGroup
+          border="outlined"
+          proximityHover={false}
+          className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}
+        >
           <Card className="bg-transparent">
-            <CardHeader className="pb-3 border-b border-border/40 mb-4">
+            <CardHeader>
               <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2">
                   <Megaphone className="size-4 text-primary" />
@@ -729,9 +733,7 @@ export default function ClubOverviewPage() {
                       leadingIcon={Megaphone}
                       onClick={() => setAnnounceOpen(true)}
                     >
-                      {canPostDirectAnnouncement
-                        ? "Post announcement"
-                        : "Propose announcement"}
+                      {canPostDirectAnnouncement ? "Post" : "Propose"}
                     </Button>
                   )}
                   <SearchInput
@@ -739,7 +741,7 @@ export default function ClubOverviewPage() {
                     onValueChange={setSearch}
                     placeholder="Search announcements"
                     size="sm"
-                    className="w-full sm:w-60 border-border/60 focus:border-primary focus:ring-primary/20"
+                    className="w-full sm:w-60"
                   />
                 </div>
               </div>
@@ -763,13 +765,15 @@ export default function ClubOverviewPage() {
                   ))}
                 </div>
               ) : (
-                <Empty className="rounded-lg border bg-muted/20 py-12">
+                <Empty size="inline">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       {deferredSearch ? <Search /> : <MessageSquareText />}
                     </EmptyMedia>
                     <EmptyTitle>
-                      {deferredSearch ? "No matches found" : "No announcements yet"}
+                      {deferredSearch
+                        ? "No matches found"
+                        : "No announcements yet"}
                     </EmptyTitle>
                     <EmptyDescription>
                       {deferredSearch
@@ -784,7 +788,6 @@ export default function ClubOverviewPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setSearch("")}
-                      className="mt-2 font-semibold text-accent-500"
                     >
                       Clear search
                     </Button>
@@ -794,6 +797,13 @@ export default function ClubOverviewPage() {
             </CardContent>
           </Card>
         </CardGroup>
+
+        <section aria-label="People" className="xl:hidden">
+          {roster}
+          <Button asChild variant="ghost" size="sm" className="mt-1">
+            <Link href={`/clubs/${clubId}/people`}>All people</Link>
+          </Button>
+        </section>
       </div>
 
       <AnnouncementDialog

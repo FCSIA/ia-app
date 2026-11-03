@@ -60,7 +60,7 @@ export async function recordFailedLoginAttempt(ctx: GenericMutationCtx<DataModel
   const lockedUntil = backoff ? now + backoff : undefined;
   if (existing) await ctx.db.patch(existing._id, { failureCount, lockedUntil, updatedAt: now });
   else await ctx.db.insert("loginFailures", { accountKey, failureCount, lockedUntil, updatedAt: now });
-  if (lockedUntil) await logAuditEvent(ctx, { action: "auth.login_locked", entityType: "authAccount", entityId: accountKey, meta: { failureCount, lockedUntil } });
+  if (lockedUntil) await logAuditEvent(ctx, { actorId: "system", action: "auth.login_locked", entityType: "authAccount", entityId: accountKey, meta: { failureCount, lockedUntil } });
 }
 
 async function clearFailure(ctx: GenericMutationCtx<DataModel>, identifier: string) {

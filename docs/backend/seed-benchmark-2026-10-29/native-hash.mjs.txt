@@ -1,0 +1,15 @@
+// Run from the repository root, with dependencies installed:
+// node --input-type=module < docs/backend/seed-benchmark-2026-10-29/native-hash.mjs.txt
+import { hashPassword } from "better-auth/crypto";
+
+const samplesMs = [];
+for (let i = 0; i < 14; i++) {
+  const started = performance.now();
+  await hashPassword("seed-benchmark-placeholder");
+  if (i >= 2) samplesMs.push(performance.now() - started);
+}
+console.log(JSON.stringify({
+  runtime: process.version,
+  samplesMs,
+  meanMs: samplesMs.reduce((a, b) => a + b, 0) / samplesMs.length,
+}, null, 2));

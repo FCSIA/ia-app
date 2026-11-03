@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowLeft, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,51 @@ const CHANNEL_CATEGORIES = [
 ] as const;
 
 type NotificationMode = 'default' | 'all' | 'mentions' | 'nothing';
+
+const MUTE_SCOPE_PREFIX = 'mute:channel:';
+
+/** Channels the viewer has muted right now, mapped to when the mute ends
+ *  (`null` = until turned back on). Lapsed timed mutes drop out on the next
+ *  minute tick. One subscription, shared by every caller. */
+export function useMutedChannels(): ReadonlyMap<string, number | null> {
+  const preferences = useQuery(api.notifications.preferences.list);
+  const now = useMinuteClock();
+  return useMemo(() => {
+    const muted = new Map<string, number | null>();
+    for (const preference of preferences ?? []) {
+      if (
+        preference.category === MESSAGE_CATEGORY &&
+        preference.scopeKey?.startsWith(MUTE_SCOPE_PREFIX) &&
+        preference.isMuted &&
+        (preference.mutedUntil == null || preference.mutedUntil > now)
+      ) {
+        muted.set(
+          preference.scopeKey.slice(MUTE_SCOPE_PREFIX.length),
+          preference.mutedUntil ?? null,
+        );
+      }
+    }
+    return muted;
+  }, [now, preferences]);
+}
+
+/** Time left on a mute, compact: "5m", "2h", "3d". */
+export function formatMuteRemaining(mutedUntil: number, now = Date.now()) {
+  const minutes = Math.max(1, Math.ceil((mutedUntil - now) / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+
+function useMinuteClock() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return now;
+}
 
 const MUTE_DURATIONS = [
   { label: 'For 15 minutes', duration: 15 * 60_000 },

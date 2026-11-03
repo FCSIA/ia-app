@@ -34,6 +34,7 @@ export const userSelfProfileValidator = userProfileValidator.extend(
       "canReviewFeedback",
       "dashboardLayout",
       "dashboardColumns",
+      "dashboardNotes",
       "mobileTabLayout",
       "use24HourTime",
       "chatDoubleTapReaction",
@@ -63,6 +64,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
     dashboardColumns: user.dashboardColumns,
+    dashboardNotes: user.dashboardNotes,
     mobileTabLayout: user.mobileTabLayout,
     use24HourTime: user.use24HourTime ?? false,
     chatDoubleTapReaction: user.chatDoubleTapReaction,
@@ -388,6 +390,7 @@ export async function assertUniqueUserKeys(
 export async function createLinkedUser(
   ctx: MutationCtx,
   args: CreateLinkedUserArgs,
+  authApi?: Pick<ReturnType<typeof createAuth>["api"], "createUser">,
 ) {
   const uniqueId = normalizeUniqueId(args.uniqueId);
   const roles: AppRole[] = args.roles?.length ? args.roles : ["STUDENT"];
@@ -399,8 +402,7 @@ export async function createLinkedUser(
 
   await assertUniqueUserKeys(ctx, uniqueId, email);
 
-  const auth = createAuth(ctx);
-  const authUser = await auth.api.createUser({
+  const authUser = await (authApi ?? createAuth(ctx).api).createUser({
     body: {
       email,
       name: fullName(args.firstName, args.lastName),

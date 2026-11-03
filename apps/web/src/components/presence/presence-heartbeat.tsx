@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useConvexAuth, useMutation } from '@/lib/convex-react';
 import { convex } from '@/lib/convex';
 import { devicePlatform } from '@/lib/pwa';
+import { randomId } from '@/lib/random-id';
 import { api } from '~/apps/convex/src/_generated/api';
 
 // Matches the server's presence interval; a missed beat goes offline after a few.
@@ -15,11 +16,11 @@ function tabSessionId() {
   try {
     const existing = sessionStorage.getItem(sessionKey);
     if (existing) return existing;
-    const created = crypto.randomUUID();
+    const created = randomId();
     sessionStorage.setItem(sessionKey, created);
     return created;
   } catch {
-    return crypto.randomUUID();
+    return randomId();
   }
 }
 

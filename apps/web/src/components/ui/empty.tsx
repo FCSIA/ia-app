@@ -1,13 +1,24 @@
+"use client"
+
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { useShape } from "@/lib/shape-context"
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes"
 
-function Empty({ className, ...props }: React.ComponentProps<"div">) {
+function Empty({ className, size = "page", frame = "none", ...props }: React.ComponentProps<"div"> & {
+  size?: "page" | "inline"
+  frame?: "none" | "dashed" | "panel"
+}) {
+  const shape = useShape()
   return (
     <div
       data-slot="empty"
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 text-balance rounded-lg border-dashed p-6 text-center md:p-12",
+        "flex min-w-0 flex-1 flex-col items-center justify-center text-balance text-center",
+        shape.container,
+        size === "inline" ? "gap-2 py-6 text-sm text-muted-foreground" : "gap-6 p-6 md:p-12",
+        frame === "dashed" ? "border border-dashed" : frame === "panel" ? cn("border bg-card", CARD_SURFACE_FOREGROUND) : "border-0",
         className
       )}
       {...props}

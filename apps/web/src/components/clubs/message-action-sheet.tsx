@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 // flushSync is deliberate: closing the sheet synchronously removes its focus
 // trap before an action focuses the composer, which must happen inside the tap
 // for iOS to raise the keyboard. Nothing here uses View Transitions.
@@ -12,7 +12,7 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from '@/components/ui/drawer';
-import { Toggle } from '@/components/ui/toggle';
+import { ReactionPicker } from './reaction-picker';
 import { hapticTick } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +62,16 @@ export function MessageActionSheet({
   actionGroups: MessageSheetAction[][];
 }) {
   const groups = actionGroups.filter((group) => group.length > 0);
+  const [learnedDoubleTap, setLearnedDoubleTap] = useState(false);
+  useEffect(() => {
+    if (open) {
+      try {
+        setLearnedDoubleTap(
+          localStorage.getItem('chat-double-tap-learned') === 'true',
+        );
+      } catch {}
+    }
+  }, [open]);
   const [choosingDoubleTap, setChoosingDoubleTap] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   // Each opening starts back on the ordinary reaction row.
@@ -74,7 +84,11 @@ export function MessageActionSheet({
     : undefined;
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      shouldScaleBackground={false}
+    >
       <DrawerContent
         className="select-none [-webkit-touch-callout:none]"
         // Focus stays where the chosen action puts it, such as the composer,
@@ -87,7 +101,9 @@ export function MessageActionSheet({
           (event.target as HTMLElement).focus({ preventScroll: true });
         }}
       >
-        <DrawerTitle className="sr-only">Message from {preview.authorName}</DrawerTitle>
+        <DrawerTitle className="sr-only">
+          Message from {preview.authorName}
+        </DrawerTitle>
         <DrawerDescription className="sr-only">
           React to this message or choose an action.
         </DrawerDescription>
@@ -99,7 +115,9 @@ export function MessageActionSheet({
                 <span className="truncate text-sm font-semibold text-foreground">
                   {preview.authorName}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">{preview.sentAt}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {preview.sentAt}
+                </span>
               </p>
               {preview.text ? (
                 <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground">
@@ -111,42 +129,29 @@ export function MessageActionSheet({
 
           {onReact && reactions.length > 0 ? (
             <div className="px-3">
-              <div
-                role="group"
-                aria-label="Reactions"
-                className="grid gap-1.5"
-                style={{ gridTemplateColumns: `repeat(${reactions.length}, minmax(0, 1fr))` }}
-              >
-                {reactions.map((reaction) => (
-                  <Toggle
-                    key={reaction.value}
-                    // While choosing, "on" marks the double-tap reaction
-                    // instead of your reactions to this message.
-                    pressed={
-                      choosingDoubleTap ? reaction.value === doubleTap?.value : reaction.selected
-                    }
-                    aria-label={choosingDoubleTap ? `Double-tap with ${reaction.name}` : reaction.name}
-                    className={cn(
-                      'aspect-square h-auto w-full min-w-0 max-w-12 justify-self-center rounded-full bg-muted p-0 text-[22px] leading-none transition-[transform,background-color,box-shadow] duration-150 ease-out active:scale-90 focus-visible:ring-2 motion-reduce:transition-none',
-                      choosingDoubleTap
-                        ? 'data-[state=on]:bg-primary/20 data-[state=on]:ring-2 data-[state=on]:ring-primary'
-                        : 'data-[state=on]:bg-primary/15 data-[state=on]:ring-1 data-[state=on]:ring-primary/40',
-                    )}
-                    onPressedChange={() => {
-                      if (choosingDoubleTap && doubleTap) {
-                        hapticTick();
-                        doubleTap.onChange(reaction.value);
-                        setChoosingDoubleTap(false);
-                        return;
-                      }
-                      flushSync(() => onOpenChange(false));
-                      onReact(reaction.value);
-                    }}
-                  >
-                    <span aria-hidden="true">{reaction.label}</span>
-                  </Toggle>
-                ))}
-              </div>
+              <ReactionPicker
+                className="justify-center"
+                reactions={reactions.map((reaction) => ({
+                  ...reaction,
+                  selected: choosingDoubleTap
+                    ? reaction.value === doubleTap?.value
+                    : reaction.selected,
+                }))}
+                onPick={(value, keepOpen) => {
+                  if (choosingDoubleTap) {
+                    doubleTap?.onChange(value);
+                    setChoosingDoubleTap(false);
+                    setLearnedDoubleTap(true);
+                    try {
+                      localStorage.setItem('chat-double-tap-learned', 'true');
+                    } catch {}
+                  } else {
+                    hapticTick();
+                    if (!keepOpen) flushSync(() => onOpenChange(false));
+                    onReact(value);
+                  }
+                }}
+              />
               {doubleTapReaction ? (
                 <p
                   aria-live="polite"
@@ -165,7 +170,7 @@ export function MessageActionSheet({
                     </>
                   ) : (
                     <>
-                      Double-tap a message to add
+                      {learnedDoubleTap ? null : 'Double-tap a message to add'}
                       <button
                         type="button"
                         aria-label={`Change double-tap reaction, now ${doubleTapReaction.name}`}
@@ -181,7 +186,11 @@ export function MessageActionSheet({
                         >
                           {doubleTapReaction.label}
                         </span>
-                        <Pencil aria-hidden="true" className="size-2.5" />
+                        {learnedDoubleTap ? (
+                          <span className="text-[10px]">2×</span>
+                        ) : (
+                          <Pencil aria-hidden="true" className="size-2.5" />
+                        )}
                       </button>
                     </>
                   )}
@@ -216,7 +225,9 @@ export function MessageActionSheet({
                     <Icon
                       className={cn(
                         'size-5 shrink-0',
-                        action.destructive ? 'text-destructive' : 'text-muted-foreground',
+                        action.destructive
+                          ? 'text-destructive'
+                          : 'text-muted-foreground',
                       )}
                     />
                     {action.label}

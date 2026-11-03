@@ -1,9 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, MapPin, Users, Ticket, CheckCircle } from 'lucide-react';
-import { formatTimeRange } from '../_utils';
+import { formatTimeRange, workshopDetailHref } from '../_utils';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -69,7 +70,7 @@ export function WorkshopPanel({
       </div>
 
       {!selectedSession ? (
-        <Empty className="border border-border/60 py-10">
+        <Empty size="inline" frame="panel">
           <EmptyHeader>
             <EmptyMedia variant="icon"><Ticket /></EmptyMedia>
             <EmptyTitle>Select a session</EmptyTitle>
@@ -86,7 +87,7 @@ export function WorkshopPanel({
 
           <div className="grid gap-3">
             {workshops.length === 0 ? (
-              <Empty className="border border-border/60 py-8">
+              <Empty size="inline" frame="panel">
                 <EmptyHeader>
                   <EmptyTitle>No workshops found</EmptyTitle>
                   <EmptyDescription>Try a different search or add a workshop.</EmptyDescription>
@@ -100,13 +101,18 @@ export function WorkshopPanel({
                 const spansMultiple = linkedSessions.length > 1;
 
                 return (
-                  <Card key={w._id} className="overflow-hidden border-border/60 bg-background transition-shadow hover:shadow-surface-1">
+                  <Card key={w._id} className="overflow-hidden border-border/60 bg-background">
                     <CardContent className="p-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">
                             <h3 className="text-base font-semibold leading-tight text-foreground">
-                              {w.title}
+                              <Link
+                                href={workshopDetailHref(selectedSession.flexFridayId, w._id, selectedSession._id)}
+                                className="inline-flex min-h-8 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring touch-target"
+                              >
+                                {w.title}
+                              </Link>
                             </h3>
                             {spansMultiple && (
                               <Badge variant="solid" color="indigo" className="text-[10px] leading-tight py-0">

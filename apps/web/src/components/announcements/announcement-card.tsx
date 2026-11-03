@@ -142,6 +142,20 @@ function AnnouncementPreview({
       : new Date(announcement.expiresAt).toISOString().slice(0, 10)}
   </span> : null;
 
+  // The read toggle lives in CardFooter, the Card slot that rises above the
+  // stretched link; inside CardContent the link would swallow its clicks.
+  if (widget) return (
+    <Card index={index} href={`/announcements/${announcement._id}`} label={`Open announcement: ${announcement.title}`} className={className}>
+      <CardContent className="min-w-0 flex-1 py-2">
+        <h3 className="truncate text-sm font-semibold">{announcement.title}</h3>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">{audienceMetadata}{postedTime}</div>
+      </CardContent>
+      <CardFooter className="opacity-0 focus-within:opacity-100 group-hover/card:opacity-100 pointer-coarse:opacity-100">
+        <Tooltip content="Mark read"><AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" /></Tooltip>
+      </CardFooter>
+    </Card>
+  );
+
   return (
     <Card
       index={index}

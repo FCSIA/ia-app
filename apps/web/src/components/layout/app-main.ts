@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 /** Default `<main>` padding from AppShell — always merge, never replace. */
-export const APP_MAIN_PADDING = 'px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8';
+export const APP_MAIN_PADDING = 'px-4 pb-8 pt-4 md:px-6 md:pt-8 lg:px-8';
 
 export function mergeAppMainClassName(...classes: Array<string | false | null | undefined>) {
   return cn('flex-1', APP_MAIN_PADDING, ...classes);
