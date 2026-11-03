@@ -239,6 +239,31 @@ describe('announcement feed pagination', () => {
     expect(pins.map((item) => item._id)).toContain(targetId);
   });
 
+  it('preserves pin order and filters unavailable posts', async () => {
+    const { t, user } = await fixture();
+    const now = Date.now();
+    await t.run(async (ctx) => {
+      for (let index = 0; index < 55; index += 1) {
+        const announcementId = await ctx.db.insert('announcements', {
+          authorId: user._id, title: `pin-${index}`, body: 'Pinned',
+          targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [],
+          targetMinorPathways: [], status: index === 25 ? 'ARCHIVED' : 'ACTIVE',
+          allowComments: false, isAdminGeneral: false, commentCount: 0,
+          createdAt: now, updatedAt: now,
+        });
+        await ctx.db.insert('announcementPins', { announcementId, userId: user._id, createdAt: now + index });
+      }
+    });
+    const expected = Array.from({ length: 55 }, (_, index) => `pin-${54 - index}`)
+      .filter((title) => title !== 'pin-25');
+    const pins = await t.run((ctx) => listPinnedForUser(ctx, user, now));
+    const page = await t.withIdentity({ subject: user._id }).query(api.announcements.feed.listPinnedPage, {
+      now, paginationOpts: { cursor: null, numItems: 100 },
+    });
+    expect(pins.map((item) => item.title)).toEqual(expected);
+    expect(page.page.map((item) => item.title)).toEqual(expected);
+  });
+
   it('does not reveal a pin when the current audience cannot view it', async () => {
     const { t, user } = await fixture();
     const outsider = await t.run(async (ctx) => {

@@ -52,7 +52,7 @@ Typical pattern:
 const user = useCurrentUser();
 
 if (user && !hasRole(user, 'ADMIN', 'SUPER_ADMIN')) {
-  router.replace('/dashboard');
+  router.replace('/');
 }
 ```
 
@@ -62,9 +62,9 @@ The backend must still reject unauthorized queries or mutations.
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Redirect entry |
+| `/` | Personalized dashboard (requires sign-in) |
 | `/login` | Username/password login |
-| `/dashboard` | Personalized dashboard |
+| `/dashboard` | Permanent redirect to `/`, preserving query parameters |
 | `/announcements` | Announcement feed |
 | `/announcements/:id` | Announcement detail and comments |
 | `/clubs` | Club directory and invites |

@@ -117,14 +117,13 @@ describe("permanent club deletion", () => {
       const eventId = await ctx.db.insert("events", {
         authorId: userId,
         clubId,
-        status: "APPROVED",
+        status: "PENDING_APPROVAL",
         type: "GENERAL",
         title: "Club event",
         startAt: now,
         allowedMajorPathways: [],
         allowedMinorPathways: [],
         requiredMajorWorkshopCount: 0,
-        isInactive: false,
         createdAt: now,
         updatedAt: now,
       });

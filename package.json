@@ -14,7 +14,8 @@
     "dev:mobile:tunnel": "bun run --filter mobile dev:client:tunnel",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "bun run test:schedule-ocr && bun run test:chat && turbo run test",
+    "test": "bun run test:routing && bun run test:schedule-ocr && bun run test:chat && turbo run test",
+    "test:routing": "vitest run --config vitest.routing.config.mts",
     "test:chat": "vitest run --config vitest.chat.config.mts",
     "test:schedule-ocr": "vitest run --config vitest.schedule-ocr.config.mts",
     "cvx:dev": "bun run --filter cvx dev",
@@ -97,7 +98,7 @@
     "node": ">=24.22.1 <25"
   },
   "dependencies": {
-    "convex": "1.46.0"
+    "convex": "1.47.0"
   },
   "patchedDependencies": {
     "braces@3.0.3": "patches/braces@3.0.3.patch",

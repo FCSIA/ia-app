@@ -46,8 +46,8 @@ export const upsert = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const key = scopeKey(args);
-    const level = args.level ?? (args.enabled ? "PUSH" : "OFF");
-    const enabled = args.enabled && level !== "OFF";
+    // `level` alone records the choice; turning a preference off is level OFF.
+    const level = args.enabled ? (args.level ?? "PUSH") : "OFF";
     const now = Date.now();
     const existing = await ctx.db
       .query("notificationPreferences")
@@ -60,7 +60,7 @@ export const upsert = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        enabled,
+        enabled: undefined,
         level,
         updatedAt: now,
       });
@@ -72,7 +72,6 @@ export const upsert = mutation({
     const id = await ctx.db.insert("notificationPreferences", {
       userId: user._id,
       category: args.category,
-      enabled,
       level,
       locked: false,
       clubId: args.clubId,
@@ -125,7 +124,6 @@ export const setChannelMute = mutation({
     const id = await ctx.db.insert("notificationPreferences", {
       userId: user._id,
       category: "CLUB_CHANNEL_MESSAGE",
-      enabled: false,
       level: "OFF",
       locked: false,
       clubId: args.clubId,

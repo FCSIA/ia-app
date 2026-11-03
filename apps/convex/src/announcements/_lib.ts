@@ -121,6 +121,10 @@ export async function adjustCommentCount(
 export async function getViewerAudience(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   const viewer = await ctx.db.get(userId);
   if (!viewer) throw new Error("User not found");
+  return viewerAudience(viewer);
+}
+
+export function viewerAudience(viewer: Doc<"users">) {
   return {
     gradeLevel: viewer.gradeLevel,
     major: viewer.major,
@@ -132,14 +136,16 @@ export async function getAccessibleClubIds(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
 ) {
-  const memberships = await ctx.db
-    .query("clubMembers")
-    .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", userId))
-    .collect();
-  const sponsors = await ctx.db
-    .query("clubSponsors")
-    .withIndex("by_userId_and_clubId", (q) => q.eq("userId", userId))
-    .collect();
+  const [memberships, sponsors] = await Promise.all([
+    ctx.db
+      .query("clubMembers")
+      .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", userId))
+      .collect(),
+    ctx.db
+      .query("clubSponsors")
+      .withIndex("by_userId_and_clubId", (q) => q.eq("userId", userId))
+      .collect(),
+  ]);
 
   const ids = new Set<Id<"clubs">>();
   for (const row of memberships) ids.add(row.clubId);
@@ -219,8 +225,10 @@ export async function assertAnnouncementAccess(
   userId: Id<"users">,
   roles: string[],
 ) {
-  const viewer = await getViewerAudience(ctx, userId);
-  const clubs = await getAccessibleClubIds(ctx, userId);
+  const [viewer, clubs] = await Promise.all([
+    getViewerAudience(ctx, userId),
+    getAccessibleClubIds(ctx, userId),
+  ]);
   if (!canViewAnnouncement(ann, userId, roles, clubs, viewer)) {
     throw new ConvexError("Announcement not found");
   }

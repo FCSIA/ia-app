@@ -8,6 +8,7 @@ import {
 } from "../validators";
 import {
   preferenceAllowsPush,
+  preferenceIsOn,
   resolveNotificationPreference,
 } from "./deliveryPreference";
 
@@ -209,7 +210,7 @@ async function deliveryDecision(
     });
     if (
       clubPreference &&
-      (!clubPreference.enabled || clubPreference.level === "OFF")
+      !preferenceIsOn(clubPreference)
     ) {
       return { create: false, push: false };
     }
@@ -229,7 +230,7 @@ export function preferenceDeliveryDecision(
 ) {
   if (preference) {
     return {
-      create: preference.enabled && preference.level !== "OFF",
+      create: preferenceIsOn(preference),
       push: preferenceAllowsPush(preference),
     };
   }
