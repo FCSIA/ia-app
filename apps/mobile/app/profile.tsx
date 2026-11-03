@@ -15,6 +15,7 @@ import { unregisterStoredNativePushToken } from "@/lib/push";
 import { clearOfflineCache } from "@/lib/offline-cache";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
+import { OnboardingEntry } from '@/features/onboarding/onboarding';
 import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { warning } from "@/lib/haptics";
@@ -110,6 +111,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen title="Profile">
+      <OnboardingEntry />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
         <Avatar uri={user?.avatarUrl} name={fullName} size={72} />
         <View style={{ flex: 1, gap: spacing.xs }}>

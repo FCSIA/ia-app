@@ -15,6 +15,7 @@ const Progress = React.forwardRef<
 >(({ className, value, indicatorClassName, orientation = "horizontal", ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
+    value={value}
     className={cn(
       "relative overflow-hidden rounded-full bg-primary/20",
       orientation === "vertical" ? "h-full w-0.5" : "h-2 w-full",
@@ -23,7 +24,7 @@ const Progress = React.forwardRef<
     {...props}
   >
     <ProgressPrimitive.Indicator
-      className={cn("h-full w-full flex-1 bg-primary transition-transform", indicatorClassName)}
+      className={cn("h-full w-full flex-1 bg-primary transition-transform motion-reduce:transition-none", indicatorClassName)}
       style={{
         transform:
           orientation === "vertical"

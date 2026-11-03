@@ -19,6 +19,7 @@ import { statusBarStyleForBackground } from "@/lib/status-bar-style";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui";
 import { useLiveCurrentUser } from "@/lib/auth";
+import { Onboarding } from '@/features/onboarding/onboarding';
 
 LogBox.ignoreLogs(["[RNScreens] SplitView is supported only for iOS"]);
 
@@ -87,6 +88,7 @@ export default function Layout() {
                       <AppLifecycle />
                       <PasswordResetGate />
                       <RootNavigator />
+                      <Onboarding />
                     </AppErrorBoundary>
                   </ToastProvider>
                 </BottomSheetModalProvider>

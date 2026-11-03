@@ -26,6 +26,7 @@ import {
 } from "@/components/layout/app-frame-context";
 import { useMobileNavigationSwipe } from "@/components/layout/use-mobile-navigation-swipe";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
+import { Onboarding } from "@/components/onboarding/onboarding";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
 import { cn } from "@/lib/utils";
@@ -237,11 +238,12 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
         >
           <AppShellDesktopNavigation {...navigationProps} commandHint={commandHint} />
           <AppShellMobileNavigation {...navigationProps} open={mobileOpen} onOpenChange={setMobileOpen} />
-          <SidebarInset className={cn(
+          <SidebarInset tabIndex={-1} className={cn(
             "app-main-surface overflow-clip pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
             usesVisualViewport && "overflow-hidden",
           )}>
             {children}
+            <Onboarding />
           </SidebarInset>
           <AppShellMobileTabBar {...navigationProps} tabBarRef={mobileTabBarRef} onOpenMenu={() => setMobileOpen(true)} />
         </SidebarProvider>
