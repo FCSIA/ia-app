@@ -5,10 +5,19 @@ import Image from 'next/image';
 import {
   Archive,
   CheckCircle2,
+  ChevronDown,
   Ellipsis,
   ExternalLink,
   Eye,
+  Github,
+  Globe,
   Inbox,
+  Maximize2,
+  MessageSquare,
+  MonitorSmartphone,
+  RefreshCw,
+  Send,
+  TriangleAlert,
   Undo2,
 } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
@@ -19,7 +28,14 @@ import {
   DataTablePanel,
   dataTableClasses,
 } from '@/components/data/data-table-panel';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -319,6 +335,7 @@ function FeedbackStatusActions({
       <Button
         size="sm"
         variant={decided ? 'secondary' : 'primary'}
+        leadingIcon={primary.icon}
         disabled={reportMutation.isPending}
         onClick={() => run(primary)}
       >
@@ -351,6 +368,31 @@ function FeedbackStatusActions({
         </DropdownMenu>
       ) : null}
     </>
+  );
+}
+
+const STATUS_BADGE_COLORS = {
+  PENDING: 'blue',
+  IN_REVIEW: 'amber',
+  RESOLVED: 'emerald',
+  DISMISSED: 'gray',
+} as const satisfies Record<FeedbackReport['status'], string>;
+
+function DetailRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof Inbox;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[1rem_1fr] gap-x-2 gap-y-0.5">
+      <Icon className="mt-0.5 size-4 text-muted-foreground" aria-hidden />
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="col-start-2 break-words">{children}</dd>
+    </div>
   );
 }
 
@@ -434,114 +476,147 @@ function FeedbackDetail({
           <DialogTitle>
             Feedback from {displayName(report.submitter)}
           </DialogTitle>
-          <DialogDescription>
-            {STAFF_FEEDBACK_STATUS_LABELS[report.status]} · Submitted{' '}
-            {formatDateTime(report._creationTime)}
-            {report.appVersion ? ` · ${report.appVersion}` : ''}
+          <DialogDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge size="sm" color={STATUS_BADGE_COLORS[report.status]}>
+              {STAFF_FEEDBACK_STATUS_LABELS[report.status]}
+            </Badge>
+            <span>
+              {formatDateTime(report._creationTime)}
+              {report.appVersion ? ` · ${report.appVersion}` : ''}
+            </span>
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col items-start gap-5">
-          <p className="whitespace-pre-wrap break-words text-sm text-foreground">
-            {report.reason}
-          </p>
-          {report.clientMetadata ? (
-            <dl className="grid w-full gap-3 text-sm">
-              <div className="grid gap-1">
-                <dt className="text-muted-foreground">Browser / device</dt>
-                <dd className="break-words">
-                  {report.clientMetadata.userAgent}
-                </dd>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <p className="whitespace-pre-wrap break-words border-l-2 border-border/60 pl-3 text-sm leading-6 text-foreground">
+              {report.reason}
+            </p>
+            {report.images.length ? (
+              <div className="flex flex-wrap gap-2">
+                {report.images.map((image, index) => (
+                  <a
+                    key={image._id}
+                    href={image.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block size-20 overflow-hidden rounded-lg border border-border/40 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {image.mimeType === 'image/gif' ? (
+                      <AnimatedGif
+                        src={image.url}
+                        name={`Feedback attachment ${index + 1}`}
+                        thumbnail
+                        maxHeight={80}
+                      />
+                    ) : (
+                      <Image
+                        src={image.url}
+                        width={80}
+                        height={80}
+                        unoptimized
+                        alt={`Feedback attachment ${index + 1}`}
+                        loading="lazy"
+                        decoding="async"
+                        className="size-full object-cover"
+                      />
+                    )}
+                  </a>
+                ))}
               </div>
-              <div className="grid gap-1">
-                <dt className="text-muted-foreground">Display</dt>
-                <dd className="break-words">
-                  {report.clientMetadata.viewportWidth} ×{' '}
-                  {report.clientMetadata.viewportHeight} viewport ·{' '}
-                  {report.clientMetadata.screenWidth} ×{' '}
-                  {report.clientMetadata.screenHeight} screen ·{' '}
-                  {report.clientMetadata.pixelRatio}× ·{' '}
-                  {report.clientMetadata.displayMode}
-                </dd>
-              </div>
-              <div className="grid gap-1">
-                <dt className="text-muted-foreground">Locale</dt>
-                <dd className="break-words">
-                  {report.clientMetadata.language} ·{' '}
-                  {report.clientMetadata.timezone}
-                </dd>
-              </div>
-            </dl>
-          ) : null}
-          {report.githubIssueUrl ? (
-            <Button
-              asChild
-              size="sm"
-              variant="tertiary"
-              trailingIcon={ExternalLink}
-            >
-              <a href={report.githubIssueUrl} target="_blank" rel="noreferrer">
-                GitHub issue #{report.githubIssueNumber}
-              </a>
-            </Button>
-          ) : null}
-          {report.githubIssueSyncState &&
-          canRetryGithubSync(report, openedAt) ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-destructive">
+            ) : null}
+          </div>
+
+          {report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
+            <Alert variant="destructive" role="status">
+              <TriangleAlert className="size-4" aria-hidden />
+              <AlertTitle>
                 {report.githubIssueSyncState === 'FAILED'
-                  ? 'GitHub sync failed.'
-                  : 'GitHub sync stopped before finishing.'}{' '}
-                This feedback is still saved.
-              </p>
-              {canUpdateFeedback ? (
-                <Button
-                  size="sm"
-                  variant="tertiary"
-                  loading={isRetrying}
-                  onClick={() => void retrySync()}
-                >
-                  Retry sync
-                </Button>
-              ) : null}
-            </div>
+                  ? 'GitHub sync failed'
+                  : 'GitHub sync stopped before finishing'}
+              </AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
+                <span>This feedback is still saved in the app.</span>
+                {canUpdateFeedback ? (
+                  <Button
+                    size="sm"
+                    variant="tertiary"
+                    leadingIcon={RefreshCw}
+                    loading={isRetrying}
+                    onClick={() => void retrySync()}
+                  >
+                    Retry sync
+                  </Button>
+                ) : null}
+              </AlertDescription>
+            </Alert>
           ) : null}
-          {report.images.length ? (
-            <div className="flex flex-wrap gap-2">
-              {report.images.map((image, index) => (
-                <a
-                  key={image._id}
-                  href={image.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block size-20 overflow-hidden rounded-lg border border-border/40 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {image.mimeType === 'image/gif' ? (
-                    <AnimatedGif
-                      src={image.url}
-                      name={`Feedback attachment ${index + 1}`}
-                      thumbnail
-                      maxHeight={80}
-                    />
-                  ) : (
-                    <Image
-                      src={image.url}
-                      width={80}
-                      height={80}
-                      unoptimized
-                      alt={`Feedback attachment ${index + 1}`}
-                      loading="lazy"
-                      decoding="async"
-                      className="size-full object-cover"
-                    />
-                  )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            {report.githubIssueUrl ? (
+              <Button
+                asChild
+                size="sm"
+                variant="tertiary"
+                leadingIcon={Github}
+                trailingIcon={ExternalLink}
+              >
+                <a href={report.githubIssueUrl} target="_blank" rel="noreferrer">
+                  Issue #{report.githubIssueNumber}
                 </a>
-              ))}
-            </div>
-          ) : null}
+              </Button>
+            ) : null}
+            {report.clientMetadata ? (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    leadingIcon={MonitorSmartphone}
+                    trailingIcon={ChevronDown}
+                  >
+                    Device details
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <dl className="mt-3 grid gap-3 text-sm">
+                    <DetailRow icon={MonitorSmartphone} label="Browser / device">
+                      {report.clientMetadata.userAgent}
+                    </DetailRow>
+                    <DetailRow icon={Maximize2} label="Display">
+                      {report.clientMetadata.viewportWidth} ×{' '}
+                      {report.clientMetadata.viewportHeight} viewport ·{' '}
+                      {report.clientMetadata.screenWidth} ×{' '}
+                      {report.clientMetadata.screenHeight} screen ·{' '}
+                      {report.clientMetadata.pixelRatio}× ·{' '}
+                      {report.clientMetadata.displayMode}
+                    </DetailRow>
+                    <DetailRow icon={Globe} label="Locale">
+                      {report.clientMetadata.language} ·{' '}
+                      {report.clientMetadata.timezone}
+                    </DetailRow>
+                  </dl>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : null}
+          </div>
+
           {report.responses.length || canUpdateFeedback || error ? (
-            <div className="flex w-full flex-col gap-4">
+            <section
+              aria-label="Staff responses"
+              className="flex flex-col gap-4 border-t border-border/40 pt-4"
+            >
+              {report.responses.length ? (
+                <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <MessageSquare className="size-4 text-muted-foreground" aria-hidden />
+                  Responses
+                  <span className="tabular-nums text-muted-foreground">
+                    {report.responses.length}
+                  </span>
+                </h3>
+              ) : null}
               {report.responses.map((response) => (
-                <div key={response._id}>
+                <div key={response._id} className="border-l-2 border-border/60 pl-3">
                   <p className="text-xs text-muted-foreground">
                     {displayName(response.author)} ·{' '}
                     {formatDateTime(response.createdAt)}
@@ -552,43 +627,47 @@ function FeedbackDetail({
                 </div>
               ))}
               {canUpdateFeedback ? (
-                <form
-                  className="flex flex-col items-start gap-3 border-t border-border/40 pt-4"
-                  onSubmit={handleSubmit}
-                >
+                <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
                   <Textarea
                     aria-label={`Respond to feedback from ${displayName(report.submitter)}`}
-                    placeholder="Write a response for the submitter…"
+                    aria-describedby={`feedback-response-help-${report._id}`}
+                    placeholder="Reply to the submitter…"
                     value={body}
                     onChange={(event) => onBodyChange(event.target.value)}
                     maxLength={1_000}
                     rows={3}
                     disabled={isSending}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    The submitter can read this response but cannot reply.
-                    Closing this dialog keeps your draft.
-                  </p>
                   {error ? (
                     <p role="alert" className="text-sm text-destructive">
                       {error}
                     </p>
                   ) : null}
-                  <Button
-                    type="submit"
-                    size="sm"
-                    loading={isSending}
-                    disabled={!body.trim() || isSending}
-                  >
-                    Send response
-                  </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p
+                      id={`feedback-response-help-${report._id}`}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Read-only for the submitter. Drafts are kept.
+                    </p>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="secondary"
+                      leadingIcon={Send}
+                      loading={isSending}
+                      disabled={!body.trim() || isSending}
+                    >
+                      Send
+                    </Button>
+                  </div>
                 </form>
               ) : error ? (
                 <p role="alert" className="text-sm text-destructive">
                   {error}
                 </p>
               ) : null}
-            </div>
+            </section>
           ) : null}
         </div>
         {canUpdateFeedback ? (
