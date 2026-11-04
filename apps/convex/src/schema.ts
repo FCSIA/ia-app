@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { analyticsDailyValidator } from "./analytics/validators";
+import { decisionsValidator } from "./onboarding/validators";
 import {
   appRoleValidator,
   courseCatalogSourceValidator,
@@ -68,6 +69,8 @@ export const schema = defineSchema({
   }).index("by_key", ["key"]),
 
   users: defineTable({
+    // Only newly provisioned accounts are invited automatically; legacy accounts opt in.
+    onboardingVersion: v.optional(v.number()),
     authUserId: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
     uniqueId: v.string(),
@@ -421,6 +424,15 @@ export const schema = defineSchema({
       searchField: "searchText",
       filterFields: ["department", "pathway"],
     }),
+
+  onboardingStates: defineTable({
+    userId: v.id('users'),
+    version: v.number(),
+    startedAt: v.optional(v.number()),
+    deferredAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    decisions: decisionsValidator,
+  }).index('by_userId', ['userId']),
 
   studentSchedules: defineTable({
     userId: v.id("users"),

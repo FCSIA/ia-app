@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
+import { OnboardingEntry } from '@/components/onboarding/onboarding';
 import { useToast } from '@/hooks/use-toast';
 import { hasRole, startLogout, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -30,6 +32,28 @@ const EMPTY_PASSWORD_FORM: PasswordForm = {
 };
 
 export default function ProfilePage() {
+  return <Suspense fallback={null}><ProfilePageContent /></Suspense>;
+}
+
+const PROFILE_SECTION_IDS: readonly ProfileSection[] = [
+  'account', 'notifications', 'appearance', 'moderation', 'whats-new',
+];
+
+function ProfilePageContent() {
+  const searchParams = useSearchParams();
+  const requestedSection = searchParams?.get('section');
+  const activeSection = PROFILE_SECTION_IDS.find(
+    section => section === requestedSection,
+  ) ?? 'account';
+  function navigateToSection(section: ProfileSection) {
+    const params = new URLSearchParams(searchParams?.toString());
+    if (section === 'account') params.delete('section');
+    else params.set('section', section);
+    const query = params.toString();
+    // Next's native history integration updates useSearchParams immediately
+    // without a server navigation for a local settings-panel change.
+    window.history.replaceState(null, '', query ? `/profile?${query}` : '/profile');
+  }
   const user = useCurrentUser();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -41,14 +65,7 @@ export default function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [savingTimeFormat, setSavingTimeFormat] = useState(false);
-  const [activeSection, setActiveSection] = useState<ProfileSection>('account');
   const { unseenCount, markSeen } = useSeenRelease();
-
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('section') === 'whats-new') {
-      setActiveSection('whats-new');
-    }
-  }, []);
 
   const changePassword = useMutation(api.users.auth.changePassword);
   const updateTimeFormat = useMutation(api.users.me.updateTimeFormat);
@@ -112,10 +129,11 @@ export default function ProfilePage() {
           user={user}
           activeSection={visibleSection}
           canSeeModeration={canSeeModeration}
-          onSectionChange={setActiveSection}
+          onSectionChange={navigateToSection}
           unseenReleases={unseenCount}
         />
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div><OnboardingEntry /></div>
           {visibleSection === 'account' ? (
             <AccountSettingsSection
               user={user}

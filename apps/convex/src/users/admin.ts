@@ -1122,6 +1122,9 @@ export const deleteUsers = mutation({
         await ctx.storage.delete(target.customBackgroundStorageId);
       }
 
+      const onboarding = await ctx.db.query('onboardingStates')
+        .withIndex('by_userId', q => q.eq('userId', target._id)).unique();
+      if (onboarding) await ctx.db.delete(onboarding._id);
       await ctx.db.delete(target._id);
       await incrementUserCounts(ctx, target, -1);
     }

@@ -477,6 +477,9 @@ export const run = internalMutation({
     if (args.reset && cursor === 0) {
       const usersToDelete = await ctx.db.query("users").take(100);
       for (const user of usersToDelete) {
+        const onboarding = await ctx.db.query('onboardingStates')
+          .withIndex('by_userId', q => q.eq('userId', user._id)).unique();
+        if (onboarding) await ctx.db.delete(onboarding._id);
         await incrementUserCounts(ctx, user, -1);
         await ctx.db.delete(user._id);
       }

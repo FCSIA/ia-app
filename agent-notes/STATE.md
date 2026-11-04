@@ -2,6 +2,14 @@
 
 ## Active Focus
 
+- **Issue #176 account onboarding (2026-11-02)**: Worktree `.worktrees/issue-176`,
+  branch `codex/student-onboarding`, owns the versioned account-setup lifecycle
+  and web/native checklist. Its isolated local-anonymous backend uses 3318/3319;
+  web uses 3176. Preserve this deployment and the primary checkout's unrelated
+  work. The owner approved the floating Button/Progress and Dialog composition;
+  final design-owner and physical native-device review remain pending. See
+  `docs/features/onboarding.md` for rollout policy, architecture, and QA evidence.
+
 - **Production performance release (2026-11-02)**: Owner-authorized profiling of
   `app.fcsia.com` identified audit, moderation, presence, and chat query work.
   Focused fixes shipped through `bun run release` as v0.8.42 (`c30d4be`);
