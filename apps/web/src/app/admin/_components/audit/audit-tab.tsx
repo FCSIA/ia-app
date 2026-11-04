@@ -20,7 +20,7 @@ function auditCountLabel(audit: ReturnType<typeof useAdminAudit>) {
   const shown = audit.auditEvents.length;
   const total = audit.auditCounts?.exact ? audit.auditCounts.total : null;
   const unit = (n: number) => audit.hasActiveAuditFilters ? (n === 1 ? 'match' : 'matches') : (n === 1 ? 'event' : 'events');
-  if (total != null) return shown >= total ? `${total.toLocaleString()} ${unit(total)}` : `${shown.toLocaleString()} / ${total.toLocaleString()} ${unit(total)}`;
+  if (total != null) return shown >= total ? `${total.toLocaleString()} ${unit(total)}` : `${shown.toLocaleString()}/${total.toLocaleString()} ${unit(total)}`;
   return audit.auditStatus === 'Exhausted' ? `${shown.toLocaleString()} ${unit(shown)}` : `${shown.toLocaleString()}+ ${unit(shown)}`;
 }
 
@@ -61,14 +61,13 @@ export function AuditTab() {
         <div className="md:hidden"><Drawer><DrawerTrigger asChild><Button type="button" variant="tertiary" size="icon" aria-label={`Filters${audit.auditFilterChips.length ? ` (${audit.auditFilterChips.length})` : ''}`}><SlidersHorizontal /></Button></DrawerTrigger>
           <DrawerContent><DrawerHeader><DrawerTitle>Filter activity</DrawerTitle><DrawerDescription>Changes apply as you select filters.</DrawerDescription></DrawerHeader>
             <div className="min-h-0 space-y-6 overflow-y-auto px-4 pb-4">{columns.map((column) => <section key={column} className="space-y-2"><h3 className="font-semibold">{column}</h3><AuditColumnFilter column={column} surface="panel" audit={audit} /></section>)}</div>
-            <DrawerFooter><DrawerClose asChild><Button type="button">Show {audit.auditCounts?.exact && total != null ? `${total} ` : ''}events</Button></DrawerClose><Button type="button" variant="ghost" onClick={audit.clearAuditFilters}>Clear filters</Button></DrawerFooter>
+            <DrawerFooter><DrawerClose asChild><Button type="button">Show {audit.auditCounts?.exact && total != null ? `${total.toLocaleString()} ` : ''}{total === 1 ? 'event' : 'events'}</Button></DrawerClose><Button type="button" variant="ghost" onClick={audit.clearAuditFilters}>Clear filters</Button></DrawerFooter>
           </DrawerContent>
         </Drawer></div>
-        <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground lg:block" role="status" aria-live="polite">{count}</span>
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground" role="status" aria-live="polite">{count}</span>
       </SearchToolbarRow>
       {audit.advancedError ? <p id="audit-query-error" role="status" className="text-xs text-destructive">{audit.advancedError} Showing the last valid search.</p> : null}
       {audit.auditFilterChips.length ? <div className="flex flex-wrap items-center gap-1" aria-label="Active filters">{audit.auditFilterChips.map((chip) => <Button key={chip.label} type="button" size="sm" variant="secondary" trailingIcon={X} onClick={chip.clear} aria-label={`Remove ${chip.label}`}>{chip.label}</Button>)}<Button type="button" size="sm" variant="ghost" onClick={audit.clearAuditFilters}>Clear all</Button></div> : null}
-      <p className="text-xs tabular-nums text-muted-foreground lg:hidden" role="status">{count}</p>
       </div>
       <AuditTable audit={audit} />
     </section>

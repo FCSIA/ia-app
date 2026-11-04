@@ -7,6 +7,7 @@ import { CalendarDays, ChevronRight, FileText, Megaphone, MessagesSquare, Shield
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeadFilter, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
@@ -63,12 +64,13 @@ function AuditPagination({ audit }: { audit: AuditState }) {
     return () => observer.disconnect();
   }, [canLoad, loadMoreAuditEvents]);
   if (audit.isAuditLoading || !audit.auditEvents.length) return null;
-  const shown = audit.auditEvents.length;
-  const total = audit.auditCounts?.exact ? audit.auditCounts.total : null;
-  const done = audit.auditStatus === 'Exhausted';
-  return <div ref={sentinel} className="flex min-h-9 items-center justify-between gap-3 text-xs tabular-nums text-muted-foreground">
-    <span role="status">{done ? `All ${shown.toLocaleString()} ${shown === 1 ? 'event' : 'events'} shown` : `Showing ${shown.toLocaleString()}${total != null ? ` of ${total.toLocaleString()}` : ''}`}</span>
-    {done ? null : <Button type="button" size="sm" variant="ghost" loading={loading} disabled={!canLoad} onClick={() => loadMoreAuditEvents(AUDIT_FETCH_LIMIT)}>{loading ? 'Loading older activity' : 'Load older activity'}</Button>}
+  // The toolbar owns the count; the list end only says whether more is coming.
+  return <div ref={sentinel} className="flex min-h-9 items-center justify-center text-xs text-muted-foreground">
+    {audit.auditStatus === 'Exhausted'
+      ? <span>End of activity</span>
+      : loading
+        ? <span className="flex items-center gap-2" role="status"><Spinner className="size-3.5" role={undefined} aria-hidden="true" />Loading older activity</span>
+        : <Button type="button" size="sm" variant="ghost" disabled={!canLoad} onClick={() => loadMoreAuditEvents(AUDIT_FETCH_LIMIT)}>Load older activity</Button>}
   </div>;
 }
 /** Where a record lives (club, then channel, workshop, …); people are not places. */
