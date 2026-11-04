@@ -136,14 +136,30 @@ internal `bootstrap:resetAndSeed` function through the Convex CLI or Dashboard.
 
 ## GitHub Feedback Issues
 
-To mirror general feedback into `FCSIA/ia-app`, create a fine-grained GitHub
-token with **Issues: Read and write** access restricted to that repository, then
-set these variables on the target Convex deployment:
+Feedback issues are authored by a dedicated GitHub App bot (for example,
+`ia-feedback[bot]`). Create an organization-owned **IA Feedback** GitHub App,
+grant **Issues: Read and write**, and install it only on `FCSIA/ia-app`. Generate
+a private key and configure these secrets on the explicitly authorized Convex
+deployment:
 
-```bash
-bun run --cwd apps/convex convex env set GITHUB_FEEDBACK_TOKEN "..."
-bun run --cwd apps/convex convex env set GITHUB_FEEDBACK_WEBHOOK_SECRET "..."
-```
+- `GITHUB_FEEDBACK_APP_ID`: the App ID or client ID.
+- `GITHUB_FEEDBACK_INSTALLATION_ID`: the installation's numeric ID.
+- `GITHUB_FEEDBACK_PRIVATE_KEY`: the complete PEM private key, including newlines.
+- `GITHUB_FEEDBACK_WEBHOOK_SECRET`: the Issues webhook signing secret.
+- `GITHUB_FEEDBACK_TOKEN`: a user token with repository write access for GitHub's
+  screenshot-upload endpoint. It uploads assets only; it never authors issues.
+
+The integration requests short-lived installation tokens scoped to this
+repository with Issues write permission. Missing App credentials fail sync
+without falling back to personal authorship; the original report stays saved
+and can be retried after setup. Existing issue authors cannot be changed.
+
+Screenshots are copied to GitHub's user-attachment storage before creating the
+issue. Uploaded URLs are retained for retries. If any upload fails, issue
+creation fails visibly and retains the original Convex screenshots. No screenshot
+is committed to the repository. The upload endpoint follows the current
+[GitHub CLI implementation](https://github.com/cli/cli/blob/trunk/internal/attachments/client.go),
+which is separate from the stable Issues REST API; credential support may vary.
 
 In the repository's GitHub webhook settings, add the Convex HTTP endpoint
 `https://<your-convex-site>/github/feedback-webhook`, use the same webhook

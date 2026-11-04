@@ -10,6 +10,15 @@
   final design-owner and physical native-device review remain pending. See
   `docs/features/onboarding.md` for rollout policy, architecture, and QA evidence.
 
+- **Feedback GitHub follow-up (2026-11-03)**: The feedback issue changes are now
+  on `main`, adding GitHub App bot authentication, public screenshot copies,
+  bounded client diagnostics, and protected report links at
+  `/admin/feedback/[reportId]`. The app is installed only for `FCSIA/ia-app`, and
+  its App ID, installation ID, and private key are configured on production
+  deployment `elated-anaconda-301`. Code deployment remains separate; ordinary
+  main pushes run CI without deploying. Missing app credentials never fall back
+  to personal issue authorship. Human visual review remains pending.
+
 - **Production performance release (2026-11-02)**: Owner-authorized profiling of
   `app.fcsia.com` identified audit, moderation, presence, and chat query work.
   Focused fixes shipped through `bun run release` as v0.8.42 (`c30d4be`);

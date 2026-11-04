@@ -52,7 +52,8 @@ Reports store submitter, content type/id, optional club, optional reported user,
 reason, status, escalation flag, review note, timestamps, and (for general
 feedback) optional GitHub-issue sync metadata. General feedback
 can include up to three validated PNG, JPEG, GIF, or WebP image attachments;
-only super admins can retrieve their previews. Staff responses are separate,
+only authorized feedback reviewers can retrieve their previews in the app.
+Copies attached to public GitHub issues are public. Staff responses are separate,
 append-only records linked to general feedback and limited to 25 per item.
 
 ## Permissions
@@ -71,8 +72,20 @@ into the super-admin archive and remains in the submitter's history. Each staff 
 links them to the read-only feedback history.
 
 When configured, each general-feedback submission creates a GitHub issue in
-`FCSIA/ia-app` without the submitter's identity or attachments. GitHub's
-signed `issues` webhook updates the app when that issue is closed (`completed`
+`FCSIA/ia-app` as a dedicated GitHub App bot. Its title comes from the first
+feedback line; its body includes the feedback, GitHub-hosted screenshot copies,
+app version, browser/device/display diagnostics, and a direct link to
+`/admin/feedback/[reportId]`. No submitter identity is added to the issue. Text
+and images supplied by the submitter are public; the form discloses this before
+submission. Diagnostics exclude IP addresses, referrers, and page URLs.
+
+The report link uses a direct backend lookup independent of queue limits.
+Super admins and users with the explicit feedback-review capability can read
+it; all other callers receive no report, identity, or image data. Public source
+code and a public issue link do not grant access. Authorized review capabilities
+remain read-only unless the user also has the required staff role.
+
+GitHub's signed `issues` webhook updates the app when that issue is closed (`completed`
 becomes resolved; `not_planned` becomes dismissed) or reopened (becomes
 pending). The issue link is visible to feedback reviewers.
 

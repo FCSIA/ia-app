@@ -3,6 +3,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { env, httpAction, internalAction, internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
 import { deliverNotification } from "../notifications/delivery";
+import { feedbackMetadataValidator } from "./feedbackMetadata";
+import { feedbackGithubToken } from "./feedbackGithubToken";
 import { logAuditEvent } from "../audit/_lib";
 
 const GITHUB_REPOSITORY = "FCSIA/ia-app";
@@ -66,23 +68,36 @@ function githubHeaders(token: string) {
   };
 }
 
-function issueTitle(reportId: Id<"moderationReports">) {
-  return `IA app feedback (${reportId.slice(-8)})`;
+export function issueTitle(reason: string) {
+  const firstLine = reason.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "Feedback";
+  return firstLine.length > 100 ? `${firstLine.slice(0, 99)}…` : firstLine;
 }
 
-function issueBody(report: Pick<Doc<"moderationReports">, "_id" | "reason">) {
+export function issueBody(report: Pick<Doc<"moderationReports">, "_id" | "reason" | "appVersion" | "clientMetadata">, images: string[] = []) {
+  const details = [];
+  if (report.appVersion) details.push(`App: ${report.appVersion}`);
+  const metadata = report.clientMetadata;
+  if (metadata) {
+    details.push(
+      `Browser / device: ${metadata.userAgent}`,
+      `Platform: ${metadata.platform}`,
+      `Viewport: ${metadata.viewportWidth} × ${metadata.viewportHeight}`,
+      `Screen: ${metadata.screenWidth} × ${metadata.screenHeight} (${metadata.pixelRatio}×)`,
+      `Touch points: ${metadata.touchPoints}`,
+      `Language: ${metadata.language}`,
+      `Timezone: ${metadata.timezone}`,
+      `Display mode: ${metadata.displayMode}`,
+    );
+  }
+  // Escape metadata as literal text, independently of the user's Markdown.
+  const literal = (value: string) => value.replace(/[&<>]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[character]!);
   return [
-    "Submitted through the IA app feedback form.",
-    "",
-    "Do not add student-identifying information or attachments to this issue.",
-    "",
-    "---",
-    "",
     report.reason,
     "",
-    "---",
+    ...images.map((url, index) => `![Screenshot ${index + 1}](${url})`),
+    ...(details.length ? ["", "<details>", "<summary>Technical details</summary>", "", "<pre>", ...details.map(literal), "</pre>", "</details>"] : []),
     "",
-    `Convex feedback record: \`${report._id}\``,
+    `[View feedback in admin](https://app.fcsia.com/admin/feedback/${report._id})`,
   ].join("\n");
 }
 
@@ -148,6 +163,9 @@ export const loadPendingFeedback = internalQuery({
     v.object({
       _id: v.id("moderationReports"),
       reason: v.string(),
+      appVersion: v.optional(v.string()),
+      clientMetadata: v.optional(feedbackMetadataValidator),
+      images: v.array(v.object({ _id: v.id("feedbackReportImages"), storageId: v.id("_storage"), mimeType: v.string(), githubAssetUrl: v.optional(v.string()) })),
       githubIssueNumber: v.optional(v.number()),
     }),
   ),
@@ -157,8 +175,20 @@ export const loadPendingFeedback = internalQuery({
     return {
       _id: report._id,
       reason: report.reason,
+      appVersion: report.appVersion,
+      clientMetadata: report.clientMetadata,
+      images: (await ctx.db.query("feedbackReportImages").withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id)).take(3)).map(({ _id, storageId, mimeType, githubAssetUrl }) => ({ _id, storageId, mimeType, githubAssetUrl })),
       githubIssueNumber: report.githubIssueNumber,
     };
+  },
+});
+
+export const saveGithubAsset = internalMutation({
+  args: { imageId: v.id("feedbackReportImages"), url: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.imageId, { githubAssetUrl: args.url });
+    return null;
   },
 });
 
@@ -303,8 +333,8 @@ export const pushGithubIssueState = internalAction({
         ...(githubUpdatedAt !== undefined ? { githubUpdatedAt } : {}),
         ...(seenStateUpdatedAt !== undefined ? { seenStateUpdatedAt } : {}),
       });
-    const token = env.GITHUB_FEEDBACK_TOKEN;
     try {
+      const token = await feedbackGithubToken(ctx);
       for (let round = 0; round < MAX_PUSH_ROUNDS; round += 1) {
         const current = await ctx.runQuery(internal.moderation.feedbackGithub.loadGithubIssueState, args);
         if (!current || !token) {
@@ -353,20 +383,51 @@ export const syncFeedbackIssue = internalAction({
     const report = await ctx.runQuery(internal.moderation.feedbackGithub.loadPendingFeedback, args);
     if (!report) return null;
 
-    const token = env.GITHUB_FEEDBACK_TOKEN;
-    if (!token) {
-      await ctx.runMutation(internal.moderation.feedbackGithub.saveGithubIssueFailure, {
-        reportId: args.reportId,
-        error: "GITHUB_FEEDBACK_TOKEN is not configured",
-      });
-      return null;
-    }
-
     try {
+      const token = await feedbackGithubToken(ctx);
+      if (!token) {
+        await ctx.runMutation(internal.moderation.feedbackGithub.saveGithubIssueFailure, {
+          reportId: args.reportId,
+          error: "GitHub Feedback App is not configured",
+        });
+        return null;
+      }
+
+      const images: string[] = [];
+      if (report.images.length) {
+        const uploadToken = env.GITHUB_FEEDBACK_TOKEN;
+        if (!uploadToken) throw new Error("GITHUB_FEEDBACK_TOKEN is required to upload screenshots");
+        const repositoryResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}`, {
+          headers: githubHeaders(uploadToken), signal: AbortSignal.timeout(PUSH_REQUEST_TIMEOUT_MS),
+        });
+        if (!repositoryResponse.ok) throw new Error(`GitHub repository lookup failed (${repositoryResponse.status})`);
+        const repository: unknown = await repositoryResponse.json();
+        if (!repository || typeof repository !== "object" || !("id" in repository) || typeof repository.id !== "number") throw new Error("Invalid GitHub repository response");
+        for (const [index, image] of report.images.entries()) {
+          if (image.githubAssetUrl) { images.push(image.githubAssetUrl); continue; }
+          const blob = await ctx.storage.get(image.storageId);
+          if (!blob) throw new Error("Feedback screenshot is unavailable");
+          const extension = image.mimeType.split("/")[1];
+          const url = new URL("https://uploads.github.com/user-attachments/assets");
+          url.searchParams.set("repository_id", String(repository.id));
+          url.searchParams.set("name", `feedback-${index + 1}.${extension}`);
+          url.searchParams.set("content_type", image.mimeType);
+          const upload = await fetch(url, {
+            method: "POST", headers: { ...githubHeaders(uploadToken), "Content-Type": "application/octet-stream" },
+            body: blob, signal: AbortSignal.timeout(PUSH_REQUEST_TIMEOUT_MS),
+          });
+          if (!upload.ok) throw new Error(`GitHub screenshot upload failed (${upload.status})`);
+          const asset: unknown = await upload.json();
+          if (!asset || typeof asset !== "object" || !("url" in asset) || typeof asset.url !== "string" || !/^https:\/\/github\.com\/user-attachments\/assets\/[a-zA-Z0-9-]+$/.test(asset.url)) throw new Error("Invalid GitHub screenshot URL");
+          await ctx.runMutation(internal.moderation.feedbackGithub.saveGithubAsset, { imageId: image._id, url: asset.url });
+          images.push(asset.url);
+        }
+      }
       const response = await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/issues`, {
         method: "POST",
         headers: { ...githubHeaders(token), "Content-Type": "application/json" },
-        body: JSON.stringify({ title: issueTitle(report._id), body: issueBody(report) }),
+        body: JSON.stringify({ title: issueTitle(report.reason), body: issueBody(report, images) }),
+        signal: AbortSignal.timeout(PUSH_REQUEST_TIMEOUT_MS),
       });
       if (!response.ok) throw new Error(`GitHub issue creation failed (${response.status})`);
       const body: unknown = await response.json();

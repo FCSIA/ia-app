@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { feedbackMetadataValidator } from "./moderation/feedbackMetadata";
 import { analyticsDailyValidator } from "./analytics/validators";
 import { decisionsValidator } from "./onboarding/validators";
 import {
@@ -1541,6 +1542,7 @@ export const schema = defineSchema({
     // Recorded with general feedback so staff can reproduce the issue against
     // the same in-app release. Optional preserves existing report records.
     appVersion: v.optional(v.string()),
+    clientMetadata: v.optional(feedbackMetadataValidator),
     reviewNote: v.optional(v.string()),
     reviewedAt: v.optional(v.number()),
     // These fields are populated only for GENERAL feedback mirrored to GitHub.
@@ -1573,6 +1575,7 @@ export const schema = defineSchema({
     ]),
 
   feedbackReportImages: defineTable({
+    githubAssetUrl: v.optional(v.string()),
     reportId: v.id("moderationReports"),
     storageId: v.id("_storage"),
     mimeType: v.string(),

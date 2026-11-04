@@ -26,6 +26,8 @@ import {
 } from "./reportValidation";
 import { contentRateLimiter } from "../rateLimits";
 import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
+import { feedbackMetadataValidator, validateFeedbackMetadata } from "./feedbackMetadata";
+import type { FeedbackMetadata } from "../../../shared/feedback-metadata";
 import { canReviewFeedback } from "./feedbackAccess";
 import { requestGithubIssuePush } from "./feedbackGithub";
 
@@ -180,6 +182,7 @@ async function createReport(
     contentId: string;
     reason: string;
     appVersion?: string;
+    clientMetadata?: FeedbackMetadata;
     reportedUserId?: Id<"users">;
     clubId?: Id<"clubs">;
     imageUploadIds?: Id<"feedbackImageUploads">[];
@@ -195,6 +198,7 @@ async function createReport(
     contentId: input.contentId,
     reason: input.reason,
     ...(input.appVersion ? { appVersion: input.appVersion } : {}),
+    ...(input.clientMetadata ? { clientMetadata: input.clientMetadata } : {}),
     reportedUserId: input.reportedUserId,
     clubId: input.clubId,
     status: "PENDING",
@@ -224,7 +228,7 @@ async function createReport(
       category: isFeedback ? "FEEDBACK" : "CONTENT_MODERATED",
       title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
       body: `${displayName(user)} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
-      href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
+      href: isFeedback ? `/admin/feedback/${reportId}` : "/admin?tab=moderation",
       subject: { kind: "moderationReport", reportId },
     },
   );
@@ -331,6 +335,21 @@ export const listFeedback = query({
   },
 });
 
+/** Direct lookup is independent of the bounded feedback queue. */
+export const getFeedback = query({
+  args: { reportId: v.string() },
+  returns: v.union(reportValidator, v.null()),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !canReviewFeedback(user)) return null;
+    const id = ctx.db.normalizeId("moderationReports", args.reportId);
+    if (!id) return null;
+    const report = await ctx.db.get(id);
+    if (!report || report.contentType !== "GENERAL") return null;
+    return serializeReport(ctx, report);
+  },
+});
+
 export const listMyFeedback = query({
   args: {},
   returns: v.array(myFeedbackValidator),
@@ -374,6 +393,7 @@ export const submit = mutation({
     clubId: v.optional(v.id("clubs")),
     imageUploadIds: v.optional(v.array(v.id("feedbackImageUploads"))),
     appVersion: v.optional(v.string()),
+    clientMetadata: v.optional(feedbackMetadataValidator),
   },
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
@@ -388,6 +408,10 @@ export const submit = mutation({
     }
     if (args.appVersion && args.contentType !== "GENERAL") {
       throw new ConvexError("App versions can only be attached to feedback");
+    }
+    if (args.clientMetadata) {
+      if (args.contentType !== "GENERAL") throw new ConvexError("Diagnostics can only be attached to feedback");
+      validateFeedbackMetadata(args.clientMetadata);
     }
     const appVersion = args.appVersion?.trim();
     if (appVersion && Array.from(appVersion).length > 64) {

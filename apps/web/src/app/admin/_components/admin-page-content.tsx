@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { AdminPageLayout } from './admin-page-layout';
 import { AdminMobileNavigation, AdminShell } from './admin-shell';
@@ -20,6 +20,7 @@ import { useAdminTab } from '../_hooks/use-admin-tab';
 export function AdminPageContent() {
   const user = useCurrentUser();
   const router = useRouter();
+  const reportId = useParams<{ reportId?: string }>()?.reportId;
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
   const canReviewFeedback = isSuperAdmin || user?.canReviewFeedback === true;
   const canManageWrapped = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
@@ -34,7 +35,7 @@ export function AdminPageContent() {
     }
   }, [canReviewFeedback, hasAdministrativeAccess, user, router]);
 
-  if (!hasAdministrativeAccess && canReviewFeedback) {
+  if (canReviewFeedback && !isSuperAdmin && (reportId || !hasAdministrativeAccess)) {
     return (
       <AdminPageLayout>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col p-4 md:p-6 lg:p-8">

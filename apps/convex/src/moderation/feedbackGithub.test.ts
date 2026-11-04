@@ -13,6 +13,10 @@ vi.mock("../../lib/currentUser", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../lib/currentUser")>();
   return {
     ...original,
+    getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
+      const identity = await ctx.auth.getUserIdentity();
+      return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
+    },
     getCurrentAppUser: async (ctx: QueryCtx) => {
       const identity = await ctx.auth.getUserIdentity();
       if (!identity) throw new Error("Unauthenticated");
@@ -22,6 +26,11 @@ vi.mock("../../lib/currentUser", async (importOriginal) => {
     },
   };
 });
+
+// Keep issue-sync tests focused on sync; App JWT authentication has its own suite.
+vi.mock("./feedbackGithubToken", () => ({
+  feedbackGithubToken: async () => process.env.GITHUB_FEEDBACK_TOKEN ?? null,
+}));
 
 const modules = import.meta.glob("/src/**/*.*s");
 const webhookSecret = "synthetic-feedback-webhook-secret";
@@ -196,7 +205,7 @@ describe("GitHub feedback retries", () => {
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run((ctx) => ctx.db.get(reportId))).toMatchObject({
       githubIssueSyncState: "FAILED",
-      githubIssueSyncError: "GITHUB_FEEDBACK_TOKEN is not configured",
+      githubIssueSyncError: "GitHub Feedback App is not configured",
     });
   });
 });
@@ -534,5 +543,53 @@ describe("staff and GitHub status coordination", () => {
     expect(canRetryGithubSync({ githubIssueSyncState: "PENDING", githubIssueSyncQueuedAt: queuedAt }, queuedAt + GITHUB_SYNC_STALE_MS)).toBe(true);
     expect(canRetryGithubSync({ githubIssueSyncState: "PENDING" }, queuedAt)).toBe(true);
     expect(canRetryGithubSync({ githubIssueSyncState: "SYNCED", githubIssueNumber: 7 }, queuedAt)).toBe(false);
+  });
+});
+
+
+describe("feedback report links and screenshot publishing", () => {
+  it("protects direct report lookup for guests, submitters, and ordinary admins", async () => {
+    const { t, reportId, userId, student } = await fixture();
+    expect(await t.query(api.moderation.reports.getFeedback, { reportId })).toBeNull();
+    expect(await student.query(api.moderation.reports.getFeedback, { reportId })).toBeNull();
+    await t.run((ctx) => ctx.db.patch(userId, { roles: ["ADMIN"] }));
+    expect(await student.query(api.moderation.reports.getFeedback, { reportId })).toBeNull();
+    await t.run((ctx) => ctx.db.patch(userId, { roles: ["SUPER_ADMIN"] }));
+    expect(await student.query(api.moderation.reports.getFeedback, { reportId })).toMatchObject({ _id: reportId });
+    expect(await student.query(api.moderation.reports.getFeedback, { reportId: "invalid" })).toBeNull();
+    await t.run((ctx) => ctx.db.patch(userId, { roles: ["STUDENT"], canReviewFeedback: true }));
+    expect(await student.query(api.moderation.reports.getFeedback, { reportId })).toMatchObject({ _id: reportId });
+    await t.run((ctx) => ctx.db.patch(reportId, { contentType: "ANNOUNCEMENT" }));
+    expect(await student.query(api.moderation.reports.getFeedback, { reportId })).toBeNull();
+  });
+
+  it("copies screenshots to GitHub and reuses the uploaded copy after issue creation fails", async () => {
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-feedback-token");
+    const { t, reportId } = await fixture();
+    const imageId = await t.run(async (ctx) => {
+      await ctx.db.patch(reportId, { githubIssueNumber: undefined, githubIssueSyncState: "PENDING", appVersion: "0.8.42" });
+      const storageId = await ctx.storage.store(new Blob(["synthetic-image"], { type: "image/png" }));
+      return ctx.db.insert("feedbackReportImages", { reportId, storageId, mimeType: "image/png", size: 15, createdAt: 1 });
+    });
+    const assetUrl = "https://github.com/user-attachments/assets/11111111-2222-3333-4444-555555555555";
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ id: 1234 }))
+      .mockResolvedValueOnce(Response.json({ url: assetUrl }))
+      .mockResolvedValueOnce(new Response("", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
+    expect(await t.run((ctx) => ctx.db.get(imageId))).toMatchObject({ githubAssetUrl: assetUrl });
+    expect(await t.run((ctx) => ctx.db.get(reportId))).toMatchObject({ githubIssueSyncState: "FAILED" });
+    fetchMock.mockResolvedValueOnce(Response.json({ id: 1234 }))
+      .mockResolvedValueOnce(Response.json({ number: 456, html_url: "https://github.com/FCSIA/ia-app/issues/456" }));
+    await t.action(internal.moderation.feedbackGithub.syncFeedbackIssue, { reportId });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const issue = JSON.parse(String(fetchMock.mock.calls[4]![1]?.body));
+    expect(issue.title).toBe("Synthetic feedback for webhook verification.");
+    expect(issue.body).toContain(assetUrl);
+    expect(issue.body).toContain(`/admin/feedback/${reportId}`);
+    expect(issue.body).toContain("App: 0.8.42");
+    expect(issue.body).not.toContain("Convex feedback record");
+    expect(issue.body).not.toContain("Do not add");
   });
 });

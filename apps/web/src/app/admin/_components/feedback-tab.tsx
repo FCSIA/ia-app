@@ -73,6 +73,8 @@ type RetryGithubIssueMutation = (
 ) => Promise<void>;
 
 export function FeedbackTab({
+  focusedReport,
+  onFocusedReportClose,
   feedbackSearch,
   onFeedbackSearchChange,
   deferredFeedbackSearch,
@@ -83,6 +85,8 @@ export function FeedbackTab({
   isLoading,
   canUpdateFeedback = true,
 }: {
+  focusedReport?: FeedbackReport;
+  onFocusedReportClose?: () => void;
   feedbackSearch: string;
   onFeedbackSearchChange: (value: string) => void;
   deferredFeedbackSearch: string;
@@ -106,155 +110,172 @@ export function FeedbackTab({
   const classes = dataTableClasses();
 
   return (
-    <DataTablePanel
-      title="Feedback"
-      count={isLoading ? undefined : filteredReports.length}
-      toolbar={
-        <SearchInput
-          className="w-full sm:w-72"
-          aria-label="Search feedback"
-          value={feedbackSearch}
-          onValueChange={onFeedbackSearchChange}
-          placeholder="Search feedback…"
-          size="sm"
+    <>
+      {focusedReport ? (
+        <FeedbackDetail
+          key={focusedReport._id}
+          report={focusedReport}
+          body={drafts[focusedReport._id] ?? ''}
+          onBodyChange={(body) => setDrafts((current) => ({ ...current, [focusedReport._id]: body }))}
+          responseMutation={responseMutation}
+          retryGithubIssueMutation={retryGithubIssueMutation}
+          canUpdateFeedback={canUpdateFeedback}
+          defaultOpen
+          onClose={onFocusedReportClose}
         />
-      }
-      footer={
-        reportMutation.isPending ? (
-          <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
-            Updating feedback…
-          </p>
-        ) : undefined
-      }
-    >
-      <Tabs value={view} onValueChange={setView}>
-        <div className="px-4 pb-2">
-          <TabsList aria-label="Feedback views">
-            <TabItem
-              value="active"
-              label={`Active ${byStatus.active.length}`}
-              icon={Inbox}
-            />
-            <TabItem
-              value="resolved"
-              label={`Resolved ${byStatus.resolved.length}`}
-              icon={CheckCircle2}
-            />
-            <TabItem
-              value="archive"
-              label={`Archive ${byStatus.archive.length}`}
-              icon={Archive}
-            />
-          </TabsList>
-        </div>
-        <TabPanel value={view}>
-          {isLoading ? (
-            <AdminNotice message="Loading feedback…" />
-          ) : reports.length === 0 ? (
-            <AdminNotice
-              message={
-                deferredFeedbackSearch
-                  ? 'No feedback in this view matches your search.'
-                  : 'No feedback in this view.'
-              }
-              actionLabel={deferredFeedbackSearch ? 'Clear search' : undefined}
-              onAction={
-                deferredFeedbackSearch
-                  ? () => onFeedbackSearchChange('')
-                  : undefined
-              }
-            />
-          ) : (
-            <Table aria-label="Feedback queue">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={classes.head}>Feedback</TableHead>
-                  <TableHead className={classes.head}>Submitted by</TableHead>
-                  <TableHead className={classes.head}>Submitted</TableHead>
-                  <TableHead className={classes.head}>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reports.map((report, index) => (
-                  <TableRow key={report._id} index={index}>
-                    <TableCell className={classes.cell}>
-                      <p className="line-clamp-2 min-w-48 max-w-md whitespace-normal break-words font-medium text-foreground">
-                        {report.reason}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {report.images.length} attachments ·{' '}
-                        {report.responses.length} responses
-                        {report.githubIssueSyncState === 'FAILED'
-                          ? ' · GitHub sync failed'
-                          : ''}
-                      </p>
-                    </TableCell>
-                    <TableCell className={classes.cell}>
-                      {displayName(report.submitter)}
-                    </TableCell>
-                    <TableCell className={classes.cell}>
-                      {formatDateTime(report._creationTime)}
-                    </TableCell>
-                    <TableCell className={classes.cell}>
-                      <div className="flex gap-2">
-                        <FeedbackDetail
-                          report={report}
-                          body={drafts[report._id] ?? ''}
-                          onBodyChange={(body) =>
-                            setDrafts((current) => ({
-                              ...current,
-                              [report._id]: body,
-                            }))
-                          }
-                          responseMutation={responseMutation}
-                          retryGithubIssueMutation={retryGithubIssueMutation}
-                          canUpdateFeedback={canUpdateFeedback}
-                        />
-                        {canUpdateFeedback && report.status === 'PENDING' ? (
-                          <>
-                            <Button
-                              size="sm"
-                              disabled={reportMutation.isPending}
-                              onClick={() =>
-                                reportMutation.mutate({
-                                  id: report._id,
-                                  status: 'RESOLVED',
-                                  reviewNote: 'Reviewed',
-                                })
-                              }
-                            >
-                              Resolve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={reportMutation.isPending}
-                              onClick={() =>
-                                reportMutation.mutate({
-                                  id: report._id,
-                                  status: 'DISMISSED',
-                                  reviewNote: 'Dismissed',
-                                })
-                              }
-                            >
-                              Archive
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    </TableCell>
+      ) : null}
+      <DataTablePanel
+        title="Feedback"
+        count={isLoading ? undefined : filteredReports.length}
+        toolbar={
+          <SearchInput
+            className="w-full sm:w-72"
+            aria-label="Search feedback"
+            value={feedbackSearch}
+            onValueChange={onFeedbackSearchChange}
+            placeholder="Search feedback…"
+            size="sm"
+          />
+        }
+        footer={
+          reportMutation.isPending ? (
+            <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
+              Updating feedback…
+            </p>
+          ) : undefined
+        }
+      >
+        <Tabs value={view} onValueChange={setView}>
+          <div className="px-4 pb-2">
+            <TabsList aria-label="Feedback views">
+              <TabItem
+                value="active"
+                label={`Active ${byStatus.active.length}`}
+                icon={Inbox}
+              />
+              <TabItem
+                value="resolved"
+                label={`Resolved ${byStatus.resolved.length}`}
+                icon={CheckCircle2}
+              />
+              <TabItem
+                value="archive"
+                label={`Archive ${byStatus.archive.length}`}
+                icon={Archive}
+              />
+            </TabsList>
+          </div>
+          <TabPanel value={view}>
+            {isLoading ? (
+              <AdminNotice message="Loading feedback…" />
+            ) : reports.length === 0 ? (
+              <AdminNotice
+                message={
+                  deferredFeedbackSearch
+                    ? 'No feedback in this view matches your search.'
+                    : 'No feedback in this view.'
+                }
+                actionLabel={deferredFeedbackSearch ? 'Clear search' : undefined}
+                onAction={
+                  deferredFeedbackSearch
+                    ? () => onFeedbackSearchChange('')
+                    : undefined
+                }
+              />
+            ) : (
+              <Table aria-label="Feedback queue">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={classes.head}>Feedback</TableHead>
+                    <TableHead className={classes.head}>Submitted by</TableHead>
+                    <TableHead className={classes.head}>Submitted</TableHead>
+                    <TableHead className={classes.head}>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabPanel>
-      </Tabs>
-    </DataTablePanel>
+                </TableHeader>
+                <TableBody>
+                  {reports.map((report, index) => (
+                    <TableRow key={report._id} index={index}>
+                      <TableCell className={classes.cell}>
+                        <p className="line-clamp-2 min-w-48 max-w-md whitespace-normal break-words font-medium text-foreground">
+                          {report.reason}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {report.images.length} attachments ·{' '}
+                          {report.responses.length} responses
+                          {report.githubIssueSyncState === 'FAILED'
+                            ? ' · GitHub sync failed'
+                            : ''}
+                        </p>
+                      </TableCell>
+                      <TableCell className={classes.cell}>
+                        {displayName(report.submitter)}
+                      </TableCell>
+                      <TableCell className={classes.cell}>
+                        {formatDateTime(report._creationTime)}
+                      </TableCell>
+                      <TableCell className={classes.cell}>
+                        <div className="flex gap-2">
+                          <FeedbackDetail
+                            report={report}
+                            body={drafts[report._id] ?? ''}
+                            onBodyChange={(body) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                [report._id]: body,
+                              }))
+                            }
+                            responseMutation={responseMutation}
+                            retryGithubIssueMutation={retryGithubIssueMutation}
+                            canUpdateFeedback={canUpdateFeedback}
+                          />
+                          {canUpdateFeedback && report.status === 'PENDING' ? (
+                            <>
+                              <Button
+                                size="sm"
+                                disabled={reportMutation.isPending}
+                                onClick={() =>
+                                  reportMutation.mutate({
+                                    id: report._id,
+                                    status: 'RESOLVED',
+                                    reviewNote: 'Reviewed',
+                                  })
+                                }
+                              >
+                                Resolve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={reportMutation.isPending}
+                                onClick={() =>
+                                  reportMutation.mutate({
+                                    id: report._id,
+                                    status: 'DISMISSED',
+                                    reviewNote: 'Dismissed',
+                                  })
+                                }
+                              >
+                                Archive
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </TabPanel>
+        </Tabs>
+      </DataTablePanel>
+    </>
   );
 }
 
 function FeedbackDetail({
+  defaultOpen = false,
+  onClose,
   report,
   body,
   onBodyChange,
@@ -262,6 +283,8 @@ function FeedbackDetail({
   retryGithubIssueMutation,
   canUpdateFeedback,
 }: {
+  defaultOpen?: boolean;
+  onClose?: () => void;
   report: FeedbackReport;
   body: string;
   onBodyChange: (body: string) => void;
@@ -310,12 +333,15 @@ function FeedbackDetail({
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="tertiary">
-          Details
-        </Button>
-      </DialogTrigger>
+    <Dialog
+      defaultOpen={defaultOpen}
+      onOpenChange={(open) => { if (!open) onClose?.(); }}
+    >
+      {!defaultOpen ? (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="tertiary">Details</Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
@@ -329,6 +355,13 @@ function FeedbackDetail({
         <p className="whitespace-pre-wrap break-words text-sm text-foreground">
           {report.reason}
         </p>
+        {report.clientMetadata ? (
+          <dl className="grid gap-2 text-sm">
+            <div><dt className="text-muted-foreground">Browser / device</dt><dd className="break-words">{report.clientMetadata.userAgent}</dd></div>
+            <div><dt className="text-muted-foreground">Display</dt><dd>{report.clientMetadata.viewportWidth} × {report.clientMetadata.viewportHeight} viewport · {report.clientMetadata.screenWidth} × {report.clientMetadata.screenHeight} screen · {report.clientMetadata.pixelRatio}× · {report.clientMetadata.displayMode}</dd></div>
+            <div><dt className="text-muted-foreground">Locale</dt><dd>{report.clientMetadata.language} · {report.clientMetadata.timezone}</dd></div>
+          </dl>
+        ) : null}
         {report.githubIssueUrl ? (
           <Button
             asChild

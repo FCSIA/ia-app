@@ -18,6 +18,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import { APP_VERSION, RELEASE_CHANNEL, formatVersion } from '@ia/devlog';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { useShape } from '@/lib/shape-context';
+import { collectFeedbackMetadata } from '@/lib/feedback-metadata';
 import { cn } from '@/lib/utils';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
@@ -112,6 +113,7 @@ export default function ReportPage() {
         reason: trimmedMessage,
         imageUploadIds,
         appVersion: formatVersion(APP_VERSION, RELEASE_CHANNEL),
+        clientMetadata: collectFeedbackMetadata(),
       });
       setMessage('');
       imagesRef.current.forEach((image) => {
@@ -190,6 +192,9 @@ export default function ReportPage() {
           </div>
           <p id="feedback-image-limits" className="text-xs text-muted-foreground">
             Up to 3 images, 5 MB each · PNG, JPEG, GIF, WebP
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Feedback and screenshots are published on GitHub. Browser, device, and display diagnostics are included automatically. Avoid personal information in your message and images.
           </p>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
