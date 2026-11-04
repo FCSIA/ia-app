@@ -17,7 +17,7 @@ import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownTrigger } from "@/components/ui/dropdown";
 
 // ── Context ──────────────────────────────────────────────
 
@@ -209,39 +209,33 @@ const TableCell = forwardRef<
 
 TableCell.displayName = "TableCell";
 
-/** A column's filter belongs to its header, including in an empty table. */
-function TableHeadFilter({ label, active = false, children }: {
+/** A column's filter belongs to its header, including in an empty table.
+ *  `children` is the column's `DropdownContent`: filters are Fluid menus, so
+ *  they share its search, check marks, hover and keyboard model. */
+function TableHeadFilter({ label, active = false, open, onOpenChange, children }: {
   label: string;
   active?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-1">
       <span>{label}</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon-compact" active={active} aria-label={`Filter ${label.toLowerCase()}`}>
-            <ListFilter aria-hidden="true" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" aria-label={`${label} filters`}>
-          {children}
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
-function TableGroupRow({ children, colSpan }: { children: ReactNode; colSpan: number }) {
-  return (
-    <tr className="border-b border-border/60">
-      <th colSpan={colSpan} scope="rowgroup" className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
+        <DropdownTrigger
+          render={
+            <Button type="button" variant="ghost" size="icon-compact" active={active} aria-label={`Filter ${label.toLowerCase()}`}>
+              <ListFilter aria-hidden="true" />
+            </Button>
+          }
+        />
         {children}
-      </th>
-    </tr>
+      </DropdownMenu>
+    </div>
   );
 }
 
 // ── Exports ──────────────────────────────────────────────
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableHeadFilter, TableGroupRow };
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableHeadFilter };

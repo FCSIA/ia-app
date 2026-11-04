@@ -109,6 +109,8 @@ export function useAdminAudit(activeTab: AdminTabId) {
   return {
     auditSearch, setAuditSearch, advancedError: parsed.error,
     auditActor, setAuditActor: (value: string) => update({ person: value, actor: '', actor_name: '' }),
+    /** Anyone / people only / system: clears a chosen person in the same update. */
+    setAuditActorSource: (value: AuditActorScope) => update({ source: value, person: '', actor: '', actor_name: '' }),
     auditActorId, setAuditActorId: (id: string, name: string) => update({ actor: id, actor_name: name, person: '' }),
     auditEntityId, setAuditEntityId: (value: string) => update({ record: value }),
     auditActionFilters, setAuditActionFilters: (values: string[]) => update({ action: values.join(',') }),
@@ -116,6 +118,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     auditActorScope, setAuditActorScope: (value: AuditActorScope) => update({ source: value }),
     auditStartDate, auditEndDate,
     setAuditStartDateWithBounds: (value: string) => update({ from: value, ...(value && auditEndDate && value > auditEndDate ? { to: value } : {}) }),
+    setAuditDateRange: (from: string, to: string) => update({ from, to }),
     setAuditEndDateWithBounds: (value: string) => update({ to: value, ...(value && auditStartDate && value < auditStartDate ? { from: value } : {}) }),
     auditCategoryFilters, setAuditCategoryFilters: (values: AuditCategory[]) => update({ category: values.join(','), action: auditActionFilters.filter((action) => !values.length || !!AUDIT_ACTIONS[action] && values.includes(AUDIT_ACTIONS[action].category)).join(',') }),
     selectedAuditEventId, setSelectedAuditEventId, auditEvents, displayedAuditEvents: auditEvents,

@@ -1,25 +1,76 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment } from 'react';
-import { format, isToday, isYesterday } from 'date-fns';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { format, isThisYear, isToday, isYesterday } from 'date-fns';
 import { CalendarDays, ChevronRight, FileText, Megaphone, MessagesSquare, Shield, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Table, TableBody, TableCell, TableGroupRow, TableHead, TableHeadFilter, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeadFilter, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { AdminNotice } from '../admin-ui';
 import { AUDIT_FETCH_LIMIT } from '../../_lib/admin-utils';
 import type { AuditEventRecord } from '../../_lib/types';
 import type { useAdminAudit } from '../../_hooks/use-admin-audit';
 import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditCategory, auditPersonName, auditRecordTitle } from '~/apps/shared/audit';
-import { AuditColumnFilter, type AuditFilterColumn } from './audit-filters';
+import { AuditColumnFilter, WhenRangeFields, auditFilterActive, type AuditFilterColumn } from './audit-filters';
 import { AuditPerson } from './audit-person';
 
 type AuditState = ReturnType<typeof useAdminAudit>;
 const icons = { 'people-access': Users, 'clubs-chat': MessagesSquare, announcements: Megaphone, moderation: Shield, schedules: FileText, 'flex-events': CalendarDays };
-function DayLabel({ date }: { date: Date }) { return <>{isToday(date) ? 'Today' : isYesterday(date) ? 'Yesterday' : format(date, 'EEEE, MMM d, yyyy')}</>; }
+function dayLabel(date: Date) { return isToday(date) ? 'Today' : isYesterday(date) ? 'Yesterday' : format(date, isThisYear(date) ? 'EEE, MMM d' : 'MMM d, yyyy'); }
+const dayKey = (value: string) => format(new Date(value), 'yyyy-MM-dd');
+
+/**
+ * Days label a gutter in the When column instead of interrupting the table:
+ * every row stays a uniform, hoverable record, and the first row of each day
+ * names it. The full date stays available to assistive tech on every row.
+ */
+function WhenCell({ event, newDay }: { event: AuditEventRecord; newDay: boolean }) {
+  const date = new Date(event.createdAt);
+  return <span className="flex min-w-0 items-baseline gap-2 tabular-nums">
+    <span className="w-[5.75rem] shrink-0 truncate text-muted-foreground" aria-hidden="true">{newDay ? dayLabel(date) : null}</span>
+    <time dateTime={event.createdAt} title={format(date, 'PPpp')} aria-label={format(date, 'PPPp')}>{format(date, 'h:mm a')}</time>
+  </span>;
+}
+
+function WhenHeader({ audit }: { audit: AuditState }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  return <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
+    <PopoverAnchor asChild><div className="inline-flex">
+      <TableHeadFilter label="When" active={auditFilterActive(audit, 'When')} open={menuOpen} onOpenChange={setMenuOpen}>
+        <AuditColumnFilter column="When" surface="menu" audit={audit} onCustomRange={() => { setMenuOpen(false); setRangeOpen(true); }} />
+      </TableHeadFilter>
+    </div></PopoverAnchor>
+    <PopoverContent align="start" className="w-[22rem] p-3" aria-label="Custom date range"><WhenRangeFields audit={audit} /></PopoverContent>
+  </Popover>;
+}
+
+/** Cursor pagination: older pages stream in as the end of the list approaches. */
+function AuditPagination({ audit }: { audit: AuditState }) {
+  const sentinel = useRef<HTMLDivElement>(null);
+  const canLoad = audit.auditStatus === 'CanLoadMore' && !audit.isStale;
+  const loading = audit.auditStatus === 'LoadingMore' || audit.isStale;
+  const { loadMoreAuditEvents } = audit;
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node || !canLoad) return;
+    const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) loadMoreAuditEvents(AUDIT_FETCH_LIMIT); }, { rootMargin: '0px 0px 320px 0px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [canLoad, loadMoreAuditEvents]);
+  if (audit.isAuditLoading || !audit.auditEvents.length) return null;
+  const shown = audit.auditEvents.length;
+  const total = audit.auditCounts?.exact ? audit.auditCounts.total : null;
+  const done = audit.auditStatus === 'Exhausted';
+  return <div ref={sentinel} className="flex min-h-9 items-center justify-between gap-3 text-xs tabular-nums text-muted-foreground">
+    <span role="status">{done ? `All ${shown.toLocaleString()} ${shown === 1 ? 'event' : 'events'} shown` : `Showing ${shown.toLocaleString()}${total != null ? ` of ${total.toLocaleString()}` : ''}`}</span>
+    {done ? null : <Button type="button" size="sm" variant="ghost" loading={loading} disabled={!canLoad} onClick={() => loadMoreAuditEvents(AUDIT_FETCH_LIMIT)}>{loading ? 'Loading older activity' : 'Load older activity'}</Button>}
+  </div>;
+}
 /** Where a record lives (club, then channel, workshop, …); people are not places. */
 const PLACE_LABELS = new Set(['Club', 'Channel', 'Workshop', 'Session', 'Board', 'Announcement', 'Event', 'Unit', 'Group', 'Template', 'Course']);
 function auditPlaces(event: AuditEventRecord) {
@@ -55,24 +106,26 @@ function Action({ event }: { event: AuditEventRecord }) {
 export function AuditTable({ audit }: { audit: AuditState }) {
   const isMobile = useIsMobile();
   const events = audit.displayedAuditEvents;
-  const filtersActive = (column: AuditFilterColumn) => column === 'When' ? !!(audit.auditStartDate || audit.auditEndDate) : column === 'Person' ? !!(audit.auditActorId || audit.auditActor || audit.auditActorScope !== 'ALL') : column === 'Action' ? !!(audit.auditCategoryFilters.length || audit.auditActionFilters.length) : !!(audit.auditEntityId || audit.auditEntityTypeFilter !== 'ALL');
   const empty = <AdminNotice message="No activity matches these filters." actionLabel={audit.hasActiveAuditFilters ? 'Clear filters' : undefined} onAction={audit.hasActiveAuditFilters ? audit.clearAuditFilters : undefined} />;
   return <div className="min-w-0 space-y-3" aria-busy={audit.isStale || audit.auditStatus === 'LoadingMore'}>
     {!isMobile ? <div className="hidden md:block"><Table className="table-fixed" aria-label="Audit activity">
-      <colgroup><col className="w-[112px]" /><col className="w-[19%]" /><col className="w-[20%]" /><col /><col className="hidden w-[19%] xl:table-column" /><col className="w-11" /></colgroup>
-      <TableHeader><TableRow>{(['When', 'Person', 'Action', 'Record'] as const).map((column) => <TableHead key={column} scope="col"><TableHeadFilter label={column} active={filtersActive(column)}><AuditColumnFilter column={column} audit={audit} /></TableHeadFilter></TableHead>)}<TableHead scope="col" className="hidden xl:table-cell">Where</TableHead><TableHead scope="col"><span className="sr-only">Details</span></TableHead></TableRow></TableHeader>
+      <colgroup><col className="w-[11rem]" /><col className="w-[19%]" /><col className="w-[20%]" /><col /><col className="hidden w-[19%] xl:table-column" /><col className="w-11" /></colgroup>
+      {/* Pinned under the sticky toolbar (audit-tab sets --audit-sticky-top). */}
+      <TableHeader className="sticky top-(--audit-sticky-top,0px) z-20 bg-background"><TableRow>
+        <TableHead scope="col"><WhenHeader audit={audit} /></TableHead>
+        {(['Person', 'Action', 'Record'] as const).map((column: AuditFilterColumn) => <TableHead key={column} scope="col"><TableHeadFilter label={column} active={auditFilterActive(audit, column)}><AuditColumnFilter column={column} surface="menu" audit={audit} /></TableHeadFilter></TableHead>)}
+        <TableHead scope="col" className="hidden xl:table-cell">Where</TableHead><TableHead scope="col"><span className="sr-only">Details</span></TableHead>
+      </TableRow></TableHeader>
       <TableBody>
         {audit.isAuditLoading ? Array.from({ length: 8 }, (_, index) => <TableRow key={index}><TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell></TableRow>) : events.length ? events.map((event, index) => {
-          const date = new Date(event.createdAt);
-          const newDay = index === 0 || format(date, 'yyyy-MM-dd') !== format(new Date(events[index - 1]!.createdAt), 'yyyy-MM-dd');
+          const newDay = index === 0 || dayKey(event.createdAt) !== dayKey(events[index - 1]!.createdAt);
           return <Fragment key={event.id}>
-            {newDay ? <TableGroupRow colSpan={6}><DayLabel date={date} /></TableGroupRow> : null}
             <TableRow index={index} interactive selected={audit.selectedAuditEventId === event.id} onClick={(click) => {
               const target = click.target;
               if (!(target instanceof Element) || !click.currentTarget.contains(target) || target.closest('button,a,input,[role="button"]')) return;
               audit.setSelectedAuditEventId(event.id);
             }}>
-              <TableCell><time className="tabular-nums" dateTime={event.createdAt} title={format(date, 'PPpp')}>{format(date, 'h:mm a')}</time></TableCell>
+              <TableCell><WhenCell event={event} newDay={newDay} /></TableCell>
               <TableCell><AuditPerson event={event} onFilter={audit.setAuditActorId} /></TableCell>
               <TableCell><Action event={event} /></TableCell>
               <TableCell><RecordCell event={event} /></TableCell>
@@ -84,6 +137,6 @@ export function AuditTable({ audit }: { audit: AuditState }) {
       </TableBody>
     </Table></div> : null}
     <div className="md:hidden">{audit.isAuditLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div> : events.length ? <CardGroup orientation="inline" border="none" corners="compact">{events.map((event) => <Card key={event.id} onClick={() => audit.setSelectedAuditEventId(event.id)} selected={event.id === audit.selectedAuditEventId} label={`Details: ${auditActionLabel(event.action)} by ${auditPersonName(event)}`}><CardHeader><CardTitle><span className="flex min-w-0 items-center justify-between gap-2"><Action event={event} /><time className="shrink-0 text-xs tabular-nums text-muted-foreground" dateTime={event.createdAt} title={format(new Date(event.createdAt), 'PPpp')}>{format(new Date(event.createdAt), 'h:mm a')}</time></span></CardTitle><CardDescription className="truncate">{auditPersonName(event)} · {auditRecordTitle(event)}</CardDescription></CardHeader></Card>)}</CardGroup> : empty}</div>
-    {audit.auditStatus !== 'Exhausted' && !audit.isAuditLoading ? <div className="flex justify-center"><Button type="button" variant="tertiary" loading={audit.auditStatus === 'LoadingMore' || audit.isStale} disabled={audit.auditStatus !== 'CanLoadMore' || audit.isStale} onClick={() => audit.loadMoreAuditEvents(AUDIT_FETCH_LIMIT)}>Load older activity</Button></div> : null}
+    <AuditPagination audit={audit} />
   </div>;
 }

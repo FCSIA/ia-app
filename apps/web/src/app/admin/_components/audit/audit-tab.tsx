@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CircleHelp, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchToolbarRow } from '@/components/ui/search';
@@ -32,8 +32,20 @@ export function AuditTab() {
   const [settledCount, setSettledCount] = useState(liveCount);
   useEffect(() => { if (!audit.isStale) setSettledCount(liveCount); }, [audit.isStale, liveCount]);
   const count = audit.isStale ? settledCount : liveCount;
+  // The table header pins directly under the toolbar, whose height changes
+  // with filter chips and errors.
+  const sectionRef = useRef<HTMLElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const observer = new ResizeObserver(() => sectionRef.current?.style.setProperty('--audit-sticky-top', `${toolbar.offsetHeight}px`));
+    observer.observe(toolbar);
+    return () => observer.disconnect();
+  }, []);
   return <>
-    <section aria-label="Audit activity" className="flex min-w-0 flex-col gap-3">
+    <section ref={sectionRef} aria-label="Audit activity" className="flex min-w-0 flex-col">
+      <div ref={toolbarRef} className="sticky top-0 z-30 flex flex-col gap-2 bg-background pb-3">
       <SearchToolbarRow className="flex-row items-center gap-2">
         <AuditSearch audit={audit} />
         <Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" aria-label="Search syntax help"><CircleHelp /></Button></PopoverTrigger>
@@ -45,7 +57,7 @@ export function AuditTab() {
         </Popover>
         <div className="md:hidden"><Drawer><DrawerTrigger asChild><Button type="button" variant="tertiary" size="icon" aria-label={`Filters${audit.auditFilterChips.length ? ` (${audit.auditFilterChips.length})` : ''}`}><SlidersHorizontal /></Button></DrawerTrigger>
           <DrawerContent><DrawerHeader><DrawerTitle>Filter activity</DrawerTitle><DrawerDescription>Changes apply as you select filters.</DrawerDescription></DrawerHeader>
-            <div className="min-h-0 space-y-6 overflow-y-auto px-4 pb-4">{columns.map((column) => <section key={column} className="space-y-3"><h3 className="font-semibold">{column}</h3><AuditColumnFilter column={column} audit={audit} /></section>)}</div>
+            <div className="min-h-0 space-y-6 overflow-y-auto px-4 pb-4">{columns.map((column) => <section key={column} className="space-y-2"><h3 className="font-semibold">{column}</h3><AuditColumnFilter column={column} surface="panel" audit={audit} /></section>)}</div>
             <DrawerFooter><DrawerClose asChild><Button type="button">Show {audit.auditCounts?.exact && total != null ? `${total} ` : ''}events</Button></DrawerClose><Button type="button" variant="ghost" onClick={audit.clearAuditFilters}>Clear filters</Button></DrawerFooter>
           </DrawerContent>
         </Drawer></div>
@@ -54,6 +66,7 @@ export function AuditTab() {
       {audit.advancedError ? <p id="audit-query-error" role="status" className="text-xs text-destructive">{audit.advancedError} Showing the last valid search.</p> : null}
       {audit.auditFilterChips.length ? <div className="flex flex-wrap items-center gap-1" aria-label="Active filters">{audit.auditFilterChips.map((chip) => <Button key={chip.label} type="button" size="sm" variant="secondary" trailingIcon={X} onClick={chip.clear} aria-label={`Remove ${chip.label}`}>{chip.label}</Button>)}<Button type="button" size="sm" variant="ghost" onClick={audit.clearAuditFilters}>Clear all</Button></div> : null}
       <p className="text-xs tabular-nums text-muted-foreground lg:hidden" role="status">{count}</p>
+      </div>
       <AuditTable audit={audit} />
     </section>
     <AuditDetailSheet selectedEventId={audit.selectedAuditEventId} onSelectedEventIdChange={audit.setSelectedAuditEventId} eventDetail={audit.auditEventDetail} isDetailLoading={audit.isAuditDetailLoading} onFilterPerson={(id, name) => { audit.setSelectedAuditEventId(null); audit.setAuditActorId(id, name); }} />
