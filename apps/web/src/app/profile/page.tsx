@@ -23,7 +23,8 @@ import {
   ProfileSidebar,
   WhatsNewSection,
 } from './_components/ProfileSections';
-import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
+import type { PasswordForm } from './_components/ProfileSections';
+import { PROFILE_SECTIONS, type ProfileSection } from './_components/profile-sections';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
@@ -35,16 +36,12 @@ export default function ProfilePage() {
   return <Suspense fallback={null}><ProfilePageContent /></Suspense>;
 }
 
-const PROFILE_SECTION_IDS: readonly ProfileSection[] = [
-  'account', 'notifications', 'appearance', 'moderation', 'whats-new',
-];
-
 function ProfilePageContent() {
   const searchParams = useSearchParams();
   const requestedSection = searchParams?.get('section');
-  const activeSection = PROFILE_SECTION_IDS.find(
-    section => section === requestedSection,
-  ) ?? 'account';
+  const activeSection = PROFILE_SECTIONS.find(
+    section => section.id === requestedSection,
+  )?.id ?? 'account';
   function navigateToSection(section: ProfileSection) {
     const params = new URLSearchParams(searchParams?.toString());
     if (section === 'account') params.delete('section');
