@@ -102,8 +102,12 @@ icon rail, custom menu engine, spacing ladder, or resize/collapse behavior.
 supported `collapsible="none"` mode fills an externally bounded workspace;
 header/footer slots and feature children remain supported. Club's existing
 resizable layout and swipe-driven phone navigation remain their behavior
-owners. Admin's phone header trigger uses the existing Radix Sheet focus and
-dismissal lifecycle. Page links use SidebarMenuButton's native Link slot and
+owners. Admin's desktop sidebar is `WorkspaceSidebarPanel collapsible="offcanvas"`
+inside an admin-local provider (no cookie, no shortcut, 1024px breakpoint):
+the official rail owns drag-resize and collapse; the admin shell only saves
+width/open through `useSidebar()` and shows a SidebarTrigger in the content
+gutter while collapsed (owner request, 2026-11-04). Admin's phone header
+trigger uses the existing Radix Sheet focus and dismissal lifecycle. Page links use SidebarMenuButton's native Link slot and
 `isActive`, so the primitive owns `aria-current`, hover, and keyboard selection.
 Club channel trees remain feature children with their own existing persistence,
 unread state, and actions. Main navigation's app-owned `pageNavigation` config
@@ -196,6 +200,19 @@ install a component. Reviewed rendered, Code and API examples:
 [CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu), plus exact
 `/r/calendar.json`, `/r/date-picker.json` and `/r/command-menu.json` registry items.
 See `docs/reference/ui-fluid-calendar-continuation-2026-10-27.md` for evidence.
+
+## Fluid Dropdown search and multi-select
+
+On 2026-11-04 the owner asked for the audit column filters to use official
+Fluid patterns. The Dropdown family was merged from the current Radix registry
+(`dropdown`, `menu-item`, `dropdown-search`, `dropdown-sub`), adding
+`DropdownSearch`, `DropdownEmpty`, `checkedIndices` and submenus. Retained
+adaptations: `popup-shape.ts` radii, `MenuItem destructive`,
+`DropdownContent onCloseAutoFocus`, reduced-motion fades, `framer-motion`, and
+the local type ladder (no registry `typeClass`/`field` size roles).
+`TableHeadFilter` now hosts a `DropdownContent`; filters are menus, not
+form popovers. The Table ignores mouse events bubbled from portalled children
+so an open header popup never lights the rows underneath.
 
 ## Concrete failure: `Toggle` inside `Tooltip`
 

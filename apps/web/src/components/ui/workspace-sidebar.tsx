@@ -18,40 +18,54 @@ import {
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { cn } from "@/lib/utils";
 
-type WorkspaceSidebarProps = {
+type WorkspaceSidebarPanelProps = {
   "aria-label": string;
   header?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
   /** A resize handle or enclosing Sheet owns the edge when false. */
   bordered?: boolean;
+  /** `offcanvas` adds the official drag-resize/collapse rail; the caller
+   *  supplies the SidebarProvider and a trigger to reopen it. */
+  collapsible?: "none" | "offcanvas";
   className?: string;
 };
 
+type WorkspaceSidebarProps = Omit<WorkspaceSidebarPanelProps, "collapsible">;
+
 /** Official Sidebar anatomy in an app-owned, externally bounded workspace. */
-export function WorkspaceSidebar({
+export function WorkspaceSidebar({ className, ...props }: WorkspaceSidebarProps) {
+  return (
+    <SidebarProvider persist={false} shortcut={null} className="h-full min-h-0 min-w-0 flex-1">
+      <WorkspaceSidebarPanel {...props} className={className} />
+    </SidebarProvider>
+  );
+}
+
+/** The workspace sidebar inside a caller-owned SidebarProvider. */
+export function WorkspaceSidebarPanel({
   header,
   footer,
   children,
   bordered = true,
+  collapsible = "none",
   className,
   ...props
-}: WorkspaceSidebarProps) {
+}: WorkspaceSidebarPanelProps) {
   return (
-    <SidebarProvider persist={false} shortcut={null} className="h-full min-h-0 min-w-0 flex-1">
-      <Sidebar
-        collapsible="none"
-        role="navigation"
-        bordered={bordered}
-        className={cn("h-full min-h-0 flex-1 bg-surface-3", CARD_SURFACE_FOREGROUND, className)}
-        style={{ width: "100%" }}
-        {...props}
-      >
-        {header ? <SidebarHeader>{header}</SidebarHeader> : null}
-        <SidebarContent>{children}</SidebarContent>
-        {footer ? <SidebarFooter>{footer}</SidebarFooter> : null}
-      </Sidebar>
-    </SidebarProvider>
+    <Sidebar
+      collapsible={collapsible}
+      role="navigation"
+      bordered={bordered}
+      // Bounded by the workspace, not the viewport: the shell fills its row.
+      className={cn("h-full min-h-0 bg-surface-3", collapsible === "none" && "flex-1", CARD_SURFACE_FOREGROUND, className)}
+      style={collapsible === "none" ? { width: "100%" } : undefined}
+      {...props}
+    >
+      {header ? <SidebarHeader>{header}</SidebarHeader> : null}
+      <SidebarContent>{children}</SidebarContent>
+      {footer ? <SidebarFooter>{footer}</SidebarFooter> : null}
+    </Sidebar>
   );
 }
 

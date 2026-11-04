@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChartLine, ContactRound, FileText, Menu, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SidebarMenu } from '@/components/ui/sidebar';
+import { SidebarMenu, SidebarProvider, SidebarTrigger, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, useSidebar } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { WorkspaceSidebar, WorkspaceSidebarItem, WorkspaceSidebarSection } from '@/components/ui/workspace-sidebar';
+import { WorkspaceSidebar, WorkspaceSidebarItem, WorkspaceSidebarPanel, WorkspaceSidebarSection } from '@/components/ui/workspace-sidebar';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
 type AdminNavigationProps = {
@@ -23,7 +23,8 @@ function AdminNavigation({
   pendingReports,
   onNavigate,
   bordered,
-}: AdminNavigationProps & { onNavigate?: () => void; bordered?: boolean }) {
+  resizable = false,
+}: AdminNavigationProps & { onNavigate?: () => void; bordered?: boolean; resizable?: boolean }) {
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams?.toString() ?? '');
   params.delete('tab');
@@ -39,8 +40,8 @@ function AdminNavigation({
     { id: 'audit' as const, label: 'Audit log', group: 'Insights', icon: FileText, visible: true },
   ].filter((section) => section.visible);
 
-  return (
-    <WorkspaceSidebar aria-label="Admin sections" bordered={bordered}>
+  const groups = (
+    <>
       {['People', 'Safety', 'Insights'].map((group) => (
         <WorkspaceSidebarSection key={group} title={group}>
           <SidebarMenu>
@@ -58,8 +59,44 @@ function AdminNavigation({
           </SidebarMenu>
         </WorkspaceSidebarSection>
       ))}
-    </WorkspaceSidebar>
+    </>
   );
+  return resizable
+    ? <WorkspaceSidebarPanel aria-label="Admin sections" collapsible="offcanvas">{groups}</WorkspaceSidebarPanel>
+    : <WorkspaceSidebar aria-label="Admin sections" bordered={bordered}>{groups}</WorkspaceSidebar>;
+}
+
+const LAYOUT_KEY = 'admin-sidebar-layout';
+
+/**
+ * Restores the rail's dragged width and collapsed state, then saves changes.
+ * Uses the provider's public state, so the official rail stays the behavior owner.
+ */
+function PersistAdminSidebar() {
+  const { width, setWidth, open, setOpen, isResizing } = useSidebar();
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? 'null') as { width?: unknown; open?: unknown } | null;
+      const px = typeof saved?.width === 'string' ? Number.parseFloat(saved.width) : NaN;
+      if (Number.isFinite(px)) setWidth(`${Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, px))}px`);
+      if (saved?.open === false) setOpen(false);
+    } catch { /* A malformed entry falls back to the default layout. */ }
+  }, [setOpen, setWidth]);
+  useEffect(() => {
+    if (!restored.current || isResizing) return;
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ width, open })); } catch { /* Storage can be unavailable. */ }
+  }, [width, open, isResizing]);
+  return null;
+}
+
+/** Collapsing the rail leaves this trigger in the content gutter to bring it back. */
+function AdminSidebarReopen() {
+  const { open } = useSidebar();
+  if (open) return null;
+  return <SidebarTrigger size="icon-compact" className="absolute left-1 top-2 z-10 hidden lg:inline-flex" />;
 }
 
 /** Phone navigation uses the same links and permission filtering as desktop. */
@@ -85,13 +122,15 @@ export function AdminMobileNavigation(props: AdminNavigationProps) {
 
 export function AdminShell({ children, ...navigation }: AdminNavigationProps & { children: ReactNode }) {
   return (
-    <div className="admin-shell flex h-full min-h-0 min-w-0 w-full flex-1">
-      <div className="hidden w-64 shrink-0 lg:flex">
-        <AdminNavigation {...navigation} />
-      </div>
-      <div className="flex min-h-0 min-w-0 flex-1 p-4 pt-1 md:p-6 md:pt-2 lg:p-8 lg:pt-2">
+    // The admin provider is local: no cookie, no global shortcut (the main
+    // navigation owns "["), and phones keep the Sheet navigation below lg.
+    <SidebarProvider persist={false} shortcut={null} mobileBreakpoint={1024} className="admin-shell flex h-full min-h-0 min-w-0 w-full flex-1">
+      <PersistAdminSidebar />
+      <AdminNavigation {...navigation} resizable />
+      <div className="relative flex min-h-0 min-w-0 flex-1 p-4 pt-1 md:p-6 md:pt-2 lg:p-8 lg:pt-2">
+        <AdminSidebarReopen />
         {children}
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
