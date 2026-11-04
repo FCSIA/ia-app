@@ -105,7 +105,7 @@ export type ProfileSection =
   | 'moderation'
   | 'whats-new';
 
-const PROFILE_SECTIONS: Array<{
+export const PROFILE_SECTIONS: Array<{
   id: ProfileSection;
   label: string;
   icon?: LucideIcon;

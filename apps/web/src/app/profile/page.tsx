@@ -20,6 +20,7 @@ import {
   AccountSettingsSection,
   AppearanceSection,
   ModerationAlertsSection,
+  PROFILE_SECTIONS,
   ProfileSidebar,
   WhatsNewSection,
 } from './_components/ProfileSections';
@@ -35,16 +36,12 @@ export default function ProfilePage() {
   return <Suspense fallback={null}><ProfilePageContent /></Suspense>;
 }
 
-const PROFILE_SECTION_IDS: readonly ProfileSection[] = [
-  'account', 'notifications', 'appearance', 'moderation', 'whats-new',
-];
-
 function ProfilePageContent() {
   const searchParams = useSearchParams();
   const requestedSection = searchParams?.get('section');
-  const activeSection = PROFILE_SECTION_IDS.find(
-    section => section === requestedSection,
-  ) ?? 'account';
+  const activeSection = PROFILE_SECTIONS.find(
+    section => section.id === requestedSection,
+  )?.id ?? 'account';
   function navigateToSection(section: ProfileSection) {
     const params = new URLSearchParams(searchParams?.toString());
     if (section === 'account') params.delete('section');
