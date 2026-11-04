@@ -64,7 +64,13 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           ref={containerRef}
           className="relative"
           onMouseEnter={handlers.onMouseEnter}
-          onMouseMove={handlers.onMouseMove}
+          onMouseMove={(event) => {
+            // React bubbles events from portalled children (a header filter's
+            // popup) through this tree even though they paint elsewhere. Only
+            // a pointer over the table itself may light a row underneath.
+            if (!containerRef.current?.contains(event.target as Node)) handlers.onMouseLeave();
+            else handlers.onMouseMove(event);
+          }}
           onMouseLeave={handlers.onMouseLeave}
         >
           {/* Hover background — the shared highlight travels on a transform
