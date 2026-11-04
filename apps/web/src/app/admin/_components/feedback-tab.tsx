@@ -10,12 +10,10 @@ import {
   ExternalLink,
   Eye,
   Github,
-  Globe,
   Inbox,
-  Maximize2,
   MessageSquare,
   MonitorSmartphone,
-  RefreshCw,
+  Paperclip,
   Send,
   TriangleAlert,
   Undo2,
@@ -28,7 +26,6 @@ import {
   DataTablePanel,
   dataTableClasses,
 } from '@/components/data/data-table-panel';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,7 +37,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -63,6 +59,9 @@ import {
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { AnimatedGif } from '@/components/media/animated-gif';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice } from './admin-ui';
 
@@ -229,29 +228,27 @@ export function FeedbackTab({
                     <TableHead className={classes.head}>Feedback</TableHead>
                     <TableHead className={classes.head}>Submitted by</TableHead>
                     <TableHead className={classes.head}>Submitted</TableHead>
-                    <TableHead className={classes.head}>Actions</TableHead>
+                    <TableHead className={classes.head}>
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reports.map((report, index) => (
                     <TableRow key={report._id} index={index}>
-                      <TableCell className={classes.cell}>
-                        <p className="line-clamp-2 min-w-48 max-w-md whitespace-normal break-words font-medium text-foreground">
+                      <TableCell className={cn(classes.cell, 'w-full')}>
+                        <p className="line-clamp-2 min-w-56 max-w-2xl whitespace-normal break-words font-medium text-foreground">
                           {report.reason}
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {report.images.length} attachments ·{' '}
-                          {report.responses.length} responses
-                          {report.githubIssueSyncState === 'FAILED'
-                            ? ' · GitHub sync failed'
-                            : ''}
-                        </p>
+                        <FeedbackRowMeta report={report} />
                       </TableCell>
-                      <TableCell className={classes.cell}>
+                      <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
                         {displayName(report.submitter)}
                       </TableCell>
-                      <TableCell className={classes.cell}>
-                        {formatDateTime(report._creationTime)}
+                      <TableCell className={cn(classes.cell, 'whitespace-nowrap text-muted-foreground')}>
+                        <time dateTime={new Date(report._creationTime).toISOString()}>
+                          {formatShortDate(report._creationTime)}
+                        </time>
                       </TableCell>
                       <TableCell className={classes.cell}>
                         <div className="flex items-center gap-2">
@@ -378,21 +375,38 @@ const STATUS_BADGE_COLORS = {
   DISMISSED: 'gray',
 } as const satisfies Record<FeedbackReport['status'], string>;
 
-function DetailRow({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: typeof Inbox;
-  label: string;
-  children: React.ReactNode;
-}) {
+function formatShortDate(value: number) {
+  const date = new Date(value);
+  return format(date, date.getFullYear() === new Date().getFullYear() ? 'MMM d' : 'MMM d, yyyy');
+}
+
+/** Only what differs between rows: attachments, replies, or a sync problem. */
+function FeedbackRowMeta({ report }: { report: FeedbackReport }) {
+  const syncFailed = report.githubIssueSyncState === 'FAILED';
+  if (!report.images.length && !report.responses.length && !syncFailed) return null;
   return (
-    <div className="grid grid-cols-[1rem_1fr] gap-x-2 gap-y-0.5">
-      <Icon className="mt-0.5 size-4 text-muted-foreground" aria-hidden />
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="col-start-2 break-words">{children}</dd>
-    </div>
+    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      {report.images.length ? (
+        <span className="inline-flex items-center gap-1">
+          <Paperclip className="size-3" aria-hidden />
+          {report.images.length}
+          <span className="sr-only"> attachments</span>
+        </span>
+      ) : null}
+      {report.responses.length ? (
+        <span className="inline-flex items-center gap-1">
+          <MessageSquare className="size-3" aria-hidden />
+          {report.responses.length}
+          <span className="sr-only"> replies</span>
+        </span>
+      ) : null}
+      {syncFailed ? (
+        <span className="inline-flex items-center gap-1">
+          <TriangleAlert className="size-3 text-amber-500" aria-hidden />
+          Not on GitHub
+        </span>
+      ) : null}
+    </p>
   );
 }
 
@@ -472,23 +486,37 @@ function FeedbackDetail({
         </DialogTrigger>
       ) : null}
       <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>
-            Feedback from {displayName(report.submitter)}
-          </DialogTitle>
-          <DialogDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Badge size="sm" color={STATUS_BADGE_COLORS[report.status]}>
-              {STAFF_FEEDBACK_STATUS_LABELS[report.status]}
-            </Badge>
-            <span>
-              {formatDateTime(report._creationTime)}
-              {report.appVersion ? ` · ${report.appVersion}` : ''}
-            </span>
-          </DialogDescription>
+        <DialogHeader className="mb-0">
+          <div className="flex items-center gap-3 pr-8">
+            <UserAvatar person={report.submitter} size={32} />
+            <div className="min-w-0">
+              <DialogTitle className="truncate">
+                {displayName(report.submitter)}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                <time dateTime={new Date(report._creationTime).toISOString()}>
+                  {formatDateTime(report._creationTime)}
+                </time>
+                {report.appVersion ? ` · ${report.appVersion}` : ''}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <div className="flex flex-col gap-5">
+
+        <div className="mt-4 flex items-center justify-between gap-3 border-y border-border/40 py-2.5">
+          <Badge color={STATUS_BADGE_COLORS[report.status]} variant="dot">
+            {STAFF_FEEDBACK_STATUS_LABELS[report.status]}
+          </Badge>
+          {canUpdateFeedback ? (
+            <div className="flex items-center gap-1">
+              <FeedbackStatusActions report={report} reportMutation={reportMutation} />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-col gap-5">
           <div className="flex flex-col gap-3">
-            <p className="whitespace-pre-wrap break-words border-l-2 border-border/60 pl-3 text-sm leading-6 text-foreground">
+            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
               {report.reason}
             </p>
             {report.images.length ? (
@@ -526,129 +554,117 @@ function FeedbackDetail({
             ) : null}
           </div>
 
-          {report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
-            <Alert variant="destructive" role="status">
-              <TriangleAlert className="size-4" aria-hidden />
-              <AlertTitle>
-                {report.githubIssueSyncState === 'FAILED'
-                  ? 'GitHub sync failed'
-                  : 'GitHub sync stopped before finishing'}
-              </AlertTitle>
-              <AlertDescription className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
-                <span>This feedback is still saved in the app.</span>
-                {canUpdateFeedback ? (
-                  <Button
-                    size="sm"
-                    variant="tertiary"
-                    leadingIcon={RefreshCw}
-                    loading={isRetrying}
-                    onClick={() => void retrySync()}
-                  >
-                    Retry sync
-                  </Button>
-                ) : null}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-2">
-            {report.githubIssueUrl ? (
-              <Button
-                asChild
-                size="sm"
-                variant="tertiary"
-                leadingIcon={Github}
-                trailingIcon={ExternalLink}
-              >
-                <a href={report.githubIssueUrl} target="_blank" rel="noreferrer">
+          <Collapsible className="text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {report.githubIssueUrl ? (
+                <a
+                  href={report.githubIssueUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Github className="size-3.5" aria-hidden />
                   Issue #{report.githubIssueNumber}
+                  <ExternalLink className="size-3" aria-hidden />
                 </a>
-              </Button>
-            ) : null}
-            {report.clientMetadata ? (
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    leadingIcon={MonitorSmartphone}
-                    trailingIcon={ChevronDown}
-                  >
-                    Device details
-                  </Button>
+              ) : report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <TriangleAlert className="size-3.5 text-amber-500" aria-hidden />
+                  {report.githubIssueSyncState === 'FAILED'
+                    ? 'Not on GitHub yet'
+                    : 'GitHub sync stalled'}
+                  {canUpdateFeedback ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <button
+                        type="button"
+                        disabled={isRetrying}
+                        onClick={() => void retrySync()}
+                        className="rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                      >
+                        {isRetrying ? 'Retrying…' : 'Retry'}
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              ) : null}
+              {report.clientMetadata ? (
+                <CollapsibleTrigger className="group inline-flex items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <MonitorSmartphone className="size-3.5" aria-hidden />
+                  Device details
+                  <ChevronDown
+                    className="size-3 transition-transform group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+                    aria-hidden
+                  />
                 </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <dl className="mt-3 grid gap-3 text-sm">
-                    <DetailRow icon={MonitorSmartphone} label="Browser / device">
-                      {report.clientMetadata.userAgent}
-                    </DetailRow>
-                    <DetailRow icon={Maximize2} label="Display">
-                      {report.clientMetadata.viewportWidth} ×{' '}
-                      {report.clientMetadata.viewportHeight} viewport ·{' '}
-                      {report.clientMetadata.screenWidth} ×{' '}
-                      {report.clientMetadata.screenHeight} screen ·{' '}
-                      {report.clientMetadata.pixelRatio}× ·{' '}
-                      {report.clientMetadata.displayMode}
-                    </DetailRow>
-                    <DetailRow icon={Globe} label="Locale">
-                      {report.clientMetadata.language} ·{' '}
-                      {report.clientMetadata.timezone}
-                    </DetailRow>
-                  </dl>
-                </CollapsibleContent>
-              </Collapsible>
+              ) : null}
+            </div>
+            {report.clientMetadata ? (
+              <CollapsibleContent>
+                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-muted/40 p-3">
+                  <dt>Browser</dt>
+                  <dd className="break-words text-foreground">
+                    {report.clientMetadata.userAgent}
+                  </dd>
+                  <dt>Display</dt>
+                  <dd className="text-foreground">
+                    {report.clientMetadata.viewportWidth}×{report.clientMetadata.viewportHeight} viewport ·{' '}
+                    {report.clientMetadata.screenWidth}×{report.clientMetadata.screenHeight} screen ·{' '}
+                    {report.clientMetadata.pixelRatio}× · {report.clientMetadata.displayMode}
+                  </dd>
+                  <dt>Locale</dt>
+                  <dd className="text-foreground">
+                    {report.clientMetadata.language} · {report.clientMetadata.timezone}
+                  </dd>
+                </dl>
+              </CollapsibleContent>
             ) : null}
-          </div>
+          </Collapsible>
 
           {report.responses.length || canUpdateFeedback || error ? (
             <section
               aria-label="Staff responses"
-              className="flex flex-col gap-4 border-t border-border/40 pt-4"
+              className="flex flex-col gap-4 border-t border-border/40 pt-5"
             >
-              {report.responses.length ? (
-                <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <MessageSquare className="size-4 text-muted-foreground" aria-hidden />
-                  Responses
-                  <span className="tabular-nums text-muted-foreground">
-                    {report.responses.length}
-                  </span>
-                </h3>
-              ) : null}
               {report.responses.map((response) => (
-                <div key={response._id} className="border-l-2 border-border/60 pl-3">
-                  <p className="text-xs text-muted-foreground">
-                    {displayName(response.author)} ·{' '}
-                    {formatDateTime(response.createdAt)}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-                    {response.body}
-                  </p>
+                <div key={response._id} className="flex gap-3">
+                  <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {displayName(response.author)}
+                      </span>{' '}
+                      · {formatDateTime(response.createdAt)}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                      {response.body}
+                    </p>
+                  </div>
                 </div>
               ))}
               {canUpdateFeedback ? (
                 <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
                   <Textarea
-                    aria-label={`Respond to feedback from ${displayName(report.submitter)}`}
+                    aria-label={`Reply to ${displayName(report.submitter)}`}
                     aria-describedby={`feedback-response-help-${report._id}`}
-                    placeholder="Reply to the submitter…"
+                    placeholder={`Reply to ${displayName(report.submitter)}…`}
                     value={body}
                     onChange={(event) => onBodyChange(event.target.value)}
                     maxLength={1_000}
-                    rows={3}
+                    rows={2}
                     disabled={isSending}
                   />
                   {error ? (
-                    <p role="alert" className="text-sm text-destructive">
+                    <p role="alert" className="text-xs text-destructive">
                       {error}
                     </p>
                   ) : null}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     <p
                       id={`feedback-response-help-${report._id}`}
                       className="text-xs text-muted-foreground"
                     >
-                      Read-only for the submitter. Drafts are kept.
+                      They can read replies but can’t respond.
                     </p>
                     <Button
                       type="submit"
@@ -658,27 +674,18 @@ function FeedbackDetail({
                       loading={isSending}
                       disabled={!body.trim() || isSending}
                     >
-                      Send
+                      Reply
                     </Button>
                   </div>
                 </form>
               ) : error ? (
-                <p role="alert" className="text-sm text-destructive">
+                <p role="alert" className="text-xs text-destructive">
                   {error}
                 </p>
               ) : null}
             </section>
           ) : null}
         </div>
-        {canUpdateFeedback ? (
-          <DialogFooter className="border-t border-border/40 pt-4">
-            {/* One footer child, so the narrow-screen stack keeps the menu
-                beside the action it belongs to. */}
-            <div className="flex items-center justify-end gap-2">
-              <FeedbackStatusActions report={report} reportMutation={reportMutation} />
-            </div>
-          </DialogFooter>
-        ) : null}
       </DialogContent>
     </Dialog>
   );
