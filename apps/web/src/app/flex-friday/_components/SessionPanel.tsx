@@ -51,14 +51,14 @@ export function SessionPanel({
 
       <div>
         {sessions.length === 0 ? (
-          <Empty size="inline" frame="panel">
+          <Empty size="inline">
             <EmptyHeader>
               <EmptyTitle>No sessions found</EmptyTitle>
               <EmptyDescription>Try a different search or add a session.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
-          <CardGroup orientation="inline" border="outlined">
+          <CardGroup orientation="inline">
             {sessions.map((s) => (
               <Card
                 key={s._id}

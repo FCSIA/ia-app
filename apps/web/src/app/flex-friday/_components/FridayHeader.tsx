@@ -10,7 +10,6 @@ import { Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { CreditsSummary } from './CreditsSummary';
 import type { FlexFridayDoc } from '../_types';
-import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 interface Props {
   fridays: FlexFridayDoc[];
@@ -33,7 +32,7 @@ export function FridayHeader({
 }: Props) {
   return (
     <div
-      className={`flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 sm:flex-row sm:items-center sm:justify-between ${CARD_SURFACE_FOREGROUND}`}
+      className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <div className="w-full sm:w-60">
