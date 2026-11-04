@@ -1,17 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Image from 'next/image';
 import {
   Archive,
   CheckCircle2,
-  ChevronDown,
+  ChevronRight,
   ExternalLink,
   Eye,
   Github,
   Inbox,
   MessageSquare,
-  MonitorSmartphone,
   Paperclip,
   Send,
   TriangleAlert,
@@ -21,24 +20,34 @@ import { displayName } from '~/apps/shared/user-name';
 import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import {
-  DataTablePanel,
-  dataTableClasses,
-} from '@/components/data/data-table-panel';
+  DataTableCount,
+  DataTableSection,
+  PINNED_TABLE_HEADER,
+} from '@/components/data/data-table-section';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+  Card,
+  CardDescription,
+  CardGroup,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { SearchInput } from '@/components/ui/search';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -49,9 +58,8 @@ import {
 } from '@/components/ui/table';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { AnimatedGif } from '@/components/media/animated-gif';
-import { cn } from '@/lib/utils';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { AnimatedGif } from '@/components/media/animated-gif';
 import {
   ReportStatusActions,
   type ReportStatusAction,
@@ -99,6 +107,13 @@ type RetryGithubIssueMutation = (
   reportId: Id<'moderationReports'>,
 ) => Promise<void>;
 
+const VIEWS = [
+  { value: 'new', label: 'New', icon: Inbox, status: 'PENDING' },
+  { value: 'inReview', label: 'In review', icon: Eye, status: 'IN_REVIEW' },
+  { value: 'resolved', label: 'Resolved', icon: CheckCircle2, status: 'RESOLVED' },
+  { value: 'archive', label: 'Archive', icon: Archive, status: 'DISMISSED' },
+] as const;
+
 export function FeedbackTab({
   focusedReport,
   onFocusedReportClose,
@@ -124,160 +139,217 @@ export function FeedbackTab({
   isLoading: boolean;
   canUpdateFeedback?: boolean;
 }) {
-  const [view, setView] = useState('new');
-  // Keep response drafts in the queue so closing a detail dialog or changing
-  // the queue filter does not discard a message the administrator is writing.
+  const [view, setView] = useState<(typeof VIEWS)[number]['value']>('new');
+  // Drafts live in the queue so closing the sheet or changing views keeps a
+  // reply the reviewer is still writing.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const byStatus = {
-    new: filteredReports.filter((report) => report.status === 'PENDING'),
-    inReview: filteredReports.filter((report) => report.status === 'IN_REVIEW'),
-    resolved: filteredReports.filter((report) => report.status === 'RESOLVED'),
-    archive: filteredReports.filter((report) => report.status === 'DISMISSED'),
+  const [selectedId, setSelectedId] = useState<Id<'moderationReports'> | null>(null);
+  // A direct report link opens its sheet until the reviewer closes it.
+  const openId = selectedId ?? focusedReport?._id ?? null;
+  const selected =
+    filteredReports.find((report) => report._id === openId) ??
+    (focusedReport?._id === openId ? focusedReport : undefined);
+  const byStatus = Object.fromEntries(
+    VIEWS.map((item) => [
+      item.value,
+      filteredReports.filter((report) => report.status === item.status),
+    ]),
+  ) as Record<(typeof VIEWS)[number]['value'], FeedbackReport[]>;
+  const reports = byStatus[view];
+  const columns = canUpdateFeedback ? 5 : 4;
+
+  const close = () => {
+    if (openId === focusedReport?._id) onFocusedReportClose?.();
+    setSelectedId(null);
   };
-  const reports = byStatus[view as keyof typeof byStatus];
-  const classes = dataTableClasses();
+  const empty = (
+    <AdminNotice
+      message={
+        deferredFeedbackSearch
+          ? 'No feedback in this view matches your search.'
+          : 'No feedback in this view.'
+      }
+      actionLabel={deferredFeedbackSearch ? 'Clear search' : undefined}
+      onAction={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
+    />
+  );
 
   return (
-    <>
-      {focusedReport ? (
-        <FeedbackDetail
-          key={focusedReport._id}
-          report={focusedReport}
-          body={drafts[focusedReport._id] ?? ''}
-          onBodyChange={(body) => setDrafts((current) => ({ ...current, [focusedReport._id]: body }))}
-          reportMutation={reportMutation}
-          responseMutation={responseMutation}
-          retryGithubIssueMutation={retryGithubIssueMutation}
-          canUpdateFeedback={canUpdateFeedback}
-          defaultOpen
-          onClose={onFocusedReportClose}
-        />
-      ) : null}
-      <DataTablePanel
-        title="Feedback"
-        count={isLoading ? undefined : filteredReports.length}
+    <Tabs value={view} onValueChange={(value) => setView(value as typeof view)}>
+      <DataTableSection
+        label="Feedback"
         toolbar={
-          <SearchInput
-            className="w-full sm:w-72"
-            aria-label="Search feedback"
-            value={feedbackSearch}
-            onValueChange={onFeedbackSearchChange}
-            placeholder="Search feedback…"
-            size="sm"
-          />
-        }
-        footer={
-          reportMutation.isPending ? (
-            <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
-              Updating feedback…
-            </p>
-          ) : undefined
+          <>
+            <SearchToolbarRow className="flex-row items-center gap-2">
+              <SearchInput
+                className="min-w-0 flex-1"
+                aria-label="Search feedback"
+                value={feedbackSearch}
+                onValueChange={onFeedbackSearchChange}
+                placeholder="Search feedback…"
+              />
+              <DataTableCount>
+                {isLoading
+                  ? '—'
+                  : `${filteredReports.length} ${deferredFeedbackSearch ? (filteredReports.length === 1 ? 'match' : 'matches') : 'items'}`}
+              </DataTableCount>
+            </SearchToolbarRow>
+            <TabsList aria-label="Feedback views">
+              {VIEWS.map((item) => (
+                <TabItem
+                  key={item.value}
+                  value={item.value}
+                  label={`${item.label} ${byStatus[item.value].length}`}
+                  icon={item.icon}
+                />
+              ))}
+            </TabsList>
+          </>
         }
       >
-        <Tabs value={view} onValueChange={setView}>
-          <div className="px-4 pb-2">
-            <TabsList aria-label="Feedback views">
-              <TabItem
-                value="new"
-                label={`New ${byStatus.new.length}`}
-                icon={Inbox}
-              />
-              <TabItem
-                value="inReview"
-                label={`In review ${byStatus.inReview.length}`}
-                icon={Eye}
-              />
-              <TabItem
-                value="resolved"
-                label={`Resolved ${byStatus.resolved.length}`}
-                icon={CheckCircle2}
-              />
-              <TabItem
-                value="archive"
-                label={`Archive ${byStatus.archive.length}`}
-                icon={Archive}
-              />
-            </TabsList>
-          </div>
-          <TabPanel value={view}>
-            {isLoading ? (
-              <AdminNotice message="Loading feedback…" />
-            ) : reports.length === 0 ? (
-              <AdminNotice
-                message={
-                  deferredFeedbackSearch
-                    ? 'No feedback in this view matches your search.'
-                    : 'No feedback in this view.'
-                }
-                actionLabel={deferredFeedbackSearch ? 'Clear search' : undefined}
-                onAction={
-                  deferredFeedbackSearch
-                    ? () => onFeedbackSearchChange('')
-                    : undefined
-                }
-              />
-            ) : (
-              <Table aria-label="Feedback queue">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className={classes.head}>Feedback</TableHead>
-                    <TableHead className={classes.head}>Submitted by</TableHead>
-                    <TableHead className={classes.head}>Submitted</TableHead>
-                    <TableHead className={classes.head}>
-                      <span className="sr-only">Actions</span>
+        <TabPanel value={view}>
+          <div className="hidden md:block">
+            <Table className="table-fixed" aria-label="Feedback queue" aria-busy={reportMutation.isPending}>
+              <colgroup>
+                <col />
+                <col className="w-[11rem]" />
+                <col className="w-[5.5rem]" />
+                {canUpdateFeedback ? <col className="w-[11.5rem]" /> : null}
+                <col className="w-11" />
+              </colgroup>
+              <TableHeader className={PINNED_TABLE_HEADER}>
+                <TableRow>
+                  <TableHead scope="col">Feedback</TableHead>
+                  <TableHead scope="col">Submitted by</TableHead>
+                  <TableHead scope="col">Submitted</TableHead>
+                  {canUpdateFeedback ? (
+                    <TableHead scope="col">
+                      <span className="sr-only">Status actions</span>
                     </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report, index) => (
-                    <TableRow key={report._id} index={index}>
-                      <TableCell className={cn(classes.cell, 'w-full')}>
-                        <p className="line-clamp-2 min-w-56 max-w-2xl whitespace-normal break-words font-medium text-foreground">
+                  ) : null}
+                  <TableHead scope="col">
+                    <span className="sr-only">Details</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 6 }, (_, index) => (
+                    <TableRow key={index}>
+                      <TableCell colSpan={columns}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : reports.length ? (
+                  reports.map((report, index) => (
+                    <TableRow
+                      key={report._id}
+                      index={index}
+                      interactive
+                      selected={report._id === openId}
+                      onClick={(click) => {
+                        const target = click.target;
+                        if (
+                          !(target instanceof Element) ||
+                          target.closest('button,a,input,textarea,[role="button"],[role="menuitem"]')
+                        )
+                          return;
+                        setSelectedId(report._id);
+                      }}
+                    >
+                      <TableCell className="py-2">
+                        <p className="truncate text-foreground" title={report.reason}>
                           {report.reason}
                         </p>
                         <FeedbackRowMeta report={report} />
                       </TableCell>
-                      <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
-                        {displayName(report.submitter)}
+                      <TableCell>
+                        <span className="block truncate">{displayName(report.submitter)}</span>
                       </TableCell>
-                      <TableCell className={cn(classes.cell, 'whitespace-nowrap text-muted-foreground')}>
-                        <time dateTime={new Date(report._creationTime).toISOString()}>
+                      <TableCell className="whitespace-nowrap tabular-nums">
+                        <time
+                          dateTime={new Date(report._creationTime).toISOString()}
+                          title={formatDateTime(report._creationTime)}
+                        >
                           {formatShortDate(report._creationTime)}
                         </time>
                       </TableCell>
-                      <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
-                        <div className="flex items-center justify-end gap-2">
-                          <FeedbackDetail
-                            report={report}
-                            body={drafts[report._id] ?? ''}
-                            onBodyChange={(body) =>
-                              setDrafts((current) => ({
-                                ...current,
-                                [report._id]: body,
-                              }))
-                            }
-                            reportMutation={reportMutation}
-                            responseMutation={responseMutation}
-                            retryGithubIssueMutation={retryGithubIssueMutation}
-                            canUpdateFeedback={canUpdateFeedback}
-                          />
-                          {canUpdateFeedback ? (
-                            <FeedbackStatusActions
-                              report={report}
-                              reportMutation={reportMutation}
-                            />
-                          ) : null}
-                        </div>
+                      {canUpdateFeedback ? (
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <FeedbackStatusActions report={report} reportMutation={reportMutation} />
+                          </div>
+                        </TableCell>
+                      ) : null}
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-compact"
+                          aria-label={`Details: feedback from ${displayName(report.submitter)}`}
+                          onClick={() => setSelectedId(report._id)}
+                        >
+                          <ChevronRight />
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns}>{empty}</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="md:hidden">
+            {isLoading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : reports.length ? (
+              <CardGroup orientation="inline" border="none" corners="compact">
+                {reports.map((report) => (
+                  <Card
+                    key={report._id}
+                    onClick={() => setSelectedId(report._id)}
+                    selected={report._id === openId}
+                    label={`Details: feedback from ${displayName(report.submitter)}`}
+                  >
+                    <CardHeader>
+                      <CardTitle>
+                        <span className="line-clamp-2">{report.reason}</span>
+                      </CardTitle>
+                      <CardDescription className="truncate">
+                        {displayName(report.submitter)} · {formatShortDate(report._creationTime)}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </CardGroup>
+            ) : (
+              empty
             )}
-          </TabPanel>
-        </Tabs>
-      </DataTablePanel>
-    </>
+          </div>
+        </TabPanel>
+      </DataTableSection>
+      <FeedbackSheet
+        report={selected}
+        open={openId !== null}
+        onClose={close}
+        body={openId ? (drafts[openId] ?? '') : ''}
+        onBodyChange={(body) => {
+          if (openId) setDrafts((current) => ({ ...current, [openId]: body }));
+        }}
+        reportMutation={reportMutation}
+        responseMutation={responseMutation}
+        retryGithubIssueMutation={retryGithubIssueMutation}
+        canUpdateFeedback={canUpdateFeedback}
+      />
+    </Tabs>
   );
 }
 
@@ -327,11 +399,12 @@ function FeedbackStatusActions({
   );
 }
 
+/** Only what differs between rows: attachments, replies, or a sync problem. */
 function FeedbackRowMeta({ report }: { report: FeedbackReport }) {
   const syncFailed = report.githubIssueSyncState === 'FAILED';
   if (!report.images.length && !report.responses.length && !syncFailed) return null;
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
       {report.images.length ? (
         <span className="inline-flex items-center gap-1">
           <Paperclip className="size-3" aria-hidden />
@@ -356,19 +429,50 @@ function FeedbackRowMeta({ report }: { report: FeedbackReport }) {
   );
 }
 
-function FeedbackDetail({
-  defaultOpen = false,
-  onClose,
+/** Record detail in the audit log's anatomy: a side sheet opened from the row. */
+function FeedbackSheet({
   report,
-  body,
-  onBodyChange,
-  reportMutation,
-  responseMutation,
-  retryGithubIssueMutation,
-  canUpdateFeedback,
+  open,
+  onClose,
+  ...detail
 }: {
-  defaultOpen?: boolean;
-  onClose?: () => void;
+  report?: FeedbackReport;
+  open: boolean;
+  onClose: () => void;
+} & Omit<FeedbackDetailProps, 'report'>) {
+  const openerRef = useRef<HTMLElement | null>(null);
+  return (
+    <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
+      <SheetContent
+        className="flex h-full w-full flex-col sm:max-w-xl"
+        onOpenAutoFocus={() => {
+          openerRef.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (openerRef.current?.isConnected) {
+            event.preventDefault();
+            openerRef.current.focus();
+          }
+        }}
+      >
+        {report ? (
+          <FeedbackDetail key={report._id} report={report} {...detail} />
+        ) : (
+          <>
+            <SheetHeader>
+              <SheetTitle>Feedback</SheetTitle>
+              <SheetDescription className="sr-only">Feedback details</SheetDescription>
+            </SheetHeader>
+            <AdminNotice message="Loading feedback…" />
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+type FeedbackDetailProps = {
   report: FeedbackReport;
   body: string;
   onBodyChange: (body: string) => void;
@@ -376,7 +480,17 @@ function FeedbackDetail({
   responseMutation: FeedbackResponseMutation;
   retryGithubIssueMutation: RetryGithubIssueMutation;
   canUpdateFeedback: boolean;
-}) {
+};
+
+function FeedbackDetail({
+  report,
+  body,
+  onBodyChange,
+  reportMutation,
+  responseMutation,
+  retryGithubIssueMutation,
+  canUpdateFeedback,
+}: FeedbackDetailProps) {
   const [isSending, setIsSending] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState<string>();
@@ -395,7 +509,7 @@ function FeedbackDetail({
       setError(
         cause instanceof Error
           ? cause.message
-          : 'Could not send the response. Your draft is still here.',
+          : 'Could not send the reply. Your draft is still here.',
       );
     } finally {
       setIsSending(false);
@@ -409,56 +523,42 @@ function FeedbackDetail({
     try {
       await retryGithubIssueMutation(report._id);
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Could not retry GitHub sync.',
-      );
+      setError(cause instanceof Error ? cause.message : 'Could not retry GitHub sync.');
     } finally {
       setIsRetrying(false);
     }
   }
 
+  const metadata = report.clientMetadata;
+
   return (
-    <Dialog
-      defaultOpen={defaultOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose?.();
-      }}
-    >
-      {!defaultOpen ? (
-        <DialogTrigger asChild>
-          <Button size="sm" variant="tertiary">
-            Details
-          </Button>
-        </DialogTrigger>
-      ) : null}
-      <DialogContent size="lg">
-        <DialogHeader className="mb-0">
-          <div className="flex items-center gap-3 pr-8">
-            <UserAvatar person={report.submitter} size={32} />
-            <div className="min-w-0">
-              <DialogTitle className="truncate">
-                {displayName(report.submitter)}
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                <time dateTime={new Date(report._creationTime).toISOString()}>
-                  {formatDateTime(report._creationTime)}
-                </time>
-                {report.appVersion ? ` · ${report.appVersion}` : ''}
-              </DialogDescription>
-            </div>
+    <>
+      <SheetHeader className="shrink-0">
+        <div className="flex items-center gap-3 pr-8">
+          <UserAvatar person={report.submitter} size={32} />
+          <div className="min-w-0">
+            <SheetTitle className="truncate">{displayName(report.submitter)}</SheetTitle>
+            <SheetDescription className="text-xs">
+              <time dateTime={new Date(report._creationTime).toISOString()}>
+                {formatDateTime(report._creationTime)}
+              </time>
+              {report.appVersion ? ` · ${report.appVersion}` : ''}
+            </SheetDescription>
           </div>
-        </DialogHeader>
-
-        <div className="mt-4 flex items-center justify-between gap-3 border-y border-border/40 py-2.5">
-          <ReportStatusBadge status={report.status} audience="feedback" />
-          {canUpdateFeedback ? (
-            <FeedbackStatusActions report={report} reportMutation={reportMutation} />
-          ) : null}
         </div>
+      </SheetHeader>
 
-        <div className="mt-5 flex flex-col gap-5">
+      <div className="mt-4 flex shrink-0 items-center justify-between gap-3 border-y border-border/40 py-2.5">
+        <ReportStatusBadge status={report.status} audience="feedback" />
+        {canUpdateFeedback ? (
+          <FeedbackStatusActions report={report} reportMutation={reportMutation} />
+        ) : null}
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="flex min-w-0 flex-col gap-5 py-5 [overflow-wrap:anywhere]">
           <div className="flex flex-col gap-3">
-            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
               {report.reason}
             </p>
             {report.images.length ? (
@@ -494,93 +594,50 @@ function FeedbackDetail({
                 ))}
               </div>
             ) : null}
+            {report.githubIssueUrl ? (
+              <a
+                href={report.githubIssueUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex w-fit items-center gap-1.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Github className="size-3.5" aria-hidden />
+                Issue #{report.githubIssueNumber}
+                <ExternalLink className="size-3" aria-hidden />
+              </a>
+            ) : report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
+              <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <TriangleAlert className="size-3.5 text-amber-500" aria-hidden />
+                {report.githubIssueSyncState === 'FAILED' ? 'Not on GitHub yet' : 'GitHub sync stalled'}
+                {canUpdateFeedback ? (
+                  <>
+                    <span aria-hidden>·</span>
+                    <button
+                      type="button"
+                      disabled={isRetrying}
+                      onClick={() => void retrySync()}
+                      className="rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    >
+                      {isRetrying ? 'Retrying…' : 'Retry'}
+                    </button>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
           </div>
 
-          <Collapsible className="text-xs text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              {report.githubIssueUrl ? (
-                <a
-                  href={report.githubIssueUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <Github className="size-3.5" aria-hidden />
-                  Issue #{report.githubIssueNumber}
-                  <ExternalLink className="size-3" aria-hidden />
-                </a>
-              ) : report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <TriangleAlert className="size-3.5 text-amber-500" aria-hidden />
-                  {report.githubIssueSyncState === 'FAILED'
-                    ? 'Not on GitHub yet'
-                    : 'GitHub sync stalled'}
-                  {canUpdateFeedback ? (
-                    <>
-                      <span aria-hidden>·</span>
-                      <button
-                        type="button"
-                        disabled={isRetrying}
-                        onClick={() => void retrySync()}
-                        className="rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                      >
-                        {isRetrying ? 'Retrying…' : 'Retry'}
-                      </button>
-                    </>
-                  ) : null}
-                </span>
-              ) : null}
-              {report.clientMetadata ? (
-                <CollapsibleTrigger className="group inline-flex items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <MonitorSmartphone className="size-3.5" aria-hidden />
-                  Device details
-                  <ChevronDown
-                    className="size-3 transition-transform group-data-[state=open]:rotate-180 motion-reduce:transition-none"
-                    aria-hidden
-                  />
-                </CollapsibleTrigger>
-              ) : null}
-            </div>
-            {report.clientMetadata ? (
-              <CollapsibleContent>
-                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-muted/40 p-3">
-                  <dt>Browser</dt>
-                  <dd className="break-words text-foreground">
-                    {report.clientMetadata.userAgent}
-                  </dd>
-                  <dt>Display</dt>
-                  <dd className="text-foreground">
-                    {report.clientMetadata.viewportWidth}×{report.clientMetadata.viewportHeight} viewport ·{' '}
-                    {report.clientMetadata.screenWidth}×{report.clientMetadata.screenHeight} screen ·{' '}
-                    {report.clientMetadata.pixelRatio}× · {report.clientMetadata.displayMode}
-                  </dd>
-                  <dt>Locale</dt>
-                  <dd className="text-foreground">
-                    {report.clientMetadata.language} · {report.clientMetadata.timezone}
-                  </dd>
-                </dl>
-              </CollapsibleContent>
-            ) : null}
-          </Collapsible>
-
           {report.responses.length || canUpdateFeedback || error ? (
-            <section
-              aria-label="Staff responses"
-              className="flex flex-col gap-4 border-t border-border/40 pt-5"
-            >
+            <section aria-label="Staff replies" className="flex flex-col gap-4 border-t border-border/40 pt-5">
               {report.responses.map((response) => (
                 <div key={response._id} className="flex gap-3">
                   <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        {displayName(response.author)}
-                      </span>{' '}
-                      · {formatDateTime(response.createdAt)}
+                      <span className="font-medium text-foreground">{displayName(response.author)}</span>
+                      {' · '}
+                      {formatDateTime(response.createdAt)}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                      {response.body}
-                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{response.body}</p>
                   </div>
                 </div>
               ))}
@@ -588,12 +645,12 @@ function FeedbackDetail({
                 <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
                   <Textarea
                     aria-label={`Reply to ${displayName(report.submitter)}`}
-                    aria-describedby={`feedback-response-help-${report._id}`}
+                    aria-describedby={`feedback-reply-help-${report._id}`}
                     placeholder={`Reply to ${displayName(report.submitter)}…`}
                     value={body}
                     onChange={(event) => onBodyChange(event.target.value)}
                     maxLength={1_000}
-                    rows={2}
+                    rows={3}
                     disabled={isSending}
                   />
                   {error ? (
@@ -602,10 +659,7 @@ function FeedbackDetail({
                     </p>
                   ) : null}
                   <div className="flex items-center justify-between gap-3">
-                    <p
-                      id={`feedback-response-help-${report._id}`}
-                      className="text-xs text-muted-foreground"
-                    >
+                    <p id={`feedback-reply-help-${report._id}`} className="text-xs text-muted-foreground">
                       They can read replies but can’t respond.
                     </p>
                     <Button
@@ -627,8 +681,32 @@ function FeedbackDetail({
               ) : null}
             </section>
           ) : null}
+
+          {metadata ? (
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="technical">
+                <AccordionTrigger>Technical details</AccordionTrigger>
+                <AccordionContent>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
+                    <dt className="text-muted-foreground">Browser</dt>
+                    <dd>{metadata.userAgent}</dd>
+                    <dt className="text-muted-foreground">Display</dt>
+                    <dd>
+                      {metadata.viewportWidth}×{metadata.viewportHeight} viewport ·{' '}
+                      {metadata.screenWidth}×{metadata.screenHeight} screen · {metadata.pixelRatio}× ·{' '}
+                      {metadata.displayMode}
+                    </dd>
+                    <dt className="text-muted-foreground">Locale</dt>
+                    <dd>
+                      {metadata.language} · {metadata.timezone}
+                    </dd>
+                  </dl>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          ) : null}
         </div>
-      </DialogContent>
-    </Dialog>
+      </ScrollArea>
+    </>
   );
 }

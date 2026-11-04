@@ -104,6 +104,26 @@ For normal pages, prefer the layout wrappers:
 
 These wrappers keep spacing and responsive constraints consistent.
 
+## Data tables
+
+Admin record lists (audit log, users, reports, feedback) share the audit log's
+anatomy through `components/data/data-table-section.tsx`:
+
+- `DataTableSection` sits directly in an `AdminScrollTabPanel` and pins its
+  toolbar (search, filters, `DataTableCount`) to the top of the tab's scroll
+  viewport. The table sits on the main surface without a card frame.
+- The Fluid `Table` keeps its own cell geometry; use `table-fixed` with a
+  `<colgroup>` for widths, and `PINNED_TABLE_HEADER` on `TableHeader` so the
+  header pins under the toolbar.
+- Loading uses skeleton rows; empty and error states use `AdminNotice` inside
+  a full-width row. Below `md`, the table gives way to a `CardGroup` list.
+- A row whose record has detail opens a side `Sheet` (row click or trailing
+  chevron), as audit events and feedback do. Status uses
+  `ReportStatusBadge`, and review transitions use `ReportStatusActions`.
+
+`DataTablePanel` remains for bounded previews inside a flow, such as the
+roster CSV preview, where a card frame shows where the preview ends.
+
 ## Component Guidelines
 
 - Prefer shadcn/ui and local components under `apps/web/src/components/ui`.

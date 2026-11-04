@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { AdminPageLayout } from './admin-page-layout';
 import { AdminMobileNavigation, AdminShell } from './admin-shell';
-import { AdminFillTabPanel, AdminScrollTabPanel } from './admin-tab-panel';
+import { AdminScrollTabPanel } from './admin-tab-panel';
 import { AnalyticsTabPanel } from './panels/analytics-tab-panel';
 import { AuditTabPanel } from './panels/audit-tab-panel';
 import { FeedbackTabPanel } from './panels/feedback-tab-panel';
@@ -62,9 +62,9 @@ export function AdminPageContent() {
         canManageWrapped={canManageWrapped}
         pendingReports={pendingReports}
       >
-        <AdminFillTabPanel value="users">
+        <AdminScrollTabPanel value="users">
           {activeTab === 'users' ? <UsersTabPanel /> : null}
-        </AdminFillTabPanel>
+        </AdminScrollTabPanel>
 
         {isSuperAdmin ? (
           <AdminScrollTabPanel value="schedule">

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardGroup, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { PINNED_TABLE_HEADER } from '@/components/data/data-table-section';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeadFilter, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
@@ -112,8 +113,7 @@ export function AuditTable({ audit }: { audit: AuditState }) {
   return <div className="min-w-0 space-y-3" aria-busy={audit.isStale || audit.auditStatus === 'LoadingMore'}>
     {!isMobile ? <div className="hidden md:block"><Table className="table-fixed" aria-label="Audit activity">
       <colgroup><col className="w-[12.5rem]" /><col className="w-[19%]" /><col className="w-[20%]" /><col /><col className="hidden w-[19%] xl:table-column" /><col className="w-11" /></colgroup>
-      {/* Pinned under the sticky toolbar (audit-tab sets --audit-sticky-top). */}
-      <TableHeader className="sticky top-(--audit-sticky-top,0px) z-20 bg-(--app-main-bg) [&_th]:shadow-[inset_0_-1px_0_var(--color-border)]"><TableRow>
+      <TableHeader className={PINNED_TABLE_HEADER}><TableRow>
         <TableHead scope="col"><WhenHeader audit={audit} /></TableHead>
         {(['Person', 'Action', 'Record'] as const).map((column: AuditFilterColumn) => <TableHead key={column} scope="col"><TableHeadFilter label={column} active={auditFilterActive(audit, column)}><AuditColumnFilter column={column} surface="menu" audit={audit} /></TableHeadFilter></TableHead>)}
         <TableHead scope="col" className="hidden xl:table-cell">Where</TableHead><TableHead scope="col"><span className="sr-only">Details</span></TableHead>

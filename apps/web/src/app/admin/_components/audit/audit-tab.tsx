@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CircleHelp, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DataTableCount, DataTableSection } from '@/components/data/data-table-section';
 import { SearchToolbarRow } from '@/components/ui/search';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
@@ -32,23 +33,8 @@ export function AuditTab() {
   const [settledCount, setSettledCount] = useState(liveCount);
   useEffect(() => { if (!audit.isStale) setSettledCount(liveCount); }, [audit.isStale, liveCount]);
   const count = audit.isStale ? settledCount : liveCount;
-  // The table header pins directly under the toolbar, whose height changes
-  // with filter chips and errors.
-  const sectionRef = useRef<HTMLElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const toolbar = toolbarRef.current;
-    if (!toolbar) return;
-    // Sticky offsets start below the scroll viewport's top padding; the
-    // toolbar pulls up into it (negative top), so the header sits that much higher.
-    const observer = new ResizeObserver(() => sectionRef.current?.style.setProperty('--audit-sticky-top', `${toolbar.offsetHeight + Number.parseFloat(getComputedStyle(toolbar).top)}px`));
-    observer.observe(toolbar);
-    return () => observer.disconnect();
-  }, []);
   return <>
-    <section ref={sectionRef} aria-label="Audit activity" className="flex min-w-0 flex-col">
-      {/* Covers the viewport's top padding too, so rows never show above it. */}
-      <div ref={toolbarRef} className="sticky -top-3 z-30 -mt-3 flex flex-col gap-2 bg-(--app-main-bg) pb-3 pt-3">
+    <DataTableSection label="Audit activity" toolbar={<>
       <SearchToolbarRow className="flex-row items-center gap-2">
         <AuditSearch audit={audit} />
         <Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" aria-label="Search syntax help"><CircleHelp /></Button></PopoverTrigger>
@@ -64,13 +50,13 @@ export function AuditTab() {
             <DrawerFooter><DrawerClose asChild><Button type="button">Show {audit.auditCounts?.exact && total != null ? `${total.toLocaleString()} ` : ''}{total === 1 ? 'event' : 'events'}</Button></DrawerClose><Button type="button" variant="ghost" onClick={audit.clearAuditFilters}>Clear filters</Button></DrawerFooter>
           </DrawerContent>
         </Drawer></div>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground" role="status" aria-live="polite">{count}</span>
+        <DataTableCount>{count}</DataTableCount>
       </SearchToolbarRow>
       {audit.advancedError ? <p id="audit-query-error" role="status" className="text-xs text-destructive">{audit.advancedError} Showing the last valid search.</p> : null}
       {audit.auditFilterChips.length ? <div className="flex flex-wrap items-center gap-1" aria-label="Active filters">{audit.auditFilterChips.map((chip) => <Button key={chip.label} type="button" size="sm" variant="secondary" trailingIcon={X} onClick={chip.clear} aria-label={`Remove ${chip.label}`}>{chip.label}</Button>)}<Button type="button" size="sm" variant="ghost" onClick={audit.clearAuditFilters}>Clear all</Button></div> : null}
-      </div>
+    </>}>
       <AuditTable audit={audit} />
-    </section>
+    </DataTableSection>
     <AuditDetailSheet selectedEventId={audit.selectedAuditEventId} onSelectedEventIdChange={audit.setSelectedAuditEventId} eventDetail={audit.auditEventDetail} isDetailLoading={audit.isAuditDetailLoading} onFilterPerson={(id, name) => { audit.setSelectedAuditEventId(null); audit.setAuditActorId(id, name); }} />
   </>;
 }

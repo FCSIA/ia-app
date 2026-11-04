@@ -25,13 +25,3 @@ export function AdminScrollTabPanel({ value, children }: AdminTabPanelProps) {
     </section>
   );
 }
-
-/** Data-workbench tab; inner panels own overflow and pinned controls. */
-export function AdminFillTabPanel({ value, children }: AdminTabPanelProps) {
-  if (!children) return null;
-  return (
-    <section aria-label={`${value} administration`} className={cn(TAB_PANEL_BASE, 'flex flex-col overflow-hidden pt-3')}>
-      {children}
-    </section>
-  );
-}

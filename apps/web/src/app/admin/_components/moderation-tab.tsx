@@ -13,7 +13,7 @@ import {
 import type { Id, Doc } from '~/apps/convex/src/_generated/dataModel';
 import { Button, iconSizeFor } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SearchInput } from '@/components/ui/search';
+import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
 import {
   Dialog,
   DialogContent,
@@ -23,9 +23,19 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  DataTablePanel,
-  dataTableClasses,
-} from '@/components/data/data-table-panel';
+  DataTableCount,
+  DataTableSection,
+  PINNED_TABLE_HEADER,
+} from '@/components/data/data-table-section';
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardGroup,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -39,7 +49,6 @@ import {
   type ReportStatusAction,
 } from '@/components/moderation/report-status-actions';
 import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
-import { cn } from '@/lib/utils';
 import { formatDateTime, formatShortDate } from '../_lib/admin-utils';
 import { AdminNotice } from './admin-ui';
 
@@ -132,26 +141,25 @@ export function ModerationTab({
     reviewNote: string;
   }>;
 }) {
-  const classes = dataTableClasses();
   const actions = (
     <>
       <SearchInput
-        className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+        className="min-w-0 flex-1"
         value={moderationSearch}
         onValueChange={onModerationSearchChange}
         aria-label="Search reports"
-        placeholder="Search reports..."
-        size="sm"
+        placeholder="Search reports…"
       />
       <Dialog>
         <DialogTrigger asChild>
           <Button
+            type="button"
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             aria-label="Manage local safety rules"
             title="Safety rules"
           >
-            <Info size={iconSizeFor('icon-sm')} aria-hidden="true" />
+            <Info />
           </Button>
         </DialogTrigger>
         <DialogContent size="lg">
@@ -236,113 +244,168 @@ export function ModerationTab({
     </>
   );
 
+  const empty = (
+    <AdminNotice
+      message={
+        deferredModerationSearch
+          ? 'No reports match your search.'
+          : 'No reports submitted.'
+      }
+      actionLabel={deferredModerationSearch ? 'Clear search' : undefined}
+      onAction={
+        deferredModerationSearch
+          ? () => onModerationSearchChange('')
+          : undefined
+      }
+    />
+  );
+  const actionsFor = (report: ModerationReport) => (
+    <ReportStatusActions
+      {...MODERATION_ACTIONS[report.status]}
+      emphasis={report.status === 'PENDING' ? 'primary' : 'secondary'}
+      disabled={reportMutation.isPending}
+      menuLabel={`report from ${displayName(report.submitter)}`}
+      onRun={(action) =>
+        reportMutation.mutate({
+          id: report._id,
+          status: action.status,
+          expectedStatus: report.status,
+          reviewNote: '',
+        })
+      }
+    />
+  );
+  const context = (report: ModerationReport) =>
+    `${CONTENT_TYPE_LABELS[report.contentType] ?? 'Content'}${
+      report.reportedUser ? ` by ${displayName(report.reportedUser)}` : ''
+    }`;
+
   return (
-    <DataTablePanel
-      title="Report queue"
-      count={isLoading ? undefined : filteredReports.length}
-      toolbar={actions}
-      footer={
-        reportMutation.isPending ? (
-          <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
-            Updating report…
-          </p>
-        ) : !isLoading && pendingReports > 0 ? (
-          <p className="px-4 py-3 text-sm text-muted-foreground">
-            {pendingReports} pending review
-          </p>
-        ) : undefined
+    <DataTableSection
+      label="Report queue"
+      toolbar={
+        <SearchToolbarRow className="flex-row items-center gap-2">
+          {actions}
+          <DataTableCount>
+            {isLoading
+              ? '—'
+              : pendingReports > 0
+                ? `${pendingReports} pending · ${filteredReports.length} total`
+                : `${filteredReports.length} ${filteredReports.length === 1 ? 'report' : 'reports'}`}
+          </DataTableCount>
+        </SearchToolbarRow>
       }
     >
-      {isLoading ? (
-        <AdminNotice message="Loading reports…" />
-      ) : filteredReports.length === 0 ? (
-        <AdminNotice
-          message={
-            deferredModerationSearch
-              ? 'No reports match your search.'
-              : 'No reports submitted.'
-          }
-          actionLabel={deferredModerationSearch ? 'Clear search' : undefined}
-          onAction={
-            deferredModerationSearch
-              ? () => onModerationSearchChange('')
-              : undefined
-          }
-        />
-      ) : (
-        <Table aria-label="Moderation reports">
-          <TableHeader>
+      <div className="hidden md:block">
+        <Table
+          className="table-fixed"
+          aria-label="Moderation reports"
+          aria-busy={reportMutation.isPending}
+        >
+          <colgroup>
+            <col />
+            <col className="w-[11rem]" />
+            <col className="w-[5.5rem]" />
+            <col className="w-[6.5rem]" />
+            <col className="w-[9.5rem]" />
+          </colgroup>
+          <TableHeader className={PINNED_TABLE_HEADER}>
             <TableRow>
-              <TableHead className={classes.head}>Report</TableHead>
-              <TableHead className={classes.head}>Submitted by</TableHead>
-              <TableHead className={classes.head}>Submitted</TableHead>
-              <TableHead className={classes.head}>Status</TableHead>
-              <TableHead className={classes.head}>
+              <TableHead scope="col">Report</TableHead>
+              <TableHead scope="col">Submitted by</TableHead>
+              <TableHead scope="col">Submitted</TableHead>
+              <TableHead scope="col">Status</TableHead>
+              <TableHead scope="col">
                 <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredReports.map((report, index) => (
-              <TableRow key={report._id} index={index}>
-                <TableCell className={cn(classes.cell, 'w-full')}>
-                  <p className="line-clamp-2 min-w-56 max-w-2xl whitespace-normal break-words font-medium text-foreground">
-                    {report.reason}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {CONTENT_TYPE_LABELS[report.contentType] ?? 'Content'}
-                    {report.reportedUser
-                      ? ` by ${displayName(report.reportedUser)}`
-                      : ''}
-                  </p>
-                </TableCell>
-                <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
-                  {displayName(report.submitter)}
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    classes.cell,
-                    'whitespace-nowrap text-muted-foreground',
-                  )}
-                >
-                  <time
-                    dateTime={new Date(report._creationTime).toISOString()}
-                    title={formatDateTime(report._creationTime)}
-                  >
-                    {formatShortDate(report._creationTime)}
-                  </time>
-                </TableCell>
-                <TableCell className={classes.cell}>
-                  <ReportStatusBadge
-                    status={report.status}
-                    audience="moderation"
-                  />
-                </TableCell>
-                <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
-                  <div className="flex justify-end">
-                    <ReportStatusActions
-                      {...MODERATION_ACTIONS[report.status]}
-                      emphasis={
-                        report.status === 'PENDING' ? 'primary' : 'secondary'
-                      }
-                      disabled={reportMutation.isPending}
-                      menuLabel={`report from ${displayName(report.submitter)}`}
-                      onRun={(action) =>
-                        reportMutation.mutate({
-                          id: report._id,
-                          status: action.status,
-                          expectedStatus: report.status,
-                          reviewNote: '',
-                        })
-                      }
+            {isLoading ? (
+              Array.from({ length: 6 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={5}>
+                    <Skeleton className="h-5 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filteredReports.length ? (
+              filteredReports.map((report, index) => (
+                <TableRow key={report._id} index={index}>
+                  <TableCell className="py-2">
+                    <p className="truncate text-foreground" title={report.reason}>
+                      {report.reason}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {context(report)}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <span className="block truncate">
+                      {displayName(report.submitter)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap tabular-nums">
+                    <time
+                      dateTime={new Date(report._creationTime).toISOString()}
+                      title={formatDateTime(report._creationTime)}
+                    >
+                      {formatShortDate(report._creationTime)}
+                    </time>
+                  </TableCell>
+                  <TableCell>
+                    <ReportStatusBadge
+                      status={report.status}
+                      audience="moderation"
                     />
-                  </div>
-                </TableCell>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">{actionsFor(report)}</div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5}>{empty}</TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
-      )}
-    </DataTablePanel>
+      </div>
+      <div className="md:hidden">
+        {isLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((index) => (
+              <Skeleton key={index} className="h-20 w-full" />
+            ))}
+          </div>
+        ) : filteredReports.length ? (
+          <CardGroup border="none" corners="compact">
+            {filteredReports.map((report) => (
+              <Card key={report._id}>
+                <CardHeader>
+                  <CardTitle>
+                    <span className="flex min-w-0 items-start justify-between gap-2">
+                      <span className="line-clamp-2">{report.reason}</span>
+                      <ReportStatusBadge
+                        status={report.status}
+                        audience="moderation"
+                      />
+                    </span>
+                  </CardTitle>
+                  <CardDescription className="truncate">
+                    {context(report)} · {displayName(report.submitter)} ·{' '}
+                    {formatShortDate(report._creationTime)}
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter>{actionsFor(report)}</CardFooter>
+              </Card>
+            ))}
+          </CardGroup>
+        ) : (
+          empty
+        )}
+      </div>
+    </DataTableSection>
   );
 }

@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
-import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
-import { SearchInput } from '@/components/ui/search';
+import { DataTableCount, DataTableSection, PINNED_TABLE_HEADER } from '@/components/data/data-table-section';
+import { Card, CardDescription, CardFooter, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
+import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -271,7 +272,6 @@ function UserTableSection({
   loadNextPage: () => void;
   loadPreviousPage: () => void;
 }) {
-  const d = dataTableClasses('compact');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
   const selectableUsers = canDeleteUsers ? users.filter((user) => user._id !== currentUserId) : [];
   const selectedCount = selectedUserIds.size;
@@ -312,19 +312,69 @@ function UserTableSection({
     });
   };
 
+  const userActions = (user: AdminUserRecord) => (
+    <>
+      <UserPermissionsPopover
+        user={user}
+        isSuperAdmin={isSuperAdmin}
+        isPending={isAssignRolesPending}
+        onAssignRoles={onAssignRoles}
+        onSetDeveloper={onSetDeveloper}
+      />
+      {canResetPassword(user) && user._id !== currentUserId ? (
+        <ResetPasswordAction
+          user={user}
+          disabled={isResetPasswordPending}
+          onResetPassword={onResetPassword}
+        />
+      ) : null}
+      {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
+        <ImpersonateUserAction
+          userId={user._id}
+          name={displayName(user)}
+        />
+      ) : null}
+      {user.isActive ? (
+        canDeactivate(user) && user._id !== currentUserId ? (
+          <IconActionButton
+            label={`Deactivate ${displayName(user)}`}
+            onClick={() => onDeactivate(user._id)}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <UserX className="size-4" />
+          </IconActionButton>
+        ) : null
+      ) : (
+        <IconActionButton
+          label={`Activate ${displayName(user)}`}
+          onClick={() => onActivate(user._id)}
+          className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+        >
+          <UserCheck className="size-4" />
+        </IconActionButton>
+      )}
+    </>
+  );
+
+  const countLabel = isLoading
+    ? '—'
+    : search.trim()
+      ? `${users.length} ${users.length === 1 ? 'match' : 'matches'}`
+      : typeof totalCount === 'number'
+        ? `${users.length.toLocaleString()}/${totalCount.toLocaleString()} ${totalCount === 1 ? 'user' : 'users'}`
+        : `${users.length} ${users.length === 1 ? 'user' : 'users'}`;
   const toolbar = (
-    <div className="flex w-full min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-end">
-      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row xl:justify-end">
+    <>
+      <SearchToolbarRow className="flex-row flex-wrap items-center gap-2">
         <SearchInput
-          className="w-full min-w-0 sm:w-64"
-          placeholder="Search users..."
+          className="min-w-0 basis-full sm:basis-0 sm:flex-1"
+          placeholder="Search users…"
           aria-label="Search users"
           value={search}
           onValueChange={onSearchChange}
-          size="sm"
         />
-        <Select size="compact" value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
-          <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" aria-label="Filter users by role" />
+        <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
+          <SelectTrigger className="w-44 shrink-0" placeholder="Filter by role" aria-label="Filter users by role" />
           <SelectContent>
             <SelectItem index={0} value="students">Students</SelectItem>
             <SelectItem index={1} value="teachers">Teachers</SelectItem>
@@ -333,7 +383,8 @@ function UserTableSection({
             <SelectItem index={4} value="all">All Users</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+        <DataTableCount>{countLabel}</DataTableCount>
+      </SearchToolbarRow>
       {canDeleteUsers && selectedCount > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="whitespace-nowrap text-xs text-muted-foreground">
@@ -355,14 +406,13 @@ function UserTableSection({
           />
         </div>
       ) : null}
-    </div>
+    </>
   );
 
-  const pagination = (
-    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-muted-foreground">
-      <span role="status">
-        {isLoading ? 'Loading users…' : `Page ${pageIndex + 1} · ${users.length} ${search.trim() ? 'matches' : users.length === 1 ? 'user' : 'users'} shown`}
-      </span>
+  // The toolbar owns the count; the list end only pages.
+  const pagination = isLoading || (!canLoadPrevious && status === 'Exhausted') ? null : (
+    <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
+      <span>Page {pageIndex + 1}</span>
       <div className="flex items-center gap-1.5">
         <Button
           variant="tertiary"
@@ -387,29 +437,22 @@ function UserTableSection({
   );
 
   return (
-    <DataTablePanel
-      title={title}
-      count={totalCount}
-      shownCount={!isLoading && !search.trim() ? users.length : undefined}
-      density="compact"
-      fillHeight
-      toolbar={toolbar}
-      footer={pagination}
-    >
-        <Table aria-label={title} aria-busy={isLoading || status === 'LoadingMore'} className={`${d.table} min-w-[820px] table-fixed`}>
+    <DataTableSection label={title} toolbar={toolbar}>
+      <div className="hidden md:block">
+        <Table aria-label={title} aria-busy={isLoading || status === 'LoadingMore'} className="table-fixed">
           <colgroup>
             <col className="w-10" />
-            <col className="w-[180px]" />
-            <col className="w-[56px]" />
-            <col className="w-[60px]" />
-            <col className="w-[60px]" />
-            <col className="w-[156px]" />
-            <col className="w-[80px]" />
-            <col className="w-[160px]" />
+            <col />
+            <col className="w-14" />
+            <col className="hidden w-16 xl:table-column" />
+            <col className="hidden w-16 xl:table-column" />
+            <col className="w-[22%]" />
+            <col className="w-[5.5rem]" />
+            <col className="w-[9.5rem]" />
           </colgroup>
-          <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
+          <TableHeader className={PINNED_TABLE_HEADER}>
             <TableRow>
-              <TableHead className={d.head}>
+              <TableHead scope="col">
                 <Checkbox
                   checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
                   onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
@@ -418,22 +461,26 @@ function UserTableSection({
                 />
               </TableHead>
               {USER_TABLE_HEADERS.slice(1).map((header) => (
-                <TableHead key={header} className={d.head}>
-                  {header}
+                <TableHead
+                  key={header}
+                  scope="col"
+                  className={header === 'Major' || header === 'Minor' ? 'hidden xl:table-cell' : undefined}
+                >
+                  {header === 'Actions' ? <span className="sr-only">Actions</span> : header}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? Array.from({ length: 8 }, (_, index) => (
-              <TableRow key={index}><TableCell colSpan={8} className={d.cell}><Skeleton className="h-7 w-full" /></TableCell></TableRow>
+              <TableRow key={index}><TableCell colSpan={8}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
             )) : errorMessage ? (
-              <TableRow><TableCell colSpan={8} className={d.cell}><AdminNotice tone="danger" title="Could not load users." message={errorMessage} actionLabel="Try again" onAction={onRetry} /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8}><AdminNotice tone="danger" title="Could not load users." message={errorMessage} actionLabel="Try again" onAction={onRetry} /></TableCell></TableRow>
             ) : users.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className={d.cell}><AdminNotice message={emptyMessage} /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8}><AdminNotice message={emptyMessage} /></TableCell></TableRow>
             ) : users.map((user, index) => (
               <TableRow key={user._id} index={index} className="group">
-                <TableCell className={d.cell}>
+                <TableCell>
                   <Checkbox
                     checked={selectedUserIds.has(user._id)}
                     onCheckedChange={(checked) => toggleUser(user._id, checked === true)}
@@ -441,77 +488,80 @@ function UserTableSection({
                     aria-label={`Select ${displayName(user)}`}
                   />
                 </TableCell>
-                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                <TableCell className="min-w-0 overflow-hidden">
                   <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
                     <span className="min-w-0 truncate" title={displayName(user)}>{displayName(user)}</span>
                     <DeveloperBadge user={user} size={13} />
                   </span>
                 </TableCell>
-                <TableCell className={d.cell}>
+                <TableCell>
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
                 </TableCell>
-                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                <TableCell className="hidden min-w-0 overflow-hidden xl:table-cell">
                   <PathwayCell value={user.major} />
                 </TableCell>
-                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                <TableCell className="hidden min-w-0 overflow-hidden xl:table-cell">
                   <PathwayCell value={user.minor} />
                 </TableCell>
-                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                <TableCell className="min-w-0 overflow-hidden">
                   <RoleSummary roles={getUserRoles(user)} />
                 </TableCell>
-                <TableCell className={d.cell}>
+                <TableCell>
                   <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
                     {user.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </TableCell>
-                <TableCell className={`${d.cell} overflow-hidden`}>
+                <TableCell className="overflow-hidden">
                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
-                    <UserPermissionsPopover
-                      user={user}
-                      isSuperAdmin={isSuperAdmin}
-                      isPending={isAssignRolesPending}
-                      onAssignRoles={onAssignRoles}
-                      onSetDeveloper={onSetDeveloper}
-                    />
-                    {canResetPassword(user) && user._id !== currentUserId ? (
-                      <ResetPasswordAction
-                        user={user}
-                        disabled={isResetPasswordPending}
-                        onResetPassword={onResetPassword}
-                      />
-                    ) : null}
-                    {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
-                      <ImpersonateUserAction
-                        userId={user._id}
-                        name={displayName(user)}
-                      />
-                    ) : null}
-                    {user.isActive ? (
-                      canDeactivate(user) && user._id !== currentUserId ? (
-                        <IconActionButton
-                          label={`Deactivate ${displayName(user)}`}
-                          onClick={() => onDeactivate(user._id)}
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <UserX className="size-4" />
-                        </IconActionButton>
-                      ) : null
-                    ) : (
-                      <IconActionButton
-                        label={`Activate ${displayName(user)}`}
-                        onClick={() => onActivate(user._id)}
-                        className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
-                      >
-                        <UserCheck className="size-4" />
-                      </IconActionButton>
-                    )}
+                    {userActions(user)}
                   </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-    </DataTablePanel>
+      </div>
+      <div className="md:hidden">
+        {isLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((index) => <Skeleton key={index} className="h-16 w-full" />)}
+          </div>
+        ) : errorMessage ? (
+          <AdminNotice tone="danger" title="Could not load users." message={errorMessage} actionLabel="Try again" onAction={onRetry} />
+        ) : users.length === 0 ? (
+          <AdminNotice message={emptyMessage} />
+        ) : (
+          <CardGroup border="none" corners="compact">
+            {users.map((user) => (
+              <Card key={user._id}>
+                <CardHeader>
+                  <CardTitle>
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="truncate">{displayName(user)}</span>
+                        <DeveloperBadge user={user} size={13} />
+                      </span>
+                      <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </span>
+                  </CardTitle>
+                  <CardDescription className="truncate">
+                    {[user.gradeLevel ? `Grade ${user.gradeLevel}` : null, getUserRoles(user).map(roleLabel).join(', ')]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter>
+                  <div className="flex items-center gap-1">{userActions(user)}</div>
+                </CardFooter>
+              </Card>
+            ))}
+          </CardGroup>
+        )}
+      </div>
+      {pagination}
+    </DataTableSection>
   );
 }
 
@@ -579,8 +629,6 @@ export function AdminUsersTab({
   onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
 }) {
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <UserTableSection
             key={`${userRoleGroup}:${pageIndex}`}
             title={selectedUserRoleMeta.label}
@@ -614,7 +662,5 @@ export function AdminUsersTab({
             loadNextPage={loadNextPage}
             loadPreviousPage={loadPreviousPage}
           />
-      </div>
-    </div>
   );
 }
