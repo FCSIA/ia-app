@@ -2,7 +2,15 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Archive, Inbox, CheckCircle2, ExternalLink, Eye } from 'lucide-react';
+import {
+  Archive,
+  CheckCircle2,
+  Ellipsis,
+  ExternalLink,
+  Eye,
+  Inbox,
+  Undo2,
+} from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
 import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
 import { STAFF_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
@@ -16,10 +24,17 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownContent,
+  DropdownMenu,
+  DropdownTrigger,
+} from '@/components/ui/dropdown';
+import { MenuItem } from '@/components/ui/menu-item';
 import { SearchInput } from '@/components/ui/search';
 import {
   Table,
@@ -120,6 +135,7 @@ export function FeedbackTab({
           report={focusedReport}
           body={drafts[focusedReport._id] ?? ''}
           onBodyChange={(body) => setDrafts((current) => ({ ...current, [focusedReport._id]: body }))}
+          reportMutation={reportMutation}
           responseMutation={responseMutation}
           retryGithubIssueMutation={retryGithubIssueMutation}
           canUpdateFeedback={canUpdateFeedback}
@@ -222,7 +238,7 @@ export function FeedbackTab({
                         {formatDateTime(report._creationTime)}
                       </TableCell>
                       <TableCell className={classes.cell}>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
                           <FeedbackDetail
                             report={report}
                             body={drafts[report._id] ?? ''}
@@ -232,61 +248,16 @@ export function FeedbackTab({
                                 [report._id]: body,
                               }))
                             }
+                            reportMutation={reportMutation}
                             responseMutation={responseMutation}
                             retryGithubIssueMutation={retryGithubIssueMutation}
                             canUpdateFeedback={canUpdateFeedback}
                           />
-                          {canUpdateFeedback &&
-                          (report.status === 'PENDING' ||
-                            report.status === 'IN_REVIEW') ? (
-                            <>
-                              {report.status === 'PENDING' ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled={reportMutation.isPending}
-                                  onClick={() =>
-                                    reportMutation.mutate({
-                                      id: report._id,
-                                      status: 'IN_REVIEW',
-                                      expectedStatus: report.status,
-                                      reviewNote: '',
-                                    })
-                                  }
-                                >
-                                  Start review
-                                </Button>
-                              ) : null}
-                              <Button
-                                size="sm"
-                                disabled={reportMutation.isPending}
-                                onClick={() =>
-                                  reportMutation.mutate({
-                                    id: report._id,
-                                    status: 'RESOLVED',
-                                    expectedStatus: report.status,
-                                    reviewNote: 'Reviewed',
-                                  })
-                                }
-                              >
-                                Resolve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                disabled={reportMutation.isPending}
-                                onClick={() =>
-                                  reportMutation.mutate({
-                                    id: report._id,
-                                    status: 'DISMISSED',
-                                    expectedStatus: report.status,
-                                    reviewNote: 'Dismissed',
-                                  })
-                                }
-                              >
-                                Archive
-                              </Button>
-                            </>
+                          {canUpdateFeedback ? (
+                            <FeedbackStatusActions
+                              report={report}
+                              reportMutation={reportMutation}
+                            />
                           ) : null}
                         </div>
                       </TableCell>
@@ -302,12 +273,94 @@ export function FeedbackTab({
   );
 }
 
+type StatusAction = {
+  label: string;
+  status: FeedbackReport['status'];
+  reviewNote: string;
+  icon: typeof Inbox;
+};
+
+const START_REVIEW: StatusAction = { label: 'Start review', status: 'IN_REVIEW', reviewNote: '', icon: Eye };
+const RESOLVE: StatusAction = { label: 'Resolve', status: 'RESOLVED', reviewNote: '', icon: CheckCircle2 };
+const ARCHIVE: StatusAction = { label: 'Archive', status: 'DISMISSED', reviewNote: '', icon: Archive };
+const MOVE_TO_NEW: StatusAction = { label: 'Move back to New', status: 'PENDING', reviewNote: '', icon: Inbox };
+const REOPEN: StatusAction = { label: 'Reopen', status: 'IN_REVIEW', reviewNote: '', icon: Undo2 };
+
+/** The next step for each status leads; the other transitions sit in a menu. */
+const STATUS_ACTIONS: Record<
+  FeedbackReport['status'],
+  { primary: StatusAction; more: StatusAction[] }
+> = {
+  PENDING: { primary: START_REVIEW, more: [RESOLVE, ARCHIVE] },
+  IN_REVIEW: { primary: RESOLVE, more: [ARCHIVE, MOVE_TO_NEW] },
+  RESOLVED: { primary: REOPEN, more: [] },
+  DISMISSED: { primary: REOPEN, more: [] },
+};
+
+function FeedbackStatusActions({
+  report,
+  reportMutation,
+}: {
+  report: FeedbackReport;
+  reportMutation: FeedbackMutation;
+}) {
+  const { primary, more } = STATUS_ACTIONS[report.status];
+  const run = (action: StatusAction) =>
+    reportMutation.mutate({
+      id: report._id,
+      status: action.status,
+      expectedStatus: report.status,
+      reviewNote: action.reviewNote,
+    });
+  const decided = report.status === 'RESOLVED' || report.status === 'DISMISSED';
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={decided ? 'secondary' : 'primary'}
+        disabled={reportMutation.isPending}
+        onClick={() => run(primary)}
+      >
+        {primary.label}
+      </Button>
+      {more.length ? (
+        <DropdownMenu disabled={reportMutation.isPending}>
+          <DropdownTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`More actions for feedback from ${displayName(report.submitter)}`}
+              >
+                <Ellipsis />
+              </Button>
+            }
+          />
+          <DropdownContent align="end">
+            {more.map((action, index) => (
+              <MenuItem
+                key={action.status}
+                index={index}
+                icon={action.icon}
+                label={action.label}
+                onSelect={() => run(action)}
+              />
+            ))}
+          </DropdownContent>
+        </DropdownMenu>
+      ) : null}
+    </>
+  );
+}
+
 function FeedbackDetail({
   defaultOpen = false,
   onClose,
   report,
   body,
   onBodyChange,
+  reportMutation,
   responseMutation,
   retryGithubIssueMutation,
   canUpdateFeedback,
@@ -317,6 +370,7 @@ function FeedbackDetail({
   report: FeedbackReport;
   body: string;
   onBodyChange: (body: string) => void;
+  reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
   retryGithubIssueMutation: RetryGithubIssueMutation;
   canUpdateFeedback: boolean;
@@ -537,6 +591,15 @@ function FeedbackDetail({
             </div>
           ) : null}
         </div>
+        {canUpdateFeedback ? (
+          <DialogFooter className="border-t border-border/40 pt-4">
+            {/* One footer child, so the narrow-screen stack keeps the menu
+                beside the action it belongs to. */}
+            <div className="flex items-center justify-end gap-2">
+              <FeedbackStatusActions report={report} reportMutation={reportMutation} />
+            </div>
+          </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

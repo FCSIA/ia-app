@@ -99,6 +99,13 @@ pending). New and in-review feedback both keep the issue open, so moving
 between them sends nothing to GitHub, and a reopen event leaves in-review
 feedback in review. The issue link is visible to feedback reviewers.
 
+The staff queue gives each row one leading status action (New: **Start
+review**; In review: **Resolve**; Resolved or Archived: **Reopen**, back into
+review) with the remaining transitions in a row menu. The feedback dialog,
+including direct `/admin/feedback/[reportId]` links, repeats the same actions in
+its footer. Queue actions write no boilerplate review note, so submitters see
+the status itself rather than a note repeating it.
+
 ## Feedback page
 
 `/report` uses a single labeled textarea and explicit **Send feedback** action.

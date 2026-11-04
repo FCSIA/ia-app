@@ -90,7 +90,10 @@ async function fixture() {
   };
 }
 
-const notificationsFor = (t: ReturnType<typeof convexTest>, userId: Id<"users">) =>
+const notificationsFor = (
+  t: Awaited<ReturnType<typeof fixture>>["t"],
+  userId: Id<"users">,
+) =>
   t.run((ctx) => ctx.db.query("notificationDeliveries")
     .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", userId))
     .collect());
