@@ -101,7 +101,9 @@ export function PendingApprovalsWidget() {
             <Card key={item.id} href={item.href} label={`Review ${item.title}`}>
               <CardMedia icon={icons[item.kind]} />
               <CardHeader>
-                <CardTitle>{item.title}</CardTitle>
+                <CardTitle className="truncate" title={item.title}>
+                  {item.title}
+                </CardTitle>
                 <CardDescription>
                   {labels[item.kind]} ·{" "}
                   {formatDistanceToNow(item.createdAt, { addSuffix: true })}

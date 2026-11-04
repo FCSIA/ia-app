@@ -7,6 +7,7 @@ import {
   isGlobalAnnouncementApprover,
 } from "../announcements/_lib";
 import { canReviewFeedback } from "../moderation/feedbackAccess";
+import { issueTitle } from "../moderation/feedbackGithub";
 
 const itemValidator = v.object({
   id: v.string(),
@@ -185,8 +186,11 @@ export const list = query({
         add({
           id: `report:${report._id}`,
           kind: feedback ? "feedback" : "reports",
-          title: report.reason,
-          href: `/admin?tab=${feedback ? "feedback" : "reports"}`,
+          // Feedback reasons are whole messages; the queue row needs a headline.
+          title: feedback ? issueTitle(report.reason) : report.reason,
+          href: feedback
+            ? `/admin/feedback/${report._id}`
+            : "/admin?tab=reports",
           createdAt: report.createdAt,
         });
       }
