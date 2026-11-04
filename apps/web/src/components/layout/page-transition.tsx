@@ -1,6 +1,9 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useLayoutEffect, type ReactNode } from 'react';
+import { motion, useAnimationControls } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+import { spring } from '@/lib/springs';
 
 type PageTransitionProps = {
   children: ReactNode;
@@ -8,5 +11,37 @@ type PageTransitionProps = {
 };
 
 export function PageTransition({ children, className }: PageTransitionProps) {
-  return <div className={className}>{children}</div>;
+  const pathname = usePathname();
+  const controls = useAnimationControls();
+
+  useLayoutEffect(() => {
+    // Fluid's product reveal is an opacity entrance on the moderate spring.
+    // Keep the route tree mounted: pathname keys and exit waits reset persistent
+    // workspaces and can hold a stale router subtree during navigation.
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const finish = () => {
+      controls.stop();
+      controls.set({ opacity: 1 });
+    };
+    const onPreferenceChange = () => {
+      if (preference.matches) finish();
+    };
+
+    finish();
+    if (!preference.matches) {
+      controls.set({ opacity: 0 });
+      void controls.start({ opacity: 1, transition: spring.moderate });
+    }
+    preference.addEventListener('change', onPreferenceChange);
+    return () => {
+      preference.removeEventListener('change', onPreferenceChange);
+      controls.stop();
+    };
+  }, [pathname, controls]);
+
+  return (
+    <motion.div className={className} initial={false} animate={controls}>
+      {children}
+    </motion.div>
+  );
 }
