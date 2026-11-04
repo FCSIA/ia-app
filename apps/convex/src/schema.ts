@@ -1401,6 +1401,9 @@ export const schema = defineSchema({
     status: v.union(v.literal("ACTIVE"), v.literal("ERROR")),
     lastSyncedAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
+    // Digest of the imported events at the last successful sync. A refresh
+    // that parses to the same digest skips reconciling the event rows.
+    eventsHash: v.optional(v.string()),
     nextRefreshAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
