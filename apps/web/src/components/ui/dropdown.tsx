@@ -18,24 +18,62 @@ import {
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
-import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { useFluidHover, isOwnEvent } from "@/hooks/use-fluid-hover";
 import {
-  FluidHoverHighlight,
-  resolveHighlightTransition,
-  toTarget,
-} from "@/components/ui/fluid-hover-highlight";
+  useMergeSplitBlocks,
+  useSelectionRuns,
+  SelectionBackgrounds,
+} from "@/hooks/use-merge-split";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
+import { popupShape } from "@/components/ui/popup-shape";
 import { Elevated } from "@/lib/elevated";
-import { popupShape as shape } from "@/components/ui/popup-shape";
-import { popupMotionClass } from "@/lib/popup";
+import {
+  popupMotionClass,
+  popupScrollAreaClass,
+  popupViewportClass,
+  isDisabledRow,
+} from "@/lib/popup";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownSearch,
+  DropdownEmpty,
+  DropdownSearchHostContext,
+  useDropdownSearchHost,
+  type DropdownSearchProps,
+} from "@/components/ui/dropdown-search";
 import {
   DropdownContext,
+  MenuItem,
+  useControllableOpen,
   useDropdown,
   useDropdownMaybe,
   type DropdownContextValue,
   type MenuItemRenderOptions,
 } from "@/components/ui/menu-item";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import {
+  SUBMENU_SIDE_OFFSET,
+  SUBMENU_ALIGN_OFFSET,
+  useSubmenuHost,
+  useReportSubmenu,
+  SubmenuChevron,
+  type DropdownSubTriggerProps,
+} from "@/components/ui/dropdown-sub";
+
+// Dropdown opts out of the global pill/rounded shape context — popover surfaces
+// look cleaner with the smaller "rounded" radii regardless of how the rest of
+// the UI is shaped (the heavy pill bubbling distorts perceived padding at this
+// scale and produces the corner-shadow asymmetry).
+// Registry compatibility: the app's `rounded-lg` resolves to 16px, so popup
+// lists keep the fixed nested radii they share with Select (popup-shape.ts).
+const shape = { ...popupShape, mergedBg: popupShape.bg, bgRadius: 8 } as const;
+
+// Registry compatibility: retain the app's existing type ladder (see
+// command-menu.tsx) instead of importing the registry's type-scale helper.
+function typeClass(role: "caption", variant: SizeVariant): string {
+  return variant === "compact" ? "text-[11px] leading-[14px]" : "text-[12px] leading-4";
+}
 
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
@@ -63,34 +101,42 @@ export type { DropdownContextValue, MenuItemRenderOptions };
 interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   checkedIndex?: number;
+  /** Multiple selection: the checked rows. Rows become checkbox items and
+   *  contiguous runs share one merged background (see CheckboxGroup). */
+  checkedIndices?: number[];
+  /** Pins the panel's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
-  ({ children, checkedIndex, className, ...props }, ref) => {
+  ({ children, checkedIndex, checkedIndices, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
       activeIndex,
       setActiveIndex,
       itemRects,
-      sessionRef,
       handlers,
       registerItem,
-      measureItems,
-    } = useProximityHover(containerRef);
+    } = hover;
 
-    useEffect(() => {
-      measureItems();
-    }, [measureItems, children]);
-
-    const reduceMotion = useReducedMotion() ?? false;
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
-    const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
+    const multiple = checkedIndices != null;
     const checkedRect =
-      checkedIndex != null ? itemRects[checkedIndex] : null;
+      !multiple && checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    return (
-      <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
+    // Multiple: one merged block per contiguous run of checked rows.
+    const runs = useSelectionRuns(checkedIndices ?? []);
+    const blocks = useMergeSplitBlocks(runs, itemRects, shape.bgRadius);
+    const panelCtx = useMemo(
+      () => ({ registerItem, activeIndex, checkedIndex, multiple, checkedIndices }),
+      [registerItem, activeIndex, checkedIndex, multiple, checkedIndices]
+    );
+    const panel = (
+      <DropdownContext.Provider value={panelCtx}>
         <Elevated
           offset={2}
           shadowLevel={3}
@@ -102,10 +148,11 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           onMouseEnter={handlers.onMouseEnter}
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
+          onClick={handlers.onClick}
           onFocus={(e) => {
             const indexAttr = (e.target as HTMLElement)
-              .closest("[data-proximity-index]")
-              ?.getAttribute("data-proximity-index");
+              .closest("[data-fluid-hover-index]")
+              ?.getAttribute("data-fluid-hover-index");
             if (indexAttr != null) {
               const idx = Number(indexAttr);
               setActiveIndex(idx);
@@ -122,7 +169,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           onKeyDown={(e) => {
             const items = Array.from(
               containerRef.current?.querySelectorAll(
-                '[role="menuitem"], [role="menuitemradio"]'
+                '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
               ) ?? []
             ) as HTMLElement[];
             const currentIdx = items.indexOf(e.target as HTMLElement);
@@ -144,32 +191,40 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           }}
           role="group"
           className={cn(
-            `relative flex flex-col gap-0.5 w-72 max-w-full ${shape.container} p-1 select-none`,
-            POPOVER_SURFACE_FOREGROUND,
+            `relative flex flex-col w-72 max-w-full ${shape.container} p-1 select-none`,
             className
           )}
           {...props}
         >
-          {/* Selected background — travels on a transform (left-0/top-0 +
-              x/y) instead of top/left; reduced motion keeps the fade only. */}
+          {/* Selected backgrounds — merged runs in multiple mode */}
+          {multiple && <SelectionBackgrounds blocks={blocks} />}
+
+          {/* Selected background */}
           <AnimatePresence>
             {checkedRect && (
               <motion.div
-                className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
+                className={`absolute ${shape.bg} bg-active pointer-events-none`}
                 initial={false}
-                animate={{ ...toTarget(checkedRect), opacity: 1 }}
+                animate={{
+                  top: checkedRect.top,
+                  left: checkedRect.left,
+                  width: checkedRect.width,
+                  height: checkedRect.height,
+                  opacity: 1,
+                }}
                 exit={{ opacity: 0, transition: spring.moderate.exit }}
-                transition={resolveHighlightTransition(spring.moderate, reduceMotion)}
+                transition={{
+                  ...spring.moderate,
+                  opacity: { duration: 0.08 },
+                }}
               />
             )}
           </AnimatePresence>
 
-          {/* Hover background — the shared transform-based highlight; a
-              fresh session fades in from the checked row, as before. */}
+          {/* Hover background */}
           <FluidHoverHighlight
-            rect={activeRect ?? null}
-            session={sessionRef.current}
-            from={checkedRect ?? null}
+            hover={hover}
+            from={checkedRect}
             className={shape.bg}
           />
 
@@ -177,16 +232,19 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+                className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
                 initial={false}
                 animate={{
-                  x: focusRect.left - 2,
-                  y: focusRect.top - 2,
+                  left: focusRect.left - 2,
+                  top: focusRect.top - 2,
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
                 exit={{ opacity: 0, transition: spring.fast.exit }}
-                transition={resolveHighlightTransition(spring.fast, reduceMotion)}
+                transition={{
+                  ...spring.fast,
+                  opacity: { duration: 0.08 },
+                }}
               />
             )}
           </AnimatePresence>
@@ -195,6 +253,9 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
         </Elevated>
       </DropdownContext.Provider>
     );
+
+    // A size prop pins every row in the panel to one ladder step.
+    return size ? <SizeProvider size={size}>{panel}</SizeProvider> : panel;
   }
 );
 
@@ -206,7 +267,7 @@ Dropdown.displayName = "Dropdown";
 // Built on Radix's DropdownMenu primitive, which owns the trigger wiring,
 // positioning (collision flipping, anchor tracking), dismissal (outside
 // press, focus-out, Escape), roving highlight, typeahead, and close-on-select.
-// This layer keeps the proximity-hover overlays and the
+// This layer keeps the fluid-hover overlays and the
 // spring open/close animation. Radix has no actionsRef-style deferred unmount,
 // so the portal lifetime is managed with local `mounted` state (the same
 // pattern the Dialog and MobileDrawer components use).
@@ -215,6 +276,8 @@ Dropdown.displayName = "Dropdown";
 interface DropdownMenuContextValue {
   open: boolean;
   disabled: boolean;
+  /** Set by DropdownSub: the content is a submenu. */
+  sub: boolean;
 }
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -234,6 +297,10 @@ interface DropdownMenuProps {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
+  /** Pins trigger-side content and the portalled popup rows to one step of
+   *  the size ladder (default 36px, compact 28px — see /docs/sizes).
+   *  Omitted, they follow the surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
 function DropdownMenu({
@@ -242,21 +309,16 @@ function DropdownMenu({
   defaultOpen = false,
   onOpenChange,
   disabled = false,
+  size,
 }: DropdownMenuProps) {
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const open = openProp !== undefined ? openProp : internalOpen;
+  const [open, handleOpenChange] = useControllableOpen(openProp, defaultOpen, onOpenChange);
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (openProp === undefined) setInternalOpen(next);
-      onOpenChange?.(next);
-    },
-    [openProp, onOpenChange]
-  );
 
-  const ctx = useMemo(() => ({ open, disabled }), [open, disabled]);
+  const ctx = useMemo(() => ({ open, disabled, sub: false }), [open, disabled]);
 
-  return (
+  // A size prop pins the whole compound (trigger content + portalled popup —
+  // React context crosses portals) to one ladder step.
+  const root = (
     <DropdownMenuContext.Provider value={ctx}>
       {/* Root is always controlled by `open` (defaultOpen seeds local state
           instead of being forwarded), so DropdownContent can drive the exit
@@ -271,6 +333,8 @@ function DropdownMenu({
       </DropdownMenuPrimitive.Root>
     </DropdownMenuContext.Provider>
   );
+
+  return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
 }
 
 DropdownMenu.displayName = "DropdownMenu";
@@ -328,7 +392,7 @@ DropdownTrigger.displayName = "DropdownTrigger";
 // DropdownContent (popup panel)
 //
 // Portal > Content carrying the exact inline-panel visuals: Elevated surface,
-// proximity-hover overlays, animated selected background, and animated focus
+// fluid-hover overlays, animated selected background, and animated focus
 // ring. Children are wrapped in a RadioGroup so radio-style MenuItems
 // (boolean `checked`) get correct aria-checked from `checkedIndex` (Radix
 // radio values are strings, so the index maps through String()).
@@ -338,15 +402,23 @@ type RadixContentProps = ComponentPropsWithoutRef<
   typeof DropdownMenuPrimitive.Content
 >;
 
+type LitBy = "open" | "pointer" | "keyboard";
+
 interface DropdownContentProps {
   children: ReactNode;
   className?: string;
   /** Index of the checked item. Drives the animated selected background and
    *  the radio-group value announced to assistive tech. */
   checkedIndex?: number;
+  /** Multiple selection: the checked rows. Rows become checkbox items that
+   *  keep the menu open when toggled, and contiguous runs share one merged
+   *  background (see CheckboxGroup). */
+  checkedIndices?: number[];
   side?: RadixContentProps["side"];
   align?: RadixContentProps["align"];
   sideOffset?: number;
+  /** Shift along the trigger edge, in px. */
+  alignOffset?: number;
   onCloseAutoFocus?: RadixContentProps["onCloseAutoFocus"];
 }
 
@@ -356,36 +428,76 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       className,
       children,
       checkedIndex,
+      checkedIndices,
       side = "bottom",
       align = "start",
       sideOffset = 6,
+      alignOffset = 0,
       onCloseAutoFocus,
     },
     ref
   ) => {
-    const { open } = useDropdownMenuContext();
+    const { open, sub } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
+    const reduceMotion = useReducedMotion() ?? false;
 
+    const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
       activeIndex,
       setActiveIndex,
       itemRects,
-      sessionRef,
       handlers,
       registerItem,
-      measureItems,
-    } = useProximityHover(containerRef);
+      remeasure,
+    } = hover;
 
-    const reduceMotion = useReducedMotion() ?? false;
-    const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+    // Submenus opened from these rows: their trigger stays lit while the
+    // pointer crosses to them (see dropdown-sub.tsx).
+    const submenus = useSubmenuHost(containerRef, hover, open);
+
+    // An optional DropdownSearch child: typing on a focused row is
+    // redirected into the field. (The field takes focus itself, a frame
+    // after the primitive's own open autofocus.)
+    const {
+      host: searchHost,
+      hasSearch,
+      searchTakesFocus,
+      searchMounted,
+      onKeyDownCapture: redirectTypingToSearch,
+    } = useDropdownSearchHost(open);
+
+    // Open ready to act: focus the first enabled row (a mounted search field
+    // takes focus itself instead). A frame after the primitive's own open
+    // autofocus, which lands on the popup for pointer opens. Not for a
+    // submenu: hovering its trigger must leave focus in the parent, and a
+    // keyboard open already lands on its first row.
+    useEffect(() => {
+      if (!open || sub) return;
+      let inner: number | undefined;
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => {
+          if (hasSearch()) return;
+          const container = containerRef.current;
+          if (!container || container.contains(document.activeElement) && document.activeElement !== container) return;
+          const first = container.querySelector<HTMLElement>(
+            '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemradio"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]:not([aria-disabled="true"])'
+          );
+          first?.focus();
+        });
+      });
+      return () => {
+        cancelAnimationFrame(outer);
+        if (inner !== undefined) cancelAnimationFrame(inner);
+      };
+    }, [open, sub, hasSearch]);
 
     // Portal lifetime: mounts as soon as `open` flips true; on close it stays
     // mounted (forceMount below) until the exit tween finishes.
     const [mounted, setMounted] = useState(false);
 
-    useEffect(() => {
-      if (open) setMounted(true);
-    }, [open]);
+    // Set during the render that opens it, so the portal mounts in the same
+    // commit as `open` rather than one after.
+    if (open && !mounted) setMounted(true);
 
     // Fallback release for the deferred unmount: onAnimationComplete on the
     // motion.div is the primary signal, but rAF-driven animation callbacks
@@ -398,37 +510,57 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       return () => clearTimeout(id);
     }, [open]);
 
-    // Measure items once the popup has mounted.
+    // The popup keeps its rows registered between opens, so their rects
+    // were taken while it was hidden: re-measure once it is open and laid out.
     useEffect(() => {
       if (!open || !mounted) return;
-      // Double rAF: first waits for React commit, second for layout
-      let inner: number;
-      const outer = requestAnimationFrame(() => {
-        inner = requestAnimationFrame(() => {
-          measureItems();
-        });
-      });
-      return () => {
-        cancelAnimationFrame(outer);
-        cancelAnimationFrame(inner);
-      };
-    }, [open, mounted, measureItems]);
+      remeasure();
+    }, [open, mounted, remeasure]);
 
-    const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
-    const checkedRect = checkedIndex != null ? itemRects[checkedIndex] : null;
-    const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
+    const multiple = checkedIndices != null;
+    const checkedRect =
+      !multiple && checkedIndex != null ? itemRects[checkedIndex] : null;
+    // What lights the highlight: the open itself (its first-row focus), the
+    // pointer, or the keyboard. A highlight that appears from nothing fades
+    // in at `from` and glides to its row. That suits the pointer entering the
+    // list (it rises from the checked row toward the cursor), not a row lit
+    // by the open or by arrowing in from the search field: those would slide
+    // over from the checked row, so they fade in where they are.
+    // The handlers read the ref: a key press updates it before the focus it
+    // moves arrives, in the same event. The render reads the state, which
+    // the highlight's `from` depends on. Each open starts over as "open".
+    const litByRef = useRef<LitBy>("open");
+    const [litBy, setLitBy] = useState<LitBy>("open");
+    const [litByOpen, setLitByOpen] = useState(open);
+    if (litByOpen !== open) {
+      setLitByOpen(open);
+      if (open) setLitBy("open");
+    }
+    useEffect(() => {
+      if (open) litByRef.current = "open";
+    }, [open]);
+    const markLitBy = (by: LitBy) => {
+      litByRef.current = by;
+      setLitBy(by);
+    };
+    // Multiple: one merged block per contiguous run of checked rows.
+    const runs = useSelectionRuns(checkedIndices ?? []);
+    const blocks = useMergeSplitBlocks(runs, open ? itemRects : [], shape.bgRadius);
     // Inside the popup, Radix's Item / RadioItem own the role, aria-checked,
     // tabIndex, roving highlight, typeahead, and Enter/Space/click activation
-    // (keyboard activation synthesizes a click, so the row div's onClick also
+    // (keyboard activation synthesizes a click, so onActivate on the item also
     // fires for keyboard). The styled div composes via asChild, with the row
     // content cloned back in as its children.
     const renderMenuItem = useCallback(
       ({
         radio,
+        checkbox,
+        checked,
         value,
         disabled,
         label,
         closeOnClick,
+        onActivate,
         element,
         children,
       }: MenuItemRenderOptions) => {
@@ -436,6 +568,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           asChild: true,
           disabled,
           textValue: label,
+          onClick: onActivate,
           // Radix closes the menu on select by default; preventing the select
           // event keeps it open — Base UI's closeOnClick={false} parity.
           onSelect: closeOnClick
@@ -443,6 +576,15 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
             : (event: Event) => event.preventDefault(),
         };
         const item = cloneElement(element, {}, children);
+        if (checkbox) {
+          // onActivate toggles the consumer state; the primitive only owns
+          // the role, aria-checked, and keyboard activation.
+          return (
+            <DropdownMenuPrimitive.CheckboxItem checked={!!checked} {...commonProps}>
+              {item}
+            </DropdownMenuPrimitive.CheckboxItem>
+          );
+        }
         return radio ? (
           <DropdownMenuPrimitive.RadioItem value={String(value)} {...commonProps}>
             {item}
@@ -461,29 +603,46 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
         registerItem,
         activeIndex,
         checkedIndex,
+        multiple,
+        checkedIndices,
         inMenu: true,
         renderMenuItem,
+        onSubmenuOpenChange: submenus.onSubmenuOpenChange,
       }),
-      [registerItem, activeIndex, checkedIndex, renderMenuItem]
+      [
+        registerItem,
+        activeIndex,
+        checkedIndex,
+        multiple,
+        checkedIndices,
+        renderMenuItem,
+        submenus.onSubmenuOpenChange,
+      ]
     );
 
     if (!mounted) return null;
 
+    // A submenu's content is Radix's SubContent, which takes the same
+    // props but places itself: the reading direction's end, aligned to the
+    // start of its row (it overrides side and align).
+    const Content = (
+      sub ? DropdownMenuPrimitive.SubContent : DropdownMenuPrimitive.Content
+    ) as typeof DropdownMenuPrimitive.Content;
+
     return (
       <DropdownMenuPrimitive.Portal forceMount>
-        <DropdownMenuPrimitive.Content
+        <Content
           asChild
           forceMount
           side={side}
           align={align}
           sideOffset={sideOffset}
+          alignOffset={alignOffset}
           onCloseAutoFocus={onCloseAutoFocus}
         >
           <motion.div
-            // popupMotionClass turns the resolved (post-flip) data-side into
-            // the origin and slide direction, so a menu that flips above its
-            // trigger grows from the trigger. Reduced motion keeps the fade.
             className={cn("z-50 outline-none", popupMotionClass)}
+            // Reduced motion keeps the fade (app adaptation).
             initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
             animate={
               open
@@ -500,96 +659,118 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
             }}
           >
             <DropdownContext.Provider value={contentCtx}>
+            <DropdownSearchHostContext.Provider value={searchHost}>
               <Elevated
                 offset={2}
                 shadowLevel={3}
-                ref={(node: HTMLDivElement | null) => {
-                  (
-                    containerRef as React.MutableRefObject<HTMLDivElement | null>
-                  ).current = node;
-                  if (typeof ref === "function") ref(node);
-                  else if (ref)
-                    (
-                      ref as React.MutableRefObject<HTMLDivElement | null>
-                    ).current = node;
+                ref={ref}
+                // The handlers below skip events from an open submenu: it
+                // renders through a portal, so its events bubble here
+                // through React, and focus on a submenu row would light the
+                // parent row with the same index. The gap click already
+                // ignores them in the hook.
+                onKeyDownCapture={(e) => {
+                  if (!isOwnEvent(e)) return;
+                  markLitBy("keyboard");
+                  redirectTypingToSearch(e);
                 }}
-                onMouseEnter={() => {
-                  handlers.onMouseEnter();
-                  setFocusedIndex(null);
+                onMouseEnter={(e) => {
+                  if (!isOwnEvent(e)) return;
+                  markLitBy("pointer");
+                  submenus.onMouseEnter();
                 }}
-                onMouseMove={handlers.onMouseMove}
-                onMouseLeave={handlers.onMouseLeave}
+                onMouseMove={(e) => {
+                  if (!isOwnEvent(e)) return;
+                  markLitBy("pointer");
+                  submenus.onMouseMove(e);
+                }}
+                onClick={handlers.onClick}
+                onMouseLeave={(e) => {
+                  if (!isOwnEvent(e)) return;
+                  submenus.onMouseLeave();
+                }}
                 onFocus={(e) => {
+                  if (!isOwnEvent(e)) return;
                   const indexAttr = (e.target as HTMLElement)
-                    .closest("[data-proximity-index]")
-                    ?.getAttribute("data-proximity-index");
+                    .closest("[data-fluid-hover-index]")
+                    ?.getAttribute("data-fluid-hover-index");
+                  // Keyboard navigation moves the hover background only — no
+                  // ring: in a menu the highlighted row is the focus indicator.
                   if (indexAttr != null) {
-                    const idx = Number(indexAttr);
-                    setActiveIndex(idx);
-                    setFocusedIndex(
-                      (e.target as HTMLElement).matches(":focus-visible")
-                        ? idx
-                        : null
-                    );
+                    // With an autofocusing search field, the primitive's open
+                    // autofocus lands on the first row a frame before the
+                    // field takes over: that row stays unlit.
+                    if (litByRef.current === "open" && searchTakesFocus()) return;
+                    setActiveIndex(Number(indexAttr));
+                  } else if (e.target !== e.currentTarget) {
+                    // Focus moved to a non-row inside the popup, such as the
+                    // search field: no row is highlighted any more. The field
+                    // is a stop like a row, it just draws no background. The
+                    // popup focusing itself (pointer leaving a row) doesn't
+                    // count.
+                    setActiveIndex(null);
                   }
                 }}
                 onBlur={(e) => {
-                  if (containerRef.current?.contains(e.relatedTarget as Node))
+                  if (!isOwnEvent(e)) return;
+                  // The popup itself takes focus when the pointer leaves a row; only a
+                  // departure from the whole popup ends the hover session.
+                  if (e.currentTarget.contains(e.relatedTarget as Node))
                     return;
-                  setFocusedIndex(null);
+                  // Focus moving into an open submenu keeps its trigger lit.
+                  if (submenus.holding()) return;
                   setActiveIndex(null);
                 }}
                 className={cn(
                   // min-w tracks the trigger; the available-height guard maps
                   // Base UI's --available-height to Radix's equivalent var.
-                  `relative flex flex-col gap-0.5 w-72 max-w-full min-w-[var(--radix-dropdown-menu-trigger-width)] max-h-[min(480px,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto ${shape.container} p-1 select-none outline-none`,
-                  POPOVER_SURFACE_FOREGROUND,
+                  // A submenu's anchor is a row, so it keeps its own
+                  // narrower width instead.
+                  `flex flex-col ${sub ? "w-56" : "w-72 min-w-[var(--radix-dropdown-menu-trigger-width)]"} max-w-full max-h-[min(480px,var(--radix-dropdown-menu-content-available-height))] overflow-hidden ${shape.container} select-none outline-none`,
                   className
                 )}
               >
-                {/* Selected background — travels on a transform (left-0/top-0 +
-                    x/y) instead of top/left; reduced motion keeps the fade only. */}
+                {/* The list scrolls inside a ScrollArea; this wrapper is the rows'
+                    offsetParent, so the overlays scroll with them. */}
+                <ScrollArea className={popupScrollAreaClass} viewportClassName={cn(popupViewportClass, !searchMounted && "scroll-fade")}>
+                  <div
+                    ref={containerRef}
+                    className="relative flex flex-col p-1"
+                  >
+                {/* Selected backgrounds — merged runs in multiple mode */}
+                {multiple && <SelectionBackgrounds blocks={blocks} />}
+
+                {/* Selected background */}
                 <AnimatePresence>
                   {checkedRect && (
                     <motion.div
-                      className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
+                      className={`absolute ${shape.bg} bg-active pointer-events-none`}
                       initial={false}
-                      animate={{ ...toTarget(checkedRect), opacity: 1 }}
+                      animate={{
+                        top: checkedRect.top,
+                        left: checkedRect.left,
+                        width: checkedRect.width,
+                        height: checkedRect.height,
+                        opacity: 1,
+                      }}
                       exit={{ opacity: 0, transition: spring.moderate.exit }}
-                      transition={resolveHighlightTransition(spring.moderate, reduceMotion)}
+                      transition={{
+                        ...spring.moderate,
+                        opacity: { duration: 0.08 },
+                      }}
                     />
                   )}
                 </AnimatePresence>
 
-                {/* Hover background — the shared transform-based highlight; a
-                    fresh session fades in from the checked row, as before. */}
+                {/* Hover background */}
                 <FluidHoverHighlight
-                  rect={activeRect ?? null}
-                  session={sessionRef.current}
-                  from={checkedRect ?? null}
+                  hover={hover}
+                  from={litBy === "pointer" ? checkedRect : null}
                   className={shape.bg}
                 />
 
-                {/* Focus ring */}
-                <AnimatePresence>
-                  {focusRect && (
-                    <motion.div
-                      className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
-                      initial={false}
-                      animate={{
-                        x: focusRect.left - 2,
-                        y: focusRect.top - 2,
-                        width: focusRect.width + 4,
-                        height: focusRect.height + 4,
-                      }}
-                      exit={{ opacity: 0, transition: spring.fast.exit }}
-                      transition={resolveHighlightTransition(spring.fast, reduceMotion)}
-                    />
-                  )}
-                </AnimatePresence>
-
                 {/* display: contents keeps items direct flex children of the
-                    panel so proximity measurement and gap layout still work,
+                    wrapper so fluid hover measurement and gap layout still work,
                     while the group provides the radio value context. */}
                 <DropdownMenuPrimitive.RadioGroup
                   value={checkedIndex != null ? String(checkedIndex) : undefined}
@@ -597,10 +778,13 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                 >
                   {children}
                 </DropdownMenuPrimitive.RadioGroup>
+                  </div>
+                </ScrollArea>
               </Elevated>
+            </DropdownSearchHostContext.Provider>
             </DropdownContext.Provider>
           </motion.div>
-        </DropdownMenuPrimitive.Content>
+        </Content>
       </DropdownMenuPrimitive.Portal>
     );
   }
@@ -609,20 +793,138 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
 DropdownContent.displayName = "DropdownContent";
 
 // ---------------------------------------------------------------------------
+// DropdownSub, DropdownSubTrigger, DropdownSubContent (submenus)
+//
+//   <DropdownSub>
+//     <DropdownSubTrigger index={2} icon={Palette} label="Theme" />
+//     <DropdownSubContent checkedIndex={theme}>
+//       <MenuItem index={0} label="Light" checked={theme === 0} … />
+//     </DropdownSubContent>
+//   </DropdownSub>
+//
+// Radix's Sub owns hover-to-open, the safe area, →/← and Escape.
+// DropdownSub gives its content its own open state, so DropdownSubContent
+// is the same popup as DropdownContent (mounted through its exit tween),
+// rendered as Radix's SubContent beside its trigger row. The trigger is a
+// MenuItem with a trailing chevron, indexed among its parent's rows; the
+// submenu's rows index from 0 again.
+// ---------------------------------------------------------------------------
+
+interface DropdownSubProps {
+  children: ReactNode;
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+function DropdownSub({
+  children,
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
+}: DropdownSubProps) {
+  const [open, handleOpenChange] = useControllableOpen(openProp, defaultOpen, onOpenChange);
+  const { disabled } = useDropdownMenuContext();
+
+
+  const ctx = useMemo(() => ({ open, disabled, sub: true }), [open, disabled]);
+
+  return (
+    <DropdownMenuContext.Provider value={ctx}>
+      <DropdownMenuPrimitive.Sub open={open} onOpenChange={handleOpenChange}>
+        {children}
+      </DropdownMenuPrimitive.Sub>
+    </DropdownMenuContext.Provider>
+  );
+}
+
+DropdownSub.displayName = "DropdownSub";
+
+const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerProps>(
+  ({ index, ...props }, ref) => {
+    const parent = useDropdown();
+    const { open } = useDropdownMenuContext();
+    useReportSubmenu(parent.onSubmenuOpenChange, index, open);
+    const lit = parent.activeIndex === index;
+
+    // The row renders through the parent's MenuItem, wrapped in the submenu
+    // trigger primitive instead of a plain item.
+    const renderMenuItem = useCallback(
+      ({ disabled, label, onActivate, element, children }: MenuItemRenderOptions) => (
+        <DropdownMenuPrimitive.SubTrigger
+          asChild
+          disabled={disabled}
+          textValue={label}
+          onClick={onActivate}
+        >
+          {cloneElement(
+            element,
+            {},
+            <>
+              {children}
+              <SubmenuChevron lit={lit} />
+            </>
+          )}
+        </DropdownMenuPrimitive.SubTrigger>
+      ),
+      [lit]
+    );
+    const ctx = useMemo(() => ({ ...parent, renderMenuItem }), [parent, renderMenuItem]);
+
+    return (
+      <DropdownContext.Provider value={ctx}>
+        <MenuItem ref={ref} index={index} {...props} />
+      </DropdownContext.Provider>
+    );
+  }
+);
+
+DropdownSubTrigger.displayName = "DropdownSubTrigger";
+
+type DropdownSubContentProps = Omit<DropdownContentProps, "side" | "align">;
+
+/** The submenu popup: DropdownContent beside its trigger row, the first row
+ *  level with the trigger. */
+const DropdownSubContent = forwardRef<HTMLDivElement, DropdownSubContentProps>(
+  (
+    {
+      sideOffset = SUBMENU_SIDE_OFFSET,
+      alignOffset = SUBMENU_ALIGN_OFFSET,
+      ...props
+    },
+    ref
+  ) => (
+    <DropdownContent
+      ref={ref}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      {...props}
+    />
+  )
+);
+
+DropdownSubContent.displayName = "DropdownSubContent";
+
+// ---------------------------------------------------------------------------
 // DropdownLabel
 // ---------------------------------------------------------------------------
 
 const DropdownLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, ...props }, ref) => {
+    // Group labels are the caption role of the type scale — see /docs/sizes.
+    const compact = useSize().variant === "compact";
+    return (
     <div
       ref={ref}
       className={cn(
-        "px-2 py-1.5 shrink-0 text-[11px] text-muted-foreground",
+        "px-2 py-1.5 shrink-0 text-muted-foreground",
+        typeClass("caption", compact ? "compact" : "default"),
         className
       )}
       {...props}
     />
-  )
+    );
+  }
 );
 
 DropdownLabel.displayName = "DropdownLabel";
@@ -652,11 +954,20 @@ export {
   DropdownMenu,
   DropdownTrigger,
   DropdownContent,
+  DropdownSub,
+  DropdownSubTrigger,
+  DropdownSubContent,
+  DropdownSearch,
+  DropdownEmpty,
 };
 export type {
   DropdownProps,
   DropdownMenuProps,
   DropdownTriggerProps,
   DropdownContentProps,
+  DropdownSubProps,
+  DropdownSubTriggerProps,
+  DropdownSubContentProps,
+  DropdownSearchProps,
 };
 export default Dropdown;

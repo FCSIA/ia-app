@@ -2,9 +2,10 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useRef,
-  useEffect,
+  useState,
   forwardRef,
   type HTMLAttributes,
   type ReactElement,
@@ -14,7 +15,13 @@ import type { IconComponent } from "@/lib/icon-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
-import { popupShape as shape } from "@/components/ui/popup-shape";
+import { popupShape } from "@/components/ui/popup-shape";
+import { useSize } from "@/lib/size-context";
+import { useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+
+// MenuItem is only used inside Dropdown, which opts out of the global pill
+// shape — see dropdown.tsx for the rationale.
+const shape = popupShape;
 
 // ---------------------------------------------------------------------------
 // Dropdown context — the single shared context for every Dropdown build.
@@ -28,17 +35,27 @@ import { popupShape as shape } from "@/components/ui/popup-shape";
 // ---------------------------------------------------------------------------
 
 /** What MenuItem hands to the popup's primitive wrapper. `element` is the
- *  styled row div (visuals + proximity registration, no children); `children`
+ *  styled row div (visuals + fluid hover registration, no children); `children`
  *  is the row content (icon, label, check). The dropdown wraps them in its
  *  own Item / RadioItem primitive, so MenuItem itself stays primitive-free. */
 export interface MenuItemRenderOptions {
   /** Radio-style option (boolean `checked` on MenuItem) vs plain action item. */
   radio: boolean;
+  /** Checkbox-style option: a boolean `checked` inside a multiple-selection
+   *  dropdown (`checkedIndices`). Takes precedence over `radio`. */
+  checkbox: boolean;
+  /** The item's checked state (radio and checkbox items). */
+  checked?: boolean;
   /** The item's index — doubles as the radio value. */
   value: number;
   disabled?: boolean;
   label: string;
   closeOnClick: boolean;
+  /** The row's activation (consumer onClick, then onSelect). The dropdown
+   *  hands it to its primitive item as `onClick`, never to `element`: Base
+   *  UI's Enter/Space runs the item's own onClick prop without dispatching a
+   *  DOM click, so a handler on the rendered div would only hear the mouse. */
+  onActivate?: (e: React.MouseEvent<HTMLDivElement>) => void;
   element: ReactElement;
   children: ReactNode;
 }
@@ -47,6 +64,10 @@ export interface DropdownContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
   checkedIndex?: number;
+  /** Multiple selection (`checkedIndices` on the dropdown): rows are
+   *  checkbox items and activating one keeps the menu open by default. */
+  multiple?: boolean;
+  checkedIndices?: number[];
   /** True when items render inside a Menu popup (DropdownContent), where the
    *  primitive's Item / RadioItem own roles, roving highlight, typeahead,
    *  and activation. MenuItem switches its rendering accordingly. */
@@ -55,6 +76,10 @@ export interface DropdownContextValue {
    *  primitive. Absent in the inline Dropdown panel, where MenuItem renders
    *  its own ARIA menuitem div. */
   renderMenuItem?: (opts: MenuItemRenderOptions) => ReactElement;
+  /** Popup-only: a DropdownSubTrigger reports its submenu opening and
+   *  closing here, so the menu keeps that row lit while the pointer crosses
+   *  to the submenu and while it is inside it. */
+  onSubmenuOpenChange?: (index: number, open: boolean) => void;
 }
 
 export const DropdownContext = createContext<DropdownContextValue | null>(null);
@@ -70,7 +95,30 @@ export function useDropdownMaybe() {
   return useContext(DropdownContext);
 }
 
-interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
+/**
+ * Open state for DropdownMenu and DropdownSub: controlled by `open` when it
+ * is passed, else local state seeded by `defaultOpen`. Either way the
+ * primitive is always handed a controlled value, so the popup can play its
+ * exit tween before it unmounts.
+ */
+export function useControllableOpen(
+  openProp: boolean | undefined,
+  defaultOpen: boolean,
+  onOpenChange?: (open: boolean) => void
+) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = openProp !== undefined ? openProp : internalOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (openProp === undefined) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [openProp, onOpenChange]
+  );
+  return [open, setOpen] as const;
+}
+
+export interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   /** Optional leading icon. When omitted, the row renders text-only with no
    *  reserved icon column. */
   icon?: IconComponent;
@@ -108,21 +156,20 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
     ref
   ) => {
     const internalRef = useRef<HTMLDivElement>(null);
-    const hasMounted = useRef(false);
-    const { registerItem, activeIndex, checkedIndex, renderMenuItem } =
-      useDropdown();
+    const {
+      registerItem,
+      activeIndex,
+      checkedIndex,
+      multiple,
+      checkedIndices,
+      renderMenuItem,
+    } = useDropdown();
+    const isCheckbox = !!multiple && typeof checked === "boolean";
 
-    useEffect(() => {
-      registerItem(index, internalRef.current);
-      return () => registerItem(index, null);
-    }, [index, registerItem]);
-
-    useEffect(() => {
-      hasMounted.current = true;
-    }, []);
+    useRegisterFluidHoverItem(registerItem, index, internalRef);
 
     const isActive = activeIndex === index;
-    const skipAnimation = !hasMounted.current;
+    const sizeClasses = useSize();
 
     const mergeRef = (node: HTMLDivElement | null) => {
       (internalRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -142,7 +189,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       // text-box trim on the label doesn't shrink the row. shrink-0 because
       // menu popups are max-height flex columns — without it a long list
       // compresses rows to fit instead of scrolling.
-      `relative z-10 flex h-9 shrink-0 touch-manipulation items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none`,
+      `relative z-10 flex ${sizeClasses.control} shrink-0 items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} cursor-pointer outline-none`,
       disabled && "opacity-50 pointer-events-none",
       className
     );
@@ -152,10 +199,10 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         {Icon && (
           <span className="inline-grid">
             <span className="col-start-1 row-start-1 invisible">
-              <Icon size={16} strokeWidth={2} />
+              <Icon size={sizeClasses.icon} strokeWidth={2} />
             </span>
             <Icon
-              size={16}
+              size={sizeClasses.icon}
               strokeWidth={isActive || checked ? 2 : 1.5}
               className={cn(
                 "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
@@ -170,7 +217,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         )}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className="inline-grid flex-1 text-[13px]">
+        <span className={cn("inline-grid flex-1", sizeClasses.text)}>
           <span
             className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
@@ -196,12 +243,15 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
             {label}
           </span>
         </span>
-        <AnimatePresence>
+        {/* initial={false}: a row checked at mount shows the finished
+            check instead of drawing it, so default selections don't
+            animate on page load. */}
+        <AnimatePresence initial={false}>
           {checked && (
             <motion.svg
               key="check"
-              width={16}
-              height={16}
+              width={sizeClasses.icon}
+              height={sizeClasses.icon}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -215,14 +265,14 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
             >
               <motion.path
                 d="M4 12L9 17L20 6"
-                initial={{ pathLength: skipAnimation ? 1 : 0 }}
+                initial={{ pathLength: 0 }}
                 animate={{
                   pathLength: 1,
                   transition: { duration: 0.08, ease: "easeOut" },
                 }}
                 exit={{
                   pathLength: 0,
-                  transition: { duration: 0.04, ease: "easeOut" },
+                  transition: { duration: 0.04, ease: "easeIn" },
                 }}
               />
             </motion.svg>
@@ -235,22 +285,25 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       // Inside DropdownContent, the menu-item primitive (supplied by the
       // surrounding DropdownContent through context) owns the role,
       // aria-checked, tabIndex, roving highlight, typeahead, and Enter/Space/
-      // click activation (activation synthesizes a click, so handleActivate
-      // also fires for keyboard). The styled div carries the Fluid
-      // Functionalism visuals and the proximity-hover registration; MenuItem
-      // itself imports no primitive.
+      // click activation. handleActivate rides on the primitive as onActivate,
+      // not on the div: that is the handler keyboard activation calls. The
+      // styled div carries the Fluid Functionalism visuals and the
+      // fluid-hover registration; MenuItem itself imports no primitive.
       return renderMenuItem({
-        radio: typeof checked === "boolean",
+        radio: !isCheckbox && typeof checked === "boolean",
+        checkbox: isCheckbox,
+        checked,
         value: index,
         disabled,
         label,
-        closeOnClick: closeOnClick ?? true,
+        // Toggling one of several stays open; picking one of one closes.
+        closeOnClick: closeOnClick ?? !multiple,
+        onActivate: handleActivate,
         element: (
           <div
             ref={mergeRef}
-            data-proximity-index={index}
+            data-fluid-hover-index={index}
             aria-label={label}
-            onClick={handleActivate}
             className={itemClassName}
             {...props}
           />
@@ -262,10 +315,18 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
     return (
       <div
         ref={mergeRef}
-        data-proximity-index={index}
+        data-fluid-hover-index={index}
         // Disabled items are never the roving tab stop.
-        tabIndex={!disabled && index === (checkedIndex ?? 0) ? 0 : -1}
-        role={typeof checked === "boolean" ? "menuitemradio" : "menuitem"}
+        tabIndex={
+          !disabled && index === (checkedIndex ?? checkedIndices?.[0] ?? 0) ? 0 : -1
+        }
+        role={
+          isCheckbox
+            ? "menuitemcheckbox"
+            : typeof checked === "boolean"
+              ? "menuitemradio"
+              : "menuitem"
+        }
         aria-checked={typeof checked === "boolean" ? checked : undefined}
         aria-disabled={disabled || undefined}
         aria-label={label}

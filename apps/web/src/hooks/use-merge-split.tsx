@@ -44,6 +44,70 @@ export interface SelBlock extends Rect {
 // can morph it across renders rather than exit+re-enter.
 export type Run = { start: number; end: number; id: number };
 
+interface RunIds {
+  runs: Run[];
+  /** Row index → the id of the run it belongs to. */
+  byRow: Map<number, number>;
+  lastId: number;
+}
+
+/**
+ * Groups sorted row indices into contiguous runs and ids them against the
+ * previous grouping: a run reuses the id of the first of its rows that had
+ * one, unless an earlier run already took it (after a split the upper run
+ * keeps the id and the lower run gets a new one).
+ */
+function assignRunIds(
+  sorted: readonly number[],
+  prev: ReadonlyMap<number, number>,
+  lastId: number
+): RunIds {
+  const spans: { start: number; end: number }[] = [];
+  for (const idx of sorted) {
+    const last = spans[spans.length - 1];
+    if (last && idx === last.end + 1) last.end = idx;
+    else spans.push({ start: idx, end: idx });
+  }
+
+  const usedIds = new Set<number>();
+  const byRow = new Map<number, number>();
+  const runs = spans.map((span) => {
+    let stableId: number | null = null;
+    for (let i = span.start; i <= span.end; i++) {
+      const prevId = prev.get(i);
+      if (prevId !== undefined && !usedIds.has(prevId)) {
+        stableId = prevId;
+        break;
+      }
+    }
+    const id = stableId ?? ++lastId;
+    usedIds.add(id);
+    for (let i = span.start; i <= span.end; i++) byRow.set(i, id);
+    return { ...span, id };
+  });
+  return { runs, byRow, lastId };
+}
+
+/**
+ * Groups checked row indices into contiguous runs with ids that survive
+ * re-renders: a run keeps its id while any of its rows was in a run last
+ * render, so framer morphs a growing/shrinking block instead of swapping it.
+ * Feed the result to useMergeSplitBlocks.
+ */
+export function useSelectionRuns(checkedIndices: readonly number[]): Run[] {
+  const sorted = [...checkedIndices].sort((a, b) => a - b);
+  const key = sorted.join(",");
+  // The ids depend on the previous grouping, so it is kept as state and
+  // advanced during render when the selection changes (React re-renders
+  // with it before committing). Writing a ref here instead would make
+  // rendering itself the side effect.
+  const [ids, setIds] = useState(() => ({ key, ...assignRunIds(sorted, new Map(), 0) }));
+  if (ids.key === key) return ids.runs;
+  const next = { key, ...assignRunIds(sorted, ids.byRow, ids.lastId) };
+  setIds(next);
+  return next.runs;
+}
+
 // One in-flight merge or split; geometry is recomputed from the live runs each
 // render so rapid toggles redirect instead of freezing.
 interface Boundary {
