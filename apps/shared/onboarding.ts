@@ -75,6 +75,11 @@ export function onboardingSteps(roles: readonly string[]) {
   );
 }
 
+/** Super admins provision the school; the account checklist is not for them. */
+export function hasOnboarding(roles: readonly string[]) {
+  return !roles.includes("SUPER_ADMIN");
+}
+
 export function hasStudentOnboarding(roles: readonly string[]) {
   return roles.some((role) =>
     ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),

@@ -188,6 +188,11 @@ describe("onboarding lifecycle and ownership", () => {
       (await secondDevice.query(api.onboarding.setup.get, {}))?.phase,
     ).toBe("completed");
   });
+  it("shows no setup to super admins", async () => {
+    const { t, ids, user } = await fixture();
+    await t.run((ctx) => ctx.db.patch(ids[0], { roles: ["SUPER_ADMIN"] }));
+    expect(await user.query(api.onboarding.setup.get, {})).toBeNull();
+  });
   it("uses student steps for mixed roles and excludes them for staff", async () => {
     const { staff } = await fixture();
     expect(

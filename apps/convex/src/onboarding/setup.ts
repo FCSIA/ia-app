@@ -12,6 +12,7 @@ import {
 } from "../../lib/currentUser";
 import {
   ONBOARDING_VERSION,
+  hasOnboarding,
   onboardingSteps,
   hasStudentOnboarding,
 } from "../../../shared/onboarding";
@@ -101,7 +102,7 @@ export const get = query({
   returns: v.union(statusValidator, v.null()),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUserUnchecked(ctx);
-    if (!user || user.mustResetPassword) return null;
+    if (!user || user.mustResetPassword || !hasOnboarding(user.roles)) return null;
     return status(ctx, user, await readState(ctx, user));
   },
 });
