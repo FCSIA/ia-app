@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import styles from "./snake-widget.module.css";
+import { SnakeBody } from "./SnakeBody";
 
 type Direction = "up" | "down" | "left" | "right";
 type Mode = "small" | "medium" | "large" | "extra-large";
@@ -41,26 +42,6 @@ const controls = [
   { direction: "up", icon: ArrowUp }, { direction: "left", icon: ArrowLeft },
   { direction: "down", icon: ArrowDown }, { direction: "right", icon: ArrowRight },
 ] as const;
-const headRotation: Record<Direction, number> = { right: 0, down: 90, left: 180, up: 270 };
-
-/** Only adjacent body segments connect, even when the snake curls beside itself. */
-function segmentStyle(snake: number[], index: number, width: number): CSSProperties {
-  const cell = snake[index];
-  const neighbors = [snake[index - 1], snake[index + 1]];
-  const left = cell % width > 0 && neighbors.includes(cell - 1);
-  const right = cell % width < width - 1 && neighbors.includes(cell + 1);
-  const up = neighbors.includes(cell - width);
-  const down = neighbors.includes(cell + width);
-  return {
-    left: left ? 0 : "9%", right: right ? 0 : "9%",
-    top: up ? 0 : "9%", bottom: down ? 0 : "9%",
-    borderTopLeftRadius: !up && !left ? "40%" : 0,
-    borderTopRightRadius: !up && !right ? "40%" : 0,
-    borderBottomLeftRadius: !down && !left ? "40%" : 0,
-    borderBottomRightRadius: !down && !right ? "40%" : 0,
-  };
-}
-
 function SchoolLeaderboard({ mode }: { mode: Mode }) {
   const scores = useQuery(api.dashboard.snake.leaderboard, { mode });
   if (scores === undefined) return <p role="status" className="py-6 text-sm text-muted-foreground">Loading scores…</p>;
@@ -271,17 +252,13 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
                 }}
               >
                 <div className="grid" style={{ gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))` }}>
-                  {Array.from({ length: width * height }, (_, cell) => {
-                    const segment = game.snake.indexOf(cell);
-                    return (
-                      <span key={cell} aria-hidden className={cn("relative aspect-square", (Math.floor(cell / width) + cell % width) % 2 === 0 ? styles.lightSquare : styles.darkSquare)}>
-                        {segment !== -1 ? <span className="absolute bg-primary" style={segmentStyle(game.snake, segment, width)}>
-                          {segment === 0 ? <svg viewBox="0 0 24 24" className="absolute inset-0 size-full fill-primary-foreground" style={{ transform: `rotate(${headRotation[game.direction]}deg)` }}><circle cx="16" cy="7.5" r="1.6" /><circle cx="16" cy="16.5" r="1.6" /></svg> : null}
-                        </span> : game.food === cell ? <span className="absolute inset-[22%] rounded-full bg-destructive" /> : null}
-                      </span>
-                    );
-                  })}
+                  {Array.from({ length: width * height }, (_, cell) => (
+                    <span key={cell} aria-hidden className={cn("relative aspect-square", (Math.floor(cell / width) + cell % width) % 2 === 0 ? styles.lightSquare : styles.darkSquare)}>
+                      {game.food === cell ? <span className="absolute inset-[22%] rounded-full bg-destructive" /> : null}
+                    </span>
+                  ))}
                 </div>
+                <SnakeBody snake={game.snake} direction={game.direction} width={width} height={height} duration={tickMs(score)} playing={game.status === "playing" && !layoutEditing} />
                 {game.status === "paused" || finished ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/90 px-4 text-center">
                     <div role="status">
