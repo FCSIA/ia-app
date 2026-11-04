@@ -12,6 +12,18 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.45 — 2026-11-04 (alpha)
+
+### Improved
+
+- **feedback** — Feedback includes screenshots and device diagnostics so staff can investigate problems more easily. ([`85f6b0f7`](https://github.com/FCSIA/ia-app/commit/85f6b0f7))
+- **onboarding** — Set up IA App with a checklist that saves your progress, opens the right settings, and stays out of the way when you finish or choose Later. ([#210](https://github.com/FCSIA/ia-app/pull/210), [`525348cd`](https://github.com/FCSIA/ia-app/commit/525348cd))
+
+### Fixed
+
+- **tooling** — Restore ReUI skills and configuration. ([`892ed453`](https://github.com/FCSIA/ia-app/commit/892ed453))
+- **web** — Fixed an error that prevented the home page from loading. ([`23838ab3`](https://github.com/FCSIA/ia-app/commit/23838ab3))
+
 ## v0.8.44 — 2026-11-03 (alpha)
 
 ### Fixed

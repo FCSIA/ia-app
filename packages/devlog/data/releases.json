@@ -2,6 +2,38 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.45",
+      "date": "2026-11-04",
+      "commit": "892ed453",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Feedback includes screenshots and device diagnostics so staff can investigate problems more easily.",
+          "commit": "85f6b0f7"
+        },
+        {
+          "category": "Improved",
+          "scope": "onboarding",
+          "summary": "Set up IA App with a checklist that saves your progress, opens the right settings, and stays out of the way when you finish or choose Later.",
+          "commit": "525348cd",
+          "pr": 210
+        },
+        {
+          "category": "Fixed",
+          "scope": "tooling",
+          "summary": "Restore ReUI skills and configuration.",
+          "commit": "892ed453"
+        },
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "Fixed an error that prevented the home page from loading.",
+          "commit": "23838ab3"
+        }
+      ]
+    },
+    {
       "version": "0.8.44",
       "date": "2026-11-03",
       "commit": "b0fe92c1",
