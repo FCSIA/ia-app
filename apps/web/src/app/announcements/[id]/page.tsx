@@ -46,7 +46,6 @@ const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') return 'Active';
-  if (status === 'EXPIRED') return 'Expired';
   if (status === 'ARCHIVED') return 'Archived';
   return status.replace(/_/g, ' ');
 }
@@ -98,6 +97,7 @@ export default function AnnouncementDetailPage({
 }) {
   const { id } = use(params);
   const announcementNow = useAnnouncementFeedClock(3_600_000);
+  const displayNow = useAnnouncementFeedClock(60_000);
   const user = useCurrentUser();
   const { toast } = useToast();
   const commentComposer = useRef<ChannelMessageComposerHandle>(null);
@@ -272,7 +272,7 @@ export default function AnnouncementDetailPage({
                   </time>
                   {announcement.expiresAt ? (
                     <span>
-                      Expires{' '}
+                      {announcement.expiresAt <= displayNow ? 'Expired' : 'Expires'}{' '}
                       {format(new Date(announcement.expiresAt), 'MMM d')}
                     </span>
                   ) : null}
