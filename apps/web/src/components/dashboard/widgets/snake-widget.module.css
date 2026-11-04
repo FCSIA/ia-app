@@ -72,3 +72,36 @@
     display: none;
   }
 }
+
+/* New food lands as the head finishes gliding into the old one (spring.moderate). */
+.food {
+  animation: food-pop 160ms cubic-bezier(0.22, 1, 0.36, 1) var(--food-delay, 0ms) both;
+}
+
+@keyframes food-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* The eaten piece stays visible until the head finishes covering it. */
+.eaten {
+  animation: food-eaten 0ms linear var(--food-delay, 0ms) forwards;
+}
+
+@keyframes food-eaten {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food {
+    animation: none;
+  }
+
+  .eaten {
+    display: none;
+  }
+}

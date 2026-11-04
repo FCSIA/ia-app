@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play, Trophy } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BellRing, Pause, Play, Trophy } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useMutation, useQuery } from "@/lib/convex-react";
 import { Panel } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useCurrentUser } from "@/lib/auth";
+import { spring } from "@/lib/springs";
+import { formatSchoolTime } from "@/lib/time-format";
 import { cn } from "@/lib/utils";
 import styles from "./snake-widget.module.css";
 import { SnakeBody } from "./SnakeBody";
+import { useClassLock, type ClassLock } from "./use-class-lock";
 
 type Direction = "up" | "down" | "left" | "right";
 type Mode = "small" | "medium" | "large" | "extra-large";
@@ -20,6 +26,8 @@ type Game = {
   food: number;
   direction: Direction;
   status: "ready" | "playing" | "paused" | "over" | "won";
+  /** The food eaten on the latest tick; it stays under the head until the glide lands. */
+  eaten?: number;
 };
 const modes: { id: Mode; label: string; width: number; height: number }[] = [
   { id: "small", label: "Small", width: 10, height: 8 },
@@ -78,7 +86,10 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   const modePicker = useRef<HTMLButtonElement>(null);
   const previousView = useRef<View>("setup");
   const leaderboardOrigin = useRef<"setup" | "game">("setup");
+  const scoreForSpeed = useRef(0);
   const submit = useMutation(api.dashboard.snake.submit);
+  const lock = useClassLock();
+  const locked = lock !== null;
   const modeLabelId = useId();
   const instructionsId = useId();
   const score = game.snake.length - 3;
@@ -90,9 +101,15 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
     turns.current.push(direction);
   };
 
+  useEffect(() => { scoreForSpeed.current = score; }, [score]);
+
+  // Fixed-step loop on animation frames: steady cadence without setInterval drift,
+  // no timer restart when the speed changes, and it idles with the tab.
   useEffect(() => {
-    if (game.status !== "playing" || layoutEditing || view !== "game") return;
-    const timer = window.setInterval(() => {
+    if (game.status !== "playing" || layoutEditing || view !== "game" || locked) return;
+    let frame = 0;
+    let last = performance.now();
+    const step = () => {
       const random = Math.random();
       const turn = turns.current.shift();
       if (turn) heading.current = turn;
@@ -107,14 +124,24 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
         const eating = target === prev.food;
         if (x < 0 || x >= width || y < 0 || y >= height || (eating ? prev.snake : prev.snake.slice(0, -1)).includes(target)) return { ...prev, status: "over" };
         const snake = [target, ...prev.snake.slice(0, eating ? undefined : -1)];
-        if (!eating) return { ...prev, snake, direction };
+        if (!eating) return { ...prev, snake, direction, eaten: undefined };
         const free = Array.from({ length: width * height }, (_, i) => i).filter(i => !snake.includes(i));
-        if (!free.length) return { ...prev, snake, direction, status: "won" };
-        return { ...prev, snake, direction, food: free[Math.floor(random * free.length)] };
+        if (!free.length) return { ...prev, snake, direction, eaten: target, status: "won" };
+        return { ...prev, snake, direction, eaten: target, food: free[Math.floor(random * free.length)] };
       });
-    }, tickMs(score));
-    return () => window.clearInterval(timer);
-  }, [game.status, layoutEditing, view, width, height, score]);
+    };
+    const loop = (now: number) => {
+      const interval = tickMs(scoreForSpeed.current);
+      if (now - last >= interval) {
+        // Stay on the grid of ticks, but never replay a backlog after a stall.
+        last = now - last >= interval * 2 ? now : last + interval;
+        step();
+      }
+      frame = requestAnimationFrame(loop);
+    };
+    frame = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frame);
+  }, [game.status, layoutEditing, view, width, height, locked]);
 
   useEffect(() => {
     if (!finished || score === 0 || !mode) return;
@@ -126,11 +153,11 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   useEffect(() => {
     const changedView = previousView.current !== view;
     previousView.current = view;
-    if (layoutEditing) return;
+    if (layoutEditing || locked) return;
     if (view === "game" && (changedView || game.status === "playing")) {
       board.current?.focus({ preventScroll: true });
     } else if (changedView) modePicker.current?.focus({ preventScroll: true });
-  }, [view, game.status, layoutEditing]);
+  }, [view, game.status, layoutEditing, locked]);
 
   useEffect(() => {
     const pause = () => setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
@@ -144,8 +171,8 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   }, []);
 
   useEffect(() => {
-    if (layoutEditing) setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
-  }, [layoutEditing]);
+    if (layoutEditing || locked) setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
+  }, [layoutEditing, locked]);
 
   const start = () => {
     if (!mode || layoutEditing) return;
@@ -168,6 +195,28 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
     setSaveError(false);
     setView("setup");
   };
+
+  // The checkerboard only changes with board size, so it doesn't re-render on every tick.
+  const squares = useMemo(() => Array.from({ length: width * height }, (_, cell) => (
+    <span key={cell} aria-hidden className={cn("aspect-square", (Math.floor(cell / width) + cell % width) % 2 === 0 ? styles.lightSquare : styles.darkSquare)} />
+  )), [width, height]);
+
+  // Food sits under the snake; new food pops in as the head lands on the old one.
+  const foodDelay = game.status === "playing" ? `${tickMs(score)}ms` : "0ms";
+  const foodDot = (cell: number, className: string, key: string | number) => (
+    <span
+      key={key}
+      aria-hidden
+      className={cn(className, "pointer-events-none absolute rounded-full bg-destructive")}
+      style={{
+        left: `${(cell % width + 0.22) / width * 100}%`,
+        top: `${(Math.floor(cell / width) + 0.22) / height * 100}%`,
+        width: `${0.56 / width * 100}%`,
+        height: `${0.56 / height * 100}%`,
+        "--food-delay": foodDelay,
+      } as CSSProperties}
+    />
+  );
 
   const modePickerField = (
     <div className="space-y-2">
@@ -196,10 +245,21 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   return (
     <Panel
       title="Snake"
-      action={view === "game" ? <span className="text-sm text-muted-foreground">Score <span className="ml-1 font-semibold tabular-nums text-foreground" aria-live="polite">{score}</span></span> : undefined}
+      action={view === "game" && !locked ? <span className="text-sm text-muted-foreground">Score <span className="ml-1 font-semibold tabular-nums text-foreground" aria-live="polite">{score}</span></span> : undefined}
     >
-      <div className={styles.widget} onKeyDownCapture={() => setKeyboardUsed(true)}>
-        {view === "setup" ? (
+      <div className={cn(styles.widget, "relative")} onKeyDownCapture={() => setKeyboardUsed(true)}>
+        <AnimatePresence initial={false} mode="popLayout">
+        <motion.div
+          key={locked ? "locked" : view}
+          className="h-full"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: spring.moderate.exit }}
+          transition={spring.moderate}
+        >
+        {lock ? (
+          <ClassLockNotice lock={lock} gamePaused={game.status === "paused"} />
+        ) : view === "setup" ? (
           <div className="mx-auto flex h-full w-full max-w-xs flex-col justify-center gap-5">
             {modePickerField}
             <div className="flex flex-wrap items-center gap-2">
@@ -252,22 +312,29 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
                 }}
               >
                 <div className="grid" style={{ gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))` }}>
-                  {Array.from({ length: width * height }, (_, cell) => (
-                    <span key={cell} aria-hidden className={cn("relative aspect-square", (Math.floor(cell / width) + cell % width) % 2 === 0 ? styles.lightSquare : styles.darkSquare)}>
-                      {game.food === cell ? <span className="absolute inset-[22%] rounded-full bg-destructive" /> : null}
-                    </span>
-                  ))}
+                  {squares}
                 </div>
+                {game.eaten !== undefined && game.status === "playing" ? foodDot(game.eaten, styles.eaten, `eaten-${game.eaten}`) : null}
+                {foodDot(game.food, styles.food, game.food)}
                 <SnakeBody snake={game.snake} direction={game.direction} width={width} height={height} duration={tickMs(score)} playing={game.status === "playing" && !layoutEditing} />
+                <AnimatePresence>
                 {game.status === "paused" || finished ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/90 px-4 text-center">
+                  <motion.div
+                    key="overlay"
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/90 px-4 text-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, transition: spring.moderate.exit }}
+                    transition={spring.moderate}
+                  >
                     <div role="status">
                       <p className="text-xl font-semibold">{finished ? game.status === "won" ? "Board cleared" : "Game over" : "Paused"}</p>
                       {finished ? <p className="mt-1 text-sm text-muted-foreground">{score} {score === 1 ? "point" : "points"}</p> : null}
                     </div>
                     <Button size="lg" leadingIcon={Play} disabled={layoutEditing} onClick={start}>{finished ? "Play again" : "Resume"}</Button>
-                  </div>
+                  </motion.div>
                 ) : null}
+                </AnimatePresence>
               </div>
             </div>
             <div className={styles.footer}>
@@ -293,7 +360,26 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
             </div>
           </div>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </Panel>
+  );
+}
+
+function ClassLockNotice({ lock, gamePaused }: { lock: ClassLock; gamePaused: boolean }) {
+  const user = useCurrentUser();
+  return (
+    <Empty className="h-full">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><BellRing aria-hidden /></EmptyMedia>
+        <EmptyTitle>{lock.label} is in session</EmptyTitle>
+        <EmptyDescription>{lock.joke}</EmptyDescription>
+      </EmptyHeader>
+      <p className="text-xs text-muted-foreground tabular-nums">
+        Snake opens at {formatSchoolTime(lock.endTime, user?.use24HourTime ?? false)}
+        {gamePaused ? " · Your game is paused" : ""}
+      </p>
+    </Empty>
   );
 }
