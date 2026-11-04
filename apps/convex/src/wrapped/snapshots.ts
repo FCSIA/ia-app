@@ -17,6 +17,7 @@ import {
   wrappedAvailability,
   PATHWAY_META,
 } from "./_lib";
+import type { Pathway } from "../validators";
 
 const availabilityValidator = v.object({
   open: v.boolean(),
@@ -109,15 +110,57 @@ function isAdmin(roles: string[]) {
 }
 
 const SNAPSHOT_BATCH_SIZE = 10;
+const MAX_PATHWAY_PEER_SCAN = 500;
+
+type PathwayStudentCounts = Record<Pathway, number>;
+
+const pathwayStudentCountsValidator = v.object({
+  INFORMATION_TECHNOLOGY: v.number(),
+  HEALTH_SCIENCE: v.number(),
+  ENGINEERING: v.number(),
+});
 
 function currentSchoolYearStart(now: Date): number {
   return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+/**
+ * Counts active students per major. A snapshot run reads the roster once and
+ * carries these totals between batches; reading it again for every student
+ * made each run quadratic in the number of students.
+ */
+async function countActiveStudentsByPathway(
+  ctx: QueryCtx | MutationCtx,
+): Promise<PathwayStudentCounts> {
+  const students = await ctx.db
+    .query("users")
+    .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
+      q.eq("isStudent", true),
+    )
+    .take(MAX_PATHWAY_PEER_SCAN);
+  const counts: PathwayStudentCounts = {
+    INFORMATION_TECHNOLOGY: 0,
+    HEALTH_SCIENCE: 0,
+    ENGINEERING: 0,
+  };
+  for (const student of students) {
+    if (student.isActive && student.major) counts[student.major] += 1;
+  }
+  return counts;
+}
+
+/** Other active students who share `user`'s major. */
+function pathwayPeerCount(user: Doc<"users">, counts: PathwayStudentCounts) {
+  if (!user.major) return 0;
+  const countsSelf = user.isStudent && user.isActive;
+  return Math.max(counts[user.major] - (countsSelf ? 1 : 0), 0);
 }
 
 async function buildSummaryForUser(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
   startYear: number,
+  pathwayCounts?: PathwayStudentCounts,
 ): Promise<WrappedSummary> {
   const { start, end } = schoolYearRange(startYear);
   const label = schoolYearLabel(startYear);
@@ -213,18 +256,12 @@ async function buildSummaryForUser(
     }
   }
 
-  let pathwayPeers = 0;
-  if (user.major) {
-    const peers = await ctx.db
-      .query("users")
-      .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
-        q.eq("isStudent", true),
+  const pathwayPeers = user.major
+    ? pathwayPeerCount(
+        user,
+        pathwayCounts ?? (await countActiveStudentsByPathway(ctx)),
       )
-      .take(500);
-    pathwayPeers = peers.filter(
-      (p) => p._id !== userId && p.isActive && p.major === user.major,
-    ).length;
-  }
+    : 0;
 
   let topChannel: WrappedSummary["topChannel"] = null;
   let topChannelId: Id<"clubChannels"> | null = null;
@@ -556,11 +593,14 @@ export const runSnapshotBatch = internalMutation({
     cursor: v.optional(v.string()),
     offset: v.optional(v.number()),
     userIds: v.optional(v.array(v.id("users"))),
+    pathwayCounts: v.optional(pathwayStudentCountsValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const selectedIds = args.userIds;
     const offset = args.offset ?? 0;
+    const pathwayCounts =
+      args.pathwayCounts ?? (await countActiveStudentsByPathway(ctx));
     let nextCursor: string | null = null;
     let students: Doc<"users">[];
 
@@ -593,7 +633,12 @@ export const runSnapshotBatch = internalMutation({
       await storeSnapshot(
         ctx,
         student._id,
-        await buildSummaryForUser(ctx, student._id, args.schoolYear),
+        await buildSummaryForUser(
+          ctx,
+          student._id,
+          args.schoolYear,
+          pathwayCounts,
+        ),
       );
     }
 
@@ -603,12 +648,14 @@ export const runSnapshotBatch = internalMutation({
         refresh: args.refresh,
         userIds: selectedIds,
         offset: offset + SNAPSHOT_BATCH_SIZE,
+        pathwayCounts,
       });
     } else if (nextCursor) {
       await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
         schoolYear: args.schoolYear,
         refresh: args.refresh,
         cursor: nextCursor,
+        pathwayCounts,
       });
     }
     return null;
