@@ -87,6 +87,9 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   const previousView = useRef<View>("setup");
   const leaderboardOrigin = useRef<"setup" | "game">("setup");
   const scoreForSpeed = useRef(0);
+  // iOS moves focus off the board when a direction button is tapped, even with
+  // pointerdown cancelled. That blur must not read as the player leaving.
+  const pressingControl = useRef(false);
   const submit = useMutation(api.dashboard.snake.submit);
   const lock = useClassLock();
   const locked = lock !== null;
@@ -295,7 +298,8 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
                 className={cn(styles.board, "relative isolate overflow-hidden rounded-2xl bg-muted outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring")}
                 style={{ "--board-ratio": width / height } as CSSProperties}
                 onBlur={event => {
-                  if (!event.currentTarget.contains(event.relatedTarget)) setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
+                  if (pressingControl.current || event.currentTarget.contains(event.relatedTarget)) return;
+                  setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
                 }}
                 onKeyDown={event => {
                   if (layoutEditing || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -342,7 +346,7 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
                 <p id={instructionsId} className={cn("text-center text-xs text-muted-foreground", !keyboardUsed && styles.keyboardHint)}>WASD / arrows · Space to pause</p>
                 {!keyboardUsed && game.status === "playing" ? (
                   <div className={cn(styles.touchControls, "w-fit grid-cols-3 gap-3")} role="group" aria-label="Direction controls">
-                    {controls.map(({ direction, icon: Icon }, index) => <Button key={direction} type="button" size="icon" variant="secondary" disabled={layoutEditing} onPointerDown={event => event.preventDefault()} onClick={() => { steer(direction); board.current?.focus({ preventScroll: true }); }} aria-label={`Move ${direction}`} className={index === 0 ? "col-start-2" : index === 1 ? "col-start-1 row-start-2" : "row-start-2"}><Icon aria-hidden /></Button>)}
+                    {controls.map(({ direction, icon: Icon }, index) => <Button key={direction} type="button" size="icon" variant="secondary" disabled={layoutEditing} onPointerDown={event => { event.preventDefault(); pressingControl.current = true; }} onPointerCancel={() => { pressingControl.current = false; }} onClick={() => { pressingControl.current = false; steer(direction); board.current?.focus({ preventScroll: true }); }} aria-label={`Move ${direction}`} className={index === 0 ? "col-start-2" : index === 1 ? "col-start-1 row-start-2" : "row-start-2"}><Icon aria-hidden /></Button>)}
                   </div>
                 ) : null}
               </div>
