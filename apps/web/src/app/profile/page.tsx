@@ -20,11 +20,11 @@ import {
   AccountSettingsSection,
   AppearanceSection,
   ModerationAlertsSection,
-  PROFILE_SECTIONS,
   ProfileSidebar,
   WhatsNewSection,
 } from './_components/ProfileSections';
-import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
+import type { PasswordForm } from './_components/ProfileSections';
+import { PROFILE_SECTIONS, type ProfileSection } from './_components/profile-sections';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',

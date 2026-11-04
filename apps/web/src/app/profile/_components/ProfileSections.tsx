@@ -3,14 +3,8 @@
 import { type Dispatch, type SetStateAction } from 'react';
 import { displayName as profileName, regularName } from '~/apps/shared/user-name';
 import {
-  Bell,
   Lock,
   LogOut,
-  Palette,
-  PanelBottom,
-  ShieldAlert,
-  User,
-  type LucideIcon,
 } from 'lucide-react';
 import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +25,7 @@ import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { PreferredNameSettings } from './PreferredNameSettings';
+import { PROFILE_SECTIONS, type ProfileSection } from './profile-sections';
 
 const cardClass = cn(
   'border border-border bg-card pb-0',
@@ -96,27 +91,6 @@ type ChangePasswordCardProps = {
   onCancel: () => void;
   onSubmit: (data: { currentPassword: string; newPassword: string }) => void;
 };
-
-export type ProfileSection =
-  | 'account'
-  | 'notifications'
-  | 'appearance'
-  | 'navigation'
-  | 'moderation'
-  | 'whats-new';
-
-export const PROFILE_SECTIONS: Array<{
-  id: ProfileSection;
-  label: string;
-  icon?: LucideIcon;
-}> = [
-  { id: 'account', label: 'Account', icon: User },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'navigation', label: 'Navigation', icon: PanelBottom },
-  { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
-  { id: 'whats-new', label: "What's new" },
-];
 
 type ProfileSidebarProps = {
   activeSection: ProfileSection;
