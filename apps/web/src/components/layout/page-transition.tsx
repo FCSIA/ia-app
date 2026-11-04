@@ -1,7 +1,7 @@
 'use client';
 
 import { useLayoutEffect, type ReactNode } from 'react';
-import { motion, useAnimationControls } from 'framer-motion';
+import { domAnimation, LazyMotion, m, useAnimationControls } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { spring } from '@/lib/springs';
 
@@ -40,8 +40,12 @@ export function PageTransition({ children, className }: PageTransitionProps) {
   }, [pathname, controls]);
 
   return (
-    <motion.div className={className} initial={false} animate={controls}>
-      {children}
-    </motion.div>
+    // An opacity entrance needs only the DOM animation features, loaded with
+    // the boundary so the first route frame can already animate.
+    <LazyMotion features={domAnimation}>
+      <m.div data-page-transition className={className} initial={false} animate={controls}>
+        {children}
+      </m.div>
+    </LazyMotion>
   );
 }
