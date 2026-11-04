@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChartLine, ContactRound, FileText, Menu, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { SidebarMenu, SidebarProvider, SidebarTrigger, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, useSidebar } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { WorkspaceSidebar, WorkspaceSidebarItem, WorkspaceSidebarPanel, WorkspaceSidebarSection } from '@/components/ui/workspace-sidebar';
@@ -92,11 +93,15 @@ function PersistAdminSidebar() {
   return null;
 }
 
-/** Collapsing the rail leaves this trigger in the content gutter to bring it back. */
-function AdminSidebarReopen() {
+/** The content pane; while the rail is collapsed it keeps a gutter for the reopen trigger. */
+function AdminContent({ children }: { children: ReactNode }) {
   const { open } = useSidebar();
-  if (open) return null;
-  return <SidebarTrigger size="icon-compact" className="absolute left-1 top-2 z-10 hidden lg:inline-flex" />;
+  return (
+    <div className={cn('relative flex min-h-0 min-w-0 flex-1 p-4 pt-1 md:p-6 md:pt-2 lg:p-8 lg:pt-2', !open && 'lg:pl-14')}>
+      {open ? null : <SidebarTrigger size="icon-compact" className="absolute left-3 top-3 z-10 hidden lg:inline-flex" />}
+      {children}
+    </div>
+  );
 }
 
 /** Phone navigation uses the same links and permission filtering as desktop. */
@@ -127,10 +132,7 @@ export function AdminShell({ children, ...navigation }: AdminNavigationProps & {
     <SidebarProvider persist={false} shortcut={null} mobileBreakpoint={1024} className="admin-shell flex h-full min-h-0 min-w-0 w-full flex-1">
       <PersistAdminSidebar />
       <AdminNavigation {...navigation} resizable />
-      <div className="relative flex min-h-0 min-w-0 flex-1 p-4 pt-1 md:p-6 md:pt-2 lg:p-8 lg:pt-2">
-        <AdminSidebarReopen />
-        {children}
-      </div>
+      <AdminContent>{children}</AdminContent>
     </SidebarProvider>
   );
 }
