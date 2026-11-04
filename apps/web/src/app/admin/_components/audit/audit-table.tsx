@@ -32,7 +32,7 @@ function WhenCell({ event, newDay }: { event: AuditEventRecord; newDay: boolean 
   const date = new Date(event.createdAt);
   return <span className="flex min-w-0 items-baseline gap-2 tabular-nums">
     <span className="w-[5.75rem] shrink-0 truncate text-muted-foreground" aria-hidden="true">{newDay ? dayLabel(date) : null}</span>
-    <time dateTime={event.createdAt} title={format(date, 'PPpp')} aria-label={format(date, 'PPPp')}>{format(date, 'h:mm a')}</time>
+    <time className="shrink-0 whitespace-nowrap" dateTime={event.createdAt} title={format(date, 'PPpp')} aria-label={format(date, 'PPPp')}>{format(date, 'h:mm a')}</time>
   </span>;
 }
 
@@ -109,9 +109,9 @@ export function AuditTable({ audit }: { audit: AuditState }) {
   const empty = <AdminNotice message="No activity matches these filters." actionLabel={audit.hasActiveAuditFilters ? 'Clear filters' : undefined} onAction={audit.hasActiveAuditFilters ? audit.clearAuditFilters : undefined} />;
   return <div className="min-w-0 space-y-3" aria-busy={audit.isStale || audit.auditStatus === 'LoadingMore'}>
     {!isMobile ? <div className="hidden md:block"><Table className="table-fixed" aria-label="Audit activity">
-      <colgroup><col className="w-[11rem]" /><col className="w-[19%]" /><col className="w-[20%]" /><col /><col className="hidden w-[19%] xl:table-column" /><col className="w-11" /></colgroup>
+      <colgroup><col className="w-[12.5rem]" /><col className="w-[19%]" /><col className="w-[20%]" /><col /><col className="hidden w-[19%] xl:table-column" /><col className="w-11" /></colgroup>
       {/* Pinned under the sticky toolbar (audit-tab sets --audit-sticky-top). */}
-      <TableHeader className="sticky top-(--audit-sticky-top,0px) z-20 bg-background"><TableRow>
+      <TableHeader className="sticky top-(--audit-sticky-top,0px) z-20 bg-(--app-main-bg) [&_th]:shadow-[inset_0_-1px_0_var(--color-border)]"><TableRow>
         <TableHead scope="col"><WhenHeader audit={audit} /></TableHead>
         {(['Person', 'Action', 'Record'] as const).map((column: AuditFilterColumn) => <TableHead key={column} scope="col"><TableHeadFilter label={column} active={auditFilterActive(audit, column)}><AuditColumnFilter column={column} surface="menu" audit={audit} /></TableHeadFilter></TableHead>)}
         <TableHead scope="col" className="hidden xl:table-cell">Where</TableHead><TableHead scope="col"><span className="sr-only">Details</span></TableHead>

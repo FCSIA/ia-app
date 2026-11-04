@@ -970,6 +970,25 @@
    - Adjacent icon buttons need gap >= 8px (gap-2) so one control's hit area
      does not reach into its neighbour's painted box.
    --------------------------------------------------------------------------- */
+/* Pinned bands inside the main surface (sticky toolbars and table headers)
+   paint the surface they float over: the page background on phones and the
+   inset frame's surface-2 from the main navigation's 1024px breakpoint. */
+@layer components {
+  .app-main-surface {
+    --app-main-bg: hsl(var(--background));
+  }
+  @media (min-width: 1024px) {
+    .app-main-surface {
+      --app-main-bg: var(--surface-2);
+    }
+  }
+  /* The wallpaper frosts the surface; a band stays near-opaque so rows
+     scrolling beneath it stay legible. */
+  .custom[data-custom-wallpaper] .app-main-surface {
+    --app-main-bg: hsl(var(--background) / 0.94);
+  }
+}
+
 @layer components {
   .touch-target {
     position: relative;

@@ -39,13 +39,16 @@ export function AuditTab() {
   useEffect(() => {
     const toolbar = toolbarRef.current;
     if (!toolbar) return;
-    const observer = new ResizeObserver(() => sectionRef.current?.style.setProperty('--audit-sticky-top', `${toolbar.offsetHeight}px`));
+    // Sticky offsets start below the scroll viewport's top padding; the
+    // toolbar pulls up into it (negative top), so the header sits that much higher.
+    const observer = new ResizeObserver(() => sectionRef.current?.style.setProperty('--audit-sticky-top', `${toolbar.offsetHeight + Number.parseFloat(getComputedStyle(toolbar).top)}px`));
     observer.observe(toolbar);
     return () => observer.disconnect();
   }, []);
   return <>
     <section ref={sectionRef} aria-label="Audit activity" className="flex min-w-0 flex-col">
-      <div ref={toolbarRef} className="sticky top-0 z-30 flex flex-col gap-2 bg-background pb-3">
+      {/* Covers the viewport's top padding too, so rows never show above it. */}
+      <div ref={toolbarRef} className="sticky -top-3 z-30 -mt-3 flex flex-col gap-2 bg-(--app-main-bg) pb-3 pt-3">
       <SearchToolbarRow className="flex-row items-center gap-2">
         <AuditSearch audit={audit} />
         <Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" aria-label="Search syntax help"><CircleHelp /></Button></PopoverTrigger>
