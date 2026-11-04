@@ -40,6 +40,7 @@ import {
 import {
   CALENDAR_SOURCES,
   CalendarEventRow,
+  CalendarSourceIcon,
   type CalendarSource,
 } from '@/components/calendar/calendar-event-row';
 import { AppShell } from '@/components/layout/AppShell';
@@ -575,13 +576,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                     >
                       {SOURCES.map((source) => (
                         <FilterToggleItem key={source} value={source}>
-                          <span
-                            aria-hidden="true"
-                            className="size-2 rounded-full"
-                            style={{
-                              backgroundColor: CALENDAR_SOURCES[source].color,
-                            }}
-                          />
+                          <CalendarSourceIcon source={source} />
                           {CALENDAR_SOURCES[source].label}
                         </FilterToggleItem>
                       ))}

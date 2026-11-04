@@ -51,7 +51,7 @@ export function CalendarWidget() {
       flush
     >
       {rows?.length ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {dates.map((date) => (
             <div key={date}>
               <h4 className="px-4 pb-1 text-xs font-medium text-muted-foreground">
@@ -83,6 +83,7 @@ export function CalendarWidget() {
                         href={href}
                         external={/^https?:/.test(href)}
                         label={`Open ${entry.title}`}
+                        className="min-h-11 py-2.5"
                       >
                         <CardContent className="w-full pr-4">
                           <CalendarEventRow
