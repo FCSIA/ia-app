@@ -41,7 +41,6 @@ Staged now, each waiting on its migration in production:
 
 | Table | Staged change | Migration |
 | --- | --- | --- |
-| `announcements` | drop the `EXPIRED` status | `announcements/migrations:retireExpiredStatus` |
 | `events` | drop `isInactive`, `deactivatedAt`, `DRAFT`, `APPROVED` | `events/migrations:dropUnusedLifecycleFields` |
 | `notificationPreferences` | drop `enabled` (use `level`) | `notifications/migrations:foldPreferenceEnabledIntoLevel` |
 
