@@ -2,9 +2,15 @@
 
 import { displayName } from '~/apps/shared/user-name';
 
-import { Plus, Trash2, Info } from 'lucide-react';
+import {
+  CheckCircle2,
+  CircleSlash,
+  Info,
+  Plus,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
 import type { Id, Doc } from '~/apps/convex/src/_generated/dataModel';
-import { Badge } from '@/components/ui/badge';
 import { Button, iconSizeFor } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
@@ -28,7 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatDateTime } from '../_lib/admin-utils';
+import {
+  ReportStatusActions,
+  type ReportStatusAction,
+} from '@/components/moderation/report-status-actions';
+import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
+import { cn } from '@/lib/utils';
+import { formatDateTime, formatShortDate } from '../_lib/admin-utils';
 import { AdminNotice } from './admin-ui';
 
 type ModerationMutation<TArgs> = {
@@ -50,6 +62,41 @@ type ModerationReport = Doc<'moderationReports'> & {
   } | null;
 };
 type ModerationReportStatus = ModerationReport['status'];
+type ModerationAction = ReportStatusAction<ModerationReportStatus>;
+
+const RESOLVE: ModerationAction = {
+  label: 'Resolve',
+  status: 'RESOLVED',
+  icon: CheckCircle2,
+};
+const DISMISS: ModerationAction = {
+  label: 'Dismiss',
+  status: 'DISMISSED',
+  icon: CircleSlash,
+};
+const REOPEN: ModerationAction = {
+  label: 'Reopen',
+  status: 'PENDING',
+  icon: Undo2,
+};
+
+/** Same anatomy as the feedback queue: the next step leads, the rest in a menu. */
+const MODERATION_ACTIONS: Record<
+  ModerationReportStatus,
+  { primary: ModerationAction; more: ModerationAction[] }
+> = {
+  PENDING: { primary: RESOLVE, more: [DISMISS] },
+  // Moderation reports are never put in review; listed for completeness.
+  IN_REVIEW: { primary: RESOLVE, more: [DISMISS] },
+  RESOLVED: { primary: REOPEN, more: [] },
+  DISMISSED: { primary: REOPEN, more: [] },
+};
+
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  ANNOUNCEMENT: 'Announcement',
+  EVENT: 'Event',
+  CLUB_CHANNEL_MESSAGE: 'Club message',
+};
 
 export function ModerationTab({
   keyword,
@@ -81,6 +128,7 @@ export function ModerationTab({
   reportMutation: ModerationMutation<{
     id: Id<'moderationReports'>;
     status: ModerationReportStatus;
+    expectedStatus: ModerationReportStatus;
     reviewNote: string;
   }>;
 }) {
@@ -227,78 +275,68 @@ export function ModerationTab({
             <TableRow>
               <TableHead className={classes.head}>Report</TableHead>
               <TableHead className={classes.head}>Submitted by</TableHead>
+              <TableHead className={classes.head}>Submitted</TableHead>
               <TableHead className={classes.head}>Status</TableHead>
-              <TableHead className={classes.head}>Actions</TableHead>
+              <TableHead className={classes.head}>
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredReports.map((report, index) => (
               <TableRow key={report._id} index={index}>
-                <TableCell className={classes.cell}>
-                  <p className="max-w-md whitespace-normal break-words font-medium text-foreground">
+                <TableCell className={cn(classes.cell, 'w-full')}>
+                  <p className="line-clamp-2 min-w-56 max-w-2xl whitespace-normal break-words font-medium text-foreground">
                     {report.reason}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {report.contentType.toLowerCase().replaceAll('_', ' ')} ·{' '}
-                    {formatDateTime(report._creationTime)}
+                    {CONTENT_TYPE_LABELS[report.contentType] ?? 'Content'}
+                    {report.reportedUser
+                      ? ` by ${displayName(report.reportedUser)}`
+                      : ''}
                   </p>
                 </TableCell>
-                <TableCell className={classes.cell}>
+                <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
                   {displayName(report.submitter)}
                 </TableCell>
-                <TableCell className={classes.cell}>
-                  <Badge
-                    size="sm"
-                    variant="solid"
-                    color={
-                      report.status === 'PENDING'
-                        ? 'amber'
-                        : report.status === 'RESOLVED'
-                          ? 'emerald'
-                          : 'gray'
-                    }
+                <TableCell
+                  className={cn(
+                    classes.cell,
+                    'whitespace-nowrap text-muted-foreground',
+                  )}
+                >
+                  <time
+                    dateTime={new Date(report._creationTime).toISOString()}
+                    title={formatDateTime(report._creationTime)}
                   >
-                    {report.status === 'PENDING'
-                      ? 'Pending'
-                      : report.status === 'RESOLVED'
-                        ? 'Resolved'
-                        : 'Dismissed'}
-                  </Badge>
+                    {formatShortDate(report._creationTime)}
+                  </time>
                 </TableCell>
                 <TableCell className={classes.cell}>
-                  {report.status === 'PENDING' ? (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={reportMutation.isPending}
-                        onClick={() =>
-                          reportMutation.mutate({
-                            id: report._id,
-                            status: 'RESOLVED',
-                            reviewNote: 'Reviewed',
-                          })
-                        }
-                      >
-                        Resolve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={reportMutation.isPending}
-                        onClick={() =>
-                          reportMutation.mutate({
-                            id: report._id,
-                            status: 'DISMISSED',
-                            reviewNote: 'Dismissed',
-                          })
-                        }
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  ) : (
-                    '—'
-                  )}
+                  <ReportStatusBadge
+                    status={report.status}
+                    audience="moderation"
+                  />
+                </TableCell>
+                <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
+                  <div className="flex justify-end">
+                    <ReportStatusActions
+                      {...MODERATION_ACTIONS[report.status]}
+                      emphasis={
+                        report.status === 'PENDING' ? 'primary' : 'secondary'
+                      }
+                      disabled={reportMutation.isPending}
+                      menuLabel={`report from ${displayName(report.submitter)}`}
+                      onRun={(action) =>
+                        reportMutation.mutate({
+                          id: report._id,
+                          status: action.status,
+                          expectedStatus: report.status,
+                          reviewNote: '',
+                        })
+                      }
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

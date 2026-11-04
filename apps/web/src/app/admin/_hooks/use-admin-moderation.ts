@@ -96,10 +96,12 @@ export function useAdminModeration(activeTab: AdminTabId) {
     mutate: ({
       id,
       status,
+      expectedStatus,
       reviewNote,
     }: {
       id: string;
       status: Doc<'moderationReports'>['status'];
+      expectedStatus: Doc<'moderationReports'>['status'];
       reviewNote: string;
     }) => {
       if (updating) return;
@@ -107,6 +109,7 @@ export function useAdminModeration(activeTab: AdminTabId) {
       void updateReport({
         reportId: id as Id<'moderationReports'>,
         status,
+        expectedStatus,
         reviewNote,
       })
         .then(() => toast({ title: 'Report updated' }))

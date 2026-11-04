@@ -6,7 +6,6 @@ import {
   Archive,
   CheckCircle2,
   ChevronDown,
-  Ellipsis,
   ExternalLink,
   Eye,
   Github,
@@ -20,13 +19,11 @@ import {
 } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
 import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
-import { STAFF_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   DataTablePanel,
   dataTableClasses,
 } from '@/components/data/data-table-panel';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -41,12 +38,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownContent,
-  DropdownMenu,
-  DropdownTrigger,
-} from '@/components/ui/dropdown';
-import { MenuItem } from '@/components/ui/menu-item';
 import { SearchInput } from '@/components/ui/search';
 import {
   Table,
@@ -59,10 +50,14 @@ import {
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { AnimatedGif } from '@/components/media/animated-gif';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { formatDateTime } from '../_lib/admin-utils';
+import {
+  ReportStatusActions,
+  type ReportStatusAction,
+} from '@/components/moderation/report-status-actions';
+import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
+import { formatDateTime, formatShortDate } from '../_lib/admin-utils';
 import { AdminNotice } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
@@ -250,8 +245,8 @@ export function FeedbackTab({
                           {formatShortDate(report._creationTime)}
                         </time>
                       </TableCell>
-                      <TableCell className={classes.cell}>
-                        <div className="flex items-center gap-2">
+                      <TableCell className={cn(classes.cell, 'whitespace-nowrap')}>
+                        <div className="flex items-center justify-end gap-2">
                           <FeedbackDetail
                             report={report}
                             body={drafts[report._id] ?? ''}
@@ -286,18 +281,13 @@ export function FeedbackTab({
   );
 }
 
-type StatusAction = {
-  label: string;
-  status: FeedbackReport['status'];
-  reviewNote: string;
-  icon: typeof Inbox;
-};
+type StatusAction = ReportStatusAction<FeedbackReport['status']>;
 
-const START_REVIEW: StatusAction = { label: 'Start review', status: 'IN_REVIEW', reviewNote: '', icon: Eye };
-const RESOLVE: StatusAction = { label: 'Resolve', status: 'RESOLVED', reviewNote: '', icon: CheckCircle2 };
-const ARCHIVE: StatusAction = { label: 'Archive', status: 'DISMISSED', reviewNote: '', icon: Archive };
-const MOVE_TO_NEW: StatusAction = { label: 'Move back to New', status: 'PENDING', reviewNote: '', icon: Inbox };
-const REOPEN: StatusAction = { label: 'Reopen', status: 'IN_REVIEW', reviewNote: '', icon: Undo2 };
+const START_REVIEW: StatusAction = { label: 'Start review', status: 'IN_REVIEW', icon: Eye };
+const RESOLVE: StatusAction = { label: 'Resolve', status: 'RESOLVED', icon: CheckCircle2 };
+const ARCHIVE: StatusAction = { label: 'Archive', status: 'DISMISSED', icon: Archive };
+const MOVE_TO_NEW: StatusAction = { label: 'Move back to New', status: 'PENDING', icon: Inbox };
+const REOPEN: StatusAction = { label: 'Reopen', status: 'IN_REVIEW', icon: Undo2 };
 
 /** The next step for each status leads; the other transitions sit in a menu. */
 const STATUS_ACTIONS: Record<
@@ -317,70 +307,26 @@ function FeedbackStatusActions({
   report: FeedbackReport;
   reportMutation: FeedbackMutation;
 }) {
-  const { primary, more } = STATUS_ACTIONS[report.status];
-  const run = (action: StatusAction) =>
-    reportMutation.mutate({
-      id: report._id,
-      status: action.status,
-      expectedStatus: report.status,
-      reviewNote: action.reviewNote,
-    });
   const decided = report.status === 'RESOLVED' || report.status === 'DISMISSED';
-
   return (
-    <>
-      <Button
-        size="sm"
-        variant={decided ? 'secondary' : 'primary'}
-        leadingIcon={primary.icon}
-        disabled={reportMutation.isPending}
-        onClick={() => run(primary)}
-      >
-        {primary.label}
-      </Button>
-      {more.length ? (
-        <DropdownMenu disabled={reportMutation.isPending}>
-          <DropdownTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`More actions for feedback from ${displayName(report.submitter)}`}
-              >
-                <Ellipsis />
-              </Button>
-            }
-          />
-          <DropdownContent align="end">
-            {more.map((action, index) => (
-              <MenuItem
-                key={action.status}
-                index={index}
-                icon={action.icon}
-                label={action.label}
-                onSelect={() => run(action)}
-              />
-            ))}
-          </DropdownContent>
-        </DropdownMenu>
-      ) : null}
-    </>
+    <ReportStatusActions
+      {...STATUS_ACTIONS[report.status]}
+      emphasis={decided ? 'secondary' : 'primary'}
+      disabled={reportMutation.isPending}
+      menuLabel={`feedback from ${displayName(report.submitter)}`}
+      onRun={(action) =>
+        reportMutation.mutate({
+          id: report._id,
+          status: action.status,
+          expectedStatus: report.status,
+          // The status speaks for itself; a note would only repeat it.
+          reviewNote: '',
+        })
+      }
+    />
   );
 }
 
-const STATUS_BADGE_COLORS = {
-  PENDING: 'blue',
-  IN_REVIEW: 'amber',
-  RESOLVED: 'emerald',
-  DISMISSED: 'gray',
-} as const satisfies Record<FeedbackReport['status'], string>;
-
-function formatShortDate(value: number) {
-  const date = new Date(value);
-  return format(date, date.getFullYear() === new Date().getFullYear() ? 'MMM d' : 'MMM d, yyyy');
-}
-
-/** Only what differs between rows: attachments, replies, or a sync problem. */
 function FeedbackRowMeta({ report }: { report: FeedbackReport }) {
   const syncFailed = report.githubIssueSyncState === 'FAILED';
   if (!report.images.length && !report.responses.length && !syncFailed) return null;
@@ -504,13 +450,9 @@ function FeedbackDetail({
         </DialogHeader>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-y border-border/40 py-2.5">
-          <Badge color={STATUS_BADGE_COLORS[report.status]} variant="dot">
-            {STAFF_FEEDBACK_STATUS_LABELS[report.status]}
-          </Badge>
+          <ReportStatusBadge status={report.status} audience="feedback" />
           {canUpdateFeedback ? (
-            <div className="flex items-center gap-1">
-              <FeedbackStatusActions report={report} reportMutation={reportMutation} />
-            </div>
+            <FeedbackStatusActions report={report} reportMutation={reportMutation} />
           ) : null}
         </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { X } from 'lucide-react';
+import { Info, MessageSquare, X } from 'lucide-react';
 import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
@@ -19,7 +19,8 @@ import { APP_VERSION, RELEASE_CHANNEL, formatVersion } from '@ia/devlog';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { useShape } from '@/lib/shape-context';
 import { collectFeedbackMetadata } from '@/lib/feedback-metadata';
-import { SUBMITTER_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
+import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
+import { meaningfulReviewNote } from '~/apps/shared/feedback-status';
 import { cn } from '@/lib/utils';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
@@ -222,22 +223,31 @@ export default function ReportPage() {
               {myFeedback.map((feedback) => (
                 <article key={feedback._id} className="flex min-w-0 flex-col gap-3 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <p>{SUBMITTER_FEEDBACK_STATUS_LABELS[feedback.status]}</p>
+                    <ReportStatusBadge status={feedback.status} audience="submitter" />
                     <time dateTime={new Date(feedback.createdAt).toISOString()}>
                       {formatDistanceToNow(new Date(feedback.createdAt), { addSuffix: true })}
                     </time>
                   </div>
                   <p className="whitespace-pre-wrap break-words text-sm text-foreground">{feedback.reason}</p>
-                  {feedback.reviewNote ? (
-                    <div className="border-l-2 border-border/50 pl-3 text-sm">
-                      <p className="font-medium text-foreground">Review update</p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">{feedback.reviewNote}</p>
-                    </div>
+                  {meaningfulReviewNote(feedback.reviewNote) ? (
+                    <p className="flex gap-2 text-xs text-muted-foreground">
+                      <Info className="mt-px size-3.5 shrink-0" aria-hidden />
+                      <span className="whitespace-pre-wrap break-words">{meaningfulReviewNote(feedback.reviewNote)}</span>
+                    </p>
                   ) : null}
                   {feedback.responses.map((response) => (
-                    <div key={response._id} className="border-l-2 border-border/50 pl-3 text-sm">
-                      <p className="font-medium text-foreground">School staff</p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">{response.body}</p>
+                    <div key={response._id} className="flex gap-3">
+                      <MessageSquare className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">School staff</span>
+                          {' · '}
+                          <time dateTime={new Date(response.createdAt).toISOString()}>
+                            {formatDistanceToNow(new Date(response.createdAt), { addSuffix: true })}
+                          </time>
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{response.body}</p>
+                      </div>
                     </div>
                   ))}
                 </article>

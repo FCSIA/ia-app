@@ -22,3 +22,13 @@ export const SUBMITTER_FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = 
 export function isOpenFeedbackStatus(status: FeedbackStatus) {
   return status === "PENDING" || status === "IN_REVIEW";
 }
+
+// Staff quick actions once saved these as review notes; they only repeat the
+// status, so submitter views skip them.
+const LEGACY_PLACEHOLDER_NOTES = new Set(["Reviewed", "Dismissed"]);
+
+/** A review note worth showing a submitter, or undefined. */
+export function meaningfulReviewNote(note: string | undefined) {
+  const trimmed = note?.trim();
+  return trimmed && !LEGACY_PLACEHOLDER_NOTES.has(trimmed) ? trimmed : undefined;
+}

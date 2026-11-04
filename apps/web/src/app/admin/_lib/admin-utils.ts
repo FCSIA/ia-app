@@ -47,6 +47,15 @@ export function formatDateTime(value?: string | number | null) {
   return format(new Date(value), 'MMM d, yyyy h:mm a');
 }
 
+/** Compact table date: "Nov 4" this year, "Nov 4, 2025" otherwise. */
+export function formatShortDate(value: string | number) {
+  const date = new Date(value);
+  return format(
+    date,
+    date.getFullYear() === new Date().getFullYear() ? 'MMM d' : 'MMM d, yyyy',
+  );
+}
+
 export function refreshWrappedResultTitle(generated: number, skipped: number) {
   if (generated === 0 && skipped > 0) return 'Wrapped snapshots already current';
   return `Generated ${generated} Wrapped snapshot${generated === 1 ? '' : 's'}`;

@@ -99,7 +99,15 @@ pending). New and in-review feedback both keep the issue open, so moving
 between them sends nothing to GitHub, and a reopen event leaves in-review
 feedback in review. The issue link is visible to feedback reviewers.
 
-The staff queue gives each row one leading status action (New: **Start
+Both staff queues (Reports and Feedback) share one review anatomy from
+`apps/web/src/components/moderation/`: `ReportStatusBadge` colors review states
+like the rest of the app (waiting amber, in review blue, resolved emerald,
+dismissed gray) and words them per reader, and `ReportStatusActions` leads with
+the item's next step and puts other transitions in a row menu. Moderation
+reports resolve or dismiss from pending and can be reopened once decided. The
+submitter's history on `/report` uses the same badge.
+
+The feedback queue gives each row one leading status action (New: **Start
 review**; In review: **Resolve**; Resolved or Archived: **Reopen**, back into
 review) with the remaining transitions in a row menu. The feedback dialog,
 including direct `/admin/feedback/[reportId]` links, repeats the same actions in
