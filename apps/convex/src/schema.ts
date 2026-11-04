@@ -1535,6 +1535,9 @@ export const schema = defineSchema({
     reason: v.string(),
     status: v.union(
       v.literal("PENDING"),
+      // General feedback only: a reviewer has picked it up. GitHub keeps the
+      // issue open, as for PENDING.
+      v.literal("IN_REVIEW"),
       v.literal("RESOLVED"),
       v.literal("DISMISSED"),
     ),

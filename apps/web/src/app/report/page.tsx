@@ -19,6 +19,7 @@ import { APP_VERSION, RELEASE_CHANNEL, formatVersion } from '@ia/devlog';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { useShape } from '@/lib/shape-context';
 import { collectFeedbackMetadata } from '@/lib/feedback-metadata';
+import { SUBMITTER_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
 import { cn } from '@/lib/utils';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
@@ -221,7 +222,7 @@ export default function ReportPage() {
               {myFeedback.map((feedback) => (
                 <article key={feedback._id} className="flex min-w-0 flex-col gap-3 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <p>{feedback.status === 'PENDING' ? 'Awaiting review' : feedback.status === 'RESOLVED' ? 'Resolved' : 'Closed'}</p>
+                    <p>{SUBMITTER_FEEDBACK_STATUS_LABELS[feedback.status]}</p>
                     <time dateTime={new Date(feedback.createdAt).toISOString()}>
                       {formatDistanceToNow(new Date(feedback.createdAt), { addSuffix: true })}
                     </time>

@@ -6,6 +6,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
 import type { AdminTabId } from './use-admin-tab';
+import { STAFF_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
 
 export function useAdminFeedback(activeTab: AdminTabId) {
   const { toast } = useToast();
@@ -27,7 +28,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
         report.submitter?.firstName,
         report.submitter?.lastName,
         report.submitter?.preferredName,
-        report.status,
+        STAFF_FEEDBACK_STATUS_LABELS[report.status],
         ...report.responses.map((response) => response.body),
       ]
         .filter(Boolean)
@@ -41,10 +42,12 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     mutate: ({
       id,
       status,
+      expectedStatus,
       reviewNote,
     }: {
       id: Id<'moderationReports'>;
       status: Doc<'moderationReports'>['status'];
+      expectedStatus: Doc<'moderationReports'>['status'];
       reviewNote: string;
     }) => {
       if (updating) return;
@@ -52,6 +55,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
       void updateReport({
         reportId: id,
         status,
+        expectedStatus,
         reviewNote,
       })
         .then(() => toast({ title: 'Feedback updated' }))

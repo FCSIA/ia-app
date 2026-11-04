@@ -29,7 +29,7 @@ import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
 import { feedbackMetadataValidator, validateFeedbackMetadata } from "./feedbackMetadata";
 import type { FeedbackMetadata } from "../../../shared/feedback-metadata";
 import { canReviewFeedback } from "./feedbackAccess";
-import { requestGithubIssuePush } from "./feedbackGithub";
+import { requestGithubIssuePush, sameGithubIssueState } from "./feedbackGithub";
 
 const genericReportContentTypeValidator = v.union(
   v.literal("GENERAL"),
@@ -37,11 +37,7 @@ const genericReportContentTypeValidator = v.union(
   v.literal("EVENT"),
 );
 const MAX_FEEDBACK_RESPONSES_PER_REPORT = 25;
-const moderationReportStatusValidator = v.union(
-  v.literal("PENDING"),
-  v.literal("RESOLVED"),
-  v.literal("DISMISSED"),
-);
+const moderationReportStatusValidator = schema.doc("moderationReports").fields.status;
 
 const userRefValidator = v.object({
   _id: v.id("users"),
@@ -86,6 +82,7 @@ const myFeedbackValidator = v.object({
   reason: v.string(),
   status: moderationReportStatusValidator,
   reviewNote: v.optional(v.string()),
+  reviewedAt: v.optional(v.number()),
   createdAt: v.number(),
   responses: v.array(
     v.object({
@@ -371,6 +368,7 @@ export const listMyFeedback = query({
         reason: report.reason,
         status: report.status,
         reviewNote: report.reviewNote,
+        reviewedAt: report.reviewedAt,
         createdAt: report.createdAt,
         responses: (
           await listFeedbackResponsesForSubmitter(ctx, report._id)
@@ -466,8 +464,12 @@ export const submitClubChannelMessage = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("moderationReports"),
-    status: schema.doc("moderationReports").fields.status,
+    status: moderationReportStatusValidator,
     reviewNote: v.string(),
+    // The status the reviewer saw. When given, the update is refused if the
+    // report has changed since, so concurrent reviewers cannot silently
+    // overwrite each other's decisions.
+    expectedStatus: v.optional(moderationReportStatusValidator),
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
@@ -476,29 +478,53 @@ export const update = mutation({
     const report = await ctx.db.get(args.reportId);
     if (!report) throw new ConvexError("Report not found");
 
+    const isFeedback = report.contentType === "GENERAL";
     requireAnyRole(
       user,
-      report.contentType === "GENERAL"
-        ? ["SUPER_ADMIN"]
-        : ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"],
+      isFeedback ? ["SUPER_ADMIN"] : ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"],
     );
+    if (args.status === "IN_REVIEW" && !isFeedback) {
+      throw new ConvexError("Only feedback can be marked in review");
+    }
+    if (args.expectedStatus !== undefined && args.expectedStatus !== report.status) {
+      throw new ConvexError(
+        "This item was updated by someone else. Check its latest status and try again.",
+      );
+    }
 
     const now = Date.now();
-    const githubIssueNumber =
-      report.contentType === "GENERAL" ? report.githubIssueNumber : undefined;
-    const statusChanged = report.status !== args.status;
+    const githubIssueNumber = isFeedback ? report.githubIssueNumber : undefined;
+    // Moving between new and in review leaves the issue open, so GitHub has
+    // nothing to mirror.
+    const issueStateChanged = !sameGithubIssueState(report.status, args.status);
     await ctx.db.patch(args.reportId, {
       status: args.status,
       reviewNote: args.reviewNote,
-      reviewedAt: now,
+      // reviewedAt records a decision; starting a review is not one.
+      reviewedAt: args.status === "IN_REVIEW" ? undefined : now,
       // A staff decision is the latest word on the linked issue, so GitHub
       // events describing an older issue state cannot overwrite it.
-      ...(githubIssueNumber !== undefined && statusChanged
+      ...(githubIssueNumber !== undefined && issueStateChanged
         ? { githubIssueStateUpdatedAt: now }
         : {}),
     });
-    if (githubIssueNumber !== undefined && statusChanged) {
+    if (githubIssueNumber !== undefined && issueStateChanged) {
       await requestGithubIssuePush(ctx, report);
+    }
+
+    if (
+      isFeedback &&
+      report.status === "PENDING" &&
+      args.status === "IN_REVIEW"
+    ) {
+      await deliverNotification(ctx, {
+        userId: report.submitterId,
+        category: "FEEDBACK",
+        title: "Your feedback is being reviewed",
+        body: args.reviewNote || "School staff started reviewing your feedback.",
+        href: "/report",
+        subject: { kind: "moderationReport", reportId: report._id },
+      });
     }
 
     if (
@@ -521,7 +547,7 @@ export const update = mutation({
       action: "REPORT_UPDATED",
       entityType: "Report",
       entityId: args.reportId,
-      meta: { status: args.status },
+      meta: { status: args.status, previousStatus: report.status },
     });
 
     return { success: true };

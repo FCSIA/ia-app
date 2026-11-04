@@ -6,11 +6,13 @@ import { deliverNotification } from "../notifications/delivery";
 import { feedbackMetadataValidator } from "./feedbackMetadata";
 import { feedbackGithubToken } from "./feedbackGithubToken";
 import { logAuditEvent } from "../audit/_lib";
+import { isOpenFeedbackStatus, type FeedbackStatus } from "../../../shared/feedback-status";
 
 const GITHUB_REPOSITORY = "FCSIA/ia-app";
 const GITHUB_API_VERSION = "2022-11-28";
 
-type FeedbackStatus = "PENDING" | "RESOLVED" | "DISMISSED";
+/** Statuses a GitHub issue event can express; IN_REVIEW is app-only. */
+type GithubFeedbackStatus = Exclude<FeedbackStatus, "IN_REVIEW">;
 
 // PATCHes one push run sends before handing over to a fresh run.
 const MAX_PUSH_ROUNDS = 3;
@@ -45,19 +47,34 @@ export async function requestGithubIssuePush(
   });
 }
 
-const feedbackStatusValidator = v.union(
+const githubFeedbackStatusValidator = v.union(
   v.literal("PENDING"),
   v.literal("RESOLVED"),
   v.literal("DISMISSED"),
 );
+const feedbackStatusValidator = v.union(
+  githubFeedbackStatusValidator,
+  v.literal("IN_REVIEW"),
+);
 
 /** The GitHub issue state that matches a feedback status set in the app. */
 export function githubIssueStateFor(status: FeedbackStatus) {
-  if (status === "PENDING") return { state: "open" as const };
+  if (isOpenFeedbackStatus(status)) return { state: "open" as const };
   return {
     state: "closed" as const,
     state_reason: status === "DISMISSED" ? ("not_planned" as const) : ("completed" as const),
   };
+}
+
+/** Whether two statuses leave the GitHub issue in the same state. */
+export function sameGithubIssueState(a: FeedbackStatus, b: FeedbackStatus) {
+  const left = githubIssueStateFor(a);
+  const right = githubIssueStateFor(b);
+  return (
+    left.state === right.state &&
+    ("state_reason" in left ? left.state_reason : null) ===
+      ("state_reason" in right ? right.state_reason : null)
+  );
 }
 
 function githubHeaders(token: string) {
@@ -150,7 +167,7 @@ function isIssueWebhook(payload: unknown): payload is {
   );
 }
 
-export function statusForGithubIssue(action: string, stateReason: string | null | undefined): FeedbackStatus | null {
+export function statusForGithubIssue(action: string, stateReason: string | null | undefined): GithubFeedbackStatus | null {
   if (action === "reopened") return "PENDING";
   if (action !== "closed") return null;
   return stateReason === "not_planned" ? "DISMISSED" : "RESOLVED";
@@ -209,9 +226,9 @@ export const saveGithubIssue = internalMutation({
       githubIssueCreatedAt: Date.now(),
       githubIssueSyncError: null,
     });
-    // Staff may have decided before the issue existed; new issues open as
-    // PENDING, so carry any other decision over.
-    if (report.status !== "PENDING") {
+    // Staff may have decided before the issue existed; new issues open, so
+    // carry any closing decision over.
+    if (!isOpenFeedbackStatus(report.status)) {
       await requestGithubIssuePush(ctx, report);
     }
     await logAuditEvent(ctx, { actorId: "system",
@@ -298,7 +315,8 @@ export const finishGithubIssuePushRound = internalMutation({
       stored !== args.seenStateUpdatedAt &&
       (stored ?? 0) > args.githubUpdatedAt;
     const done =
-      args.status === null || (report.status === args.status && !newerGithubChange);
+      args.status === null ||
+      (sameGithubIssueState(report.status, args.status) && !newerGithubChange);
     await ctx.db.patch(report._id, {
       ...(args.githubUpdatedAt !== undefined &&
       (report.githubIssueStateUpdatedAt ?? 0) < args.githubUpdatedAt
@@ -457,7 +475,7 @@ export const syncFeedbackIssue = internalAction({
 export const applyGithubIssueState = internalMutation({
   args: {
     issueNumber: v.number(),
-    status: feedbackStatusValidator,
+    status: githubFeedbackStatusValidator,
     githubUpdatedAt: v.number(),
     stateReason: v.optional(v.string()),
   },
@@ -475,8 +493,9 @@ export const applyGithubIssueState = internalMutation({
       return null;
     }
     // GitHub agreeing with the current status (including the echo of a staff
-    // change pushed to the issue) must not replace the staff review note.
-    if (report.status === args.status) {
+    // change pushed to the issue) must not replace the staff review note. An
+    // open issue agrees with feedback that is in review.
+    if (sameGithubIssueState(report.status, args.status)) {
       await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
       return null;
     }

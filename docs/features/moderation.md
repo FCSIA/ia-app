@@ -17,8 +17,10 @@ rules, and user-submitted reports.
 - Lets users report content such as announcements, comments, events, or club
   messages.
 - Lets admins, support staff, and teachers review reports.
-- Tracks review status and notes. Dismissed general feedback is retained in the
-  super-admin feedback archive rather than appearing in the active queue.
+- Tracks review status and notes. General feedback moves through New
+  (`PENDING`), In review (`IN_REVIEW`), Resolved, and Archived (`DISMISSED`);
+  the staff queue has a tab for each. Dismissed feedback is retained in the
+  archive rather than appearing in the open queues.
 
 ## Source Files
 
@@ -60,14 +62,20 @@ append-only records linked to general feedback and limited to 25 per item.
 
 Authenticated users can submit reports and read only their own general-feedback
 history. Teachers and elevated roles can list reports. Admin, super admin, and
-support staff roles can update report review state. Only super admins can add
+support staff roles can update report review state; only super admins can
+change the status of general feedback, and only general feedback can be in
+review. Any feedback status can move to any other, so staff can reopen a
+decision. Status updates may carry the status the reviewer saw
+(`expectedStatus`); the update is refused if another reviewer changed it first.
+Only super admins can add
 staff responses to general feedback or retry GitHub issue creation; submitters have no reply mutation or
 composer. Keyword management is admin-only.
 
 ## Side Effects
 
-Keyword and report changes write audit events. A resolved general-feedback item
-notifies its submitter. Dismissed feedback moves out of the active staff queue
+Keyword and report changes write audit events, including the previous status.
+Starting a review of new feedback, and resolving feedback, each notify its
+submitter. Starting a review clears `reviewedAt`, which records decisions only. Dismissed feedback moves out of the active staff queue
 into the super-admin archive and remains in the submitter's history. Each staff response notifies the original submitter and
 links them to the read-only feedback history.
 
@@ -87,7 +95,9 @@ remain read-only unless the user also has the required staff role.
 
 GitHub's signed `issues` webhook updates the app when that issue is closed (`completed`
 becomes resolved; `not_planned` becomes dismissed) or reopened (becomes
-pending). The issue link is visible to feedback reviewers.
+pending). New and in-review feedback both keep the issue open, so moving
+between them sends nothing to GitHub, and a reopen event leaves in-review
+feedback in review. The issue link is visible to feedback reviewers.
 
 ## Feedback page
 
@@ -97,7 +107,8 @@ app version stay beside the form; the draft and attachment controls are disabled
 while submitting. Failed sends retain the draft and selected images.
 
 The read-only history uses one rounded inner group with quiet separators.
-Submission text remains primary, status and time share a metadata row, and staff
+Submission text remains primary, status (Awaiting review, In review, Resolved,
+or Closed) and time share a metadata row, and staff
 responses sit under the item they answer. Loading and empty history are distinct
 states. Feedback notifications use their own category rather than Moderation;
 see [Notifications](notifications.md).

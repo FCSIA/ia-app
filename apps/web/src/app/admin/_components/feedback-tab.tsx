@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Archive, Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Archive, Inbox, CheckCircle2, ExternalLink, Eye } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
 import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
+import { STAFF_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   DataTablePanel,
@@ -60,6 +61,7 @@ type FeedbackMutation = {
   mutate: (args: {
     id: Id<'moderationReports'>;
     status: FeedbackReport['status'];
+    expectedStatus: FeedbackReport['status'];
     reviewNote: string;
   }) => void;
   isPending: boolean;
@@ -97,12 +99,13 @@ export function FeedbackTab({
   isLoading: boolean;
   canUpdateFeedback?: boolean;
 }) {
-  const [view, setView] = useState('active');
+  const [view, setView] = useState('new');
   // Keep response drafts in the queue so closing a detail dialog or changing
   // the queue filter does not discard a message the administrator is writing.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const byStatus = {
-    active: filteredReports.filter((report) => report.status === 'PENDING'),
+    new: filteredReports.filter((report) => report.status === 'PENDING'),
+    inReview: filteredReports.filter((report) => report.status === 'IN_REVIEW'),
     resolved: filteredReports.filter((report) => report.status === 'RESOLVED'),
     archive: filteredReports.filter((report) => report.status === 'DISMISSED'),
   };
@@ -149,9 +152,14 @@ export function FeedbackTab({
           <div className="px-4 pb-2">
             <TabsList aria-label="Feedback views">
               <TabItem
-                value="active"
-                label={`Active ${byStatus.active.length}`}
+                value="new"
+                label={`New ${byStatus.new.length}`}
                 icon={Inbox}
+              />
+              <TabItem
+                value="inReview"
+                label={`In review ${byStatus.inReview.length}`}
+                icon={Eye}
               />
               <TabItem
                 value="resolved"
@@ -228,8 +236,27 @@ export function FeedbackTab({
                             retryGithubIssueMutation={retryGithubIssueMutation}
                             canUpdateFeedback={canUpdateFeedback}
                           />
-                          {canUpdateFeedback && report.status === 'PENDING' ? (
+                          {canUpdateFeedback &&
+                          (report.status === 'PENDING' ||
+                            report.status === 'IN_REVIEW') ? (
                             <>
+                              {report.status === 'PENDING' ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={reportMutation.isPending}
+                                  onClick={() =>
+                                    reportMutation.mutate({
+                                      id: report._id,
+                                      status: 'IN_REVIEW',
+                                      expectedStatus: report.status,
+                                      reviewNote: '',
+                                    })
+                                  }
+                                >
+                                  Start review
+                                </Button>
+                              ) : null}
                               <Button
                                 size="sm"
                                 disabled={reportMutation.isPending}
@@ -237,6 +264,7 @@ export function FeedbackTab({
                                   reportMutation.mutate({
                                     id: report._id,
                                     status: 'RESOLVED',
+                                    expectedStatus: report.status,
                                     reviewNote: 'Reviewed',
                                   })
                                 }
@@ -251,6 +279,7 @@ export function FeedbackTab({
                                   reportMutation.mutate({
                                     id: report._id,
                                     status: 'DISMISSED',
+                                    expectedStatus: report.status,
                                     reviewNote: 'Dismissed',
                                   })
                                 }
@@ -352,7 +381,8 @@ function FeedbackDetail({
             Feedback from {displayName(report.submitter)}
           </DialogTitle>
           <DialogDescription>
-            Submitted {formatDateTime(report._creationTime)}
+            {STAFF_FEEDBACK_STATUS_LABELS[report.status]} · Submitted{' '}
+            {formatDateTime(report._creationTime)}
             {report.appVersion ? ` · ${report.appVersion}` : ''}
           </DialogDescription>
         </DialogHeader>
