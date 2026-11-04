@@ -90,6 +90,7 @@ export function FriendsPeoplePanel({
   onGroupDeleted: () => void;
 }) {
   const isGroup = groupId !== "all";
+  const [removing, setRemoving] = useState<ScheduleFriend | null>(null);
   return (
     <Panel
       title={isGroup ? (group?.group.name ?? "Group") : "All friends"}
@@ -122,6 +123,7 @@ export function FriendsPeoplePanel({
               dayName={dayName}
               groupId={isGroup ? groupId : null}
               onCompare={() => onCompare(friend.user._id)}
+              onRemoveFriend={() => setRemoving(friend)}
             />
           ))}
         </CardGroup>
@@ -130,7 +132,58 @@ export function FriendsPeoplePanel({
           <EmptyDescription>Nobody in this group yet.</EmptyDescription>
         </Empty>
       )}
+      <RemoveFriendDialog
+        friend={removing}
+        onClose={() => setRemoving(null)}
+      />
     </Panel>
+  );
+}
+
+/** Removing a friend deletes the friendship for both people; getting it back
+ *  takes a new request the other person must accept, so confirm first. */
+function RemoveFriendDialog({
+  friend,
+  onClose,
+}: {
+  friend: ScheduleFriend | null;
+  onClose: () => void;
+}) {
+  const { removeFriend, runScheduleAction } = useScheduleWorkspace();
+  const name = friend ? displayName(friend.user) : "";
+  return (
+    <AlertDialog
+      open={friend !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove {name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You&apos;ll stop seeing each other&apos;s schedules. To be friends again,
+            one of you will need to send a new request.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={() => {
+              if (!friend) return;
+              void runScheduleAction(
+                `friend-remove:${friend.user._id}`,
+                () => removeFriend({ otherUserId: friend.user._id }),
+                "Removed",
+              );
+            }}
+          >
+            Remove friend
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -140,14 +193,16 @@ function PersonRow({
   dayName,
   groupId,
   onCompare,
+  onRemoveFriend,
 }: {
   friend: ScheduleFriend;
   together: Together | undefined;
   dayName: string;
   groupId: GroupId | null;
   onCompare: () => void;
+  onRemoveFriend: () => void;
 }) {
-  const { pendingAction, removeFriend, runScheduleAction } =
+  const { pendingAction, runScheduleAction } =
     useScheduleWorkspace();
   const removeMember = useMutation(api.schedule.groups.removeMember);
   const removeKey = `friend-remove:${friend.user._id}`;
@@ -223,13 +278,7 @@ function PersonRow({
                 icon={UserMinus}
                 label="Remove friend"
                 destructive
-                onSelect={() =>
-                  void runScheduleAction(
-                    removeKey,
-                    () => removeFriend({ otherUserId: friend.user._id }),
-                    "Removed",
-                  )
-                }
+                onSelect={onRemoveFriend}
               />
             )}
           </DropdownContent>
