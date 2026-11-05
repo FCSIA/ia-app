@@ -745,7 +745,7 @@ function MessageAuthorPreview({
       <button
         type="button"
         aria-label={`View ${name} profile`}
-        className="inline-flex min-w-0 items-center gap-1 rounded-sm py-0.5 text-[13px] font-semibold text-foreground outline-none hover:underline hover:underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="inline-flex w-full min-w-0 items-center gap-1 rounded-sm py-0.5 text-[13px] font-semibold text-foreground outline-none hover:underline hover:underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
       >
         <span className="truncate">{name}</span>
         <DeveloperBadge user={author} size={13} />
@@ -1835,7 +1835,7 @@ function MessageRow({
                     />
                   ) : null}
                   {!groupedWithPrevious ? (
-                    <MessageHeader className="gap-2 px-0 text-[13px]">
+                    <MessageHeader className="flex-wrap gap-x-2 gap-y-0 px-0 text-[13px]">
                       <MessageAuthorPreview
                         author={message.author}
                         compact={dense}
@@ -1848,11 +1848,11 @@ function MessageRow({
                       />
                       {message.author.clubRole &&
                       !message.author.clubRole.isDefault ? (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                           · {message.author.clubRole.name}
                         </span>
                       ) : null}
-                      <span className="text-xs text-muted-foreground">
+                      <span className="ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                         {isSending
                           ? 'Sending…'
                           : formatMessageTime(message.createdAt)}
