@@ -1006,3 +1006,176 @@
     }
   }
 }
+
+/* Sign-in brand surface: PR 186's cool ink with the warm ember accent,
+   applied regardless of the visitor's saved theme. Unlayered so it wins
+   over the theme classes on <html>. */
+.login-ink {
+  color-scheme: dark;
+  --background: 220 22% 8%;
+  --foreground: 210 18% 95%;
+  --card: 220 20% 11%;
+  --card-foreground: 210 18% 95%;
+  --popover: 220 20% 11%;
+  --popover-foreground: 210 18% 95%;
+  --primary: 24 94% 58%;
+  --primary-foreground: 25 12% 8%;
+  --secondary: 220 18% 17%;
+  --secondary-foreground: 210 16% 92%;
+  --muted: 220 16% 14%;
+  --muted-foreground: 215 14% 70%;
+  --accent: 220 22% 19%;
+  --accent-foreground: 210 16% 92%;
+  --border: 220 14% 22%;
+  --input: 220 14% 40%;
+  --ring: 24 94% 58%;
+  --focus-ring: hsl(24 94% 58%);
+}
+
+/* Sign-in scheme previews (`/login?scheme=...`), mirroring the app themes. */
+.login-ink[data-scheme="original"] {
+  --background: 150 8% 4%;
+  --foreground: 150 5% 96%;
+  --card: 150 8% 7%;
+  --card-foreground: 150 5% 96%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 150 6% 10%;
+  --muted-foreground: 150 5% 60%;
+  --border: 150 6% 14%;
+  --input: 150 6% 30%;
+}
+.login-ink[data-scheme="light"] {
+  color-scheme: light;
+  --background: 150 10% 98%;
+  --foreground: 150 10% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 150 10% 10%;
+  --primary: 24 90% 45%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 150 8% 96%;
+  --muted-foreground: 150 6% 42%;
+  --border: 150 8% 90%;
+  --input: 150 8% 70%;
+  --ring: 24 90% 45%;
+  --focus-ring: hsl(24 90% 45%);
+}
+.login-ink[data-scheme="high-contrast"] {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 0 0% 0%;
+  --card-foreground: 0 0% 100%;
+  --primary: 48 100% 60%;
+  --primary-foreground: 0 0% 0%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 88%;
+  --border: 0 0% 100%;
+  --input: 0 0% 100%;
+  --ring: 48 100% 60%;
+  --focus-ring: hsl(48 100% 60%);
+}
+
+/* Sign-in backdrop: the school's front in plain grey, with ink shadows.
+   It stays grey at every time of day; only night is a little darker. */
+.login-backdrop {
+  --tod-lo: hsl(0 0% 8%);
+  --tod-hi: hsl(0 0% 86%);
+  isolation: isolate;
+  opacity: 0;
+  transition: opacity 1.2s ease-out;
+}
+.login-backdrop[data-tod] {
+  opacity: 1;
+}
+.login-ink[data-scheme="light"] .login-backdrop {
+  --tod-lo: hsl(0 0% 16%);
+}
+.login-ink[data-scheme="high-contrast"] .login-backdrop {
+  --tod-hi: hsl(0 0% 92%);
+}
+.login-backdrop[data-tint="orange"] {
+  --tod-lo: hsl(18 45% 9%);
+  --tod-hi: hsl(24 94% 66%);
+}
+.login-backdrop-photo {
+  filter: grayscale(1) contrast(1.12);
+  transform-origin: 62% 55%;
+}
+.login-backdrop[data-tod="night"] .login-backdrop-photo {
+  filter: grayscale(1) contrast(1.2) brightness(0.72);
+}
+.login-tone-hi {
+  background: var(--tod-hi);
+  mix-blend-mode: multiply;
+}
+.login-tone-lo {
+  background: var(--tod-lo);
+  mix-blend-mode: lighten;
+}
+
+/* Desktop: fade the layer in from the left so no edge shows, drift slowly,
+   and use crisper controls than the app's pill defaults. */
+@media (min-width: 1024px) {
+  .login-backdrop {
+    mask-image: linear-gradient(to right, transparent 0%, #000 35%);
+  }
+  .login-card [data-slot="input-control"] {
+    height: 3rem;
+    border-radius: 6px;
+  }
+  .login-card [data-slot="input-control-field"] {
+    font-size: 15px;
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .login-backdrop-photo {
+    animation: login-drift 48s ease-in-out infinite alternate;
+  }
+  .login-rise {
+    animation: login-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--rise, 0) * 80ms + 150ms);
+  }
+  .login-card-in {
+    animation: login-card-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .login-shake {
+    animation: login-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+}
+@keyframes login-drift {
+  from {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.12) translate3d(-1.5%, -1%, 0);
+  }
+}
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes login-shake {
+  20%,
+  60% {
+    transform: translate3d(-6px, 0, 0);
+  }
+  40%,
+  80% {
+    transform: translate3d(6px, 0, 0);
+  }
+}
