@@ -96,7 +96,6 @@ function AnnouncementPreview({
   const status = {
     PENDING_APPROVAL: { label: 'Pending review', color: 'amber' },
     REJECTED: { label: 'Needs changes', color: 'red' },
-    EXPIRED: { label: 'Expired', color: 'gray' },
     ARCHIVED: { label: 'Archived', color: 'gray' },
   }[announcement.status] as { label: string; color: BadgeColor } | undefined;
   const createdAt = new Date(announcement.createdAt);

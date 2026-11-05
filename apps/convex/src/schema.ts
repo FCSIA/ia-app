@@ -601,10 +601,11 @@ export const schema = defineSchema({
     targetMajorPathways: v.array(v.string()),
     targetMinorPathways: v.array(v.string()),
     clubId: v.optional(v.id("clubs")),
+    // Expiry is not a status: an ACTIVE announcement whose `expiresAt` has
+    // passed is expired.
     status: v.union(
       v.literal("PENDING_APPROVAL"),
       v.literal("ACTIVE"),
-      v.literal("EXPIRED"),
       v.literal("ARCHIVED"),
       v.literal("REJECTED"),
     ),
@@ -631,17 +632,7 @@ export const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_authorId_and_status", ["authorId", "status"])
     .index("by_clubId_and_status", ["clubId", "status"])
-    .index("by_status_and_createdAt", ["status", "createdAt"])
-    // Expiry is derived from `expiresAt`; stored EXPIRED rows are retired by
-    // announcements/migrations:retireExpiredStatus.
-    .staged({
-      status: v.union(
-        v.literal("PENDING_APPROVAL"),
-        v.literal("ACTIVE"),
-        v.literal("ARCHIVED"),
-        v.literal("REJECTED"),
-      ),
-    }),
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
 
   comments: defineTable({
     announcementId: v.id("announcements"),
