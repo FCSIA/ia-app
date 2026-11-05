@@ -49,6 +49,7 @@ import {
   Panel,
   PanelHeaderDragContext,
   PanelReservedHeightContext,
+  PanelStyleContext,
 } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { ToastAction } from "@/components/ui/toast";
@@ -442,15 +443,26 @@ function DragGhost({ widget }: { widget: WidgetDefinition }) {
 
 // ─── Main layout ─────────────────────────────────────────────────────────────
 
-export function DashboardLayout({
-  editing,
-  onEditingChange,
-  toolbarTarget,
-}: {
+type DashboardLayoutProps = {
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
   toolbarTarget?: HTMLElement | null;
-}) {
+};
+
+/** Home's widgets, drawn as dashboard panels (header row, View all, divider). */
+export function DashboardLayout(props: DashboardLayoutProps) {
+  return (
+    <PanelStyleContext.Provider value="dashboard">
+      <DashboardWidgets {...props} />
+    </PanelStyleContext.Provider>
+  );
+}
+
+function DashboardWidgets({
+  editing,
+  onEditingChange,
+  toolbarTarget,
+}: DashboardLayoutProps) {
   const user = useCurrentUser();
   const reducedMotion = useReducedMotion();
   const { toast } = useToast();

@@ -75,6 +75,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     description: 'The next seven days in your calendar.',
     size: 'half',
     Component: CalendarWidget,
+    hideWhenEmpty: () => true,
   },
 
   announcements: {
@@ -84,6 +85,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     description: 'Unread announcements across your feed.',
     size: 'half',
     Component: AnnouncementsWidget,
+    hideWhenEmpty: () => true,
   },
   'pending-approvals': {
     id: 'pending-approvals',

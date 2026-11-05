@@ -6,6 +6,7 @@ import { Panel } from "@/components/layout/page-frame";
 import { CardGroup } from "@/components/ui/card";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { useAnnouncementFeedClock } from "@/components/announcements/use-announcement-feed-clock";
+import { useDashboardWidgetEmpty } from "../widget-visibility";
 
 export function AnnouncementsWidget() {
   const now = useAnnouncementFeedClock();
@@ -13,6 +14,9 @@ export function AnnouncementsWidget() {
     limit: 5,
     now,
   });
+  useDashboardWidgetEmpty(
+    data === undefined ? undefined : data.items.length === 0 && !data.hasMore,
+  );
   return (
     <Panel
       title="Unread announcements"

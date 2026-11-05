@@ -6,7 +6,11 @@ import { ArrowRightLeft, Star, X } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame, Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { FLOORS, ROOM_LABELS, type Floor } from '@/features/route-finder/building-data';
+import {
+  parseRouteLink,
+  readClassRooms,
+  rememberClassRooms,
+} from '@/features/route-finder/class-rooms';
 import { NavigationMap } from '@/features/route-finder/navigation-map';
 import { RoomPicker, type RoomChoice } from '@/features/route-finder/room-picker';
 import { findPath, type RouteResult } from '@/features/route-finder/router';
@@ -99,6 +103,10 @@ export default function RouteFinderPage() {
   // The rooms the shown route was found for, so "Save route" saves that route
   // even after the pickers change.
   const [routeEntry, setRouteEntry] = useState<RouteEntry | null>(null);
+  // The classes this page was opened for, and whether the student is choosing
+  // their rooms; "Find route" remembers those choices.
+  const [classes, setClasses] = useState<{ from: string | null; to: string | null } | null>(null);
+  const [choosingRooms, setChoosingRooms] = useState(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -106,14 +114,28 @@ export default function RouteFinderPage() {
     setRecents(readRouteList(RECENT_ROUTES_KEY));
     setSaved(readRouteList(SAVED_ROUTES_KEY));
 
-    // /route-finder?to=…&toFloor=… preselects only the destination; the
-    // student still says where they are.
-    const q = new URLSearchParams(window.location.search);
-    const room = q.get('to');
-    const onFloor = Number(q.get('toFloor')) as Floor;
-    if (room && FLOORS.includes(onFloor) && ROOM_LABELS[onFloor].includes(room)) {
-      setTo({ room, floor: onFloor });
+    // A link from Home names rooms or classes. With both rooms known the route
+    // opens straight away; otherwise the student says which rooms are missing.
+    const link = parseRouteLink(window.location.search, readClassRooms());
+    if (link.from.room) setFrom(link.from.room);
+    if (link.to.room) setTo(link.to.room);
+    if (link.from.className || link.to.className) {
+      setClasses({ from: link.from.className, to: link.to.className });
     }
+    if (!link.from.room || !link.to.room) {
+      setChoosingRooms(!!(link.from.className || link.to.className));
+    } else if (link.from.room.room === link.to.room.room && link.from.room.floor === link.to.room.floor) {
+      setError('Both classes are in the same room, so you are already there.');
+    } else {
+      findRoomRoute({
+        fromFloor: link.from.room.floor,
+        fromKey: link.from.room.room,
+        toFloor: link.to.room.floor,
+        toKey: link.to.room.room,
+      });
+    }
+    // Runs once, for the link this page was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function findRoomRoute(entry: RouteEntry) {
@@ -143,6 +165,13 @@ export default function RouteFinderPage() {
       setError('Please select both a starting location and a destination.');
       return;
     }
+    if (choosingRooms && classes) {
+      rememberClassRooms([
+        ...(classes.from ? [[classes.from, from] as const] : []),
+        ...(classes.to ? [[classes.to, to] as const] : []),
+      ]);
+      setChoosingRooms(false);
+    }
     if (from.room === to.room && from.floor === to.floor) {
       setError('Starting location and destination cannot be the same.');
       return;
@@ -151,12 +180,16 @@ export default function RouteFinderPage() {
   }
 
   function runQuickRoute(r: RouteEntry) {
+    setClasses(null);
+    setChoosingRooms(false);
     setFrom({ room: r.fromKey, floor: r.fromFloor });
     setTo({ room: r.toKey, floor: r.toFloor });
     findRoomRoute(r);
   }
 
   function handleSwap() {
+    setClasses(null);
+    setChoosingRooms(false);
     setFrom(to);
     setTo(from);
     setRoute(null);
@@ -179,6 +212,7 @@ export default function RouteFinderPage() {
     });
   }
 
+  const classNames = [classes?.from, classes?.to].filter(Boolean).join(' and ');
   const currentSaved = !!routeEntry && saved.some((r) => routeEntryKey(r) === routeEntryKey(routeEntry));
 
   return (
@@ -187,10 +221,24 @@ export default function RouteFinderPage() {
 
         <Panel>
           <form className="flex flex-col gap-5" onSubmit={handleFindRoute}>
+            {classes ? (
+              choosingRooms ? (
+                <p className="text-base text-foreground">
+                  Which rooms are {classNames} in? Pick From and To once, and this device will remember them.
+                </p>
+              ) : (
+                <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                  Using your rooms for {classNames}.
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setChoosingRooms(true)}>
+                    Change rooms
+                  </Button>
+                </p>
+              )
+            ) : null}
             <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <RoomField
                 id="route-from"
-                label="From"
+                label={choosingRooms && classes?.from ? `From: ${classes.from}` : 'From'}
                 color={START_COLOR}
                 value={from}
                 onChange={pickRoom(setFrom)}
@@ -209,7 +257,7 @@ export default function RouteFinderPage() {
               </div>
               <RoomField
                 id="route-to"
-                label="To"
+                label={choosingRooms && classes?.to ? `To: ${classes.to}` : 'To'}
                 color={END_COLOR}
                 value={to}
                 onChange={pickRoom(setTo)}

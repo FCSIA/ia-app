@@ -10,7 +10,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shapeMap, useShape } from "@/lib/shape-context";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,12 @@ export const PanelHeaderDragContext = createContext<
 export const PanelReservedHeightContext = createContext<number | undefined>(
   undefined,
 );
+
+/**
+ * "dashboard" gives panels a header row of their own: title and count on the
+ * left, a "View all" link on the right, and a divider above the content.
+ */
+export const PanelStyleContext = createContext<"default" | "dashboard">("default");
 
 type PageFrameProps = {
   children: ReactNode;
@@ -177,6 +183,7 @@ export function Panel({
   const shape = useShape();
   const dragProps = useContext(PanelHeaderDragContext);
   const reservedHeight = useContext(PanelReservedHeightContext);
+  const dashboard = useContext(PanelStyleContext) === "dashboard";
   const heldHeight = loading && reservedHeight ? reservedHeight : undefined;
   // One title anatomy with or without a link: title, count chip, then (links
   // only) the chevron at the trailing edge. Links retain a larger touch target.
@@ -205,7 +212,43 @@ export function Panel({
       style={heldHeight ? { height: heldHeight } : undefined}
       aria-busy={loading || undefined}
     >
-      {title || description || action || actions ? (
+      {dashboard && (title || description || action || actions) ? (
+        <div
+          data-slot="panel-header"
+          {...dragProps}
+          className={cn(
+            "flex items-center justify-between gap-3 border-b px-(--panel-inset) py-3",
+            dragProps && "cursor-grab touch-none active:cursor-grabbing",
+          )}
+        >
+          <div className="min-w-0 flex-1">
+            {title ? (
+              <h3 className="flex min-h-7 items-baseline gap-2 text-base font-semibold tracking-tight text-foreground">
+                <span className="min-w-0 truncate">{title}</span>
+                {count !== undefined && (count > 0 || countHasMore) ? (
+                  <span className="shrink-0 text-sm font-normal tabular-nums text-muted-foreground">
+                    {count}
+                    {countHasMore ? "+" : ""}
+                  </span>
+                ) : null}
+              </h3>
+            ) : null}
+            {description ? (
+              <p className="text-sm text-muted-foreground">{description}</p>
+            ) : null}
+          </div>
+          {actions || action ? <div className="shrink-0">{actions ?? action}</div> : null}
+          {href ? (
+            <Link
+              href={href}
+              className="flex min-h-8 shrink-0 items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+            >
+              View all
+              <ArrowRight aria-hidden className="size-3.5" />
+            </Link>
+          ) : null}
+        </div>
+      ) : title || description || action || actions ? (
         <div
           data-slot="panel-header"
           {...dragProps}
@@ -252,6 +295,7 @@ export function Panel({
         className={cn(
           "flex-1 p-(--panel-inset)",
           flush && "px-1 pb-1 pt-1 sm:pt-(--panel-inset)",
+          flush && dashboard && "sm:pt-1",
           contentClassName,
         )}
       >

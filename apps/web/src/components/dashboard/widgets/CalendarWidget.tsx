@@ -8,6 +8,7 @@ import { Empty, EmptyDescription } from '@/components/ui/empty';
 import { CalendarEventRow } from '@/components/calendar/calendar-event-row';
 import { api } from '~/apps/convex/src/_generated/api';
 import { calendarDate } from '@/components/calendar/calendar-date';
+import { useDashboardWidgetEmpty } from '../widget-visibility';
 
 export function CalendarWidget() {
   const [today, setToday] = useState(() => startOfDay(calendarDate()));
@@ -27,6 +28,12 @@ export function CalendarWidget() {
     endDate: addDays(today, 7).getTime(),
   });
   const feeds = useQuery(api.events.externalCalendars.listMine, {});
+  // Stays visible with no events while it can still offer to connect Canvas.
+  useDashboardWidgetEmpty(
+    data === undefined || feeds === undefined
+      ? undefined
+      : data.length === 0 && feeds.length > 0,
+  );
   const rows = data
     ?.slice()
     .sort((a, b) => a.startAt - b.startAt)

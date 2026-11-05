@@ -1,11 +1,15 @@
 "use client";
 
+import { greetingName } from "~/apps/shared/user-name";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { addDays, startOfDay } from "date-fns";
-import { ArrowRight } from "lucide-react";
+import { addDays, format, startOfDay } from "date-fns";
+import { ArrowRight, MapPinned } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@/lib/convex-react";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -14,8 +18,52 @@ import { parseTimeToMinutes } from "@/components/schedule/schedule-utils";
 import { formatSchoolTime } from "@/lib/time-format";
 import { schoolDateKey } from "@/lib/school-date";
 import { calendarDate } from "@/components/calendar/calendar-date";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { cn } from "@/lib/utils";
 import { workshopDetailHref } from "@/app/flex-friday/_utils";
+import { classRouteHref, passingPeriod } from "@/features/route-finder/class-rooms";
+
+/** Home's header: the greeting, then your day. Each widget below shows its own count. */
+export function WelcomeWidget() {
+  const [now, setNow] = useState(() => calendarDate());
+  const user = useCurrentUser();
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(calendarDate()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const notifications = useQuery(api.notifications.inbox.unreadCount);
+  const unreadNotifications = notifications?.count ?? 0;
+
+  const firstName = greetingName(user);
+  const hour = now.getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  return (
+    <section className="flex min-w-0 flex-col gap-6" aria-labelledby="home-greeting">
+      <div className="flex min-w-0 flex-col gap-2">
+        <p className="text-sm text-muted-foreground">{format(now, "EEEE, MMMM d")}</p>
+        <h1 id="home-greeting" className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          {greeting}
+          {firstName ? `, ${firstName}` : ""}.
+        </h1>
+      </div>
+      <NowNextStrip />
+      {unreadNotifications > 0 ? (
+        <Link
+          href="/notifications"
+          className="inline-flex min-h-8 w-fit items-center gap-1 rounded-sm text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
+        >
+          {unreadNotifications >= 100 ? "100+" : unreadNotifications} unread{" "}
+          {unreadNotifications === 1 ? "notification" : "notifications"}
+          <ArrowRight className="size-3.5" aria-hidden />
+        </Link>
+      ) : null}
+    </section>
+  );
+}
 
 type Day = FunctionReturnType<typeof api.schedule.dashboard.getDay>;
 type Flex = NonNullable<
@@ -35,20 +83,25 @@ type Item = {
 };
 
 /**
- * Now/Next strip. Renders only when it has something actionable: today's
- * remaining classes and Flex Friday workshop, or a preview of tomorrow once
- * today is done.
+ * The Right now card: today's remaining classes and Flex Friday workshop, or a
+ * preview of tomorrow once today is done. With nothing to show, just the actions.
  */
-export function WelcomeWidget() {
+function NowNextStrip() {
   const [now, setNow] = useState(() => calendarDate());
   const user = useCurrentUser();
   const use24HourTime = user?.use24HourTime ?? false;
   const isStudent =
     !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
 
+  // Tick on the minute, so the card moves on right as a class ends.
   useEffect(() => {
-    const interval = window.setInterval(() => setNow(calendarDate()), 60_000);
-    return () => window.clearInterval(interval);
+    let timer: number;
+    const tick = () => {
+      setNow(calendarDate());
+      timer = window.setTimeout(tick, 60_000 - (Date.now() % 60_000));
+    };
+    timer = window.setTimeout(tick, 60_000 - (Date.now() % 60_000));
+    return () => window.clearTimeout(timer);
   }, []);
 
   const todayKey = schoolDateKey(now);
@@ -73,7 +126,7 @@ export function WelcomeWidget() {
   );
 
   if (!user || flex === undefined || (isStudent && today === undefined)) {
-    return null;
+    return <Skeleton aria-busy="true" className="h-48 w-full rounded-2xl" />;
   }
   const fmt = (time: string) => formatSchoolTime(time, use24HourTime);
 
@@ -103,7 +156,15 @@ export function WelcomeWidget() {
       (item) => item.start >= (current?.end ?? minutes),
     );
     return (
-      <Strip label={specialName(today)}>
+      <Strip
+        label={specialName(today)}
+        actions={
+          <DayActions
+            isStudent={isStudent}
+            passing={passingPeriod(todayItems, minutes)}
+          />
+        }
+      >
         <NowNext
           current={current}
           next={next}
@@ -116,20 +177,27 @@ export function WelcomeWidget() {
   }
 
   // Today is done: preview tomorrow's start and workshop, if there is one.
-  if (isStudent && tomorrow === undefined) return null;
+  if (isStudent && tomorrow === undefined) {
+    return <Skeleton aria-busy="true" className="h-48 w-full rounded-2xl" />;
+  }
   const tomorrowWorkshops = workshopsOn(flex, tomorrowKey);
   const firstClass = isStudent
     ? timeline(tomorrow, [], true).find((item) => !item.workshop)
     : undefined;
   const workshops = timeline(null, tomorrowWorkshops, false);
-  if (!firstClass && workshops.length === 0) return null;
+  if (!firstClass && workshops.length === 0) {
+    return <DayActions isStudent={isStudent} />;
+  }
   const tomorrowSpecial = specialName(tomorrow);
   const tomorrowLabel = tomorrowSpecial
     ? `Tomorrow: ${tomorrowSpecial}`
     : undefined;
 
   return (
-    <Strip label={tomorrowLabel}>
+    <Strip
+      label={tomorrowLabel}
+      actions={<DayActions isStudent={isStudent} />}
+    >
       {firstClass ? (
         <Line
           prefix={tomorrowLabel ? "First class" : "Tomorrow"}
@@ -161,10 +229,8 @@ function duration(mins: number) {
 }
 
 /**
- * Today as a short line: a filled stop for the class you're in, a hollow stop
- * for the next one, and the rail between them filling as the period runs.
- * The stops replace "Now"/"Next" labels and the rail replaces a separate
- * progress bar, so each row is just a title and a relative time.
+ * Today at a glance: the class you're in, how long is left, and what's next.
+ * Between classes, what's next takes the lead.
  */
 function NowNext({
   current,
@@ -202,71 +268,83 @@ function NowNext({
   if (!current) {
     if (!next) return null;
     return (
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="text-xs text-muted-foreground tabular-nums">
-          Next · {nextWhen}
-          {next.location ? ` · ${next.location}` : ""}
-        </p>
-        <p className="text-base font-semibold tracking-tight text-foreground">
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="text-sm text-muted-foreground">Next</p>
+        <p className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           <Title item={next} hosting={hosting} />
+        </p>
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {nextWhen}
+          {next.location ? ` · ${next.location}` : ""}
         </p>
       </div>
     );
   }
 
   return (
-    <ol className="flex min-w-0 flex-col">
-      <li className="flex min-w-0 gap-3">
-        {/* The rail shares the title's type so `1lh` is the title's first
-            line: the dot centres on it at any font size or line height. */}
-        <span
-          aria-hidden
-          className="flex w-2.5 shrink-0 flex-col items-center text-base"
-        >
-          <span className="flex h-[1lh] items-center">
-            <span className="size-2.5 rounded-full bg-foreground" />
-          </span>
-          {next ? (
-            <Progress
-              orientation="vertical"
-              value={progress}
-              className="mt-1 min-h-3 flex-1 bg-border"
-              indicatorClassName="bg-foreground"
-            />
-          ) : null}
-        </span>
-        <div className={cn("flex min-w-0 flex-col gap-0.5", next && "pb-3")}>
-          <p className="text-base font-semibold tracking-tight text-foreground">
-            <span className="sr-only">Now: </span>
-            <Title item={current} hosting={hosting} />
-          </p>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {current.location ? `${current.location} · ` : ""}
-            {duration(current.end - minutes)} left
-          </p>
-        </div>
-      </li>
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="text-sm text-muted-foreground">Now</p>
+        <p className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <Title item={current} hosting={hosting} />
+        </p>
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {current.location ? `${current.location} · ` : ""}
+          {duration(current.end - minutes)} left
+        </p>
+        <Progress
+          value={progress}
+          aria-label="How far through this class"
+          className="mt-2 h-1.5 bg-border"
+        />
+      </div>
       {next ? (
-        <li className="flex min-w-0 gap-3">
-          <span
-            aria-hidden
-            className="flex h-[1lh] w-2.5 shrink-0 items-center justify-center text-sm"
-          >
-            <span className="size-2.5 rounded-full border-[1.5px] border-muted-foreground" />
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 border-t pt-3 text-sm text-foreground">
+          <span className="text-muted-foreground">Next</span>
+          <span className="min-w-0 font-medium">
+            <Title item={next} hosting={hosting} />
           </span>
-          <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm text-foreground">
-            <span className="sr-only">Next: </span>
-            <span className="min-w-0">
-              <Title item={next} hosting={hosting} />
-            </span>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {nextWhen}
-              {next.location ? ` · ${next.location}` : ""}
-            </span>
-          </p>
-        </li>
+          <span className="text-muted-foreground tabular-nums">
+            {nextWhen}
+            {next.location ? ` · ${next.location}` : ""}
+          </span>
+        </p>
       ) : null}
-    </ol>
+    </div>
+  );
+}
+
+/**
+ * The day's next step. The route to your next class only appears in the passing
+ * period, when it's what you need, and opens already on the map.
+ */
+function DayActions({
+  isStudent,
+  passing,
+}: {
+  isStudent: boolean;
+  passing?: { from: Item; to: Item } | null;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {passing ? (
+        <Button size="lg" trailingIcon={MapPinned} asChild>
+          <Link href={classRouteHref(passing.from, passing.to)}>
+            Route to {passing.to.title}
+          </Link>
+        </Button>
+      ) : null}
+      <Button
+        size="lg"
+        variant={passing ? "tertiary" : undefined}
+        trailingIcon={ArrowRight}
+        asChild
+      >
+        <Link href={isStudent ? "/schedule" : "/calendar"}>
+          {isStudent ? "Open my schedule" : "Open calendar"}
+        </Link>
+      </Button>
+    </div>
   );
 }
 
@@ -346,14 +424,19 @@ function specialName(day: Day | null | undefined) {
 
 function Strip({
   label,
+  actions,
   children,
 }: {
   label?: string;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section
-      className="flex min-w-0 flex-col gap-0.5"
+      className={cn(
+        "flex min-w-0 flex-col gap-4 rounded-2xl border bg-card p-5 sm:p-6",
+        CARD_SURFACE_FOREGROUND,
+      )}
       aria-label="Your day"
       aria-live="polite"
     >
@@ -362,7 +445,8 @@ function Strip({
           {label}
         </Badge>
       ) : null}
-      {children}
+      <div className="flex min-w-0 flex-col gap-0.5">{children}</div>
+      {actions}
     </section>
   );
 }

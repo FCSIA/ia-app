@@ -19,6 +19,7 @@ import {
   Shield,
   Presentation,
   LayoutTemplate,
+  LogOut,
   MapPinned,
   School,
   Search,
@@ -30,6 +31,9 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { startLogout, type AppUser } from "@/lib/auth";
+import { displayName } from "~/apps/shared/user-name";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -220,6 +224,26 @@ function MobileNavLink({
   );
 }
 
+const DESKTOP_ROW_CLASS =
+  "h-9 text-[0.9375rem] data-[active=true]:border data-[active=true]:border-sidebar-border data-[active=true]:bg-background data-[active=true]:font-medium data-[active=true]:shadow-xs";
+
+// The most specific role a person holds, for the sidebar's header chip.
+const ROLE_LABELS: Array<[string, string]> = [
+  ["SUPER_ADMIN", "Super admin"],
+  ["ADMIN", "Admin"],
+  ["SUPPORT_STAFF", "Staff"],
+  ["TEACHER", "Teacher"],
+  ["SPONSOR", "Sponsor"],
+  ["STUDENT_ADMIN", "Student admin"],
+  ["STUDENT_LEADER", "Student leader"],
+  ["STUDENT", "Student"],
+];
+
+function roleLabel(user: AppUser | null | undefined) {
+  const roles: readonly string[] = user?.roles ?? [];
+  return ROLE_LABELS.find(([role]) => roles.includes(role))?.[1];
+}
+
 function DesktopNavLink({ item, active, badge, subNavigation }: {
   item: NavItem;
   active: boolean;
@@ -233,10 +257,15 @@ function DesktopNavLink({ item, active, badge, subNavigation }: {
         render={<Link href={item.href} prefetch {...intent} aria-label={badge ? `${item.label}, ${badge} unread` : item.label} />}
         icon={item.icon}
         isActive={active && !subNavigation?.some((child) => child.isActive)}
+        className={DESKTOP_ROW_CLASS}
       >
         {item.label}
       </SidebarMenuButton>
-      {badge ? <SidebarMenuBadge aria-hidden>{badge}</SidebarMenuBadge> : null}
+      {badge ? (
+        <SidebarMenuBadge aria-hidden className="bg-transparent text-xs font-medium tabular-nums text-muted-foreground">
+          {badge}
+        </SidebarMenuBadge>
+      ) : null}
       {subNavigation ? (
         <SidebarMenuSub>
           {subNavigation.map((child) => (
@@ -279,8 +308,9 @@ function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] 
   ];
 }
 
-function AppShellDesktopNavigation(props: AppShellNavigationProps & {
+function AppShellDesktopNavigation({ user, ...props }: AppShellNavigationProps & {
   commandHint: boolean;
+  user?: AppUser | null;
 }) {
   const primary = getNavigationItems(props).filter((item) => !socialNav.some((social) => social.href === item.href));
   const social = getSocialItems(props);
@@ -291,18 +321,25 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
     ...accountNav.filter((item) => item.href !== profile.href),
     ...(props.showAdmin ? adminNav : []),
   ];
+  const role = roleLabel(user);
 
   return (
     <Sidebar variant="inset" role="navigation" aria-label="Primary navigation" className="z-40">
       <SidebarHeader>
-        <Link href="/" aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
-          <IaOrbitMark alt="" width={16} height={16} className="size-4 shrink-0" />
-          <span className="truncate text-sm font-semibold">IA App</span>
-        </Link>
+        <div className="flex min-h-10 min-w-0 items-center justify-between gap-2 px-2">
+          <Link href="/" aria-label="IA App home" className="flex min-w-0 items-center gap-2.5">
+            <IaOrbitMark alt="" width={22} height={22} className="size-[22px] shrink-0" />
+            <span className="truncate text-base font-bold tracking-tight">IA App</span>
+          </Link>
+          {role ? <span className="shrink-0 text-xs text-muted-foreground">{role}</span> : null}
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <CommandMenuDialogTrigger asChild>
-              <SidebarMenuButton icon={Search}>
+              <SidebarMenuButton
+                icon={Search}
+                className="h-9 border border-sidebar-border bg-background text-muted-foreground shadow-xs"
+              >
                 <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <span>Search</span>
                   <KbdGroup aria-hidden>
@@ -346,10 +383,36 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <DesktopNavLink item={profile} active={isActive(props.pathname, profile.href, props.scheduleTab)} />
-        </SidebarMenu>
+      <SidebarFooter className="border-t border-sidebar-border pt-2">
+        {user ? (
+          <div className="flex min-w-0 items-center gap-1">
+            <Link
+              href={profile.href}
+              aria-label={`${displayName(user)}, ${profile.label}`}
+              aria-current={isActive(props.pathname, profile.href) ? "page" : undefined}
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring aria-[current=page]:bg-sidebar-accent"
+            >
+              <UserAvatar
+              firstName={user.firstName}
+              lastName={user.lastName}
+              preferredName={user.preferredName}
+              avatarUrl={user.avatarUrl}
+              className="size-8 shrink-0"
+            />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{displayName(user)}</span>
+                <span className="block truncate text-xs text-muted-foreground">{profile.label}</span>
+              </span>
+            </Link>
+            <Button variant="ghost" size="icon-sm" aria-label="Log out" onClick={startLogout}>
+              <LogOut />
+            </Button>
+          </div>
+        ) : (
+          <SidebarMenu>
+            <DesktopNavLink item={profile} active={isActive(props.pathname, profile.href, props.scheduleTab)} />
+          </SidebarMenu>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

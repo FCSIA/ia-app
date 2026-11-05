@@ -236,7 +236,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
               : "min-h-[100dvh]",
           )}
         >
-          <AppShellDesktopNavigation {...navigationProps} commandHint={commandHint} />
+          <AppShellDesktopNavigation {...navigationProps} commandHint={commandHint} user={user} />
           <AppShellMobileNavigation {...navigationProps} open={mobileOpen} onOpenChange={setMobileOpen} />
           <SidebarInset tabIndex={-1} className={cn(
             "app-main-surface overflow-clip pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
