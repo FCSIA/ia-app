@@ -126,9 +126,9 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   ].sort());
   for (const block of blocks) {
     assert.match(block, /owner @rebanto/);
-    assert.match(block, /Reviewed 2026-10-30/);
+    assert.match(block, /Reviewed 2026-11-06/);
     const expiry = block.match(/ignoreUntil = (\d{4}-\d{2}-\d{2})/)[1];
-    assert.equal(expiry, "2026-11-06");
+    assert.equal(expiry, "2026-11-13");
     assert.ok(Date.now() < Date.parse(`${expiry}T00:00:00Z`), `Expired audit exception: ${block}`);
   }
   assert.doesNotMatch(config, /\[\[PackageOverrides\]\]/);
