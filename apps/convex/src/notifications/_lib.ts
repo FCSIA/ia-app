@@ -6,53 +6,12 @@ import type { Doc, Id } from "../_generated/dataModel";
 import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
+  notificationSubjectValidatorWith,
 } from "../validators";
 
-export const notificationSubjectValidator = v.union(
-  v.object({
-    kind: v.literal("announcement"),
-    announcementId: v.id("announcements"),
-    clubId: v.union(v.id("clubs"), v.null()),
-  }),
-  v.object({
-    kind: v.literal("event"),
-    eventId: v.id("events"),
-    clubId: v.union(v.id("clubs"), v.null()),
-  }),
-  v.object({
-    kind: v.literal("club"),
-    clubId: v.id("clubs"),
-  }),
-  v.object({
-    kind: v.literal("clubChannel"),
-    clubId: v.id("clubs"),
-    channelId: v.id("clubChannels"),
-  }),
-  v.object({
-    kind: v.literal("clubMessage"),
-    clubId: v.id("clubs"),
-    channelId: v.id("clubChannels"),
-    messageId: v.id("clubChannelMessages"),
-  }),
-  v.object({
-    kind: v.literal("flexFriday"),
-    flexFridayId: v.id("flexFridays"),
-  }),
-  v.object({
-    kind: v.literal("moderationReport"),
-    reportId: v.id("moderationReports"),
-  }),
-  v.object({
-    kind: v.literal("friendRequest"),
-    friendshipId: v.id("studentScheduleFriends"),
-  }),
-  v.object({
-    kind: v.literal("friendSchedule"),
-    friendUserId: v.id("users"),
-  }),
-  v.object({
-    kind: v.literal("system"),
-  }),
+/** Clients always receive `clubId`, as null where the stored subject leaves it out. */
+export const notificationSubjectValidator = notificationSubjectValidatorWith(
+  v.union(v.id("clubs"), v.null()),
 );
 
 export const notificationValidator = v.object({

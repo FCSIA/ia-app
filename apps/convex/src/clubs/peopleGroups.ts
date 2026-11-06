@@ -1,9 +1,23 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import { mutation, query } from "../_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
+import {
+  MAX_CLUB_UNITS,
+  childUnitIdsByParent,
+  normalizeLabel,
+  unitAndDescendantIds,
+} from "./hierarchyRules";
+import { queryRoleHolders } from "./membership";
+
+type GroupDbCtx = QueryCtx | MutationCtx;
 
 const MAX_GROUPS = 100;
 const MAX_GROUP_RULES = 100;
@@ -15,6 +29,44 @@ const groupRuleValidator = v.union(
   v.object({ kind: v.literal("UNIT"), unitId: v.id("clubUnits") }),
 );
 
+type GroupRule = Infer<typeof groupRuleValidator>;
+
+function groupRuleKey(rule: GroupRule) {
+  const id =
+    rule.kind === "ROLE"
+      ? rule.roleId
+      : rule.kind === "PERSON"
+        ? rule.userId
+        : rule.unitId;
+  return `${rule.kind}:${id}`;
+}
+
+/** Stores each distinct rule from `rules` whose key passed validation, once. */
+async function insertGroupRules(
+  ctx: MutationCtx,
+  group: { clubId: Id<"clubs">; groupId: Id<"clubPeopleGroups"> },
+  rules: GroupRule[],
+  validKeys: string[],
+  createdAt: number,
+) {
+  const inserted = new Set<string>();
+  for (const rule of rules) {
+    const key = groupRuleKey(rule);
+    if (!validKeys.includes(key) || inserted.has(key)) continue;
+    inserted.add(key);
+    await ctx.db.insert("clubPeopleGroupRules", {
+      clubId: group.clubId,
+      groupId: group.groupId,
+      kind: rule.kind,
+      ...(rule.kind === "ROLE" ? { roleId: rule.roleId } : {}),
+      ...(rule.kind === "PERSON" ? { userId: rule.userId } : {}),
+      ...(rule.kind === "UNIT" ? { unitId: rule.unitId } : {}),
+      createdAt,
+    });
+  }
+  return inserted.size;
+}
+
 const groupSummaryValidator = v.object({
   _id: v.id("clubPeopleGroups"),
   name: v.string(),
@@ -23,11 +75,7 @@ const groupSummaryValidator = v.object({
   rules: v.array(groupRuleValidator),
 });
 
-function normalizeName(value: string) {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-async function requireGroupManager(ctx: Parameters<typeof getClubContext>[0], clubId: Id<"clubs">, user: Awaited<ReturnType<typeof getCurrentAppUser>>) {
+async function requireGroupManager(ctx: GroupDbCtx, clubId: Id<"clubs">, user: Awaited<ReturnType<typeof getCurrentAppUser>>) {
   const context = await getClubContext(ctx, clubId, user);
   if (!context.permissions.manageRoles) {
     throw new ConvexError("You do not have permission to manage people groups");
@@ -35,24 +83,23 @@ async function requireGroupManager(ctx: Parameters<typeof getClubContext>[0], cl
   return context;
 }
 
-async function requireGroup(ctx: Parameters<typeof getClubContext>[0], clubId: Id<"clubs">, groupId: Id<"clubPeopleGroups">) {
+async function requireGroup(ctx: GroupDbCtx, clubId: Id<"clubs">, groupId: Id<"clubPeopleGroups">) {
   const group = await ctx.db.get(groupId);
   if (!group || group.clubId !== clubId) throw new ConvexError("People group not found");
   return group;
 }
 
 async function validateRules(
-  ctx: Parameters<typeof getClubContext>[0],
+  ctx: GroupDbCtx,
   clubId: Id<"clubs">,
-  rules: Array<{ kind: "ROLE"; roleId: Id<"clubRoles"> } | { kind: "PERSON"; userId: Id<"users"> } | { kind: "UNIT"; unitId: Id<"clubUnits"> }>,
+  rules: GroupRule[],
 ) {
   if (rules.length > MAX_GROUP_RULES) {
     throw new ConvexError(`A people group can contain up to ${MAX_GROUP_RULES} rules`);
   }
   const seen = new Set<string>();
   for (const rule of rules) {
-    const id = rule.kind === "ROLE" ? rule.roleId : rule.kind === "PERSON" ? rule.userId : rule.unitId;
-    const key = `${rule.kind}:${id}`;
+    const key = groupRuleKey(rule);
     if (seen.has(key)) continue;
     seen.add(key);
     if (rule.kind === "ROLE") {
@@ -71,7 +118,7 @@ async function validateRules(
   return [...seen];
 }
 
-async function rulesForGroup(ctx: Parameters<typeof getClubContext>[0], groupId: Id<"clubPeopleGroups">) {
+async function rulesForGroup(ctx: GroupDbCtx, groupId: Id<"clubPeopleGroups">) {
   return ctx.db.query("clubPeopleGroupRules")
     .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
     .take(MAX_GROUP_RULES);
@@ -114,8 +161,7 @@ export const members = query({
   returns: v.object({ memberIds: v.array(v.id("users")) }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canAccessWorkspace) return { memberIds: [] };
+    await getClubContext(ctx, args.clubId, user);
     await requireGroup(ctx, args.clubId, args.groupId);
     const rules = await rulesForGroup(ctx, args.groupId);
     const memberIds = new Set<Id<"users">>();
@@ -123,31 +169,17 @@ export const members = query({
       .withIndex("by_clubId_and_isActive_and_position", (q) =>
         q.eq("clubId", args.clubId).eq("isActive", true),
       )
-      .take(250);
-    const children = new Map<Id<"clubUnits"> | null, Id<"clubUnits">[]>();
-    for (const unit of units) {
-      const siblings = children.get(unit.parentUnitId ?? null) ?? [];
-      siblings.push(unit._id);
-      children.set(unit.parentUnitId ?? null, siblings);
-    }
+      .take(MAX_CLUB_UNITS);
+    const children = childUnitIdsByParent(units);
     for (const rule of rules) {
       if (rule.kind === "PERSON" && rule.userId) {
         memberIds.add(rule.userId);
       } else if (rule.kind === "ROLE" && rule.roleId) {
-        const [roleMembers, legacyRoleMembers] = await Promise.all([
-          ctx.db.query("clubMembers").withIndex("by_clubId_and_roleId", (q) =>
-            q.eq("clubId", args.clubId).eq("roleId", rule.roleId),
-          ).take(MAX_GROUP_MEMBER_ROWS),
-          ctx.db.query("clubMembers").withIndex("by_clubId_and_customRoleId", (q) =>
-            q.eq("clubId", args.clubId).eq("customRoleId", rule.roleId),
-          ).take(MAX_GROUP_MEMBER_ROWS),
-        ]);
+        const { current: roleMembers, legacy: legacyRoleMembers } =
+          await queryRoleHolders(ctx, args.clubId, rule.roleId, MAX_GROUP_MEMBER_ROWS);
         for (const member of [...roleMembers, ...legacyRoleMembers]) memberIds.add(member.userId);
       } else if (rule.kind === "UNIT" && rule.unitId) {
-        const unitIds = [rule.unitId];
-        for (let index = 0; index < unitIds.length; index += 1) {
-          unitIds.push(...(children.get(unitIds[index]) ?? []));
-        }
+        const unitIds = unitAndDescendantIds(rule.unitId, children);
         const memberships = await Promise.all(unitIds.map((unitId) =>
           ctx.db.query("clubUnitMembers").withIndex("by_clubId_and_unitId", (q) =>
             q.eq("clubId", args.clubId).eq("unitId", unitId),
@@ -181,7 +213,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     await requireGroupManager(ctx, args.clubId, user);
-    const name = normalizeName(args.name);
+    const name = normalizeLabel(args.name);
     if (!name) throw new ConvexError("Group name is required");
     if (name.length > 80) throw new ConvexError("Group names must be 80 characters or fewer");
     const groups = await ctx.db.query("clubPeopleGroups")
@@ -196,34 +228,25 @@ export const create = mutation({
     const groupId = await ctx.db.insert("clubPeopleGroups", {
       clubId: args.clubId,
       name,
-      description: normalizeName(args.description ?? "") || undefined,
+      description: normalizeLabel(args.description ?? "") || undefined,
       position: groups.reduce((position, group) => Math.max(position, group.position + 1), 0),
       createdById: user._id,
       createdAt: now,
       updatedAt: now,
     });
-    const insertedRules = new Set<string>();
-    for (const rule of args.rules) {
-      const id = rule.kind === "ROLE" ? rule.roleId : rule.kind === "PERSON" ? rule.userId : rule.unitId;
-      const key = `${rule.kind}:${id}`;
-      if (!rules.includes(key) || insertedRules.has(key)) continue;
-      insertedRules.add(key);
-      await ctx.db.insert("clubPeopleGroupRules", {
-        clubId: args.clubId,
-        groupId,
-        kind: rule.kind,
-        ...(rule.kind === "ROLE" ? { roleId: rule.roleId } : {}),
-        ...(rule.kind === "PERSON" ? { userId: rule.userId } : {}),
-        ...(rule.kind === "UNIT" ? { unitId: rule.unitId } : {}),
-        createdAt: now,
-      });
-    }
+    const insertedRuleCount = await insertGroupRules(
+      ctx,
+      { clubId: args.clubId, groupId },
+      args.rules,
+      rules,
+      now,
+    );
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_PEOPLE_GROUP_CREATED",
       entityType: "ClubPeopleGroup",
       entityId: groupId,
-      meta: { clubId: args.clubId, ruleCount: insertedRules.size },
+      meta: { clubId: args.clubId, ruleCount: insertedRuleCount },
     });
     return groupId;
   },
@@ -242,7 +265,7 @@ export const update = mutation({
     const user = await getCurrentAppUser(ctx);
     await requireGroupManager(ctx, args.clubId, user);
     const group = await requireGroup(ctx, args.clubId, args.groupId);
-    const name = normalizeName(args.name);
+    const name = normalizeLabel(args.name);
     if (!name) throw new ConvexError("Group name is required");
     if (name.length > 80) throw new ConvexError("Group names must be 80 characters or fewer");
     const groups = await ctx.db.query("clubPeopleGroups")
@@ -258,31 +281,22 @@ export const update = mutation({
     const now = Date.now();
     await ctx.db.patch(group._id, {
       name,
-      description: normalizeName(args.description ?? "") || undefined,
+      description: normalizeLabel(args.description ?? "") || undefined,
       updatedAt: now,
     });
-    const insertedRules = new Set<string>();
-    for (const rule of args.rules) {
-      const id = rule.kind === "ROLE" ? rule.roleId : rule.kind === "PERSON" ? rule.userId : rule.unitId;
-      const key = `${rule.kind}:${id}`;
-      if (!validRules.includes(key) || insertedRules.has(key)) continue;
-      insertedRules.add(key);
-      await ctx.db.insert("clubPeopleGroupRules", {
-        clubId: args.clubId,
-        groupId: group._id,
-        kind: rule.kind,
-        ...(rule.kind === "ROLE" ? { roleId: rule.roleId } : {}),
-        ...(rule.kind === "PERSON" ? { userId: rule.userId } : {}),
-        ...(rule.kind === "UNIT" ? { unitId: rule.unitId } : {}),
-        createdAt: now,
-      });
-    }
+    const insertedRuleCount = await insertGroupRules(
+      ctx,
+      { clubId: args.clubId, groupId: group._id },
+      args.rules,
+      validRules,
+      now,
+    );
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_PEOPLE_GROUP_UPDATED",
       entityType: "ClubPeopleGroup",
       entityId: group._id,
-      meta: { clubId: args.clubId, ruleCount: insertedRules.size },
+      meta: { clubId: args.clubId, ruleCount: insertedRuleCount },
     });
     return null;
   },

@@ -19,6 +19,7 @@ import {
   type GroupComparisonEntry,
   withLunchComparisonEntry,
 } from "./groupComparison";
+import { listEligibleFriendsOf } from "./_friends";
 import { canAddAcceptedFriendToGroup, isScheduleGroupOwner } from "./groupPolicy";
 
 const MAX_GROUPS = 20;
@@ -78,32 +79,6 @@ export async function getOwnedGroupOrNull(
   return group && isScheduleGroupOwner(group.ownerId, ownerId) ? group : null;
 }
 
-async function acceptedFriendIds(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-) {
-  const [outgoing, incoming] = await Promise.all([
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
-        q.eq("requesterId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(100),
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
-        q.eq("addresseeId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(100),
-  ]);
-  return Array.from(
-    new Set([
-      ...outgoing.map((row) => row.addresseeId),
-      ...incoming.map((row) => row.requesterId),
-    ]),
-  );
-}
-
 async function toGroupSummary(
   ctx: QueryCtx,
   group: Doc<"studentScheduleGroups">,
@@ -142,17 +117,7 @@ export const listEligibleFriends = query({
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
-    const friendIds = await acceptedFriendIds(ctx, user._id);
-    const friends = [];
-    for (const friendId of friendIds) {
-      const friend = await ctx.db.get(friendId);
-      if (friend?.isActive && isStudent(friend)) friends.push(serializeUser(friend));
-    }
-    return friends.sort(
-      (left, right) =>
-        left.lastName.localeCompare(right.lastName) ||
-        left.firstName.localeCompare(right.firstName),
-    );
+    return await listEligibleFriendsOf(ctx, user);
   },
 });
 

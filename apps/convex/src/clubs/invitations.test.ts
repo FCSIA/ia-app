@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { internal } from "../_generated/api";
+import { generateSecureJoinCode } from "./invitations";
 import schema from "../schema";
 
 const modules = import.meta.glob("/src/**/*.*s");
@@ -67,5 +68,13 @@ describe("bulk direct member imports", () => {
         .unique();
       expect(membership).toBeNull();
     });
+  });
+});
+
+describe("club join codes", () => {
+  test("are long, cryptographic and drawn from an unambiguous alphabet", () => {
+    const codes = new Set(Array.from({ length: 20 }, generateSecureJoinCode));
+    expect(codes.size).toBe(20);
+    for (const code of codes) expect(code).toMatch(/^[A-HJ-NP-Z2-9]{12}$/);
   });
 });

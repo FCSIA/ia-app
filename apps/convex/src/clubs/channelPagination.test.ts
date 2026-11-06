@@ -1,10 +1,8 @@
 import { describe, expect, test } from "vitest";
-import type { Id } from "../_generated/dataModel";
 import {
   MAX_CHANNEL_MESSAGE_PAGE_SIZE,
   boundedChannelMessagePageSize,
   chronologicalFromNewest,
-  threadRootIdForMessage,
 } from "./channelPagination";
 
 describe("club channel pagination", () => {
@@ -21,13 +19,5 @@ describe("club channel pagination", () => {
       "middle",
       "newest",
     ]);
-  });
-
-  test("resolves direct replies to their root message", () => {
-    const rootId = "root" as Id<"clubChannelMessages">;
-    const replyId = "reply" as Id<"clubChannelMessages">;
-
-    expect(threadRootIdForMessage({ _id: rootId, parentMessageId: undefined })).toBe(rootId);
-    expect(threadRootIdForMessage({ _id: replyId, parentMessageId: rootId })).toBe(rootId);
   });
 });

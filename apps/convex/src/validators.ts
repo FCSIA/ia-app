@@ -2,7 +2,8 @@ import { FEEDBACK_STATUSES } from "../../shared/feedback-status";
 import { GITHUB_SYNC_STATES } from "../../shared/feedback-sync";
 import { NOTIFICATION_CATEGORIES } from "../../shared/notifications";
 import { PATHWAYS } from "../../shared/labels";
-import { v, type Infer } from "convex/values";
+import { v, type Infer, type Validator } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { APP_ROLES } from "../../shared/roles";
 import { SCHOOL_LUNCH_PERIODS, SCHOOL_WEEKDAYS } from "../../shared/school-time";
 import { CHANNEL_VISIBILITIES, CHAT_REACTIONS } from "../../shared/chat/protocol";
@@ -26,7 +27,6 @@ export const seedRunStatusValidator = v.union(
   v.literal("FAILED"),
 );
 
-export type SeedRunStatus = Infer<typeof seedRunStatusValidator>;
 
 export const courseCatalogSourceValidator = v.union(
   v.literal("COURSE_CATALOG"),
@@ -61,25 +61,18 @@ export const schoolDayTemplateKindValidator = v.union(
   v.literal("NO_SCHOOL"),
 );
 
-export type SchoolDayTemplateKind = Infer<
-  typeof schoolDayTemplateKindValidator
->;
 
 export const schoolDayDatePlanModeValidator = v.union(
   v.literal("LINKED"),
   v.literal("CUSTOM"),
 );
 
-export type SchoolDayDatePlanMode = Infer<
-  typeof schoolDayDatePlanModeValidator
->;
 
 export const schoolDayBlockKindValidator = v.union(
   v.literal("PERIOD"),
   v.literal("CUSTOM"),
 );
 
-export type SchoolDayBlockKind = Infer<typeof schoolDayBlockKindValidator>;
 
 export const friendshipStatusValidator = v.union(
   v.literal("PENDING"),
@@ -115,6 +108,12 @@ export const pushDevicePlatformValidator = v.union(
 );
 
 export type PushDevicePlatform = Infer<typeof pushDevicePlatformValidator>;
+
+/** Platforms with an Expo push token; the browser is web push only. */
+export const nativePushPlatformValidator = v.union(
+  v.literal("ios"),
+  v.literal("android"),
+);
 
 /** `Notification.permission`, plus `unsupported` where the API is absent. */
 export const pushPermissionValidator = v.union(
@@ -314,7 +313,6 @@ export const eventStatusValidator = v.union(
   v.literal("CANCELLED"),
 );
 
-export type EventStatus = Infer<typeof eventStatusValidator>;
 
 export const eventAttendanceStatusValidator = v.union(
   v.literal("PRESENT"),
@@ -322,9 +320,6 @@ export const eventAttendanceStatusValidator = v.union(
   v.literal("TARDY"),
 );
 
-export type EventAttendanceStatus = Infer<
-  typeof eventAttendanceStatusValidator
->;
 
 export const approvalStatusValidator = v.union(
   v.literal("PENDING"),
@@ -334,12 +329,12 @@ export const approvalStatusValidator = v.union(
 
 export type ApprovalStatus = Infer<typeof approvalStatusValidator>;
 
+
 export const eventTypeValidator = v.union(
   v.literal("GENERAL"),
   v.literal("CLUB"),
 );
 
-export type EventType = Infer<typeof eventTypeValidator>;
 
 export const calendarSourceValidator = v.union(
   v.literal("SCHOOL"),
@@ -364,7 +359,6 @@ export const flexFridayTypeValidator = v.union(
   v.literal("TEACHER_PD"),
 );
 
-export type FlexFridayType = Infer<typeof flexFridayTypeValidator>;
 
 export const flexSessionTypeValidator = v.union(
   v.literal("STUDENT_CHOICE"),
@@ -372,7 +366,6 @@ export const flexSessionTypeValidator = v.union(
   v.literal("TEACHER_ASSIGNED"),
 );
 
-export type FlexSessionType = Infer<typeof flexSessionTypeValidator>;
 
 export const flexAttendanceStatusValidator = v.union(
   v.literal("PRESENT"),
@@ -390,3 +383,64 @@ export const feedbackStatusValidator = v.union(
 export const githubSyncStateValidator = v.union(
   ...GITHUB_SYNC_STATES.map((state) => v.literal(state)),
 );
+
+/**
+ * What a notification points at. Stored rows leave `clubId` out where there is
+ * none; clients get it as null (`notificationSubjectValidator` in notifications/_lib).
+ */
+export function notificationSubjectValidatorWith<
+  OptionalClubId extends Validator<Id<"clubs"> | null | undefined, "required" | "optional", string>,
+>(optionalClubId: OptionalClubId) {
+  return v.union(
+    v.object({
+      kind: v.literal("announcement"),
+      announcementId: v.id("announcements"),
+      clubId: optionalClubId,
+    }),
+    v.object({
+      kind: v.literal("event"),
+      eventId: v.id("events"),
+      clubId: optionalClubId,
+    }),
+    v.object({
+      kind: v.literal("club"),
+      clubId: v.id("clubs"),
+    }),
+    v.object({
+      kind: v.literal("clubChannel"),
+      clubId: v.id("clubs"),
+      channelId: v.id("clubChannels"),
+    }),
+    v.object({
+      kind: v.literal("clubMessage"),
+      clubId: v.id("clubs"),
+      channelId: v.id("clubChannels"),
+      messageId: v.id("clubChannelMessages"),
+    }),
+    v.object({
+      kind: v.literal("flexFriday"),
+      flexFridayId: v.id("flexFridays"),
+    }),
+    v.object({
+      kind: v.literal("moderationReport"),
+      reportId: v.id("moderationReports"),
+    }),
+    v.object({
+      kind: v.literal("friendRequest"),
+      friendshipId: v.id("studentScheduleFriends"),
+    }),
+    v.object({
+      kind: v.literal("friendSchedule"),
+      friendUserId: v.id("users"),
+    }),
+    v.object({
+      kind: v.literal("system"),
+    }),
+  );
+}
+
+export const storedNotificationSubjectValidator = notificationSubjectValidatorWith(
+  v.optional(v.id("clubs")),
+);
+
+export type NotificationSubject = Infer<typeof storedNotificationSubjectValidator>;

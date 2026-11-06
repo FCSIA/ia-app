@@ -7,18 +7,11 @@ import schema from "../schema";
 import type { QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { rowsHeldByOtherAccounts } from "./_pushOwnership";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db.get(identity.subject as Id<"users">);
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -33,22 +26,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   const makeUser = (uniqueId: string) =>
     t.run((ctx) =>
-      ctx.db.insert("users", {
-        uniqueId,
-        firstName: uniqueId,
-        lastName: "Test",
-        roles: ["STUDENT"],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: uniqueId,
-        createdAt: 1,
-        updatedAt: 1,
-      }),
+      insertUser(ctx, { uniqueId, firstName: uniqueId, lastName: "Test", roles: ["STUDENT"] }),
     );
   const firstId = await makeUser("PUSH-FIRST");
   const secondId = await makeUser("PUSH-SECOND");

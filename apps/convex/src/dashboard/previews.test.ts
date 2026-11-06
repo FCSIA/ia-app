@@ -6,31 +6,18 @@ import { api } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
 import schema from '../schema';
+import { insertUser } from '../../test/fixtures';
 
-vi.mock('../../lib/currentUser', async (original) => ({
-  ...(await original<typeof import('../../lib/currentUser')>()),
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<'users'>) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const user = identity ? await ctx.db.get(identity.subject as Id<'users'>) : null;
-    if (!user) throw new ConvexError('Unauthenticated');
-    return user;
-  },
-}));
+vi.mock('../../lib/currentUser', async (original) =>
+  (await import('../../test/auth')).currentUserFromIdentity(await original()),
+);
 const modules = import.meta.glob('/src/**/*.*s');
 
 async function fixture() {
   const t = convexTest(schema, modules);
   const now = Date.now();
   const ids = await t.run(async (ctx) => {
-    const user = (uniqueId: string, roles: ('STUDENT' | 'TEACHER')[]) => ctx.db.insert('users', {
-      uniqueId, firstName: uniqueId, lastName: 'Preview', roles,
-      isStudent: roles.includes('STUDENT'), isTeacherStaff: roles.includes('TEACHER'), isStudentAdmin: false, isOtherRole: false,
-      isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: uniqueId, createdAt: now, updatedAt: now,
-    });
+    const user = (uniqueId: string, roles: ('STUDENT' | 'TEACHER')[]) => insertUser(ctx, { uniqueId, firstName: uniqueId, lastName: 'Preview', roles, createdAt: now, updatedAt: now });
     const student = await user('student', ['STUDENT']);
     const teacher = await user('teacher', ['TEACHER']);
     const other = await user('other', ['STUDENT']);

@@ -1,3 +1,4 @@
+import { userSummary } from "../summaries";
 import { SCHEDULE_FRIENDS_HREF } from "../../../shared/routes";
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -7,7 +8,7 @@ import {
   scheduleWeekdayValidator,
   schoolDayBlockKindValidator,
 } from "../validators";
-import { toCourseSummary } from "../courses/_lib";
+import { courseSummaryValidator, toCourseSummary } from "../courses/_lib";
 import { isAdmin, isStudent } from "../../../shared/roles";
 import { deliverNotification as deliverNotificationRow } from "../notifications/delivery";
 import { SCHOOL_WEEKDAYS, resolveLunchPeriod } from "../../../shared/school-time";
@@ -33,11 +34,8 @@ export const studentScheduleEntryValidator = v.object({
   periodNumber: v.number(),
   className: v.string(),
   courseId: v.union(v.id("courses"), v.null()),
-  course: v.union(v.any(), v.null()), // using any here to avoid circular dependency if possible, or just repeat the summary validator
+  course: v.union(courseSummaryValidator, v.null()),
 });
-
-// Since I want to avoid circular dependencies and keep it simple, I'll repeat or refer to courses/lib
-// Actually, I can just use the validator from courses/lib if I import it correctly.
 
 export const studentScheduleRecordValidator = v.object({
   id: v.id("studentSchedules"),
@@ -217,14 +215,9 @@ export function serializeBlock(block: Doc<"schoolDayBlocks">) {
 // Checked against the validator so a field added here without updating
 // `scheduleFriendUserValidator` fails typecheck instead of failing at runtime.
 export function serializeUser(user: Doc<"users">) {
-  return {
-    _id: user._id,
-    uniqueId: user.uniqueId,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    preferredName: user.preferredName,
-    isDeveloper: user.isDeveloper,
-  } satisfies Infer<typeof scheduleFriendUserValidator>;
+  return userSummary(user, "uniqueId", "isDeveloper") satisfies Infer<
+    typeof scheduleFriendUserValidator
+  >;
 }
 
 export async function getScheduleForUser(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {

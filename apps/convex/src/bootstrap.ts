@@ -8,7 +8,7 @@ import {
 } from "./_generated/server";
 import { seedProfileValidator, type SeedProfile } from "./validators";
 import { isLocalDemoSeedEnabled, LOCAL_DEMO_PASSWORD } from "./seed";
-import { createLinkedUser } from "./users/_lib";
+import { createLinkedUser, findUserKeyCollision } from "./users/_lib";
 
 const USER_BATCH_SIZE = 8;
 const SCHEDULE_BATCH_SIZE = 20;
@@ -483,24 +483,14 @@ export const provisionAdmin = internalMutation({
     const uniqueId = args.uniqueId ?? "SUPER001";
     const email = args.email.toLowerCase().trim();
 
-    // Check uniqueId collision
-    const existingById = await ctx.db
-      .query("users")
-      .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
-      .unique();
-    if (existingById) {
+    const collision = await findUserKeyCollision(ctx, uniqueId, email);
+    if (collision === "uniqueId") {
       return {
         created: false,
         reason: `A user with uniqueId "${uniqueId}" already exists.`,
       };
     }
-
-    // Check email collision
-    const existingByEmail = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (existingByEmail) {
+    if (collision === "email") {
       return {
         created: false,
         reason: `A user with email "${email}" already exists.`,

@@ -1,3 +1,4 @@
+import { clubSummary, userSummary } from "../summaries";
 import { ADMIN_MODERATION_TAB_HREF, REPORT_HREF, adminFeedbackHref } from "../../../shared/routes";
 import {
   isSuperAdmin,
@@ -16,7 +17,7 @@ import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
   requireAnyRole,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { schema } from "../schema";
@@ -25,8 +26,7 @@ import {
   deliverMany,
   deliverNotification,
 } from "../notifications/delivery";
-import { getViewerContext } from "../clubs/access";
-import { getChannelAccess } from "../clubs/channelAccess";
+import { resolveChannel } from "../clubs/channelGate";
 import {
   normalizeFeedbackResponse,
   normalizeModerationReportReason,
@@ -144,25 +144,9 @@ async function serializeReport(
 
   return {
     ...report,
-    submitter: submitter
-      ? {
-          _id: submitter._id,
-          firstName: submitter.firstName,
-          lastName: submitter.lastName,
-          preferredName: submitter.preferredName,
-          uniqueId: submitter.uniqueId,
-        }
-      : null,
-    reportedUser: reportedUser
-      ? {
-          _id: reportedUser._id,
-          firstName: reportedUser.firstName,
-          lastName: reportedUser.lastName,
-          preferredName: reportedUser.preferredName,
-          uniqueId: reportedUser.uniqueId,
-        }
-      : null,
-    club: club ? { _id: club._id, name: club.name } : null,
+    submitter: submitter ? userSummary(submitter, "uniqueId") : null,
+    reportedUser: reportedUser ? userSummary(reportedUser, "uniqueId") : null,
+    club: club ? clubSummary(club) : null,
     images: serializedImages,
     responses: serializedResponses,
   };
@@ -299,11 +283,8 @@ export const list = query({
   args: reportListArgs,
   returns: v.array(reportValidator),
   handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
-    if (
-      !user ||
-      !requireAnyRoleSafe(user, MODERATION_READER_ROLES)
-    ) {
+    const user = await viewerWithRoles(ctx, MODERATION_READER_ROLES);
+    if (!user) {
       return [];
     }
 
@@ -446,12 +427,15 @@ export const submitClubChannelMessage = mutation({
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new ConvexError("Message not found");
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
-    const channel = await ctx.db.get(message.channelId);
-    if (!channel) throw new ConvexError("Message not found");
-    const context = await getViewerContext(ctx, channel.clubId, user);
-    if (!(await getChannelAccess(ctx, channel, context, user._id)).canView) {
-      throw new ConvexError("Not authorized");
+    const gate = await resolveChannel(ctx, user, message.channelId, {
+      requireActiveClub: false,
+    });
+    if (gate.status === "channel-not-found") {
+      throw new ConvexError("Message not found");
     }
+    if (gate.status !== "resolved") throw new ConvexError("Club not found");
+    if (!gate.access.canView) throw new ConvexError("Not authorized");
+    const { channel } = gate;
 
     return await createReport(ctx, user, {
       contentType: "CLUB_CHANNEL_MESSAGE",

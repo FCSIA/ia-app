@@ -12,33 +12,13 @@ import { v } from "convex/values";
 import {
   notificationCategoryValidator,
   type NotificationCategory,
+  type NotificationSubject,
 } from "../validators";
 import {
   preferenceAllowsPush,
   preferenceIsOn,
   resolveNotificationPreference,
 } from "./deliveryPreference";
-
-export type NotificationSubject =
-  | {
-      kind: "announcement";
-      announcementId: Id<"announcements">;
-      clubId?: Id<"clubs">;
-    }
-  | { kind: "event"; eventId: Id<"events">; clubId?: Id<"clubs"> }
-  | { kind: "club"; clubId: Id<"clubs"> }
-  | { kind: "clubChannel"; clubId: Id<"clubs">; channelId: Id<"clubChannels"> }
-  | {
-      kind: "clubMessage";
-      clubId: Id<"clubs">;
-      channelId: Id<"clubChannels">;
-      messageId: Id<"clubChannelMessages">;
-    }
-  | { kind: "flexFriday"; flexFridayId: Id<"flexFridays"> }
-  | { kind: "moderationReport"; reportId: Id<"moderationReports"> }
-  | { kind: "friendRequest"; friendshipId: Id<"studentScheduleFriends"> }
-  | { kind: "friendSchedule"; friendUserId: Id<"users"> }
-  | { kind: "system" };
 
 type DeliveryInput = {
   userId: Id<"users">;

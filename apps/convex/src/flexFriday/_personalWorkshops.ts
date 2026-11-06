@@ -1,3 +1,4 @@
+import { userSummary } from "../summaries";
 import { isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -175,14 +176,7 @@ export async function getWorkshopDetail(
     },
     workshop,
     sessions,
-    teacher: teacher
-      ? {
-          _id: teacher._id,
-          firstName: teacher.firstName,
-          lastName: teacher.lastName,
-          preferredName: teacher.preferredName,
-        }
-      : null,
+    teacher: teacher ? userSummary(teacher) : null,
     viewer: await viewerRelationship(ctx, workshop, user),
     timeZone: SCHOOL_TIME_ZONE,
   };

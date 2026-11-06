@@ -1,10 +1,10 @@
 import { channelMuteScopeKey, GLOBAL_SCOPE_KEY, parseChannelScopeKey } from "../../../shared/notifications";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import type { NotificationCategory } from "../validators";
+import type { NotificationCategory, NotificationPreferenceLevel } from "../validators";
 import { isMuteActive } from "../../../shared/notification-mute";
 
-type PreferenceSwitch = { enabled?: boolean; level: "OFF" | "IN_APP" | "PUSH" | "TIME_SENSITIVE" };
+type PreferenceSwitch = { enabled?: boolean; level: NotificationPreferenceLevel };
 
 /**
  * Whether a preference lets notifications through. `level` is the source of

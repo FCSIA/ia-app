@@ -5,7 +5,6 @@ import type { ClubContext } from "./access";
 import { schema } from "../schema";
 import { countClubChannels, countClubMembers } from "./counts";
 import {
-  getChannelAccess,
   getChannelAccessForChannels,
   type ChannelAccessBatchState,
 } from "./channelAccess";
@@ -51,6 +50,20 @@ export const workspaceClubChannelValidator = schema
     viewerCanPost: v.boolean(),
   });
 
+export async function loadTagMemberRefs(ctx: QueryCtx, tagId: Id<"clubTags">) {
+  const tagMembers = await ctx.db
+    .query("clubTagMembers")
+    .withIndex("by_tagId", (q) => q.eq("tagId", tagId))
+    .collect();
+  const members = await Promise.all(
+    tagMembers.map(async (tagMember) => {
+      const user = await ctx.db.get(tagMember.userId);
+      return user ? { user: toClubUserRef(user) } : null;
+    }),
+  );
+  return members.filter((member): member is NonNullable<typeof member> => !!member);
+}
+
 /** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
 export function toClubUserRef(user: Doc<"users">) {
   return {
@@ -65,27 +78,31 @@ export function toClubUserRef(user: Doc<"users">) {
   } satisfies Infer<typeof clubUserRefValidator>;
 }
 
-export const clubSummaryValidator = v.object({
-  _id: v.id("clubs"),
-  _creationTime: v.number(),
-  name: v.string(),
-  description: v.optional(v.string()),
-  logoUrl: v.optional(v.string()),
-  bannerUrl: v.optional(v.string()),
-  accentColor: v.optional(v.string()),
-  overview: v.optional(v.string()),
-  joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST"), v.literal("INVITE_ONLY")),
-  memberLimit: v.optional(v.number()),
-  isActive: v.boolean(),
-  autoCreateUnitChannels: v.optional(v.boolean()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  role: v.union(v.string(), v.null()),
-  _count: v.object({
-    members: v.number(),
-    channels: v.number(),
-  }),
-});
+export const clubSummaryValidator = schema
+  .doc("clubs")
+  .pick(
+    "_id",
+    "_creationTime",
+    "name",
+    "description",
+    "logoUrl",
+    "bannerUrl",
+    "accentColor",
+    "overview",
+    "joinPolicy",
+    "memberLimit",
+    "isActive",
+    "autoCreateUnitChannels",
+    "createdAt",
+    "updatedAt",
+  )
+  .extend({
+    role: v.union(v.string(), v.null()),
+    _count: v.object({
+      members: v.number(),
+      channels: v.number(),
+    }),
+  });
 
 export function toViewerState(context: ClubContext) {
   return {
@@ -99,21 +116,6 @@ export function toViewerState(context: ClubContext) {
     canApproveJoinRequests: context.canApproveJoinRequests,
     permissions: context.permissions,
     hasPendingJoinRequest: context.hasPendingJoinRequest,
-  };
-}
-
-export async function toChannelViewerState(
-  ctx: QueryCtx,
-  channel: Doc<"clubChannels"> & {
-    memberships: Doc<"clubChannelMemberships">[];
-  },
-  context: ClubContext,
-  userId: Id<"users">,
-) {
-  const access = await getChannelAccess(ctx, channel, context, userId);
-  return {
-    viewerCanRead: access.canView,
-    viewerCanPost: access.canPost,
   };
 }
 
@@ -190,7 +192,6 @@ export async function getVisibleChannels(
   const result = [];
   for (const channel of channels) {
     const memberships = membershipsByChannelId.get(channel._id) ?? [];
-    const channelDoc = { ...channel, memberships };
     const access = accessByChannelId.get(channel._id)!;
     const viewer = {
       viewerCanRead: access.canView,

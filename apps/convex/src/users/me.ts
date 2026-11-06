@@ -6,13 +6,14 @@ import {
   getMaybeCurrentAppUserUnchecked,
 } from "../../lib/currentUser";
 import { ConvexError } from "convex/values";
+import { deleteStorageQuietly } from "../../lib/storage";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
   MAX_USER_AVATAR_BYTES,
   MAX_USER_BACKGROUND_BYTES,
 } from "../../../shared/limits";
-import { searchText, toUserSelfProfile, userSelfProfileValidator } from "./_lib";
+import { toUserSelfProfile, userSelfProfileValidator, writeUserNames } from "./_lib";
 import { MAX_PREFERRED_NAME_LENGTH } from "../../../shared/user-name";
 import { clubChannelReactionValidator } from "../validators";
 import { claimUploadIntent } from "../uploads/uploadIntents";
@@ -43,18 +44,6 @@ const mobileTabValidator = v.union(
   v.literal("wrapped"),
 );
 
-async function deleteStoredFile(
-  ctx: MutationCtx,
-  storageId: Id<"_storage"> | undefined,
-) {
-  if (!storageId) return;
-  try {
-    await ctx.storage.delete(storageId);
-  } catch {
-    // File may already be gone.
-  }
-}
-
 export const me = query({
   args: {},
   returns: v.union(userSelfProfileValidator, v.null()),
@@ -82,11 +71,8 @@ export const updatePreferredName = mutation({
       if (!rate.ok) throw new ConvexError("Too many name changes. Try again later.");
     }
     const moderatedName = await moderatePreferredName(ctx, user, preferredName);
-    const updated = { ...user, preferredName: moderatedName || undefined };
-    await ctx.db.patch(user._id, {
-      preferredName: updated.preferredName,
-      searchText: searchText(updated),
-      updatedAt: Date.now(),
+    const updated = await writeUserNames(ctx, user, {
+      preferredName: moderatedName || undefined,
     });
     return toUserSelfProfile(updated);
   },
@@ -246,28 +232,28 @@ export const saveUserImageMutation = internalMutation({
     const mimeType = (metadata.contentType ?? args.mimeType).toLowerCase();
 
     if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType)) {
-      await deleteStoredFile(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw new ConvexError("Only image uploads are allowed");
     }
     if (metadata.size > maxBytes) {
-      await deleteStoredFile(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw new ConvexError("Image too large");
     }
     try {
       await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: metadata.size });
     } catch (error) {
-      await deleteStoredFile(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw error;
     }
 
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) {
-      await deleteStoredFile(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw new ConvexError("Upload failed");
     }
 
     if (args.kind === "avatar") {
-      await deleteStoredFile(ctx, user.avatarStorageId);
+      await deleteStorageQuietly(ctx, user.avatarStorageId);
       await ctx.db.patch(user._id, {
         avatarUrl: url,
         avatarStorageId: args.storageId,
@@ -275,7 +261,7 @@ export const saveUserImageMutation = internalMutation({
       });
     } else {
       const palette = args.wallpaperPalette ?? [];
-      await deleteStoredFile(ctx, user.customBackgroundStorageId);
+      await deleteStorageQuietly(ctx, user.customBackgroundStorageId);
       await ctx.db.patch(user._id, {
         customBackgroundUrl: url,
         customBackgroundStorageId: args.storageId,
@@ -322,14 +308,14 @@ export const clearUserImage = mutation({
     const user = await getCurrentAppUser(ctx);
 
     if (args.kind === "avatar") {
-      await deleteStoredFile(ctx, user.avatarStorageId);
+      await deleteStorageQuietly(ctx, user.avatarStorageId);
       await ctx.db.patch(user._id, {
         avatarUrl: undefined,
         avatarStorageId: undefined,
         updatedAt: Date.now(),
       });
     } else {
-      await deleteStoredFile(ctx, user.customBackgroundStorageId);
+      await deleteStorageQuietly(ctx, user.customBackgroundStorageId);
       await ctx.db.patch(user._id, {
         customBackgroundUrl: undefined,
         customBackgroundStorageId: undefined,

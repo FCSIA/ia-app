@@ -2,9 +2,9 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { MAX_VOLUNTEER_PROOF_BYTES, STAGED_IMAGE_MIME_TYPES } from "../../../shared/limits";
+import { deleteStorageQuietly } from "../../lib/storage";
 import { normalizeStoredFileMime } from "./fileSignatures";
 
-export const STAGED_VOLUNTEER_PROOF_TTL_MS = 60 * 60 * 1000;
 const IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 export function validateVolunteerProofMetadata(metadata: { contentType?: string; size: number }, fallbackMimeType?: string) {
@@ -46,7 +46,7 @@ export const cleanupStagedVolunteerProof = internalMutation({
     if (!proof) return null;
     const submitted = await ctx.db.query("clubVolunteerLogs")
       .withIndex("by_proofStorageId", q => q.eq("proofStorageId", proof.storageId)).first();
-    if (!submitted) await ctx.storage.delete(proof.storageId).catch(() => {});
+    if (!submitted) await deleteStorageQuietly(ctx, proof.storageId);
     await ctx.db.delete(proof._id);
     return null;
   },

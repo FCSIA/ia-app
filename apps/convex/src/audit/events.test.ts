@@ -17,35 +17,17 @@ import {
   matchesAuditSearch,
   parseAuditSearch,
 } from '../../../shared/audit';
+import { insertUser } from '../../test/fixtures';
 
-vi.mock('../../lib/currentUser', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../lib/currentUser')>()),
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<'users'>) : null;
-  },
-}));
+vi.mock('../../lib/currentUser', async (original) =>
+  (await import('../../test/auth')).currentUserFromIdentity(await original()),
+);
 const modules = import.meta.glob('/src/**/*.*s');
 async function fixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
     const user = (uniqueId: string, roles: ('ADMIN' | 'STUDENT')[]) =>
-      ctx.db.insert('users', {
-        uniqueId,
-        firstName: uniqueId === 'ADMIN' ? 'Eniola' : 'Ada',
-        lastName: 'Famakinwa',
-        roles,
-        isStudent: roles.includes('STUDENT'),
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: '',
-        createdAt: 0,
-        updatedAt: 0,
-      });
+      insertUser(ctx, { uniqueId, firstName: uniqueId === 'ADMIN' ? 'Eniola' : 'Ada', lastName: 'Famakinwa', roles, createdAt: 0, updatedAt: 0 });
     const admin = await user('ADMIN', ['ADMIN']);
     const student = await user('STUDENT', ['STUDENT']);
     const club = await ctx.db.insert('clubs', {
@@ -526,10 +508,7 @@ describe('audit index integrity', () => {
   });
   test('counts a history written only by the logger exactly, without a backfill', async () => {
     const t = convexTest(schema, modules);
-    const admin = await t.run((ctx) => ctx.db.insert('users', {
-      uniqueId: 'ADMIN', firstName: 'Eniola', lastName: 'Famakinwa', roles: ['ADMIN'], isStudent: false, isTeacherStaff: false,
-      isStudentAdmin: false, isOtherRole: false, isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: '', createdAt: 0, updatedAt: 0,
-    }));
+    const admin = await t.run((ctx) => insertUser(ctx, { uniqueId: 'ADMIN', firstName: 'Eniola', lastName: 'Famakinwa', roles: ['ADMIN'], createdAt: 0, updatedAt: 0 }));
     const adminClient = t.withIdentity({ subject: admin });
     expect(await adminClient.query(api.audit.events.counts, {})).toMatchObject({ total: 0, exact: true });
     await t.run(async (ctx) => {

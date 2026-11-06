@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { feedbackMetadataValidator } from "./moderation/feedbackMetadata";
 import { analyticsDailyValidator } from "./analytics/validators";
 import { decisionsValidator } from "./onboarding/validators";
+import { wrappedSummaryValidator } from "./wrapped/_lib";
 import {
   appRoleValidator,
   courseCatalogSourceValidator,
@@ -23,6 +24,10 @@ import {
   clubMemberRoleValidator,
   clubRolePermissionsValidator,
   inviteStatusValidator,
+  nativePushPlatformValidator,
+  storedNotificationSubjectValidator,
+  externalCalendarProviderValidator,
+  externalCalendarSubscriptionStatusValidator,
   clubChannelVisibilityValidator,
   clubChannelAudienceKindValidator,
   clubChannelPostingPolicyValidator,
@@ -199,52 +204,7 @@ export const schema = defineSchema({
     title: v.string(),
     body: v.string(),
     href: v.string(),
-    subject: v.union(
-      v.object({
-        kind: v.literal("announcement"),
-        announcementId: v.id("announcements"),
-        clubId: v.optional(v.id("clubs")),
-      }),
-      v.object({
-        kind: v.literal("event"),
-        eventId: v.id("events"),
-        clubId: v.optional(v.id("clubs")),
-      }),
-      v.object({
-        kind: v.literal("club"),
-        clubId: v.id("clubs"),
-      }),
-      v.object({
-        kind: v.literal("clubChannel"),
-        clubId: v.id("clubs"),
-        channelId: v.id("clubChannels"),
-      }),
-      v.object({
-        kind: v.literal("clubMessage"),
-        clubId: v.id("clubs"),
-        channelId: v.id("clubChannels"),
-        messageId: v.id("clubChannelMessages"),
-      }),
-      v.object({
-        kind: v.literal("flexFriday"),
-        flexFridayId: v.id("flexFridays"),
-      }),
-      v.object({
-        kind: v.literal("moderationReport"),
-        reportId: v.id("moderationReports"),
-      }),
-      v.object({
-        kind: v.literal("friendRequest"),
-        friendshipId: v.id("studentScheduleFriends"),
-      }),
-      v.object({
-        kind: v.literal("friendSchedule"),
-        friendUserId: v.id("users"),
-      }),
-      v.object({
-        kind: v.literal("system"),
-      }),
-    ),
+    subject: storedNotificationSubjectValidator,
     isRead: v.boolean(),
     // When the recipient first read it. Absent on rows read before this was recorded.
     readAt: v.optional(v.number()),
@@ -380,7 +340,7 @@ export const schema = defineSchema({
   notificationNativePushTokens: defineTable({
     userId: v.id("users"),
     token: v.string(),
-    platform: v.union(v.literal("ios"), v.literal("android")),
+    platform: nativePushPlatformValidator,
     deviceId: v.optional(v.string()),
     deviceName: v.optional(v.string()),
     enabled: v.boolean(),
@@ -714,7 +674,6 @@ export const schema = defineSchema({
   })
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
     .index("by_clubId", ["clubId"])
-    .index("by_clubId_and_role", ["clubId", "role"])
     .index("by_clubId_and_roleId", ["clubId", "roleId"])
     .index("by_clubId_and_customRoleId", ["clubId", "customRoleId"])
     .index("by_clubId_and_userId", ["clubId", "userId"])
@@ -746,7 +705,7 @@ export const schema = defineSchema({
     minutes: v.number(),
     notes: v.optional(v.string()),
     proofStorageId: v.id("_storage"),
-    status: v.union(v.literal("PENDING"), v.literal("APPROVED"), v.literal("DECLINED")),
+    status: approvalStatusValidator,
     submittedAt: v.number(),
     reviewedById: v.optional(v.id("users")),
     reviewedAt: v.optional(v.number()),
@@ -788,7 +747,6 @@ export const schema = defineSchema({
       "parentUnitId",
       "position",
     ])
-    .index("by_parentUnitId_and_position", ["parentUnitId", "position"])
     .index("by_parentUnitId_and_isActive_and_position", [
       "parentUnitId",
       "isActive",
@@ -822,7 +780,6 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_unitId_and_userId", ["unitId", "userId"])
-    .index("by_unitId_and_role", ["unitId", "role"])
     .index("by_userId_and_clubId", ["userId", "clubId"])
     .index("by_clubId_and_unitId", ["clubId", "unitId"]),
 
@@ -844,7 +801,6 @@ export const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_recipientId_and_status", ["recipientId", "status"])
     .index("by_clubId_and_recipientId", ["clubId", "recipientId"])
     .index("by_recipientId_and_status_and_updatedAt", [
       "recipientId",
@@ -860,13 +816,6 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_clubId_and_status", ["clubId", "status"])
-    .index("by_clubId_and_status_and_requesterId", [
-      "clubId",
-      "status",
-      "requesterId",
-    ])
-    .index("by_clubId_and_requesterId", ["clubId", "requesterId"])
-    .index("by_requesterId_and_status", ["requesterId", "status"])
     .index("by_clubId_and_requesterId_and_status", [
       "clubId",
       "requesterId",
@@ -1078,7 +1027,6 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_tagId", ["tagId"])
-    .index("by_tagId_and_userId", ["tagId", "userId"])
     .index("by_userId", ["userId"]),
 
   clubPeopleGroups: defineTable({
@@ -1103,8 +1051,7 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_groupId", ["groupId"])
-    .index("by_clubId_and_groupId", ["clubId", "groupId"])
-    .index("by_groupId_and_kind", ["groupId", "kind"]),
+    .index("by_clubId_and_groupId", ["clubId", "groupId"]),
 
   clubChannelMessages: defineTable({
     channelId: v.id("clubChannels"),
@@ -1138,11 +1085,6 @@ export const schema = defineSchema({
     ])
     .index("by_authorId_and_createdAt", ["authorId", "createdAt"])
     .index("by_authorId_and_clientGeneratedId", ["authorId", "clientGeneratedId"])
-    .index("by_authorId_and_channelId_and_createdAt", [
-      "authorId",
-      "channelId",
-      "createdAt",
-    ])
     .searchIndex("search_body", {
       searchField: "body",
       filterFields: ["channelId"],
@@ -1376,11 +1318,7 @@ export const schema = defineSchema({
     calendarEntryId: v.id("calendarEntries"),
     senderId: v.id("users"),
     recipientId: v.id("users"),
-    status: v.union(
-      v.literal("PENDING"),
-      v.literal("ACCEPTED"),
-      v.literal("DECLINED"),
-    ),
+    status: inviteStatusValidator,
     createdAt: v.number(),
     respondedAt: v.optional(v.number()),
   })
@@ -1397,10 +1335,10 @@ export const schema = defineSchema({
 
   externalCalendarSubscriptions: defineTable({
     userId: v.id("users"),
-    provider: v.literal("ICS"),
+    provider: externalCalendarProviderValidator,
     displayName: v.string(),
     feedUrl: v.string(),
-    status: v.union(v.literal("ACTIVE"), v.literal("ERROR")),
+    status: externalCalendarSubscriptionStatusValidator,
     lastSyncedAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
     nextRefreshAt: v.number(),
@@ -1588,7 +1526,7 @@ export const schema = defineSchema({
     rangeStart: v.number(),
     rangeEnd: v.number(),
     schemaVersion: v.number(),
-    summary: v.any(),
+    summary: wrappedSummaryValidator,
     messagesSent: v.number(),
     channelsEngaged: v.number(),
     friends: v.number(),

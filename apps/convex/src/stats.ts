@@ -2,6 +2,7 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
+import type { UserRoleGroup } from "./users/_lib";
 
 const USER_COUNTS_KEY = "user-counts";
 
@@ -9,8 +10,6 @@ type CountedUser = Pick<
   Doc<"users">,
   "isStudent" | "isTeacherStaff" | "isStudentAdmin" | "isOtherRole"
 >;
-
-export type UserRoleGroup = "all" | "students" | "teachers" | "student-admin" | "other";
 
 function userCountDeltas(user: CountedUser, delta: 1 | -1) {
   return {

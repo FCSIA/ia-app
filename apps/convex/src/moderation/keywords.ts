@@ -3,9 +3,8 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import {
   getCurrentAppUser,
-  getMaybeCurrentAppUser,
   requireAnyRole,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { schema } from "../schema";
@@ -14,11 +13,8 @@ export const list = query({
   args: {},
   returns: v.array(schema.doc("moderationKeywordRules")),
   handler: async (ctx) => {
-    const user = await getMaybeCurrentAppUser(ctx);
-    if (
-      !user ||
-      !requireAnyRoleSafe(user, STAFF_ROLES)
-    ) {
+    const user = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!user) {
       return [];
     }
 

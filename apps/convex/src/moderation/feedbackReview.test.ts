@@ -7,24 +7,11 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import { githubIssueStateFor, sameGithubIssueState } from "./feedbackGithub";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../lib/currentUser")>();
-  return {
-    ...original,
-    getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-    },
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) throw new Error("Unauthenticated");
-      const user = await ctx.db.get(identity.subject as Id<"users">);
-      if (!user) throw new Error("Unauthenticated");
-      return user;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 vi.mock("./feedbackGithubToken", () => ({
   feedbackGithubToken: async () => process.env.GITHUB_FEEDBACK_TOKEN ?? null,
@@ -41,23 +28,7 @@ afterEach(() => {
 async function fixture() {
   const t = convexTest(schema, modules);
   const addUser = (uniqueId: string, extra: Partial<Doc<"users">>) =>
-    t.run((ctx) => ctx.db.insert("users", {
-      uniqueId,
-      firstName: uniqueId,
-      lastName: "User",
-      roles: ["STUDENT"],
-      isStudent: true,
-      isTeacherStaff: false,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: uniqueId.toLowerCase(),
-      createdAt: 1,
-      updatedAt: 1,
-      ...extra,
-    }));
+    t.run((ctx) => insertUser(ctx, { uniqueId, firstName: uniqueId, lastName: "User", roles: ["STUDENT"], ...extra }));
   const submitterId = await addUser("SUBMITTER", {});
   const otherStudentId = await addUser("OTHER", {});
   const firstAdminId = await addUser("FIRST-ADMIN", { roles: ["SUPER_ADMIN"] });

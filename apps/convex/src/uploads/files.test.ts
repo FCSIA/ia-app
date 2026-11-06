@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
   assertCanManageClubImage,
-  validateChatAttachmentMetadata,
   validateClubImageMetadata,
 } from "./files";
+import { validateChatAttachmentMetadata } from "./chatAttachments";
 import { NO_CLUB_PERMISSIONS } from "../clubs/rolePermissions";
 
 describe("upload metadata validation", () => {

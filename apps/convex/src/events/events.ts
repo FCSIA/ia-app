@@ -1,11 +1,11 @@
-import { eventHref } from "../../../shared/routes";
 import { EVENT_MANAGER_ROLES, hasAnyRole } from "../../../shared/roles";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEventDetail, serializeEvents, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
-import { deliverMany, eventAudience } from "../notifications/delivery";
+import { publishEvent } from "./_publish";
 import { getClubContext } from "../clubs/access";
 import { clearPendingApprovals } from "./approvals";
 import {
@@ -13,7 +13,7 @@ import {
   normalizeOptionalEventDescription,
 } from "./contentValidation";
 
-function isAdmin(user: { roles: string[] } | null) {
+function isAdmin(user: Doc<"users">) {
   return hasAnyRole(user, EVENT_MANAGER_ROLES);
 }
 
@@ -162,32 +162,8 @@ export const create = mutation({
     });
 
     if (status === "PUBLISHED") {
-      await ctx.db.insert("calendarEntries", {
-        eventId,
-        title,
-        description,
-        location: args.location?.trim(),
-        startAt: args.startAt,
-        endAt: args.endAt,
-        tags: ["event"],
-        source: args.clubId ? "CLUB" : "SCHOOL",
-        createdById: user._id,
-        createdAt: Date.now(),
-      });
       const event = await ctx.db.get(eventId);
-      if (event) {
-        await deliverMany(ctx, await eventAudience(ctx, event), {
-          category: "EVENT",
-          title: event.title,
-          body: event.description ?? "New event published.",
-          href: eventHref(event._id),
-          subject: {
-            kind: "event",
-            eventId: event._id,
-            ...(event.clubId ? { clubId: event.clubId } : {}),
-          },
-        });
-      }
+      if (event) await publishEvent(ctx, event);
     }
 
     for (const sponsor of sponsors) {

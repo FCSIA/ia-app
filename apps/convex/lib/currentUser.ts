@@ -59,9 +59,18 @@ export async function getMaybeCurrentAppUserUnchecked(
 }
 
 export function requireAnyRole(user: Doc<"users">, allowed: readonly AppRole[]) {
-  if (!requireAnyRoleSafe(user, allowed)) {
+  if (!hasAnyRole(user.roles, allowed)) {
     throw new ConvexError("Forbidden");
   }
+}
+
+/** The signed-in user when they hold one of `allowed`, else null: for queries that answer empty instead of throwing. */
+export async function viewerWithRoles(
+  ctx: Ctx,
+  allowed: readonly AppRole[],
+): Promise<Doc<"users"> | null> {
+  const user = await getMaybeCurrentAppUser(ctx);
+  return user && hasAnyRole(user.roles, allowed) ? user : null;
 }
 
 export function requireAnyRoleSafe(user: Doc<"users">, allowed: readonly AppRole[]): boolean {

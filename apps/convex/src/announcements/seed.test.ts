@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
 const modules = import.meta.glob("/src/**/*.*s");
 beforeEach(() => vi.stubEnv("ALLOW_LOCAL_DEMO_SEED", "true"));
@@ -13,22 +14,7 @@ describe("demo announcement cleanup", () => {
   it("shares a bounded deletion budget across tables and drains repeated batches", async () => {
     const t = convexTest({ schema, modules, transactionLimits: true });
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
-        uniqueId: "seed-owner",
-        firstName: "Seed",
-        lastName: "Owner",
-        roles: ["TEACHER"],
-        isStudent: false,
-        isTeacherStaff: true,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: "seed owner",
-        createdAt: 0,
-        updatedAt: 0,
-      });
+      const userId = await insertUser(ctx, { uniqueId: "seed-owner", firstName: "Seed", lastName: "Owner", roles: ["TEACHER"], createdAt: 0, updatedAt: 0 });
       for (let i = 0; i < 201; i++) {
         await ctx.db.insert("moderationKeywordRules", {
           keyword: `word-${i}`,

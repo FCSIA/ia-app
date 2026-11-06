@@ -1,6 +1,6 @@
 import { CALENDAR_HREF, adminFeedbackHref, announcementHref, clubHref, eventHref } from "../../../shared/routes";
 import { isAdmin } from "../../../shared/roles";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
@@ -27,6 +27,8 @@ const itemValidator = v.object({
   ),
 });
 
+type Item = Infer<typeof itemValidator>;
+
 /** Bounded queues expose their lower bound honestly rather than claiming empty. */
 export const list = query({
   args: {},
@@ -38,22 +40,9 @@ export const list = query({
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
     const cap = 100;
-    const items: {
-      id: string;
-      title: string;
-      href: string;
-      createdAt: number;
-      kind:
-        | "announcement"
-        | "event"
-        | "invite"
-        | "club-invite"
-        | "changes"
-        | "reports"
-        | "feedback";
-    }[] = [];
+    const items: Item[] = [];
     let hasMore = false;
-    const add = (row: (typeof items)[number]) => {
+    const add = (row: Item) => {
       if (!items.some((item) => item.id === row.id)) items.push(row);
     };
     let pending: Doc<"announcements">[];

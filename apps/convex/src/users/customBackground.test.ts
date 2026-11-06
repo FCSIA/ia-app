@@ -5,6 +5,7 @@ import { api } from "../_generated/api";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import { MAX_WALLPAPER_BLUR } from "../../../shared/custom-theme";
+import { insertUser } from "../../test/fixtures";
 
 // Exercise the real current-user guards with only the external identity lookup replaced.
 vi.mock("../auth", async (importOriginal) => {
@@ -27,15 +28,7 @@ const imageUrl = "https://example.com/wallpaper.png";
 async function fixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
-    const createUser = async (name: string) => ctx.db.insert("users", {
-      authUserId: name, uniqueId: name, firstName: name, lastName: "Test",
-      roles: ["STUDENT"], isStudent: true, isTeacherStaff: false,
-      isStudentAdmin: false, isOtherRole: false, isActive: true,
-      mustResetPassword: false, dashboardLayout: [], searchText: name,
-      customBackgroundStorageId: await ctx.storage.store(new Blob([name])), customBackgroundUrl: imageUrl,
-      customBackgroundPalette: ["#112233", "#445566"], customBackgroundTint: "#112233",
-      createdAt: 1, updatedAt: 1,
-    });
+    const createUser = async (name: string) => insertUser(ctx, { authUserId: name, uniqueId: name, firstName: name, lastName: "Test", roles: ["STUDENT"], customBackgroundStorageId: await ctx.storage.store(new Blob([name])), customBackgroundUrl: imageUrl, customBackgroundPalette: ["#112233", "#445566"], customBackgroundTint: "#112233" });
     return { alice: await createUser("Alice"), bob: await createUser("Bob") };
   });
   return { t, ids, user: t.withIdentity({ subject: "Alice" }) };

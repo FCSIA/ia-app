@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { isStudent } from "../../../shared/roles";
 import { lunchPeriodNumber } from "../../../shared/school-time";
+import { acceptedFriendIds } from "./_friends";
 import { internalMutation } from "../_generated/server";
 import {
   BASE_BLOCKS,
@@ -184,26 +185,7 @@ export const seedFromStaticData = internalMutation({
             createdAt: now,
             updatedAt: now,
           });
-          const [outgoing, incoming] = await Promise.all([
-            ctx.db
-              .query("studentScheduleFriends")
-              .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
-                q.eq("requesterId", owner._id).eq("status", "ACCEPTED"),
-              )
-              .take(4),
-            ctx.db
-              .query("studentScheduleFriends")
-              .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
-                q.eq("addresseeId", owner._id).eq("status", "ACCEPTED"),
-              )
-              .take(4),
-          ]);
-          const friendIds = Array.from(
-            new Set([
-              ...outgoing.map((friendship) => friendship.addresseeId),
-              ...incoming.map((friendship) => friendship.requesterId),
-            ]),
-          ).slice(0, 4);
+          const friendIds = (await acceptedFriendIds(ctx, owner._id, 4)).slice(0, 4);
           for (const friendId of friendIds) {
             await ctx.db.insert("studentScheduleGroupMembers", {
               groupId,

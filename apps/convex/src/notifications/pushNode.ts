@@ -1,21 +1,13 @@
-import { NOTIFICATIONS_HREF } from "../../../shared/routes";
-import type { PushDeliveryFields } from "../../../shared/notifications";
 "use node";
 
+import { NOTIFICATIONS_HREF } from "../../../shared/routes";
+import type { PushDeliveryFields } from "../../../shared/notifications";
 import webpush from "web-push";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import type { ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
-
-function publicVapidKey() {
-  return (
-    process.env.VAPID_PUBLIC_KEY ??
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ??
-    null
-  );
-}
+import { publicVapidKey, webPushTargetValidator } from "./_pushTransport";
 
 function formatVapidSubject() {
   const raw =
@@ -43,14 +35,7 @@ function configureWebPush() {
   return true;
 }
 
-type DeliveryTarget = {
-  id: Id<"notificationPushSubscriptions">;
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-};
+type DeliveryTarget = Infer<typeof webPushTargetValidator>;
 
 /**
  * `Urgency: high` keeps FCM from batching the message behind Android's Doze
@@ -58,7 +43,7 @@ type DeliveryTarget = {
  * an announcement now rather than at the next maintenance window.
  */
 const pushOptions = {
-  TTL: 60 * 60 * 24, // 24 hours
+  TTL: 60 * 60 * 24,
   urgency: "high" as const,
 } satisfies Parameters<typeof webpush.sendNotification>[2];
 

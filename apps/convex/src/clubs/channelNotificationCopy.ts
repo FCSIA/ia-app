@@ -1,5 +1,4 @@
-import { displayName } from '../../../shared/user-name';
-export type ChannelNotificationKind =
+type ChannelNotificationKind =
   | "MESSAGE"
   | "THREAD_REPLY"
   | "REPLY"
@@ -26,12 +25,4 @@ export function channelNotificationTitle(input: {
     case "MESSAGE":
       return `${authorName} in ${channelName}`;
   }
-}
-
-export function channelNotificationAuthorName(author: {
-  firstName?: string;
-  lastName?: string;
-  preferredName?: string | null;
-}) {
-  return displayName(author);
 }

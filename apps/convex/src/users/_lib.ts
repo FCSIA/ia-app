@@ -1,4 +1,5 @@
 import { ConvexError, v, type Infer } from "convex/values";
+import { paginationResultValidator } from "convex/server";
 import { hashPassword } from "better-auth/crypto";
 import { createAuth } from "../auth";
 import { components } from "../_generated/api";
@@ -12,12 +13,14 @@ import {
   isStudent,
   type AppRole,
 } from "../../../shared/roles";
-import { incrementUserCounts } from "../stats";
+import { incrementUserCounts, replaceUserCounts } from "../stats";
+import { logAuditEvent } from "../audit/_lib";
 import { schema } from "../schema";
+import type { Pathway } from "../validators";
 import { ONBOARDING_VERSION } from '../../../shared/onboarding';
 import { MIN_PASSWORD_LENGTH } from '../../../shared/limits';
 
-const userProfileValidator = schema
+export const adminUserProfileValidator = schema
   .doc("users")
   .pick(
     "_id",
@@ -35,7 +38,7 @@ const userProfileValidator = schema
     "isDeveloper",
   );
 
-export const userSelfProfileValidator = userProfileValidator.extend(
+export const userSelfProfileValidator = adminUserProfileValidator.extend(
   schema
     .doc("users")
     .pick(
@@ -54,57 +57,32 @@ export const userSelfProfileValidator = userProfileValidator.extend(
     ).fields,
 );
 
-export const adminUserProfileValidator = userProfileValidator;
+/** Copies exactly the fields `validator` lists, so a mapper cannot drift from its validator. */
+function pickFields<Fields extends Record<string, unknown>>(
+  user: Doc<"users">,
+  validator: { fields: Fields },
+) {
+  const picked: Record<string, unknown> = {};
+  for (const key of Object.keys(validator.fields)) {
+    picked[key] = user[key as keyof Doc<"users">];
+  }
+  return picked as Pick<Doc<"users">, Extract<keyof Fields, keyof Doc<"users">>>;
+}
 
 export function toUserSelfProfile(user: Doc<"users">) {
   return {
-    _id: user._id,
-    uniqueId: user.uniqueId,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    preferredName: user.preferredName,
-    roles: user.roles,
-    gradeLevel: user.gradeLevel,
-    major: user.major,
-    minor: user.minor,
-    email: user.email,
-    isActive: user.isActive,
-    mustResetPassword: user.mustResetPassword,
-    canReviewFeedback: user.canReviewFeedback,
-    dashboardLayout: user.dashboardLayout,
-    dashboardColumns: user.dashboardColumns,
-    dashboardNotes: user.dashboardNotes,
-    mobileTabLayout: user.mobileTabLayout,
+    ...pickFields(user, userSelfProfileValidator),
     use24HourTime: user.use24HourTime ?? false,
-    chatDoubleTapReaction: user.chatDoubleTapReaction,
-    avatarUrl: user.avatarUrl,
-    customBackgroundUrl: user.customBackgroundUrl,
-    customBackgroundPalette: user.customBackgroundPalette,
-    customBackgroundTint: user.customBackgroundTint,
-    customBackgroundBlur: user.customBackgroundBlur,
-    isDeveloper: user.isDeveloper,
   } satisfies Infer<typeof userSelfProfileValidator>;
 }
 
 export function toAdminUserProfile(user: Doc<"users">) {
-  return {
-    _id: user._id,
-    uniqueId: user.uniqueId,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    preferredName: user.preferredName,
-    roles: user.roles,
-    gradeLevel: user.gradeLevel,
-    major: user.major,
-    minor: user.minor,
-    email: user.email,
-    isActive: user.isActive,
-    avatarUrl: user.avatarUrl,
-    isDeveloper: user.isDeveloper,
-  } satisfies Infer<typeof adminUserProfileValidator>;
+  return pickFields(user, adminUserProfileValidator) satisfies Infer<
+    typeof adminUserProfileValidator
+  >;
 }
 
-export const temporaryPasswordAlphabet =
+const temporaryPasswordAlphabet =
   "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 export const createUserResultValidator = v.object({
@@ -120,40 +98,35 @@ export const userRoleGroupValidator = v.union(
   v.literal("all"),
 );
 
-export const listUsersResultValidator = v.object({
-  page: v.array(adminUserProfileValidator),
-  isDone: v.boolean(),
-  continueCursor: v.string(),
-  pageStatus: v.optional(
-    v.union(
-      v.literal("SplitRecommended"),
-      v.literal("SplitRequired"),
-      v.null(),
-    ),
-  ),
-  splitCursor: v.optional(v.union(v.string(), v.null())),
+export type UserRoleGroup = Infer<typeof userRoleGroupValidator>;
+
+export const listUsersResultValidator = paginationResultValidator(adminUserProfileValidator);
+
+export const generatedCredentialValidator = v.object({
+  firstName: v.string(),
+  lastName: v.string(),
+  uniqueId: v.string(),
+  email: v.string(),
+  temporaryPassword: v.string(),
 });
 
-export const studentImportResultValidator = v.object({
+export const userImportResultValidator = v.object({
   created: v.number(),
   skipped: v.number(),
   errors: v.array(v.string()),
-  generatedCredentials: v.array(
-    v.object({
-      firstName: v.string(),
-      lastName: v.string(),
-      uniqueId: v.string(),
-      email: v.string(),
-      temporaryPassword: v.string(),
-    }),
-  ),
+  generatedCredentials: v.array(generatedCredentialValidator),
 });
 
-// Administrator imports return the same one-time credential envelope as the
-// student roster import. Keeping one validator ensures the two operator flows
-// expose the same bounded result without persisting passwords in application
-// data or audit events.
-export const administratorImportResultValidator = studentImportResultValidator;
+export const userImportRowResultValidator = v.union(
+  v.object({
+    kind: v.literal("created"),
+    credential: v.optional(generatedCredentialValidator),
+  }),
+  v.object({
+    kind: v.literal("skipped"),
+    error: v.optional(v.string()),
+  }),
+);
 
 export const studentExportRowValidator = v.object({
   firstName: v.string(),
@@ -164,9 +137,6 @@ export const studentExportRowValidator = v.object({
   major: v.union(v.string(), v.null()),
   minor: v.union(v.string(), v.null()),
 });
-
-export type Pathway =
-  "INFORMATION_TECHNOLOGY" | "HEALTH_SCIENCE" | "ENGINEERING";
 
 export type CreateLinkedUserArgs = {
   uniqueId: string;
@@ -180,6 +150,10 @@ export type CreateLinkedUserArgs = {
   roles?: AppRole[];
   mustResetPassword?: boolean;
 };
+
+export function isGradeLevelOutOfRange(gradeLevel: number) {
+  return gradeLevel < 9 || gradeLevel > 12;
+}
 
 export function normalizeUniqueId(uniqueId: string) {
   return uniqueId.trim().toUpperCase();
@@ -366,26 +340,32 @@ export async function setBetterAuthPassword(
   });
 }
 
-export async function assertUniqueUserKeys(
+export async function findUserKeyCollision(
   ctx: MutationCtx,
   uniqueId: string,
   email: string,
-) {
+): Promise<"uniqueId" | "email" | null> {
   const existingUniqueId = await ctx.db
     .query("users")
     .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
     .unique();
-  if (existingUniqueId) {
-    throw new ConvexError("Unique ID already exists.");
-  }
+  if (existingUniqueId) return "uniqueId";
 
   const existingEmail = await ctx.db
     .query("users")
     .withIndex("by_email", (q) => q.eq("email", email))
     .unique();
-  if (existingEmail) {
-    throw new ConvexError("Email already exists.");
-  }
+  return existingEmail ? "email" : null;
+}
+
+export async function assertUniqueUserKeys(
+  ctx: MutationCtx,
+  uniqueId: string,
+  email: string,
+) {
+  const collision = await findUserKeyCollision(ctx, uniqueId, email);
+  if (collision === "uniqueId") throw new ConvexError("Unique ID already exists.");
+  if (collision === "email") throw new ConvexError("Email already exists.");
 }
 
 export async function createLinkedUser(
@@ -451,4 +431,52 @@ export async function createLinkedUser(
     user: toAdminUserProfile(user),
     temporaryPassword: args.password ? null : password,
   };
+}
+
+/**
+ * Writes a role change in the order that keeps the stored flags, the user
+ * counters and the Better Auth role consistent. Callers check permissions first.
+ */
+export async function applyRoleChange(
+  ctx: MutationCtx,
+  actor: Pick<Doc<"users">, "_id">,
+  target: Doc<"users">,
+  nextRoles: AppRole[],
+) {
+  const nextRoleFlags = classifyRoles(nextRoles);
+  await ctx.db.patch(target._id, {
+    roles: nextRoles,
+    ...nextRoleFlags,
+    updatedAt: Date.now(),
+  });
+
+  await replaceUserCounts(ctx, target, { ...target, ...nextRoleFlags });
+
+  await syncBetterAuthRole(ctx, { ...target, roles: nextRoles });
+  if (isPrivilegeReduction(target.roles, nextRoles)) {
+    await revokeBetterAuthSessions(ctx, target.authUserId);
+  }
+
+  await logAuditEvent(ctx, {
+    actorId: actor._id,
+    action: "user.roles_assigned",
+    entityType: "user",
+    entityId: target._id,
+    meta: { roles: nextRoles },
+  });
+}
+
+/** Writes name fields together with `searchText`, which is derived from them. */
+export async function writeUserNames(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  names: Partial<Pick<Doc<"users">, "firstName" | "lastName" | "preferredName">>,
+) {
+  const updated = { ...user, ...names };
+  await ctx.db.patch(user._id, {
+    ...names,
+    searchText: searchText(updated),
+    updatedAt: Date.now(),
+  });
+  return updated;
 }

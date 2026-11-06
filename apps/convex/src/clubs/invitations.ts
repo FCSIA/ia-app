@@ -13,7 +13,7 @@ import { internal } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
-import { getClubContext, getViewerContext } from "./access";
+import { getClubContext } from "./access";
 import {
   clubAudience,
   deliverMany,
@@ -772,29 +772,6 @@ export const generateJoinCode = mutation({
       entityId: args.clubId,
     });
     return code;
-  },
-});
-
-export const revokeJoinCode = mutation({
-  args: { clubId: v.id("clubs") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.permissions.manageJoinCodes)
-      throw new Error("You do not have permission to manage join codes");
-    await ctx.db.patch(args.clubId, {
-      joinCode: undefined,
-      joinCodeUpdatedAt: Date.now(),
-      joinCodeExpiresAt: undefined,
-    });
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "CLUB_JOIN_CODE_REVOKED",
-      entityType: "Club",
-      entityId: args.clubId,
-    });
-    return null;
   },
 });
 

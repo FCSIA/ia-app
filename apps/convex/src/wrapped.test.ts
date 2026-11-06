@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "./_generated/api";
 import schema from "./schema";
+import { insertUser } from "../test/fixtures";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -16,22 +17,7 @@ describe("Wrapped snapshot batches", () => {
 
     await t.run(async (ctx) => {
       for (let index = 0; index < 11; index += 1) {
-        await ctx.db.insert("users", {
-          uniqueId: `STU${index}`,
-          firstName: `Student${index}`,
-          lastName: "Wrapped",
-          roles: ["STUDENT"],
-          isStudent: true,
-          isTeacherStaff: false,
-          isStudentAdmin: false,
-          isOtherRole: false,
-          isActive: true,
-          mustResetPassword: false,
-          dashboardLayout: [],
-          searchText: `Student${index} Wrapped STU${index}`,
-          createdAt: 1,
-          updatedAt: 1,
-        });
+        await insertUser(ctx, { uniqueId: `STU${index}`, firstName: `Student${index}`, lastName: "Wrapped", roles: ["STUDENT"] });
       }
     });
 

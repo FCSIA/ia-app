@@ -1,5 +1,5 @@
 import { clubChannelHref } from "../../../shared/routes";
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import {
   paginationOptsValidator,
   paginationResultValidator,
@@ -16,16 +16,26 @@ import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
+import { schema } from "../schema";
 import { presence } from "../presence/_status";
-import { channelValidator } from "./_lib";
+import { requireChannelMemberGate, getReadableChannel, resolveChannel } from "./channelGate";
+import {
+  MAX_CLUB_UNITS,
+  childUnitIdsByParent,
+  unitAndDescendantIds,
+} from "./hierarchyRules";
+import {
+  grantsAnyPermission,
+  isLeadersMentionTarget,
+  queryRoleHolders,
+} from "./membership";
+import { listClubRoles } from "./rolePermissions";
 import {
   getClubContext,
-  getChannelViewerContext,
   getViewerContext,
   type ClubContext,
 } from "./access";
 import {
-  getChannelAccess,
   getChannelAccessForChannels,
   getChannelAudienceUserIds,
 } from "./channelAccess";
@@ -34,7 +44,6 @@ import { adjustClubCounts } from "./counts";
 import type { Doc, Id } from "../_generated/dataModel";
 import { deliverMany, deliverNotification } from "../notifications/delivery";
 import {
-  MAX_CHANNEL_MESSAGE_WINDOW,
   MAX_THREAD_REPLIES,
   boundedChannelMessagePageSize,
   chronologicalFromNewest,
@@ -50,7 +59,9 @@ import {
 import {
   clubChannelPollOptionValidator,
   clubChannelReactionInputValidator,
+  clubChannelVisibilityValidator,
   type ClubChannelReaction,
+  type ClubMentionKind,
 } from "../validators";
 import { MAX_CHANNEL_MESSAGE_ATTACHMENTS } from "../../../shared/chat/attachments";
 import {
@@ -65,30 +76,33 @@ import {
 } from "../uploads/chatAttachments";
 import {
   MAX_CHANNEL_MENTION_RECIPIENTS,
+  MENTION_GROUP_TOO_LARGE_MESSAGE,
   addBoundedMentionRecipients,
   assertCanMentionEveryone,
   boundedPortableMentionTokens,
   toMentionGroupToken,
 } from "./channelMentions";
 import { logAuditEvent } from "../audit/_lib";
-import { channelWhiteboardsEnabled } from "./whiteboardElements";
+import {
+  channelWhiteboardsEnabled,
+  channelPostingPolicyInputValidator,
+  deriveChannelVisibility,
+  insertClubChannel,
+} from "./channelPolicy";
 import { contentRateLimiter } from "../rateLimits";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
-import { clubChannelReactionStorageValues } from "./channelReactions";
 import {
-  channelNotificationAuthorName,
-  channelNotificationTitle,
-} from "./channelNotificationCopy";
+  REPLY_PREVIEW_CHARACTERS,
+  emptyPage,
+  serializeAttachment,
+  summarizePoll,
+  summarizeReactions,
+} from "./messageSerialization";
+import { clubChannelReactionStorageValues } from "./channelReactions";
+import { channelNotificationTitle } from "./channelNotificationCopy";
+import { displayName } from "../../../shared/user-name";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
-
-export function canChangePrivateChannelVisibility(input: {
-  isSponsor: boolean;
-  isAdmin: boolean;
-  isExplicitMember: boolean;
-}) {
-  return input.isSponsor || input.isAdmin || input.isExplicitMember;
-}
 
 const MAX_SUMMARY_ATTACHMENTS = 12;
 const MAX_SUMMARY_REACTION_ROWS = 500;
@@ -98,9 +112,8 @@ const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
 const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
 const AUDIT_MESSAGE_PREVIEW_CHARACTERS = 240;
 const MAX_CHANNEL_MENTION_CONTEXT_MEMBERS = 60;
-const REPLY_PREVIEW_CHARACTERS = 160;
 
-export function channelMessageAuditMeta(input: {
+function channelMessageAuditMeta(input: {
   clubId: Id<"clubs">;
   channelId: Id<"clubChannels">;
   body: string;
@@ -123,7 +136,7 @@ export function channelMessageAuditMeta(input: {
   };
 }
 
-export function channelMessageReactionAuditMeta(input: {
+function channelMessageReactionAuditMeta(input: {
   clubId: Id<"clubs">;
   channelId: Id<"clubChannels">;
   emoji: ClubChannelReaction;
@@ -241,8 +254,11 @@ const messagePageValidator = v.object({
   splitCursor: v.optional(v.union(v.string(), v.null())),
 });
 
+const recipientKindValidator = v.union(v.literal("USER"), v.literal("GROUP"));
+type RecipientKind = Infer<typeof recipientKindValidator>;
+
 type PlannedMention = {
-  kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG" | "ROLE" | "UNIT";
+  kind: ClubMentionKind;
   token: string;
   userId?: Id<"users">;
   tagId?: Id<"clubTags">;
@@ -252,7 +268,7 @@ type PlannedMention = {
 
 type MentionPlan = {
   rows: PlannedMention[];
-  recipients: Map<Id<"users">, "USER" | "GROUP">;
+  recipients: Map<Id<"users">, RecipientKind>;
 };
 
 async function resolveChannelMentionPlan(
@@ -272,7 +288,7 @@ async function resolveChannelMentionPlan(
   const audienceIds = new Set(input.channelAudienceIds);
 
   const rows: PlannedMention[] = [];
-  const recipients = new Map<Id<"users">, "USER" | "GROUP">();
+  const recipients = new Map<Id<"users">, RecipientKind>();
   const recipientIds = new Set<Id<"users">>();
   const dynamicTokens = new Set(
     input.tokens
@@ -287,18 +303,13 @@ async function resolveChannelMentionPlan(
   );
   const [roles, units] = dynamicTokens.size
     ? await Promise.all([
-        ctx.db
-          .query("clubRoles")
-          .withIndex("by_clubId_and_position", (q) =>
-            q.eq("clubId", input.channel.clubId),
-          )
-          .take(100),
+        listClubRoles(ctx, input.channel.clubId),
         ctx.db
           .query("clubUnits")
           .withIndex("by_clubId_and_isActive_and_position", (q) =>
             q.eq("clubId", input.channel.clubId).eq("isActive", true),
           )
-          .take(250),
+          .take(MAX_CLUB_UNITS),
       ])
     : [[], []];
   const roleByToken = new Map<string, (typeof roles)[number]>();
@@ -319,19 +330,13 @@ async function resolveChannelMentionPlan(
   }
   for (const token of ambiguousRoleTokens) roleByToken.delete(token);
   for (const token of ambiguousUnitTokens) unitByToken.delete(token);
-  const childrenByUnitId = new Map<Id<"clubUnits">, Id<"clubUnits">[]>();
-  for (const unit of units) {
-    if (!unit.parentUnitId) continue;
-    const children = childrenByUnitId.get(unit.parentUnitId) ?? [];
-    children.push(unit._id);
-    childrenByUnitId.set(unit.parentUnitId, children);
-  }
+  const childrenByUnitId = childUnitIdsByParent(units);
   let audienceUnitIdsByUserId: Map<Id<"users">, Set<Id<"clubUnits">>> | null =
     null;
 
   const addRecipients = (
     ids: Iterable<Id<"users">>,
-    kind: "USER" | "GROUP",
+    kind: RecipientKind,
   ) => {
     const readableIds = Array.from(ids).filter(
       (userId) => audienceIds.has(userId) && userId !== input.authorId,
@@ -358,12 +363,7 @@ async function resolveChannelMentionPlan(
           .query("clubMembers")
           .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
           .take(MAX_MENTION_GROUP_ROWS),
-        ctx.db
-          .query("clubRoles")
-          .withIndex("by_clubId_and_position", (q) =>
-            q.eq("clubId", input.channel.clubId),
-          )
-          .take(100),
+        listClubRoles(ctx, input.channel.clubId),
         ctx.db
           .query("clubSponsors")
           .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
@@ -371,13 +371,12 @@ async function resolveChannelMentionPlan(
       ]);
       const elevatedRoleIds = new Set(
         roles
-          .filter((role) => Object.values(role.permissions ?? {}).some(Boolean))
+          .filter((role) => grantsAnyPermission(role.permissions))
           .map((role) => role._id),
       );
-      const roleHolders = members.filter((member) => {
-        const roleId = member.roleId ?? member.customRoleId;
-        return roleId ? elevatedRoleIds.has(roleId) : member.role === "LEADER";
-      });
+      const roleHolders = members.filter((member) =>
+        isLeadersMentionTarget(member, elevatedRoleIds),
+      );
       rows.push({ kind: "BUILT_IN_TAG", token: normalizedToken });
       addRecipients(
         [...roleHolders, ...sponsors].map((member) => member.userId),
@@ -392,7 +391,7 @@ async function resolveChannelMentionPlan(
         .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
         .take(MAX_MENTION_GROUP_ROWS);
       if (sponsors.length > MAX_CHANNEL_MENTION_RECIPIENTS) {
-        throw new ConvexError("Mention groups can include at most 50 people");
+        throw new ConvexError(MENTION_GROUP_TOO_LARGE_MESSAGE);
       }
       rows.push({ kind: "BUILT_IN_TAG", token: normalizedToken });
       addRecipients(
@@ -414,7 +413,7 @@ async function resolveChannelMentionPlan(
         .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
         .take(MAX_MENTION_GROUP_ROWS);
       if (tagMembers.length > MAX_CHANNEL_MENTION_RECIPIENTS) {
-        throw new ConvexError("Mention groups can include at most 50 people");
+        throw new ConvexError(MENTION_GROUP_TOO_LARGE_MESSAGE);
       }
       rows.push({ kind: "CUSTOM_TAG", token: normalizedToken, tagId: tag._id });
       addRecipients(
@@ -427,20 +426,13 @@ async function resolveChannelMentionPlan(
     const dynamicToken = toMentionGroupToken(normalizedToken);
     const role = roleByToken.get(dynamicToken);
     if (role) {
-      const [roleMembers, legacyRoleMembers] = await Promise.all([
-        ctx.db
-          .query("clubMembers")
-          .withIndex("by_clubId_and_roleId", (q) =>
-            q.eq("clubId", input.channel.clubId).eq("roleId", role._id),
-          )
-          .take(MAX_MENTION_GROUP_ROWS),
-        ctx.db
-          .query("clubMembers")
-          .withIndex("by_clubId_and_customRoleId", (q) =>
-            q.eq("clubId", input.channel.clubId).eq("customRoleId", role._id),
-          )
-          .take(MAX_MENTION_GROUP_ROWS),
-      ]);
+      const { current: roleMembers, legacy: legacyRoleMembers } =
+        await queryRoleHolders(
+          ctx,
+          input.channel.clubId,
+          role._id,
+          MAX_MENTION_GROUP_ROWS,
+        );
       rows.push({
         kind: "ROLE",
         token: normalizedToken,
@@ -464,7 +456,7 @@ async function resolveChannelMentionPlan(
               .withIndex("by_userId_and_clubId", (q) =>
                 q.eq("userId", userId).eq("clubId", input.channel.clubId),
               )
-              .take(250),
+              .take(MAX_CLUB_UNITS),
           })),
         );
         audienceUnitIdsByUserId = new Map(
@@ -474,16 +466,9 @@ async function resolveChannelMentionPlan(
           ]),
         );
       }
-      const coveredUnitIds = new Set<Id<"clubUnits">>([unit._id]);
-      const pendingUnitIds = [unit._id];
-      for (let index = 0; index < pendingUnitIds.length; index += 1) {
-        const currentUnitId = pendingUnitIds[index];
-        for (const childUnitId of childrenByUnitId.get(currentUnitId) ?? []) {
-          if (coveredUnitIds.has(childUnitId)) continue;
-          coveredUnitIds.add(childUnitId);
-          pendingUnitIds.push(childUnitId);
-        }
-      }
+      const coveredUnitIds = new Set(
+        unitAndDescendantIds(unit._id, childrenByUnitId),
+      );
       rows.push({
         kind: "UNIT",
         token: normalizedToken,
@@ -521,11 +506,11 @@ async function assertMessageAccess(
   const message = await ctx.db.get(messageId);
   if (!message) throw new ConvexError("Message not found");
 
-  const channel = await ctx.db.get(message.channelId);
-  if (!channel) throw new ConvexError("Channel not found");
-
-  const context = await getClubContext(ctx, channel.clubId, user);
-  const access = await getChannelAccess(ctx, channel, context, user._id);
+  const { channel, context, access } = await requireChannelMemberGate(
+    ctx,
+    user,
+    message.channelId,
+  );
   if (!access.canView) {
     throw new ConvexError("Not authorized");
   }
@@ -545,7 +530,7 @@ async function getChannelMemberships(
 
 export const list = query({
   args: { clubId: v.id("clubs") },
-  returns: v.array(channelValidator),
+  returns: v.array(schema.doc("clubChannels")),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
@@ -579,9 +564,7 @@ export const create = mutation({
     ownerUnitId: v.optional(v.id("clubUnits")),
     accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
     accessUnitId: v.optional(v.id("clubUnits")),
-    postingPolicy: v.optional(
-      v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS")),
-    ),
+    postingPolicy: v.optional(channelPostingPolicyInputValidator),
     memberIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.id("clubChannels"),
@@ -630,25 +613,18 @@ export const create = mutation({
     );
     const restricted =
       accessRoleIds.length > 0 || !!args.accessUnitId || memberIds.length > 0;
-    await adjustClubCounts(ctx, args.clubId, { channels: 1 });
-    const channelId = await ctx.db.insert("clubChannels", {
+    const channelId = await insertClubChannel(ctx, {
       clubId: args.clubId,
       ownerUnitId: args.ownerUnitId,
       position,
-      accessPolicyVersion: 2,
       accessRoleIds,
       accessUnitId: args.accessUnitId,
       postingPolicy,
       name: args.name,
       description: args.description,
-      visibility: restricted
-        ? "PRIVATE"
-        : postingPolicy === "CLUB_MANAGERS"
-          ? "MEMBER_READONLY"
-          : "PUBLIC",
+      visibility: deriveChannelVisibility({ restricted, postingPolicy }),
       createdById: user._id,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      now: Date.now(),
     });
 
     for (const memberId of memberIds) {
@@ -707,7 +683,7 @@ export const createMissingUnitChannels = mutation({
         .withIndex("by_clubId_and_isActive_and_position", (q) =>
           q.eq("clubId", args.clubId).eq("isActive", true),
         )
-        .take(250),
+        .take(MAX_CLUB_UNITS),
       ctx.db
         .query("clubChannels")
         .withIndex("by_clubId_and_visibility", (q) =>
@@ -728,21 +704,22 @@ export const createMissingUnitChannels = mutation({
     // delta applies to.
     await adjustClubCounts(ctx, args.clubId, { channels: created });
     for (const unit of uncovered) {
-      await ctx.db.insert("clubChannels", {
-        clubId: args.clubId,
-        ownerUnitId: unit._id,
-        position: 0,
-        accessPolicyVersion: 2,
-        accessRoleIds: [],
-        accessUnitId: unit._id,
-        postingPolicy: "AUDIENCE",
-        name: unit.name,
-        description: unit.description,
-        visibility: "PRIVATE",
-        createdById: user._id,
-        createdAt: now,
-        updatedAt: now,
-      });
+      await insertClubChannel(
+        ctx,
+        {
+          clubId: args.clubId,
+          ownerUnitId: unit._id,
+          position: 0,
+          accessUnitId: unit._id,
+          postingPolicy: "AUDIENCE",
+          name: unit.name,
+          description: unit.description,
+          visibility: "PRIVATE",
+          createdById: user._id,
+          now,
+        },
+        { countChannel: false },
+      );
     }
     if (created)
       await logAuditEvent(ctx, {
@@ -773,9 +750,6 @@ export const postMessage = mutation({
   returns: v.id("clubChannelMessages"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const channel = await ctx.db.get(args.channelId);
-
-    if (!channel) throw new ConvexError("Channel not found");
     if (
       args.clientGeneratedId &&
       Array.from(args.clientGeneratedId).length >
@@ -784,8 +758,11 @@ export const postMessage = mutation({
       throw new ConvexError("Client message ID is too long");
     }
 
-    const context = await getClubContext(ctx, channel.clubId, user);
-    const access = await getChannelAccess(ctx, channel, context, user._id);
+    const { channel, context, access } = await requireChannelMemberGate(
+      ctx,
+      user,
+      args.channelId,
+    );
     if (!access.canPost) {
       throw new ConvexError("Cannot post in this channel");
     }
@@ -870,7 +847,7 @@ export const postMessage = mutation({
           ),
           authorId: user._id,
         })
-      : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
+      : { rows: [], recipients: new Map<Id<"users">, RecipientKind>() };
 
     const now = Date.now();
     const messageId = await ctx.db.insert("clubChannelMessages", {
@@ -960,10 +937,11 @@ export const markRead = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const channel = await ctx.db.get(args.channelId);
-    if (!channel) throw new ConvexError("Channel not found");
-    const context = await getClubContext(ctx, channel.clubId, user);
-    const access = await getChannelAccess(ctx, channel, context, user._id);
+    const { channel, access } = await requireChannelMemberGate(
+      ctx,
+      user,
+      args.channelId,
+    );
     if (!access.canView) throw new ConvexError("Cannot view this channel");
 
     const throughMessage = await ctx.db.get(args.throughMessageId);
@@ -1083,18 +1061,13 @@ async function replyNotificationRecipient(
   }
   const targetAuthor = await ctx.db.get(target.authorId);
   if (!targetAuthor?.isActive) return null;
-  const context = await getViewerContext(
-    ctx,
-    input.channel.clubId,
-    targetAuthor,
-  );
-  if (!context.canAccessWorkspace) return null;
-  const access = await getChannelAccess(
-    ctx,
-    input.channel,
-    context,
-    targetAuthor._id,
-  );
+  const gate = await resolveChannel(ctx, targetAuthor, input.channel._id, {
+    requireActiveClub: false,
+  });
+  if (gate.status !== "resolved" || !gate.context.canAccessWorkspace) {
+    return null;
+  }
+  const { access } = gate;
   return access.canView ? targetAuthor._id : null;
 }
 
@@ -1110,7 +1083,7 @@ export const deliverPostedMessageNotifications = internalMutation({
     mentionRecipients: v.array(
       v.object({
         userId: v.id("users"),
-        kind: v.union(v.literal("USER"), v.literal("GROUP")),
+        kind: recipientKindValidator,
       }),
     ),
   },
@@ -1121,7 +1094,7 @@ export const deliverPostedMessageNotifications = internalMutation({
     const channel = await ctx.db.get(message.channelId);
     if (!channel) return null;
     const author = await ctx.db.get(message.authorId);
-    const authorName = author ? channelNotificationAuthorName(author) : "";
+    const authorName = author ? displayName(author) : "";
 
     const mentionRecipients = new Map(
       args.mentionRecipients.map(({ userId, kind }) => [userId, kind]),
@@ -1229,197 +1202,6 @@ export const deliverPostedMessageNotifications = internalMutation({
   },
 });
 
-type SerializedClubMessage = {
-  _id: Id<"clubChannelMessages">;
-  _creationTime: number;
-  channelId: Id<"clubChannels">;
-  authorId: Id<"users">;
-  parentMessageId?: Id<"clubChannelMessages">;
-  replyToMessageId?: Id<"clubChannelMessages">;
-  body: string;
-  bodyMarkdown?: string;
-  bodyRich?: unknown;
-  isPinned: boolean;
-  pinnedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  threadRootId: Id<"clubChannelMessages">;
-  author: ReturnType<typeof toClubUserRef>;
-  mentions: [];
-  attachments: Array<{
-    _id: Id<"clubChannelMessageAttachments">;
-    _creationTime: number;
-    messageId: Id<"clubChannelMessages">;
-    fileName: string;
-    fileUrl: string;
-    mimeType?: string;
-    size?: number;
-    createdAt: string;
-  }>;
-  reactions: Array<{
-    emoji: string;
-    count: number;
-    reactedByCurrentUser: boolean;
-    reactors: ReturnType<typeof toClubUserRef>[];
-  }>;
-  replies: SerializedClubMessage[];
-  replyCount: number;
-  poll: {
-    question: string;
-    options: Array<{
-      id: string;
-      label: string;
-      count: number;
-      votedByCurrentUser: boolean;
-    }>;
-    totalVotes: number;
-  } | null;
-  isDeleted: boolean;
-  deletedAt: string | null;
-};
-
-async function serializeMessage(
-  ctx: QueryCtx,
-  messageId: Id<"clubChannelMessages">,
-  currentUserId: Id<"users">,
-): Promise<SerializedClubMessage | null> {
-  const message = await ctx.db.get(messageId);
-  if (!message) return null;
-  const author = await ctx.db.get(message.authorId);
-  if (!author) return null;
-  const isDeleted = !!message.deletedAt;
-
-  const reactions = isDeleted
-    ? []
-    : await ctx.db
-        .query("clubChannelMessageReactions")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .collect();
-  const reactionMap = new Map<
-    string,
-    {
-      emoji: string;
-      count: number;
-      reactedByCurrentUser: boolean;
-      reactors: ReturnType<typeof toClubUserRef>[];
-    }
-  >();
-  for (const reaction of reactions) {
-    const emoji =
-      normalizeChatReaction(reaction.emoji) ?? reaction.emoji;
-    const reactor = await ctx.db.get(reaction.userId);
-    const entry = reactionMap.get(emoji) ?? {
-      emoji,
-      count: 0,
-      reactedByCurrentUser: false,
-      reactors: [],
-    };
-    entry.count += 1;
-    if (reaction.userId === currentUserId) entry.reactedByCurrentUser = true;
-    if (reactor) entry.reactors.push(toClubUserRef(reactor));
-    reactionMap.set(emoji, entry);
-  }
-
-  const attachments = isDeleted
-    ? []
-    : await ctx.db
-        .query("clubChannelMessageAttachments")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .collect();
-
-  const replies = await ctx.db
-    .query("clubChannelMessages")
-    .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
-      q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
-    )
-    .collect();
-
-  const serializedReplies: SerializedClubMessage[] = (
-    await Promise.all(
-      replies.map((reply) => serializeMessage(ctx, reply._id, currentUserId)),
-    )
-  ).filter((r): r is SerializedClubMessage => !!r);
-
-  let poll: SerializedClubMessage["poll"] = null;
-  if (
-    !isDeleted &&
-    message.pollQuestion &&
-    Array.isArray(message.pollOptions)
-  ) {
-    const options = message.pollOptions as Array<{ id: string; label: string }>;
-    const votes = await ctx.db
-      .query("clubChannelMessagePollVotes")
-      .withIndex("by_messageId_and_optionId", (q) =>
-        q.eq("messageId", message._id),
-      )
-      .collect();
-    const voteCounts = new Map<string, number>();
-    let votedByCurrentUser = false;
-    let currentUserOptionId: string | null = null;
-    for (const vote of votes) {
-      voteCounts.set(vote.optionId, (voteCounts.get(vote.optionId) ?? 0) + 1);
-      if (vote.userId === currentUserId) {
-        votedByCurrentUser = true;
-        currentUserOptionId = vote.optionId;
-      }
-    }
-    poll = {
-      question: message.pollQuestion,
-      options: options.map((option) => ({
-        id: option.id,
-        label: option.label,
-        count: voteCounts.get(option.id) ?? 0,
-        votedByCurrentUser: currentUserOptionId === option.id,
-      })),
-      totalVotes: votes.length,
-    };
-  }
-
-  return {
-    _id: message._id,
-    _creationTime: message._creationTime,
-    channelId: message.channelId,
-    authorId: message.authorId,
-    parentMessageId: message.parentMessageId,
-    replyToMessageId: message.replyToMessageId,
-    body: isDeleted ? "" : message.body,
-    bodyMarkdown: isDeleted ? undefined : message.bodyMarkdown,
-    bodyRich: isDeleted ? undefined : message.bodyRich,
-    isPinned: isDeleted ? false : message.isPinned,
-    pinnedAt:
-      !isDeleted && message.pinnedAt
-        ? new Date(message.pinnedAt).toISOString()
-        : null,
-    isDeleted,
-    deletedAt: message.deletedAt
-      ? new Date(message.deletedAt).toISOString()
-      : null,
-    createdAt: new Date(message.createdAt).toISOString(),
-    updatedAt: new Date(message.updatedAt).toISOString(),
-    threadRootId: message.parentMessageId ?? message._id,
-    author: toClubUserRef(author),
-    mentions: [],
-    attachments: attachments.map((a) => ({
-      _id: a._id,
-      _creationTime: a._creationTime,
-      messageId: a.messageId,
-      fileName: a.fileName,
-      fileUrl: a.fileUrl,
-      mimeType: a.mimeType,
-      size: a.size,
-      createdAt: new Date(a.createdAt).toISOString(),
-    })),
-    reactions: [...reactionMap.values()],
-    replies: serializedReplies,
-    replyCount: serializedReplies.length,
-    poll,
-  };
-}
-
 async function serializeMessageSummary(
   ctx: QueryCtx,
   message: Doc<"clubChannelMessages">,
@@ -1451,28 +1233,11 @@ async function serializeMessageSummary(
       .take(MAX_SUMMARY_ATTACHMENTS + 1),
   ]);
   const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
-  const reactionMap = new Map<
-    string,
-    {
-      emoji: string;
-      count: number;
-      reactedByCurrentUser: boolean;
-      reactors: ReturnType<typeof toClubUserRef>[];
-    }
-  >();
-  for (const reaction of reactionRows.slice(0, MAX_SUMMARY_REACTION_ROWS)) {
-    const emoji =
-      normalizeChatReaction(reaction.emoji) ?? reaction.emoji;
-    const entry = reactionMap.get(emoji) ?? {
-      emoji,
-      count: 0,
-      reactedByCurrentUser: false,
-      reactors: [],
-    };
-    entry.count += 1;
-    if (reaction.userId === currentUserId) entry.reactedByCurrentUser = true;
-    reactionMap.set(emoji, entry);
-  }
+  const reactions = summarizeReactions(
+    reactionRows.slice(0, MAX_SUMMARY_REACTION_ROWS),
+    currentUserId,
+    reactionsTruncated,
+  );
 
   const attachmentsTruncated =
     attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
@@ -1480,42 +1245,20 @@ async function serializeMessageSummary(
     attachmentRowsNewest.slice(0, MAX_SUMMARY_ATTACHMENTS),
   );
 
-  let poll:
-    | (NonNullable<SerializedClubMessage["poll"]> & {
-        votesTruncated?: boolean;
-      })
-    | null = null;
-  if (
-    !isDeleted &&
-    message.pollQuestion &&
-    Array.isArray(message.pollOptions)
-  ) {
-    const options = message.pollOptions as Array<{ id: string; label: string }>;
+  let poll: ReturnType<typeof summarizePoll> = null;
+  if (!isDeleted && message.pollQuestion && message.pollOptions) {
     const voteRows = await ctx.db
       .query("clubChannelMessagePollVotes")
       .withIndex("by_messageId_and_optionId", (q) =>
         q.eq("messageId", message._id),
       )
       .take(MAX_SUMMARY_POLL_VOTES + 1);
-    const votesTruncated = voteRows.length > MAX_SUMMARY_POLL_VOTES;
-    const votes = voteRows.slice(0, MAX_SUMMARY_POLL_VOTES);
-    const voteCounts = new Map<string, number>();
-    let currentUserOptionId: string | null = null;
-    for (const vote of votes) {
-      voteCounts.set(vote.optionId, (voteCounts.get(vote.optionId) ?? 0) + 1);
-      if (vote.userId === currentUserId) currentUserOptionId = vote.optionId;
-    }
-    poll = {
-      question: message.pollQuestion,
-      options: options.map((option) => ({
-        id: option.id,
-        label: option.label,
-        count: voteCounts.get(option.id) ?? 0,
-        votedByCurrentUser: currentUserOptionId === option.id,
-      })),
-      totalVotes: votes.length,
-      votesTruncated,
-    };
+    poll = summarizePoll(
+      message,
+      voteRows.slice(0, MAX_SUMMARY_POLL_VOTES),
+      currentUserId,
+      voteRows.length > MAX_SUMMARY_POLL_VOTES,
+    );
   }
 
   const latestReply = includeLatestReply
@@ -1566,21 +1309,9 @@ async function serializeMessageSummary(
     mentions: [],
     replyPreview,
     mentionsViewer,
-    attachments: attachments.map((attachment) => ({
-      _id: attachment._id,
-      _creationTime: attachment._creationTime,
-      messageId: attachment.messageId,
-      fileName: attachment.fileName,
-      fileUrl: attachment.fileUrl,
-      mimeType: attachment.mimeType,
-      size: attachment.size,
-      createdAt: new Date(attachment.createdAt).toISOString(),
-    })),
+    attachments: attachments.map(serializeAttachment),
     attachmentsTruncated,
-    reactions: [...reactionMap.values()].map((reaction) => ({
-      ...reaction,
-      countIsCapped: reactionsTruncated,
-    })),
+    reactions,
     reactionsTruncated,
     replyCount: latestReply ? 1 : 0,
     replyCountIsExact: includeLatestReply && !latestReply,
@@ -1649,7 +1380,7 @@ async function messageMentionsUser(
   return directMention !== null;
 }
 
-type MessageAuthor = Doc<"users"> & { clubRole?: { name: string; isSponsor: boolean; isDefault?: boolean } | null };
+type MessageAuthor = Doc<"users"> & Pick<Infer<typeof messageAuthorValidator>, "clubRole">;
 
 async function loadClubRole(ctx: QueryCtx, clubId: Id<"clubs">, userId: Id<"users">) {
   const [sponsor, member] = await Promise.all([
@@ -1678,22 +1409,6 @@ async function loadMessageAuthors(ctx: QueryCtx, messages: Doc<"clubChannelMessa
   })));
 }
 
-async function getReadableChannel(
-  ctx: QueryCtx,
-  user: Doc<"users">,
-  clubId: Id<"clubs">,
-  channelId: Id<"clubChannels">,
-) {
-  const channel = await ctx.db.get(channelId);
-  if (!channel || channel.clubId !== clubId) return null;
-  const club = await ctx.db.get(clubId);
-  if (!club || !club.isActive) return null;
-  const context = await getChannelViewerContext(ctx, club, user);
-  const access = await getChannelAccess(ctx, channel, context, user._id);
-  if (!access.canView) return null;
-  return { channel, context, access };
-}
-
 const channelContextMemberValidator = v.object({
   _id: v.id("users"),
   avatarUrl: v.union(v.string(), v.null()),
@@ -1711,11 +1426,7 @@ const channelConversationContextValidator = v.union(
     channel: v.object({
       name: v.string(),
       description: v.union(v.string(), v.null()),
-      visibility: v.union(
-        v.literal("PUBLIC"),
-        v.literal("PRIVATE"),
-        v.literal("MEMBER_READONLY"),
-      ),
+      visibility: clubChannelVisibilityValidator,
       viewerCanPost: v.boolean(),
     }),
     canCreatePolls: v.boolean(),
@@ -1834,6 +1545,9 @@ function mentionGroupSuggestions(
   ];
 }
 
+const typingRoomKey = (channelId: Id<"clubChannels">) =>
+  `channel-typing:${channelId}`;
+
 export const typingHeartbeat = mutation({
   args: { clubId: v.id("clubs"), channelId: v.id("clubChannels"), sessionId: v.string() },
   returns: v.object({ sessionToken: v.string() }),
@@ -1842,7 +1556,7 @@ export const typingHeartbeat = mutation({
     const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
     if (!readable?.access.canPost) throw new ConvexError("Cannot post in this channel");
     if (!args.sessionId || args.sessionId.length > 64) throw new ConvexError("Invalid typing session");
-    const { sessionToken } = await presence.heartbeat(ctx, `channel-typing:${args.channelId}`, user._id, args.sessionId, CHANNEL_TYPING_TTL_MS);
+    const { sessionToken } = await presence.heartbeat(ctx, typingRoomKey(args.channelId), user._id, args.sessionId, CHANNEL_TYPING_TTL_MS);
     return { sessionToken };
   },
 });
@@ -1853,7 +1567,7 @@ export const typingUsers = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user || !(await getReadableChannel(ctx, user, args.clubId, args.channelId))) return [];
-    const people = await presence.listRoom(ctx, `channel-typing:${args.channelId}`, true, 6);
+    const people = await presence.listRoom(ctx, typingRoomKey(args.channelId), true, 6);
     const others = await Promise.all(people.filter((person) => person.userId !== user._id).slice(0, 5).map(async (person) => {
       const id = ctx.db.normalizeId("users", person.userId);
       const author = id ? await ctx.db.get(id) : null;
@@ -1994,16 +1708,13 @@ export const getMentionContext = query({
         .query("clubTags")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
         .take(MAX_CHANNEL_MENTION_CONTEXT_MEMBERS),
-      ctx.db
-        .query("clubRoles")
-        .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
-        .take(100),
+      listClubRoles(ctx, args.clubId),
       ctx.db
         .query("clubUnits")
         .withIndex("by_clubId_and_isActive_and_position", (q) =>
           q.eq("clubId", args.clubId).eq("isActive", true),
         )
-        .take(250),
+        .take(MAX_CLUB_UNITS),
     ]);
     const members = (
       await Promise.all(
@@ -2056,34 +1767,6 @@ async function resolveThreadRoot(
   return current.parentMessageId ? null : current;
 }
 
-function emptyMessagePage(cursor: string | null) {
-  return {
-    page: [],
-    isDone: true,
-    continueCursor: cursor ?? "",
-  };
-}
-
-/** Resolves one root message for an inline-reply jump, returning null unless the
- * viewer may read the channel and the message really belongs to it. Exported so
- * the authorization path can be regression tested without the identity layer. */
-export async function findJumpTargetMessage(
-  ctx: QueryCtx,
-  user: Doc<"users">,
-  clubId: Id<"clubs">,
-  channelId: Id<"clubChannels">,
-  messageId: Id<"clubChannelMessages">,
-): Promise<Doc<"clubChannelMessages"> | null> {
-  const readable = await getReadableChannel(ctx, user, clubId, channelId);
-  if (!readable) return null;
-
-  const message = await ctx.db.get(messageId);
-  if (!message || message.channelId !== readable.channel._id || message.parentMessageId) {
-    return null;
-  }
-  return message;
-}
-
 /** Resolves one root message for an inline-reply jump without paging the
  * intervening channel history into the client. */
 export const getMessage = query({
@@ -2097,14 +1780,22 @@ export const getMessage = query({
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
 
-    const message = await findJumpTargetMessage(
+    const readable = await getReadableChannel(
       ctx,
       user,
       args.clubId,
       args.channelId,
-      args.messageId,
     );
-    if (!message) return null;
+    if (!readable) return null;
+
+    const message = await ctx.db.get(args.messageId);
+    if (
+      !message ||
+      message.channelId !== readable.channel._id ||
+      message.parentMessageId
+    ) {
+      return null;
+    }
 
     return await serializeMessageSummary(ctx, message, user._id, false);
   },
@@ -2119,14 +1810,14 @@ export const getMessagePage = query({
   returns: messagePageValidator,
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return emptyMessagePage(args.paginationOpts.cursor);
+    if (!user) return emptyPage(args.paginationOpts.cursor);
     const readable = await getReadableChannel(
       ctx,
       user,
       args.clubId,
       args.channelId,
     );
-    if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
+    if (!readable) return emptyPage(args.paginationOpts.cursor);
     const { channel } = readable;
 
     const result = await ctx.db
@@ -2165,7 +1856,7 @@ export const listReactionUsers = query({
   returns: paginationResultValidator(clubUserRefValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return emptyMessagePage(args.paginationOpts.cursor);
+    if (!user) return emptyPage(args.paginationOpts.cursor);
 
     const readable = await getReadableChannel(
       ctx,
@@ -2173,7 +1864,7 @@ export const listReactionUsers = query({
       args.clubId,
       args.channelId,
     );
-    if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
+    if (!readable) return emptyPage(args.paginationOpts.cursor);
 
     const message = await ctx.db.get(args.messageId);
     if (
@@ -2181,11 +1872,11 @@ export const listReactionUsers = query({
       message.channelId !== readable.channel._id ||
       message.deletedAt
     ) {
-      return emptyMessagePage(args.paginationOpts.cursor);
+      return emptyPage(args.paginationOpts.cursor);
     }
 
     const reaction = normalizeChatReaction(args.emoji);
-    if (!reaction) return emptyMessagePage(args.paginationOpts.cursor);
+    if (!reaction) return emptyPage(args.paginationOpts.cursor);
 
     const reactions = await ctx.db
       .query("clubChannelMessageReactions")
@@ -2322,40 +2013,6 @@ export const getThread = query({
   },
 });
 
-export const getMessages = query({
-  args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
-  returns: v.array(messageSummaryValidator),
-  handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return [];
-    const readable = await getReadableChannel(
-      ctx,
-      user,
-      args.clubId,
-      args.channelId,
-    );
-    if (!readable) return [];
-    const { channel } = readable;
-
-    const rootsNewest = await ctx.db
-      .query("clubChannelMessages")
-      .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
-        q.eq("channelId", args.channelId).eq("parentMessageId", undefined),
-      )
-      .order("desc")
-      .take(MAX_CHANNEL_MESSAGE_WINDOW);
-    const roots = chronologicalFromNewest(rootsNewest);
-    const authorsById = await loadMessageAuthors(ctx, roots);
-
-    const messages = await Promise.all(
-      roots.map((message) =>
-        serializeMessageSummary(ctx, message, user._id, true, authorsById),
-      ),
-    );
-    return messages.filter((m): m is NonNullable<typeof m> => !!m);
-  },
-});
-
 export const update = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -2364,9 +2021,7 @@ export const update = mutation({
     ownerUnitId: v.optional(v.union(v.id("clubUnits"), v.null())),
     accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
     accessUnitId: v.optional(v.union(v.id("clubUnits"), v.null())),
-    postingPolicy: v.optional(
-      v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS")),
-    ),
+    postingPolicy: v.optional(channelPostingPolicyInputValidator),
     memberIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.null(),
@@ -2450,11 +2105,7 @@ export const update = mutation({
       audienceUnitId: undefined,
       includeDescendants: undefined,
       includeAncestorLeaders: undefined,
-      visibility: restricted
-        ? "PRIVATE"
-        : postingPolicy === "CLUB_MANAGERS"
-          ? "MEMBER_READONLY"
-          : "PUBLIC",
+      visibility: deriveChannelVisibility({ restricted, postingPolicy }),
       updatedAt: Date.now(),
     });
     return null;
@@ -2808,14 +2459,10 @@ export const votePoll = mutation({
     const user = await getCurrentAppUser(ctx);
     const { message } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
-    if (!message.pollQuestion || !Array.isArray(message.pollOptions)) {
+    if (!message.pollQuestion || !message.pollOptions) {
       throw new ConvexError("Poll not found");
     }
-    if (
-      !(message.pollOptions as Array<{ id: string }>).some(
-        (option) => option.id === args.optionId,
-      )
-    ) {
+    if (!message.pollOptions.some((option) => option.id === args.optionId)) {
       throw new ConvexError("Poll option not found");
     }
 

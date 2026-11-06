@@ -9,15 +9,15 @@ import {
 } from "../../../shared/chat/whiteboard-limits";
 
 /** One element's serialized JSON. Long freehand strokes are the largest. */
-export const MAX_WHITEBOARD_ELEMENT_BYTES = 256_000;
+const MAX_WHITEBOARD_ELEMENT_BYTES = 256_000;
 /** Non-deleted elements a board may hold. */
 export const MAX_WHITEBOARD_LIVE_ELEMENTS = 5_000;
-export const MAX_WHITEBOARD_TEXT_CHARACTERS = 10_000;
+const MAX_WHITEBOARD_TEXT_CHARACTERS = 10_000;
 /** Changes returned by one "after seq" subscription window. */
 export const WHITEBOARD_CHANGE_PAGE_SIZE = 256;
 /** Element changes itemized in one audit row; the rest are counted. */
 export const MAX_WHITEBOARD_AUDIT_CHANGES = 25;
-export const WHITEBOARD_AUDIT_TEXT_PREVIEW = 240;
+const WHITEBOARD_AUDIT_TEXT_PREVIEW = 240;
 
 const ELEMENT_TYPES = new Set<string>(WHITEBOARD_ELEMENT_TYPES);
 const ELEMENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -134,7 +134,7 @@ export function assertWhiteboardSaveBounds(elements: string[]) {
   }
 }
 
-export type WhiteboardChangeKind = "created" | "updated" | "deleted" | "restored";
+type WhiteboardChangeKind = "created" | "updated" | "deleted" | "restored";
 
 export function classifyWhiteboardChange(
   existing: { isDeleted: boolean } | null,
@@ -156,12 +156,7 @@ export function liveElementDelta(
   return after - before;
 }
 
-/** Whiteboards are on for a channel unless its managers have turned them off. */
-export function channelWhiteboardsEnabled(channel: { whiteboardsEnabled?: boolean }) {
-  return channel.whiteboardsEnabled !== false;
-}
-
-export const DEFAULT_WHITEBOARD_TITLE = "Untitled whiteboard";
+const DEFAULT_WHITEBOARD_TITLE = "Untitled whiteboard";
 
 export function normalizeWhiteboardTitle(title: string | undefined) {
   const normalized = Array.from((title ?? "").replace(/\s+/g, " ").trim())
@@ -187,7 +182,7 @@ export function assertWhiteboardThumbnail(dataUrl: string) {
 }
 
 /** Consecutive saves by one person within this window form one revision. */
-export const WHITEBOARD_REVISION_COALESCE_MS = 5 * 60 * 1000;
+const WHITEBOARD_REVISION_COALESCE_MS = 5 * 60 * 1000;
 
 /**
  * Removals never merge with additive edits (in either direction), so there is

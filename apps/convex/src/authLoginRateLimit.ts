@@ -1,6 +1,6 @@
 import { isStaff } from "../../shared/roles";
 import type { GenericMutationCtx } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { DataModel } from "./_generated/dataModel";
 import { internalMutation, mutation } from "./_generated/server";
 import { getCurrentAppUser } from "../lib/currentUser";
@@ -11,11 +11,6 @@ const LIMIT_FALLBACK_MS = 60_000;
 const LOCK_THRESHOLD = 5;
 const BASE_BACKOFF_MS = 30_000;
 const MAX_BACKOFF_MS = 30 * 60_000;
-
-export type LoginRateLimitReason = "account_locked" | "ip_limited" | "global_limited";
-export type LoginRateLimitResult =
-  | { allowed: true }
-  | { allowed: false; retryAfterMs: number; reason: LoginRateLimitReason };
 
 export function normalizeLoginIdentifier(identifier: string) {
   return identifier.trim().toLowerCase();
@@ -70,10 +65,18 @@ async function clearFailure(ctx: GenericMutationCtx<DataModel>, identifier: stri
   if (existing) await ctx.db.delete(existing._id);
 }
 
+const loginRateLimitReasonValidator = v.union(
+  v.literal("account_locked"),
+  v.literal("ip_limited"),
+  v.literal("global_limited"),
+);
+export type LoginRateLimitReason = Infer<typeof loginRateLimitReasonValidator>;
+
 const resultValidator = v.union(
   v.object({ allowed: v.literal(true) }),
-  v.object({ allowed: v.literal(false), retryAfterMs: v.number(), reason: v.union(v.literal("account_locked"), v.literal("ip_limited"), v.literal("global_limited")) }),
+  v.object({ allowed: v.literal(false), retryAfterMs: v.number(), reason: loginRateLimitReasonValidator }),
 );
+type LoginRateLimitResult = Infer<typeof resultValidator>;
 
 export const assessLoginAttemptMutation = internalMutation({
   args: { identifier: v.string(), ip: v.string() }, returns: resultValidator,

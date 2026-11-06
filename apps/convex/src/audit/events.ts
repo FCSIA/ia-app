@@ -9,12 +9,10 @@ import { paginationOptsValidator } from "convex/server";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
-  getMaybeCurrentAppUser,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
 import {
   auditEventValidator,
-  auditEventResolver,
   auditPageValidator,
   auditEventSerializer,
   toAuditEvent,
@@ -93,11 +91,8 @@ export const list = query({
   args: { limit: v.optional(v.number()), ...auditFilters },
   returns: v.array(auditEventValidator),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, STAFF_ROLES)
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return [];
     const matches = auditMatcher(args);
     const rows = await ctx.db
@@ -113,11 +108,8 @@ export const listFilterOptions = query({
   args: {},
   returns: auditFilterOptionsValidator,
   handler: async (ctx) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, STAFF_ROLES)
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return { actions: [], entityTypes: [] };
     return {
       actions: Object.keys(AUDIT_ACTIONS).sort((a, b) => auditActionInfo(a)!.label.localeCompare(auditActionInfo(b)!.label)),
@@ -132,8 +124,8 @@ export const listPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (!viewer || !requireAnyRoleSafe(viewer, STAFF_ROLES))
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
     const result = await ctx.db.query("auditEvents")
@@ -149,11 +141,8 @@ export const listFilteredPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, STAFF_ROLES)
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
     const db = stream(ctx.db, schema);
@@ -218,11 +207,8 @@ export const get = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, STAFF_ROLES)
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return null;
     const row = await ctx.db.get(args.auditEventId);
     if (!row) return null;
@@ -239,8 +225,8 @@ export const counts = query({
   args: auditFilters,
   returns: v.object({ total: v.union(v.number(), v.null()), exact: v.boolean(), byCategory: v.array(v.object({ category: v.string(), count: v.number() })) }),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (!viewer || !requireAnyRoleSafe(viewer, STAFF_ROLES)) return { total: null, exact: false, byCategory: [] };
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer) return { total: null, exact: false, byCategory: [] };
     if (!(await auditIndexReady(ctx))) return { total: null, exact: false, byCategory: [] };
     const byCategory = await Promise.all((Object.keys(AUDIT_CATEGORIES) as AuditCategory[]).map(async (category) => ({
       category,

@@ -1,3 +1,4 @@
+import { userSummary } from "../summaries";
 import { isStudent } from "../../../shared/roles";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
@@ -59,14 +60,7 @@ export const getRoster = query({
     const serializeStudent = async (studentId: Id<"users">) => {
       const student = await ctx.db.get(studentId);
       if (!student) return null;
-      return {
-        _id: student._id,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        preferredName: student.preferredName,
-        gradeLevel: student.gradeLevel,
-        uniqueId: student.uniqueId,
-      };
+      return userSummary(student, "gradeLevel", "uniqueId");
     };
 
     return {

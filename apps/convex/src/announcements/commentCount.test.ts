@@ -6,6 +6,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { adjustCommentCount } from "./_lib";
 import { serializeAnnouncements } from "./serialize";
+import { insertUser } from "../../test/fixtures";
 
 const modules = import.meta.glob("../**/*.*s");
 
@@ -14,22 +15,7 @@ async function seed(
   { commentCount, comments }: { commentCount?: number; comments: number },
 ) {
   return t.run(async (ctx) => {
-    const authorId = await ctx.db.insert("users", {
-      uniqueId: "author-1",
-      firstName: "Ada",
-      lastName: "Lovelace",
-      roles: ["TEACHER"],
-      isStudent: false,
-      isTeacherStaff: true,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: "ada lovelace",
-      createdAt: 0,
-      updatedAt: 0,
-    });
+    const authorId = await insertUser(ctx, { uniqueId: "author-1", firstName: "Ada", lastName: "Lovelace", roles: ["TEACHER"], createdAt: 0, updatedAt: 0 });
 
     const announcementId = await ctx.db.insert("announcements", {
       authorId,

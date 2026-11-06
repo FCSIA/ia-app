@@ -10,50 +10,18 @@ import {
   onboardingSteps,
   onboardingSaveError,
 } from "../../../shared/onboarding";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (original) => {
-  const actual = await original<typeof import("../../lib/currentUser")>();
-  const getMaybeCurrentAppUserUnchecked = async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const user = identity
-      ? await ctx.db.get(identity.subject as Id<"users">)
-      : null;
-    return user?.isActive ? user : null;
-  };
-  return {
-    ...actual,
-    getMaybeCurrentAppUserUnchecked,
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const user = await getMaybeCurrentAppUserUnchecked(ctx);
-      if (!user) throw new Error("Unauthenticated");
-      actual.assertPasswordResetComplete(user);
-      return user;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original(), { requireActive: true }),
+);
 const modules = import.meta.glob("/src/**/*.*s");
 async function fixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) =>
     Promise.all(
       ["new", "legacy", "staff"].map((name, i) =>
-        ctx.db.insert("users", {
-          uniqueId: name,
-          firstName: name,
-          lastName: "Test",
-          roles: i === 2 ? ["TEACHER"] : ["STUDENT"],
-          isStudent: i !== 2,
-          isTeacherStaff: i === 2,
-          isStudentAdmin: false,
-          isOtherRole: false,
-          isActive: true,
-          mustResetPassword: false,
-          dashboardLayout: [],
-          searchText: name,
-          onboardingVersion: i === 0 ? 1 : undefined,
-          createdAt: 1,
-          updatedAt: 1,
-        }),
+        insertUser(ctx, { uniqueId: name, firstName: name, lastName: "Test", roles: i === 2 ? ["TEACHER"] : ["STUDENT"], onboardingVersion: i === 0 ? 1 : undefined }),
       ),
     ),
   );

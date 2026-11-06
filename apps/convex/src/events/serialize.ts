@@ -1,19 +1,16 @@
+import { clubSummary, userSummary } from "../summaries";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { createDocLoader, type DocLoader } from "../../lib/docLoader";
 import { schema } from "../schema";
 
-const personValidator = v.object({
-  _id: v.id("users"),
-  firstName: v.string(),
-  lastName: v.string(),
-  preferredName: v.optional(v.string()),
-  isDeveloper: v.optional(v.boolean()),
-});
+const personValidator = schema
+  .doc("users")
+  .pick("_id", "firstName", "lastName", "preferredName", "isDeveloper");
 export const serializedEventValidator = schema.doc("events").extend({
   author: v.union(personValidator, v.null()),
-  club: v.union(v.object({ _id: v.id("clubs"), name: v.string() }), v.null()),
+  club: v.union(schema.doc("clubs").pick("_id", "name"), v.null()),
 });
 export const serializedEventDetailValidator = serializedEventValidator.extend({
   approvals: v.array(
@@ -35,16 +32,8 @@ export async function serializeEvent(
 
   return {
     ...event,
-    author: author
-      ? {
-          _id: author._id,
-          firstName: author.firstName,
-          lastName: author.lastName,
-          preferredName: author.preferredName,
-          isDeveloper: author.isDeveloper,
-        }
-      : null,
-    club: club ? { _id: club._id, name: club.name } : null,
+    author: author ? userSummary(author, "isDeveloper") : null,
+    club: club ? clubSummary(club) : null,
   };
 }
 
@@ -61,15 +50,7 @@ export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) 
       const sponsor = await loader.get(approval.sponsorId);
       return {
         ...approval,
-        sponsor: sponsor
-          ? {
-              _id: sponsor._id,
-              firstName: sponsor.firstName,
-              lastName: sponsor.lastName,
-              preferredName: sponsor.preferredName,
-              isDeveloper: sponsor.isDeveloper,
-            }
-          : null,
+        sponsor: sponsor ? userSummary(sponsor, "isDeveloper") : null,
       };
     }),
   );

@@ -5,48 +5,24 @@ import { describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
-const auth = vi.hoisted(() => ({ userId: null as string | null }));
-
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../lib/currentUser")>();
-  return {
-    ...actual,
-    getCurrentAppUser: async (ctx: { db: { get: (id: string) => Promise<unknown> } }) => {
-      const user = auth.userId ? await ctx.db.get(auth.userId) : null;
-      if (!user) throw new Error("Unauthenticated");
-      return user as Doc<"users">;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
 function studentUser(uniqueId: string, lastName: string) {
-  return {
-    uniqueId,
-    firstName: uniqueId,
-    lastName,
-    roles: ["STUDENT" as const],
-    isStudent: true,
-    isTeacherStaff: false,
-    isStudentAdmin: false,
-    isOtherRole: false,
-    isActive: true,
-    mustResetPassword: false,
-    dashboardLayout: [],
-    searchText: `${uniqueId} ${lastName}`,
-    createdAt: 1,
-    updatedAt: 1,
-  };
+  return { uniqueId, lastName };
 }
 
 describe("mutual friends list", () => {
   it("returns every mutual friend, sorted, beyond the profile summary", async () => {
     const t = convexTest(schema, modules);
     const { viewerId, personId, mutualIds } = await t.run(async (ctx) => {
-      const viewerId = await ctx.db.insert("users", studentUser("VIEWER", "Viewer"));
-      const personId = await ctx.db.insert("users", studentUser("PERSON", "Person"));
+      const viewerId = await insertUser(ctx, studentUser("VIEWER", "Viewer"));
+      const personId = await insertUser(ctx, studentUser("PERSON", "Person"));
       const befriend = (requesterId: Id<"users">, addresseeId: Id<"users">) =>
         ctx.db.insert("studentScheduleFriends", {
           requesterId,
@@ -58,21 +34,21 @@ describe("mutual friends list", () => {
       const mutualIds: Id<"users">[] = [];
       // More than the four the profile summary shows, in reverse name order.
       for (const lastName of ["Zed", "Young", "Xu", "Wong", "Vega", "Ueda"]) {
-        const friendId = await ctx.db.insert("users", studentUser(`M-${lastName}`, lastName));
+        const friendId = await insertUser(ctx, studentUser(`M-${lastName}`, lastName));
         await befriend(viewerId, friendId);
         await befriend(friendId, personId);
         mutualIds.push(friendId);
       }
-      const onlyViewers = await ctx.db.insert("users", studentUser("ONLY-V", "Alpha"));
+      const onlyViewers = await insertUser(ctx, studentUser("ONLY-V", "Alpha"));
       await befriend(viewerId, onlyViewers);
-      const onlyPersons = await ctx.db.insert("users", studentUser("ONLY-P", "Beta"));
+      const onlyPersons = await insertUser(ctx, studentUser("ONLY-P", "Beta"));
       await befriend(personId, onlyPersons);
       return { viewerId, personId, mutualIds };
     });
 
-    auth.userId = viewerId;
-    const summary = await t.query(api.schedule.friends.getProfileContext, { personId });
-    const list = await t.query(api.schedule.friends.listMutualFriends, { personId });
+    const viewer = t.withIdentity({ subject: viewerId });
+    const summary = await viewer.query(api.schedule.friends.getProfileContext, { personId });
+    const list = await viewer.query(api.schedule.friends.listMutualFriends, { personId });
 
     expect(summary?.mutualFriendCount).toBe(6);
     expect(summary?.mutualFriends).toHaveLength(4);
@@ -86,7 +62,7 @@ describe("mutual friends list", () => {
     ]);
     expect(new Set(list.map((friend) => friend._id))).toEqual(new Set(mutualIds));
     expect(list[0]).toMatchObject({ uniqueId: "M-Ueda", roles: ["STUDENT"] });
-    expect(await t.query(api.schedule.friends.listMutualFriends, { personId: viewerId })).toEqual(
+    expect(await viewer.query(api.schedule.friends.listMutualFriends, { personId: viewerId })).toEqual(
       [],
     );
   });

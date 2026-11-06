@@ -22,15 +22,17 @@ import {
 } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { contentRateLimiter } from "../rateLimits";
-import { getChannelViewerContext, getClubContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
+import { schema } from "../schema";
+import { getClubContext } from "./access";
+import { resolveChannel } from "./channelGate";
+import { channelWhiteboardsEnabled } from "./channelPolicy";
+import { emptyPage } from "./messageSerialization";
 import {
   MAX_WHITEBOARD_LIVE_ELEMENTS,
   WHITEBOARD_CHANGE_PAGE_SIZE,
   assertWhiteboardSaveBounds,
   assertWhiteboardThumbnail,
   classifyWhiteboardChange,
-  channelWhiteboardsEnabled,
   liveElementDelta,
   mergeWhiteboardEditAuditMeta,
   normalizeWhiteboardTitle,
@@ -85,15 +87,16 @@ async function resolveWhiteboardChannel(
   user: Doc<"users">,
   channelId: Id<"clubChannels">,
 ) {
-  const channel = await ctx.db.get(channelId);
-  if (!channel) return { status: "denied" as const };
-  const club = await ctx.db.get(channel.clubId);
-  if (!club || !club.isActive) return { status: "denied" as const };
-  const context = await getChannelViewerContext(ctx, club, user);
-  const access = await getChannelAccess(ctx, channel, context, user._id);
-  if (!access.canView) return { status: "denied" as const };
-  if (!channelWhiteboardsEnabled(channel)) return { status: "disabled" as const };
-  return { status: "ok" as const, channel, club };
+  const gate = await resolveChannel(ctx, user, channelId, {
+    requireActiveClub: true,
+  });
+  if (gate.status !== "resolved" || !gate.access.canView) {
+    return { status: "denied" as const };
+  }
+  if (!channelWhiteboardsEnabled(gate.channel)) {
+    return { status: "disabled" as const };
+  }
+  return { status: "ok" as const, channel: gate.channel, club: gate.club };
 }
 
 async function getWhiteboardChannel(
@@ -397,7 +400,7 @@ export async function setWhiteboardArchived(
 
 // ── Element writes ──────────────────────────────────────────────────────
 
-export type WhiteboardRejectedElement = {
+type WhiteboardRejectedElement = {
   elementId: string;
   /** "full" can succeed later; "invalid" will not until the element changes. */
   kind: "full" | "invalid";
@@ -1007,7 +1010,7 @@ export async function listArchivedWhiteboards(
   paginationOpts: PaginationOptions,
 ) {
   if (!(await getWhiteboardChannel(ctx, user, channelId))) {
-    return { page: [], isDone: true, continueCursor: "" };
+    return emptyPage(null);
   }
   const result = await ctx.db
     .query("clubWhiteboards")
@@ -1024,7 +1027,7 @@ export const listArchived = query({
   returns: paginationResultValidator(boardSummaryValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return { page: [], isDone: true, continueCursor: "" };
+    if (!user) return emptyPage(null);
     return await listArchivedWhiteboards(ctx, user, args.channelId, args.paginationOpts);
   },
 });
@@ -1088,19 +1091,23 @@ export const listChanges = query({
   },
 });
 
-const revisionValidator = v.object({
-  _id: v.id("clubWhiteboardRevisions"),
-  kind: v.union(v.literal("EDIT"), v.literal("RESTORE")),
-  actorName: v.string(),
-  toSeq: v.number(),
-  created: v.number(),
-  updated: v.number(),
-  deleted: v.number(),
-  restored: v.number(),
-  restoredToSeq: v.union(v.number(), v.null()),
-  startedAt: v.number(),
-  updatedAt: v.number(),
-});
+const revisionValidator = schema
+  .doc("clubWhiteboardRevisions")
+  .pick(
+    "_id",
+    "kind",
+    "toSeq",
+    "created",
+    "updated",
+    "deleted",
+    "restored",
+    "startedAt",
+    "updatedAt",
+  )
+  .extend({
+    actorName: v.string(),
+    restoredToSeq: v.union(v.number(), v.null()),
+  });
 
 export const listRevisions = query({
   args: { boardId: v.id("clubWhiteboards"), paginationOpts: paginationOptsValidator },
@@ -1108,7 +1115,7 @@ export const listRevisions = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user || !(await getWhiteboardForUser(ctx, user, args.boardId))) {
-      return { page: [], isDone: true, continueCursor: "" };
+      return emptyPage(null);
     }
     const result = await ctx.db
       .query("clubWhiteboardRevisions")

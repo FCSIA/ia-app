@@ -15,19 +15,18 @@ import {
 } from "../../lib/currentUser";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { notificationCategoryValidator } from "../validators";
-import {
-  preferenceAllowsPush,
-  resolveNotificationPreference,
-} from "./deliveryPreference";
+import { nativePushPlatformValidator, notificationCategoryValidator } from "../validators";
 import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwnership";
-import { isDoNotDisturb } from "../presence/_status";
-
-const nativePlatformValidator = v.union(v.literal("ios"), v.literal("android"));
+import {
+  disablePushTarget,
+  pushIsAllowed,
+  pushSendResultFields,
+  recordPushSendResult,
+} from "./_pushTransport";
 
 const nativeTokenPublicValidator = v.object({
   token: v.string(),
-  platform: nativePlatformValidator,
+  platform: nativePushPlatformValidator,
   deviceId: v.optional(v.string()),
   deviceName: v.optional(v.string()),
   enabled: v.boolean(),
@@ -71,7 +70,7 @@ export const listMine = query({
 export const registerToken = mutation({
   args: {
     token: v.string(),
-    platform: nativePlatformValidator,
+    platform: nativePushPlatformValidator,
     deviceId: v.optional(v.string()),
     deviceName: v.optional(v.string()),
   },
@@ -116,7 +115,7 @@ export const registerToken = mutation({
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .take(maxAccountsPerPushTarget);
     for (const row of rowsHeldByOtherAccounts(tokenRows, user._id)) {
-      await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+      await disablePushTarget(ctx, row._id, now);
     }
 
     return { success: true };
@@ -138,10 +137,7 @@ export const unregisterToken = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        enabled: false,
-        updatedAt: Date.now(),
-      });
+      await disablePushTarget(ctx, existing._id);
     }
 
     return { success: true };
@@ -165,10 +161,7 @@ export const unregisterDevice = mutation({
     for (const token of tokens.filter(
       (row) => row.deviceId === args.deviceId,
     )) {
-      await ctx.db.patch(token._id, {
-        enabled: false,
-        updatedAt: Date.now(),
-      });
+      await disablePushTarget(ctx, token._id);
     }
 
     return { success: true };
@@ -183,7 +176,7 @@ export const sendTestToMe = action({
   returns: v.object({ sent: v.number() }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(
-      internal.notifications.pushExpo.currentUserForTest,
+      internal.notifications.push.currentUserForTest,
       {},
     );
     if (!user) return { sent: 0 };
@@ -210,11 +203,6 @@ export const sendTestToMe = action({
   },
 });
 
-export const currentUserForTest = internalQuery({
-  args: {},
-  handler: async (ctx) => getMaybeCurrentAppUser(ctx),
-});
-
 type DeliveryTarget = {
   id: Id<"notificationNativePushTokens">;
   token: string;
@@ -233,14 +221,7 @@ export const getDeliveryTargets = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
-    // Do Not Disturb holds push only; the delivery still reaches the inbox.
-    if (await isDoNotDisturb(ctx, args.userId)) return [];
-
-    const preference = await resolveNotificationPreference(ctx, args);
-
-    if (!preferenceAllowsPush(preference)) {
-      return [];
-    }
+    if (!(await pushIsAllowed(ctx, args))) return [];
 
     const tokens = await ctx.db
       .query("notificationNativePushTokens")
@@ -259,23 +240,11 @@ export const getDeliveryTargets = internalQuery({
 export const recordSendResult = internalMutation({
   args: {
     id: v.id("notificationNativePushTokens"),
-    success: v.boolean(),
-    error: v.optional(v.string()),
-    deactivate: v.optional(v.boolean()),
+    ...pushSendResultFields,
   },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const row = await ctx.db.get(args.id);
-    if (!row) return null;
-
-    await ctx.db.patch(args.id, {
-      enabled: args.deactivate ? false : row.enabled,
-      failureCount: args.success ? 0 : row.failureCount + 1,
-      lastError: args.success ? undefined : args.error?.slice(0, 500),
-      lastSentAt: args.success ? Date.now() : row.lastSentAt,
-      updatedAt: Date.now(),
-    });
-
+  handler: async (ctx, { id, ...result }) => {
+    await recordPushSendResult(ctx, id, result);
     return null;
   },
 });

@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import { schoolTimestamp } from "../../../shared/school-time";
+import { insertUser } from "../../test/fixtures";
 
 // Exercise the real active-user/password-reset guards; replace only the auth adapter.
 vi.mock("../auth", async (original) => {
@@ -90,25 +91,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
     const user = (authUserId: string, teacher: boolean) =>
-      ctx.db.insert("users", {
-        authUserId,
-        uniqueId: authUserId,
-        firstName: authUserId,
-        lastName: "Person",
-        preferredName: `${authUserId} preferred`,
-        email: `${authUserId}@private.example`,
-        roles: teacher ? ["TEACHER"] : ["STUDENT"],
-        isStudent: !teacher,
-        isTeacherStaff: teacher,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: authUserId,
-        createdAt: 1,
-        updatedAt: 1,
-      });
+      insertUser(ctx, { authUserId, uniqueId: authUserId, firstName: authUserId, lastName: "Person", preferredName: `${authUserId} preferred`, email: `${authUserId}@private.example`, roles: teacher ? ["TEACHER"] : ["STUDENT"] });
     return {
       studentId: await user("student", false),
       otherId: await user("other", false),

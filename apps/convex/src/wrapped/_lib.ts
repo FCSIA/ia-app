@@ -1,6 +1,7 @@
 import { PATHWAY_LABELS } from "../../../shared/labels";
 import { schoolDateKey } from "../../../shared/school-time";
-import type { Pathway } from "../validators";
+import { v, type Infer } from "convex/values";
+import { pathwayValidator, type Pathway } from "../validators";
 
 export const WRAPPED_SCHEMA_VERSION = 1;
 
@@ -71,45 +72,65 @@ export const PATHWAY_META: Record<
   ENGINEERING: { label: PATHWAY_LABELS.ENGINEERING, lanyard: "Yellow" },
 };
 
-export type WrappedSummary = {
-  userId: string;
-  schoolYearStart: number;
-  schoolYearLabel: string;
-  rangeStart: string;
-  rangeEnd: string;
-  messagesSent: number;
-  channelsEngaged: number;
-  friends: number;
-  clubs: number;
-  flexCredits: number;
-  flexCreditsRequired: number;
-  pathwayFlexCredits: number;
-  topChannel: {
-    channelId: string;
-    channelName: string;
-    clubId: string;
-    clubName: string;
-    messages: number;
-  } | null;
-  topMentioned: {
-    userId: string;
-    firstName: string;
-    lastName: string;
-    preferredName?: string;
-    mentions: number;
-  } | null;
-  pathway: {
-    major: Pathway | null;
-    minor: Pathway | null;
-    lanyardColor: string | null;
-    label: string | null;
-    peers: number;
-  };
-  mostUsedWord: { word: string; count: number } | null;
-  peakHour: { hour: number; messages: number } | null;
-  longestStreak: number;
-  mostActiveDay: { date: string; messages: number } | null;
-  reactionsReceived: number;
-  topEmoji: { emoji: string; count: number } | null;
-  longestMessageChars: number;
-};
+export const wrappedSummaryValidator = v.object({
+  userId: v.string(),
+  schoolYearStart: v.number(),
+  schoolYearLabel: v.string(),
+  rangeStart: v.string(),
+  rangeEnd: v.string(),
+  messagesSent: v.number(),
+  channelsEngaged: v.number(),
+  friends: v.number(),
+  clubs: v.number(),
+  flexCredits: v.number(),
+  flexCreditsRequired: v.number(),
+  pathwayFlexCredits: v.number(),
+  topChannel: v.union(
+    v.object({
+      channelId: v.string(),
+      channelName: v.string(),
+      clubId: v.string(),
+      clubName: v.string(),
+      messages: v.number(),
+    }),
+    v.null(),
+  ),
+  topMentioned: v.union(
+    v.object({
+      userId: v.string(),
+      firstName: v.string(),
+      lastName: v.string(),
+      preferredName: v.optional(v.string()),
+      mentions: v.number(),
+    }),
+    v.null(),
+  ),
+  pathway: v.object({
+    major: v.union(pathwayValidator, v.null()),
+    minor: v.union(pathwayValidator, v.null()),
+    lanyardColor: v.union(v.string(), v.null()),
+    label: v.union(v.string(), v.null()),
+    peers: v.number(),
+  }),
+  mostUsedWord: v.union(
+    v.object({ word: v.string(), count: v.number() }),
+    v.null(),
+  ),
+  peakHour: v.union(
+    v.object({ hour: v.number(), messages: v.number() }),
+    v.null(),
+  ),
+  longestStreak: v.number(),
+  mostActiveDay: v.union(
+    v.object({ date: v.string(), messages: v.number() }),
+    v.null(),
+  ),
+  reactionsReceived: v.number(),
+  topEmoji: v.union(
+    v.object({ emoji: v.string(), count: v.number() }),
+    v.null(),
+  ),
+  longestMessageChars: v.number(),
+});
+
+export type WrappedSummary = Infer<typeof wrappedSummaryValidator>;

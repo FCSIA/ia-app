@@ -8,22 +8,11 @@ import type { QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import type { AppRole } from "../../../shared/roles";
 import { schoolDayBounds } from "../../../shared/school-time";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../lib/currentUser")>();
-  return {
-    ...original,
-    getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-    },
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) throw new Error("Unauthenticated");
-      return ctx.db.get(identity.subject as Id<"users">);
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -36,22 +25,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   const makeUser = (uniqueId: string, roles: AppRole[]) =>
     t.run((ctx) =>
-      ctx.db.insert("users", {
-        uniqueId,
-        firstName: uniqueId,
-        lastName: "Test",
-        roles,
-        isStudent: roles.includes("STUDENT"),
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: uniqueId,
-        createdAt: 1,
-        updatedAt: 1,
-      }),
+      insertUser(ctx, { uniqueId, firstName: uniqueId, lastName: "Test", roles }),
     );
   const superAdminId = await makeUser("ANALYTICS-SUPER", ["SUPER_ADMIN"]);
   const adminId = await makeUser("ANALYTICS-ADMIN", ["ADMIN"]);

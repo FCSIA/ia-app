@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { deleteStorageQuietly } from "../../lib/storage";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import {
   isSupportedStoredFileMime,
@@ -69,23 +70,11 @@ export function assertStagedChatAttachmentOwner(
   }
 }
 
-async function deleteStorageFile(
-  ctx: MutationCtx,
-  storageId: Id<"_storage"> | undefined,
-) {
-  if (!storageId) return;
-  try {
-    await ctx.storage.delete(storageId);
-  } catch {
-    // The storage object may already have been removed.
-  }
-}
-
 export async function deleteStoredChatAttachment(
   ctx: MutationCtx,
   attachment: Pick<Doc<"clubChannelMessageAttachments">, "storageId">,
 ) {
-  await deleteStorageFile(ctx, attachment.storageId);
+  await deleteStorageQuietly(ctx, attachment.storageId);
 }
 
 export async function consumeStagedChatAttachments(
@@ -137,7 +126,7 @@ export const cleanupStagedChatAttachment = internalMutation({
   handler: async (ctx, args) => {
     const staged = await ctx.db.get(args.attachmentUploadId);
     if (!staged) return null;
-    await deleteStorageFile(ctx, staged.storageId);
+    await deleteStorageQuietly(ctx, staged.storageId);
     await ctx.db.delete(staged._id);
     return null;
   },

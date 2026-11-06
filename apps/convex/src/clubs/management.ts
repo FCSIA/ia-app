@@ -2,7 +2,6 @@ import {
   ADMIN_ROLES,
   type AppRole,
   CLUB_CREATION_ROLES,
-  hasAnyRole,
   isSuperAdmin,
 } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
@@ -12,24 +11,29 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { getClubContext, getViewerContext, getChannelViewerContext } from "./access";
+import { getClubContext, getChannelViewerContext } from "./access";
 import { getChannelAccessForChannels } from "./channelAccess";
-import { clubSummaryValidator, clubSummaryWithCounts, toViewerState } from "./serialize";
+import { clubSummaryValidator, clubSummaryWithCounts } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
 import { adjustClubCounts } from "./counts";
 import {
+  clubJoinPolicyValidator,
   clubRolePermissionValidator,
-  clubRolePermissionsValidator,
 } from "../validators";
+import { deriveChannelVisibility } from "./channelPolicy";
+import { queryRoleHolders } from "./membership";
 import {
+  MAX_CLUB_ROLES,
   NO_CLUB_PERMISSIONS,
+  clubRoleSummaryValidator,
+  createClubRole,
   createInitialClubRoles,
   getDefaultClubRole,
+  listClubRoles,
+  normalizeClubRoleName,
+  requireClubRole,
+  toClubRoleSummary,
 } from "./rolePermissions";
-
-export function canCreateClub(roles: readonly AppRole[]) {
-  return hasAnyRole(roles, CLUB_CREATION_ROLES);
-}
 
 export function canPermanentlyDeleteClub(roles: readonly AppRole[]) {
   return isSuperAdmin(roles);
@@ -49,39 +53,11 @@ export const getAll = query({
   },
 });
 
-export const getOne = query({
-  args: { clubId: v.id("clubs") },
-  returns: v.union(v.object({
-    ...clubSummaryValidator.fields,
-    viewer: v.any(),
-    members: v.array(v.object({ _id: v.id("clubMembers"), userId: v.id("users"), role: v.optional(v.string()), joinedAt: v.number() })),
-  }), v.null()),
-  handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return null;
-    const club = await ctx.db.get(args.clubId);
-    if (!club) return null;
-    const context = await getViewerContext(ctx, args.clubId, user);
-    if (!context.canAccessWorkspace) return null;
-
-    const members = await ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .collect();
-
-    return {
-      ...(await clubSummaryWithCounts(ctx, club)),
-      viewer: toViewerState(context),
-      members: members.map((member) => ({ _id: member._id, userId: member.userId, role: member.role, joinedAt: member.joinedAt })),
-    };
-  },
-});
-
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST"), v.literal("INVITE_ONLY")),
+    joinPolicy: clubJoinPolicyValidator,
     memberLimit: v.optional(v.number()),
     sponsorIds: v.optional(v.array(v.id("users"))),
   },
@@ -142,7 +118,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     overview: v.optional(v.string()),
     accentColor: v.optional(v.string()),
-    joinPolicy: v.optional(v.union(v.literal("OPEN"), v.literal("REQUEST"), v.literal("INVITE_ONLY"))),
+    joinPolicy: v.optional(clubJoinPolicyValidator),
     memberLimit: v.optional(v.union(v.number(), v.null())),
   },
   returns: v.null(),
@@ -295,10 +271,7 @@ export const setMemberRole = mutation({
       throw new ConvexError("You do not have permission to assign club roles");
     }
 
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) {
-      throw new ConvexError("Club role not found");
-    }
+    await requireClubRole(ctx, args.clubId, args.roleId);
 
     const member = await ctx.db
       .query("clubMembers")
@@ -324,100 +297,6 @@ export const setMemberRole = mutation({
     });
     return null;
   },
-});
-
-const bulkMemberRoleAssignmentValidator = v.object({
-  memberId: v.id("users"),
-  roleName: v.string(),
-});
-
-export const bulkSetMemberRoles = mutation({
-  args: {
-    clubId: v.id("clubs"),
-    assignments: v.array(bulkMemberRoleAssignmentValidator),
-  },
-  returns: v.object({ assigned: v.number(), skipped: v.number(), createdRoles: v.number() }),
-  handler: async (ctx, args) => {
-    if (args.assignments.length === 0) throw new ConvexError("Add at least one role assignment");
-    if (args.assignments.length > 100) throw new ConvexError("A role CSV can contain up to 100 rows");
-    const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.permissions.assignRoles) {
-      throw new ConvexError("You do not have permission to assign club roles");
-    }
-    const memberships = await Promise.all(
-      args.assignments.map((assignment) =>
-        ctx.db.query("clubMembers").withIndex("by_clubId_and_userId", (q) =>
-          q.eq("clubId", args.clubId).eq("userId", assignment.memberId),
-        ).unique(),
-      ),
-    );
-    const roles = await ctx.db.query("clubRoles")
-      .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
-      .take(100);
-    const roleByName = new Map(
-      roles.map((role) => [role.name.trim().toLocaleLowerCase(), role._id]),
-    );
-    const now = Date.now();
-    let createdRoles = 0;
-    for (const assignment of args.assignments) {
-      const name = normalizedRoleName(assignment.roleName);
-      if (!name) throw new ConvexError("Every role assignment needs a role");
-      if (roleByName.has(name.toLocaleLowerCase())) continue;
-      if (!context.permissions.manageRoles) {
-        throw new ConvexError(`Role does not exist: ${name}`);
-      }
-      await assertRoleNameAvailable(ctx, args.clubId, name);
-      if (roles.length + createdRoles >= 100) throw new ConvexError("A club can have up to 100 roles");
-      const roleId = await ctx.db.insert("clubRoles", {
-        clubId: args.clubId,
-        name,
-        permissions: NO_CLUB_PERMISSIONS,
-        isDefault: false,
-        showInDirectory: false,
-        position: roles.reduce((position, role) => Math.max(position, (role.position ?? -1) + 1), createdRoles),
-        createdById: user._id,
-        createdAt: now,
-        updatedAt: now,
-      });
-      roleByName.set(name.toLocaleLowerCase(), roleId);
-      createdRoles += 1;
-    }
-    let assigned = 0;
-    let skipped = 0;
-    for (let index = 0; index < args.assignments.length; index += 1) {
-      const membership = memberships[index];
-      if (!membership) {
-        skipped += 1;
-        continue;
-      }
-      const role = roleByName.get(normalizedRoleName(args.assignments[index].roleName).toLocaleLowerCase());
-      if (!role) throw new ConvexError("Role could not be resolved");
-      await ctx.db.patch(membership._id, {
-        roleId: role,
-        role: undefined,
-        customRoleId: undefined,
-      });
-      assigned += 1;
-    }
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "CLUB_MEMBER_ROLES_BULK_SET",
-      entityType: "Club",
-      entityId: args.clubId,
-      meta: { clubId: args.clubId, assigned, skipped, createdRoles },
-    });
-    return { assigned, skipped, createdRoles };
-  },
-});
-
-const clubRoleValidator = v.object({
-  _id: v.id("clubRoles"),
-  name: v.string(),
-  permissions: clubRolePermissionsValidator,
-  isDefault: v.boolean(),
-  showInDirectory: v.boolean(),
-  position: v.number(),
 });
 
 const ROLE_CASCADE_BATCH_SIZE = 450;
@@ -453,9 +332,13 @@ export function roleRemovalChannelAccessUpdate(
     accessRoleIds,
     broadensAccess,
     visibility: broadensAccess
-      ? channel.postingPolicy === "CLUB_MANAGERS"
-        ? "MEMBER_READONLY" as const
-        : "PUBLIC" as const
+      ? deriveChannelVisibility({
+          restricted: false,
+          postingPolicy:
+            channel.postingPolicy === "CLUB_MANAGERS"
+              ? "CLUB_MANAGERS"
+              : "AUDIENCE",
+        })
       : channel.visibility,
   };
 }
@@ -466,20 +349,8 @@ async function reassignRoleMembers(
   roleId: Id<"clubRoles">,
   defaultRoleId: Id<"clubRoles"> | null,
 ) {
-  const [roleMembers, legacyRoleMembers] = await Promise.all([
-    ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId_and_roleId", (q) =>
-        q.eq("clubId", clubId).eq("roleId", roleId),
-      )
-      .take(ROLE_CASCADE_BATCH_SIZE),
-    ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId_and_customRoleId", (q) =>
-        q.eq("clubId", clubId).eq("customRoleId", roleId),
-      )
-      .take(ROLE_CASCADE_BATCH_SIZE),
-  ]);
+  const { current: roleMembers, legacy: legacyRoleMembers } =
+    await queryRoleHolders(ctx, clubId, roleId, ROLE_CASCADE_BATCH_SIZE);
 
   const members = new Map(
     [...roleMembers, ...legacyRoleMembers].map((member) => [member._id, member]),
@@ -500,20 +371,16 @@ async function reassignRoleMembers(
   };
 }
 
-function normalizedRoleName(name: string) {
-  return name.trim().replace(/\s+/g, " ");
-}
-
 async function assertRoleNameAvailable(
-  ctx: Parameters<typeof getClubContext>[0],
-  clubId: Parameters<typeof getClubContext>[1],
+  ctx: QueryCtx | MutationCtx,
+  clubId: Id<"clubs">,
   name: string,
   exceptRoleId?: string,
 ) {
   const existing = await ctx.db
     .query("clubRoles")
     .withIndex("by_clubId_and_name", (q) => q.eq("clubId", clubId))
-    .take(100);
+    .take(MAX_CLUB_ROLES);
   if (existing.some((role) => role._id !== exceptRoleId && role.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
     throw new ConvexError("A role with that name already exists");
   }
@@ -521,25 +388,14 @@ async function assertRoleNameAvailable(
 
 export const listRoles = query({
   args: { clubId: v.id("clubs") },
-  returns: v.array(clubRoleValidator),
+  returns: v.array(clubRoleSummaryValidator),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canAccessWorkspace) return [];
-    const roles = await ctx.db
-      .query("clubRoles")
-      .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
-      .take(100);
+    await getClubContext(ctx, args.clubId, user);
+    const roles = await listClubRoles(ctx, args.clubId);
     return roles
       .filter((role) => role.position !== undefined)
-      .map((role) => ({
-        _id: role._id,
-        name: role.name,
-        permissions: role.permissions ?? NO_CLUB_PERMISSIONS,
-        isDefault: role.isDefault ?? false,
-        showInDirectory: role.showInDirectory ?? false,
-        position: role.position ?? 0,
-      }));
+      .map(toClubRoleSummary);
   },
 });
 
@@ -559,33 +415,22 @@ export const initializeRoles = mutation({
 
 export const createRole = mutation({
   args: { clubId: v.id("clubs"), name: v.string() },
-  returns: clubRoleValidator,
+  returns: clubRoleSummaryValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
     if (!context.permissions.manageRoles) {
       throw new ConvexError("You do not have permission to manage club roles");
     }
-    const name = normalizedRoleName(args.name);
-    if (!name) throw new ConvexError("Role name is required");
-    if (name.length > 64) throw new ConvexError("Role names must be 64 characters or fewer");
+    const name = normalizeClubRoleName(args.name);
     await assertRoleNameAvailable(ctx, args.clubId, name);
-    const roles = await ctx.db
-      .query("clubRoles")
-      .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
-      .take(100);
-    if (roles.length >= 100) throw new ConvexError("A club can have up to 100 roles");
-    const now = Date.now();
-    const roleId = await ctx.db.insert("clubRoles", {
+    const roles = await listClubRoles(ctx, args.clubId);
+    const roleId = await createClubRole(ctx, {
       clubId: args.clubId,
       name,
-      permissions: NO_CLUB_PERMISSIONS,
-      isDefault: false,
-      showInDirectory: false,
-      position: roles.reduce((position, role) => Math.max(position, (role.position ?? -1) + 1), 0),
-      createdById: user._id,
-      createdAt: now,
-      updatedAt: now,
+      actorId: user._id,
+      existingRoles: roles,
+      now: Date.now(),
     });
     await logAuditEvent(ctx, {
       actorId: user._id,
@@ -596,14 +441,7 @@ export const createRole = mutation({
     });
     const role = await ctx.db.get(roleId);
     if (!role) throw new ConvexError("Could not create role");
-    return {
-      _id: role._id,
-      name: role.name,
-      permissions: role.permissions ?? NO_CLUB_PERMISSIONS,
-      isDefault: role.isDefault ?? false,
-      showInDirectory: role.showInDirectory ?? false,
-      position: role.position ?? 0,
-    };
+    return toClubRoleSummary(role);
   },
 });
 
@@ -616,11 +454,8 @@ export const renameRole = mutation({
     if (!context.permissions.manageRoles) {
       throw new ConvexError("You do not have permission to manage club roles");
     }
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
-    const name = normalizedRoleName(args.name);
-    if (!name) throw new ConvexError("Role name is required");
-    if (name.length > 64) throw new ConvexError("Role names must be 64 characters or fewer");
+    const role = await requireClubRole(ctx, args.clubId, args.roleId);
+    const name = normalizeClubRoleName(args.name);
     await assertRoleNameAvailable(ctx, args.clubId, name, args.roleId);
     await ctx.db.patch(role._id, { name, updatedAt: Date.now() });
     await logAuditEvent(ctx, {
@@ -648,10 +483,7 @@ export const removeRole = mutation({
       throw new ConvexError("You do not have permission to manage club roles");
     }
 
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) {
-      throw new ConvexError("Club role not found");
-    }
+    const role = await requireClubRole(ctx, args.clubId, args.roleId);
     const affectedChannels = await channelsUsingRoleForAccess(
       ctx,
       args.clubId,
@@ -732,10 +564,7 @@ export const getRoleRemovalImpact = query({
     if (!context.permissions.manageRoles) {
       throw new ConvexError("You do not have permission to manage club roles");
     }
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) {
-      throw new ConvexError("Club role not found");
-    }
+    const role = await requireClubRole(ctx, args.clubId, args.roleId);
 
     const channels = await channelsUsingRoleForAccess(ctx, args.clubId, role._id);
     return {
@@ -788,8 +617,7 @@ export const setRolePermission = mutation({
     if (!context.permissions.manageRoles) {
       throw new ConvexError("You do not have permission to manage club roles");
     }
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
+    const role = await requireClubRole(ctx, args.clubId, args.roleId);
     await ctx.db.patch(role._id, {
       permissions: {
         ...(role.permissions ?? NO_CLUB_PERMISSIONS),
@@ -797,38 +625,6 @@ export const setRolePermission = mutation({
       },
       updatedAt: Date.now(),
     });
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "CLUB_ROLE_PERMISSIONS_UPDATED",
-      entityType: "Club",
-      entityId: args.clubId,
-      meta: { roleId: role._id },
-    });
-    return null;
-  },
-});
-
-/**
- * Kept for clients from the previous web release. New code uses the field and
- * group mutations above so concurrent switch changes cannot send stale role
- * snapshots back to the server.
- */
-export const updateRolePermissions = mutation({
-  args: {
-    clubId: v.id("clubs"),
-    roleId: v.id("clubRoles"),
-    permissions: clubRolePermissionsValidator,
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.permissions.manageRoles) {
-      throw new ConvexError("You do not have permission to manage club roles");
-    }
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
-    await ctx.db.patch(role._id, { permissions: args.permissions, updatedAt: Date.now() });
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_ROLE_PERMISSIONS_UPDATED",
@@ -854,8 +650,7 @@ export const setRolePermissionGroup = mutation({
     if (!context.permissions.manageRoles) {
       throw new ConvexError("You do not have permission to manage club roles");
     }
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
+    const role = await requireClubRole(ctx, args.clubId, args.roleId);
     await ctx.db.patch(role._id, {
       permissions: {
         ...(role.permissions ?? NO_CLUB_PERMISSIONS),
@@ -885,8 +680,7 @@ export const setRoleDirectoryVisibility = mutation({
     if (!context.permissions.manageRoles) {
       throw new ConvexError("You do not have permission to manage club roles");
     }
-    const role = await ctx.db.get(args.roleId);
-    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
+    const role = await requireClubRole(ctx, args.clubId, args.roleId);
     await ctx.db.patch(role._id, { showInDirectory: args.showInDirectory, updatedAt: Date.now() });
     await logAuditEvent(ctx, {
       actorId: user._id,

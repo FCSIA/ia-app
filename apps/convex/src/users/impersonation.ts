@@ -7,35 +7,6 @@ import { logAuditEvent } from "../audit/_lib";
 import { getCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { createAuth } from "../auth";
 
-export const prepare = mutation({
-  args: { userId: v.id("users"), reason: v.string() },
-  returns: v.object({ authUserId: v.string() }),
-  handler: async (ctx, args) => {
-    const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, SUPER_ADMIN_ROLES);
-    const target = await ctx.db.get(args.userId);
-    const reason = args.reason.trim();
-    if (!reason) throw new ConvexError("A reason is required.");
-    if (!target || !target.isActive || !target.authUserId) {
-      throw new ConvexError("This account cannot be impersonated.");
-    }
-    if (
-      target._id === actor._id ||
-      isPrivilegedAccount(target)
-    ) {
-      throw new ConvexError("Privileged accounts cannot be impersonated.");
-    }
-    await logAuditEvent(ctx, {
-      actorId: actor._id,
-      action: "impersonation.requested",
-      entityType: "user",
-      entityId: target._id,
-      meta: { reason },
-    });
-    return { authUserId: target.authUserId };
-  },
-});
-
 export const performImpersonationChecks = internalMutation({
   args: { authUserId: v.string(), targetUserId: v.id("users"), reason: v.string() },
   returns: v.object({ targetAuthUserId: v.string() }),
