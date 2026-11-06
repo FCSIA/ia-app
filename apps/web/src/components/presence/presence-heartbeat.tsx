@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useConvexAuth, useMutation } from '@/lib/convex-react';
+import { getOrCreateStoredId } from '@/lib/browser-storage';
 import { convex } from '@/lib/convex';
 import { devicePlatform } from '@/lib/pwa';
 import { randomId } from '@/lib/random-id';
@@ -12,15 +13,7 @@ const sessionKey = 'ia.presence-session.v1';
 
 /** One id per tab, so two tabs are two sessions of the same person. */
 function tabSessionId() {
-  try {
-    const existing = sessionStorage.getItem(sessionKey);
-    if (existing) return existing;
-    const created = randomId();
-    sessionStorage.setItem(sessionKey, created);
-    return created;
-  } catch {
-    return randomId();
-  }
+  return getOrCreateStoredId(sessionKey, randomId, 'session') ?? randomId();
 }
 
 /**

@@ -1,7 +1,7 @@
 import { format, startOfDay } from 'date-fns';
 import { calendarDate } from '../calendar/calendar-date';
 
-export const COMMAND_AGENDA_DAYS = 14;
+const COMMAND_AGENDA_DAYS = 14;
 const DAY = 86_400_000;
 
 export function personalCommandQueryArgs({
@@ -82,7 +82,7 @@ export function rankCommandSuggestions(candidates: readonly CommandSuggestion[],
   return result;
 }
 
-export type WorkshopSuggestionSource = {
+type WorkshopSuggestionSource = {
   workshopId: string;
   sessions: { _id: string; startAt: number; endAt: number }[];
   registered: boolean;

@@ -4,7 +4,8 @@ import { ADMIN_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { displayName as profileName } from '~/apps/shared/user-name';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery as useConvexQuery } from '@/lib/convex-react';
+import { useQuery } from '@/lib/convex-react';
+import { useMounted } from '@/hooks/use-mounted';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useCurrentUser } from '@/lib/auth';
 import { wrappedAvailability } from '~/apps/shared/wrapped-window';
@@ -19,8 +20,7 @@ import { LoadingState } from './_components/feedback/LoadingState';
 import { ErrorState } from './_components/feedback/ErrorState';
 
 export default function WrappedPage() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const user = useCurrentUser();
   const displayName = user ? profileName(user) : 'You';
@@ -39,13 +39,12 @@ export default function WrappedPage() {
   const availability = useMemo(() => wrappedAvailability(nowTick), [nowTick]);
   const gated = mounted && !availability.open && !isAdmin;
 
-  const data = useConvexQuery(
+  const data = useQuery(
     api.wrapped.snapshots.getMine,
     mounted && !gated ? {} : 'skip',
   );
 
   const isLoading = mounted && !gated && data === undefined;
-  const error = null;
 
   const slides = useMemo(
     () => (data ? buildSlides(data, displayName) : []),
@@ -93,7 +92,7 @@ export default function WrappedPage() {
     return <LoadingState />;
   }
 
-  if (error || !data) {
+  if (!data) {
     return <ErrorState />;
   }
 
@@ -103,16 +102,12 @@ export default function WrappedPage() {
 
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden bg-black">
-      {/* Slide Content */}
       <SlideView key={slide.key} slide={slide} direction={direction} />
 
-      {/* Top Progress Bars */}
       <ProgressBar slides={slides} index={index} jumpTo={jumpTo} />
 
-      {/* Navigation & Controls */}
       <NavigationControls go={go} atStart={atStart} atEnd={atEnd} />
 
-      {/* Summary grid on last slide */}
       {atEnd && <SummaryOverlay summary={data} />}
     </div>
   );

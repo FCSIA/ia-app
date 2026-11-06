@@ -1,5 +1,6 @@
 'use client';
 
+import { removeStorage, writeStoredJson } from '@/lib/browser-storage';
 import { useState } from 'react';
 import { useAction, useMutation } from '@/lib/convex-react';
 import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-react';
@@ -294,14 +295,13 @@ function CustomColorsPanel() {
   function persist(next: CustomColors) {
     setColors(next);
 
-    try {
-      if (Object.keys(next).length === 0) {
-        localStorage.removeItem(CUSTOM_COLORS_STORAGE_KEY);
-      } else {
-        localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(next));
-      }
+    const saved =
+      Object.keys(next).length === 0
+        ? removeStorage(CUSTOM_COLORS_STORAGE_KEY)
+        : writeStoredJson(CUSTOM_COLORS_STORAGE_KEY, next);
+    if (saved) {
       applyCustomColors(next);
-    } catch {
+    } else {
       toast({
         title: 'Couldn\u2019t save colors',
         description: 'Your browser blocked localStorage. Changes won\u2019t persist.',

@@ -14,7 +14,7 @@ import type { FunctionReturnType } from "convex/server";
 import { clockMinutes, formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import { calendarDate } from "@/components/calendar/calendar-date";
 import { cn } from "@/lib/utils";
-import { workshopDetailHref } from "@/app/flex-friday/_utils";
+import { workshopDetailHref } from "@/lib/routes";
 
 type Day = FunctionReturnType<typeof api.schedule.dashboard.getDay>;
 type Flex = NonNullable<

@@ -4,7 +4,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 
 export type WrappedSummary = NonNullable<FunctionReturnType<typeof api.wrapped.snapshots.getMine>>;
 
-export type SlideKind = 'intro' | 'stat' | 'name' | 'outro' | 'pathway' | 'word' | 'emoji';
+type SlideKind = 'intro' | 'stat' | 'name' | 'outro' | 'pathway' | 'word' | 'emoji';
 export type GraphicKind = 'orbs' | 'grid' | 'rings' | 'blobs' | 'confetti' | 'stars' | 'waves';
 
 export type Slide = {

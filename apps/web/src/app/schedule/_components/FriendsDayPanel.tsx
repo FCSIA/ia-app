@@ -19,6 +19,7 @@ import {
   weekdayForDateKey,
 } from "~/apps/shared/school-time";
 import type { ScheduleWeekday } from "~/apps/convex/src/validators";
+import { findCurrentAndNext } from "@/components/schedule/schedule-utils";
 import { Panel } from "@/components/layout/page-frame";
 import { AvatarStack } from "@/components/ui/avatar-stack";
 import { Badge } from "@/components/ui/badge";
@@ -163,13 +164,7 @@ export function FriendsDayPanel() {
   const isToday = dateKey === schoolDateKey(calendarDate());
   const now = calendarDate();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentKey = isToday
-    ? day?.blocks.find(
-        (block) =>
-          nowMinutes >= clockMinutes(block.startTime) &&
-          nowMinutes < clockMinutes(block.endTime),
-      )?.key
-    : undefined;
+  const currentKey = isToday ? findCurrentAndNext(day?.blocks ?? [], nowMinutes).current?.key : undefined;
   const [openKey, setOpenKey] = useState<string | null | undefined>(undefined);
   const expandedKey = openKey === undefined ? currentKey : openKey;
 

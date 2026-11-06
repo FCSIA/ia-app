@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { RosterCsvPreview } from '../_lib/roster-csv';
-import { normalizeRosterHeader } from '../_lib/roster-csv';
+import { normalizeCsvHeader } from '@/lib/csv';
 import type {
   StudentBulkUpdateResult,
   StudentImportResult,
@@ -123,7 +123,7 @@ export function RosterCsvReview({
                           'minor',
                           'minorpathway',
                         ].includes(
-                          normalizeRosterHeader(
+                          normalizeCsvHeader(
                             preview.headers[cellIndex] ?? '',
                           ),
                         )

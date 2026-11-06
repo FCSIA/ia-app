@@ -7,7 +7,7 @@ type UploadClient = {
   }>;
 };
 
-export type ConvexUploadResult = {
+type ConvexUploadResult = {
   storageId: Id<'_storage'>;
   uploadIntentId: Id<'uploadIntents'>;
 };

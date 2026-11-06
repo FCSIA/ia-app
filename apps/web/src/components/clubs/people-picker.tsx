@@ -15,10 +15,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { ClubDirectoryEntry, ClubUserRef, fullName } from './types';
-import { nameSearchValues } from '~/apps/shared/user-name';
+import { ClubDirectoryEntry, ClubPerson } from './types';
+import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 
-export type SelectablePerson = ClubUserRef &
+export type SelectablePerson = ClubPerson &
   Partial<Pick<ClubDirectoryEntry, 'kind' | 'clubRole' | 'customRoleName' | 'roleName'>>;
 
 type PeoplePickerProps = {
@@ -56,7 +56,7 @@ export function PeoplePicker({
         person.firstName,
         person.lastName,
         ...nameSearchValues(person),
-        fullName(person),
+        displayName(person),
         person.uniqueId,
         person.kind,
         person.roleName,
@@ -107,13 +107,13 @@ export function PeoplePicker({
                   return (
                     <CommandItem
                       key={person._id}
-                      value={`${fullName(person)} ${person.uniqueId ?? ''}`}
+                      value={`${displayName(person)} ${person.uniqueId ?? ''}`}
                       onSelect={() => togglePerson(person._id)}
                       className="min-h-11"
                     >
                       <UserAvatar person={person} size={32} />
                       <div className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{fullName(person)}</span>
+                        <span className="block truncate font-medium">{displayName(person)}</span>
                         {person.roleName ? <span className="block truncate text-xs text-muted-foreground">{person.roleName}</span> : null}
                       </div>
                       <Check className={cn('text-foreground transition-opacity', isSelected ? 'opacity-100' : 'opacity-0')} />
@@ -129,15 +129,15 @@ export function PeoplePicker({
       {selected.length > 0 ? (
         <div className="flex flex-wrap gap-1.5" aria-label="Selected people">
           {selected.map((person) => (
-            <Tooltip key={person._id} content={`Remove ${fullName(person)}`}>
+            <Tooltip key={person._id} content={`Remove ${displayName(person)}`}>
               <Button
                 type="button"
                 variant="tertiary"
                 size="sm"
                 onClick={() => togglePerson(person._id)}
-                aria-label={`Remove ${fullName(person)}`}
+                aria-label={`Remove ${displayName(person)}`}
               >
-                {fullName(person)}
+                {displayName(person)}
                 <X />
               </Button>
             </Tooltip>

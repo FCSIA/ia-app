@@ -15,7 +15,7 @@ export type RichTextLeaf = {
   [key: string]: unknown;
 };
 
-export type RichTextElement = {
+type RichTextElement = {
   type?: string;
   key?: string;
   value?: string;
@@ -24,10 +24,6 @@ export type RichTextElement = {
 };
 
 export type RichTextNode = RichTextLeaf | RichTextElement;
-
-export const EMPTY_CLUB_CHANNEL_MESSAGE_VALUE: Value = [
-  { type: 'p', children: [{ text: '' }] },
-];
 
 export function createEmptyClubChannelMessageValue(): Value {
   return [{ type: 'p', children: [{ text: '' }] }];

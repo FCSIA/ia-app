@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   adminFeedbackHref,
   clubChannelHref,
+  clubChannelViewQuery,
   clubJoinHref,
   clubPeopleRequestsHref,
   matchClubChannelPath,
@@ -31,6 +32,13 @@ describe("routes", () => {
     expect(parseClubChannelLink(new URLSearchParams())).toEqual({ whiteboardRequested: false, whiteboardId: null, messageId: null });
     expect(parseClubPeopleLink(new URLSearchParams("tab=requests")).requestsTab).toBe(true);
     expect(parseClubJoinLink(new URLSearchParams("unitId=u1&unitCode=XYZ"))).toEqual({ code: null, unitId: "u1", unitCode: "XYZ" });
+  });
+
+  test("switching a channel view keeps other parameters", () => {
+    const current = new URLSearchParams("message=m1&view=whiteboard&board=b1");
+    expect(clubChannelViewQuery(current, { view: "chat" })).toBe("message=m1");
+    expect(clubChannelViewQuery(current, { view: "whiteboard", boardId: "b2" })).toBe("message=m1&view=whiteboard&board=b2");
+    expect(clubChannelViewQuery(null, { view: "whiteboard" })).toBe("view=whiteboard");
   });
 
   test("match club paths, ignoring queries", () => {

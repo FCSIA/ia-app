@@ -1,5 +1,7 @@
 import { GRADE_LEVELS, PATHWAY_OPTIONS } from '~/apps/shared/labels';
 import React, { useState } from 'react';
+import { useMutation } from '@/lib/convex-react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { WorkshopForm as WorkshopFormType } from '../_types';
+import type { FlexSession, WorkshopForm as WorkshopFormType } from '../_types';
+import type { RunFlexAction } from '../_hooks/useFlexActions';
 import { formatTimeRange, toggleInArray } from '../_utils';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
@@ -17,13 +20,9 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   editingWorkshopId: string | null;
   initialData: WorkshopFormType;
-  sessions: any[];
+  sessions: FlexSession[];
   flexFridayId: Id<'flexFridays'>;
-  runAction: (key: string, fn: () => Promise<unknown>) => Promise<unknown>;
-  mutations: {
-    createWorkshop: any;
-    updateWorkshop: any;
-  };
+  runAction: RunFlexAction;
 }
 
 export function WorkshopForm({
@@ -34,9 +33,10 @@ export function WorkshopForm({
   sessions,
   flexFridayId,
   runAction,
-  mutations,
 }: Props) {
   const { toast } = useToast();
+  const createWorkshop = useMutation(api.flexFriday.workshops.create);
+  const updateWorkshop = useMutation(api.flexFriday.workshops.update);
   const [form, setForm] = useState<WorkshopFormType>(initialData);
   const [previousTarget, setPreviousTarget] = useState({ isOpen, editingWorkshopId });
 
@@ -53,43 +53,26 @@ export function WorkshopForm({
       return;
     }
 
-    const payload: any = {
+    const capacity = form.capacity ? parseInt(form.capacity, 10) : NaN;
+    const fields = {
       title: form.title.trim(),
       sessionIds: form.sessionIds as Id<'flexSessions'>[],
       targetGrades: form.targetGrades,
       targetMajorPathways: form.targetMajorPathways,
       targetMinorPathways: form.targetMinorPathways,
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
+      ...(form.location.trim() ? { location: form.location.trim() } : {}),
+      ...(!isNaN(capacity) ? { capacity } : {}),
     };
-    
-    if (form.description.trim()) payload.description = form.description.trim();
-    if (form.location.trim()) payload.location = form.location.trim();
-    if (form.capacity) {
-      const cap = parseInt(form.capacity, 10);
-      if (!isNaN(cap)) payload.capacity = cap;
-    }
 
-    try {
-      if (editingWorkshopId) {
-        await runAction('workshop-update', async () => {
-          await mutations.updateWorkshop({
-            workshopId: editingWorkshopId as Id<'flexWorkshops'>,
-            ...payload,
-          });
-        });
-        toast({ title: 'Workshop updated' });
-      } else {
-        await runAction('workshop-create', async () => {
-          await mutations.createWorkshop({
-            flexFridayId,
-            ...payload,
-          });
-        });
-        toast({ title: 'Workshop created' });
-      }
-      onOpenChange(false);
-    } catch {
-      // Error handled by runAction
-    }
+    const saved = editingWorkshopId
+      ? await runAction('workshop-update', () =>
+          updateWorkshop({ workshopId: editingWorkshopId as Id<'flexWorkshops'>, ...fields }),
+        )
+      : await runAction('workshop-create', () => createWorkshop({ flexFridayId, ...fields }));
+    if (!saved) return;
+    toast({ title: editingWorkshopId ? 'Workshop updated' : 'Workshop created' });
+    onOpenChange(false);
   };
 
   return (

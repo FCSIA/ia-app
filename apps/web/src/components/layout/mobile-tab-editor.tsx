@@ -24,8 +24,8 @@ import {
   MOBILE_TAB_DESTINATION_MAX,
   MOBILE_TAB_DESTINATION_MIN,
   normalizeMobileTabLayout,
-  type MobileTabId,
 } from "./mobile-tab-layout";
+import type { MobileTabId } from "@/lib/routes";
 
 type TabOption = { mobileTabId: MobileTabId; label: string; icon: LucideIcon };
 type Props = {

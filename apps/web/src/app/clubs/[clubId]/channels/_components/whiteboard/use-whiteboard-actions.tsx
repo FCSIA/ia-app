@@ -1,6 +1,6 @@
 'use client';
 
-import { parseClubChannelLink } from '~/apps/shared/routes';
+import { clubChannelViewQuery, parseClubChannelLink } from '~/apps/shared/routes';
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMutation } from '@/lib/convex-react';
@@ -29,11 +29,7 @@ export function useWhiteboardRoute() {
 
   const hrefFor = useCallback(
     (target: Id<'clubWhiteboards'> | null) => {
-      const next = new URLSearchParams(searchParams?.toString());
-      next.set('view', 'whiteboard');
-      if (target) next.set('board', target);
-      else next.delete('board');
-      return `${pathname}?${next.toString()}`;
+      return `${pathname}?${clubChannelViewQuery(searchParams, { view: 'whiteboard', boardId: target })}`;
     },
     [pathname, searchParams],
   );

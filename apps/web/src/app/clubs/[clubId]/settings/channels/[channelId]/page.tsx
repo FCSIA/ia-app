@@ -11,7 +11,8 @@ import { useClubId } from "../../../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { PeoplePicker } from "@/components/clubs/people-picker";
 import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
-import type { ClubChannel, ClubDetail } from "@/components/clubs/types";
+import type { ClubChannel, ClubDetail, ClubUnit } from "@/components/clubs/types";
+import { useClubDetail } from "@/components/clubs/use-club-detail";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,9 +71,7 @@ function legacyUnitId(channel: ClubChannel) {
 export default function ChannelSettingsPage() {
   const clubId = useClubId();
   const channelId = useParams<{ channelId: string }>()?.channelId;
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    | ClubDetail
-    | undefined;
+  const club = useClubDetail(clubId);
   const hierarchy = useQuery(api.clubs.hierarchy.list, { clubId });
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
@@ -125,12 +124,7 @@ function ChannelSettingsEditor({
 }: {
   club: ClubDetail;
   channel: ClubChannel;
-  units: Array<{
-    _id: Id<"clubUnits">;
-    parentUnitId: Id<"clubUnits"> | null;
-    name: string;
-    kind: string | null;
-  }>;
+  units: ClubUnit[];
 }) {
   const { toast } = useToast();
   const updateChannel = useMutation(api.clubs.channels.update);

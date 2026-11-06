@@ -5,38 +5,31 @@ import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
-import type { AdminTabId } from './use-admin-tab';
+import { filterBySearchQuery } from '@/lib/search';
+import { nameSearchValues } from '~/apps/shared/user-name';
 import { STAFF_FEEDBACK_STATUS_LABELS } from '~/apps/shared/feedback-status';
 
-export function useAdminFeedback(activeTab: AdminTabId) {
+export function useAdminFeedback() {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
   const [feedbackSearch, setFeedbackSearch] = useState('');
   const deferredFeedbackSearch = useDeferredValue(feedbackSearch);
-  const reportResult = useQuery(api.moderation.reports.listFeedback, activeTab === 'feedback' ? {} : 'skip');
+  const reportResult = useQuery(api.moderation.reports.listFeedback, {});
   const reports = useMemo(() => reportResult ?? [], [reportResult]);
   const updateReport = useMutation(api.moderation.reports.update);
   const addFeedbackResponse = useMutation(api.moderation.reports.addFeedbackResponse);
   const retryGithubIssueSync = useMutation(api.moderation.reports.retryGithubIssueSync);
 
-  const filteredReports = useMemo(() => {
-    const query = deferredFeedbackSearch.trim().toLowerCase();
-    if (!query) return reports;
-    return reports.filter((report) => {
-      const searchable = [
+  const filteredReports = useMemo(
+    () =>
+      filterBySearchQuery(reports, deferredFeedbackSearch, (report) => [
         report.reason,
-        report.submitter?.firstName,
-        report.submitter?.lastName,
-        report.submitter?.preferredName,
+        ...nameSearchValues(report.submitter),
         STAFF_FEEDBACK_STATUS_LABELS[report.status],
         ...report.responses.map((response) => response.body),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-  }, [reports, deferredFeedbackSearch]);
+      ]),
+    [reports, deferredFeedbackSearch],
+  );
 
   const reportMutation = {
     mutate: ({

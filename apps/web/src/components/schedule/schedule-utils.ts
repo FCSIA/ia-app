@@ -1,7 +1,5 @@
 import { clockMinutes, formatClockTime } from '~/apps/shared/school-time';
-import { displayName } from '~/apps/shared/user-name';
 import {
-  ResolvedSchoolDay,
   ScheduleWeekday,
   SchoolDayBlock,
   StudentScheduleDraftEntry,
@@ -23,22 +21,9 @@ export const WEEKDAYS: Array<{
   { value: "FRIDAY", shortLabel: "Fri", label: "Friday" },
 ];
 
-export function fullName(person: { firstName: string; lastName: string; preferredName?: string | null }) {
-  return displayName(person);
-}
-
 /** Schedule tables always use a 12-hour clock, whatever the viewer's setting. */
 export function formatScheduleTimeRange(start: string, end: string) {
   return `${formatClockTime(start)} – ${formatClockTime(end)}`;
-}
-
-export function formatDuration(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-
-  if (hours === 0) return `${remainder}m`;
-  if (remainder === 0) return `${hours}h`;
-  return `${hours}h ${remainder}m`;
 }
 
 export function getWeekdayForDate(date: Date): ScheduleWeekday | null {
@@ -92,6 +77,20 @@ export function findScheduleEntry(
   );
 }
 
+/** The block in progress at `minutes` since midnight and the first one still to start; `blocks` must be sorted by start. */
+export function findCurrentAndNext<T extends { startTime: string; endTime: string }>(
+  blocks: readonly T[],
+  minutes: number,
+) {
+  return {
+    current:
+      blocks.find(
+        (block) => minutes >= clockMinutes(block.startTime) && minutes < clockMinutes(block.endTime),
+      ) ?? null,
+    next: blocks.find((block) => minutes < clockMinutes(block.startTime)) ?? null,
+  };
+}
+
 export function getCurrentScheduleStatus(
   schedule: ScheduleEntryContainer | null,
   blocks: SchoolDayBlock[],
@@ -107,20 +106,10 @@ export function getCurrentScheduleStatus(
     };
   }
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const dayBlocks = getBlocksForDay(blocks, weekday);
-
-  const currentBlock =
-    dayBlocks.find(
-      (block) =>
-        currentMinutes >= clockMinutes(block.startTime) &&
-        currentMinutes < clockMinutes(block.endTime),
-    ) ?? null;
-
-  const nextBlock =
-    dayBlocks.find(
-      (block) => currentMinutes < clockMinutes(block.startTime),
-    ) ?? null;
+  const { current: currentBlock, next: nextBlock } = findCurrentAndNext(
+    getBlocksForDay(blocks, weekday),
+    now.getHours() * 60 + now.getMinutes(),
+  );
 
   const currentEntry =
     currentBlock?.periodNumber != null
@@ -131,74 +120,6 @@ export function getCurrentScheduleStatus(
     weekday,
     currentBlock,
     currentEntry,
-    nextBlock,
-  };
-}
-
-export function getCurrentResolvedScheduleStatus(
-  day: ResolvedSchoolDay | null | undefined,
-  now: Date = new Date(),
-) {
-  if (!day) {
-    return {
-      currentBlock: null,
-      currentEntry: null,
-      nextBlock: null,
-    };
-  }
-
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentBlock =
-    day.blocks.find(
-      (block) =>
-        currentMinutes >= clockMinutes(block.startTime) &&
-        currentMinutes < clockMinutes(block.endTime),
-    ) ?? null;
-  const nextBlock =
-    day.blocks.find(
-      (block) => currentMinutes < clockMinutes(block.startTime),
-    ) ?? null;
-
-  return {
-    currentBlock,
-    currentEntry: currentBlock?.entry ?? null,
-    nextBlock,
-  };
-}
-
-export function getCurrentScheduleStatusForResolvedDay(
-  schedule: ScheduleEntryContainer | null,
-  day: ResolvedSchoolDay | null | undefined,
-  now: Date = new Date(),
-) {
-  if (!day?.weekday) {
-    return {
-      weekday: null,
-      currentBlock: null,
-      currentEntry: null,
-      nextBlock: null,
-    };
-  }
-
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentBlock =
-    day.blocks.find(
-      (block) =>
-        currentMinutes >= clockMinutes(block.startTime) &&
-        currentMinutes < clockMinutes(block.endTime),
-    ) ?? null;
-  const nextBlock =
-    day.blocks.find(
-      (block) => currentMinutes < clockMinutes(block.startTime),
-    ) ?? null;
-
-  return {
-    weekday: day.weekday,
-    currentBlock,
-    currentEntry:
-      currentBlock?.periodNumber != null
-        ? findScheduleEntry(schedule, day.weekday, currentBlock.periodNumber)
-        : null,
     nextBlock,
   };
 }

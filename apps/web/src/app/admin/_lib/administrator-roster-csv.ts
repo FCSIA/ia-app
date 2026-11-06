@@ -2,7 +2,7 @@ import type { FunctionArgs } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import { reviewRosterCsv, rosterCell, validRosterRows } from './roster-csv';
 
-export type AdministratorImportRow = FunctionArgs<
+type AdministratorImportRow = FunctionArgs<
   typeof api.users.admin.importAdministrators
 >['rows'][number];
 const idAliases = [

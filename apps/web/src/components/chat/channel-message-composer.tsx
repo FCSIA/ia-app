@@ -39,6 +39,7 @@ import {
   UnderlinePlugin,
 } from '@platejs/basic-nodes/react';
 import { MentionInputPlugin, MentionPlugin } from '@platejs/mention/react';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import {
   InputControl,
@@ -61,7 +62,7 @@ import {
   serializeClubChannelMessageMarkdown,
   serializeClubChannelMessagePlainText,
   type ClubChannelMessageRichBody,
-} from '@/components/clubs/mention-body';
+} from '@/components/chat/mention-serialize';
 import {
   MentionElement,
   MentionInputElement,
@@ -92,9 +93,11 @@ export type ChannelMentionSuggestion = {
   kind: 'built-in' | 'tag' | 'person' | 'role' | 'unit';
 };
 
+type ExistingAttachmentId = Id<'clubChannelMessageAttachments'>;
+
 /** An attachment already saved on the message being edited. */
-export type ExistingComposerAttachment = {
-  _id: string;
+type ExistingComposerAttachment = {
+  _id: ExistingAttachmentId;
   fileName: string;
   mimeType?: string;
   fileUrl: string;
@@ -115,7 +118,7 @@ type ChannelMessageComposerProps = {
     bodyMarkdown: string;
     bodyRich: ClubChannelMessageRichBody | null;
     files: File[];
-    removedAttachmentIds: string[];
+    removedAttachmentIds: ExistingAttachmentId[];
     pollQuestion?: string;
     pollOptions?: Array<{ id: string; label: string }>;
   }) => void;
@@ -185,19 +188,9 @@ function SelectionToolbar() {
       aria-label="Format selected text"
       className="absolute bottom-full left-2 z-10 mb-2 flex gap-1 rounded-xl bg-surface-3 p-1 shadow-surface-3"
     >
-      <MarkToolButton icon={Bold} label="Bold" mark="bold" onApply={() => {}} />
-      <MarkToolButton
-        icon={Italic}
-        label="Italic"
-        mark="italic"
-        onApply={() => {}}
-      />
-      <MarkToolButton
-        icon={Underline}
-        label="Underline"
-        mark="underline"
-        onApply={() => {}}
-      />
+      <MarkToolButton icon={Bold} label="Bold" mark="bold" />
+      <MarkToolButton icon={Italic} label="Italic" mark="italic" />
+      <MarkToolButton icon={Underline} label="Underline" mark="underline" />
     </div>
   );
 }
@@ -206,12 +199,10 @@ function MarkToolButton({
   icon: Icon,
   label,
   mark,
-  onApply,
 }: {
   icon: typeof Bold;
   label: string;
   mark: ComposerMark;
-  onApply: () => void;
 }) {
   const editor = useEditorRef();
   useEditorSelection();
@@ -233,7 +224,6 @@ function MarkToolButton({
           editor.tf as unknown as Record<string, { toggle?: () => void }>
         )[mark];
         transform?.toggle?.();
-        onApply();
         requestAnimationFrame(() => editor.tf.focus());
       }}
     >
@@ -366,7 +356,7 @@ export function ChannelMessageComposer({
   }, [editor, isSourceInput, mode]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [drafts, setDrafts] = useState<DraftFile[]>([]);
-  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [removedIds, setRemovedIds] = useState<ExistingAttachmentId[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const draftsRef = useRef<DraftFile[]>([]);
   draftsRef.current = drafts;

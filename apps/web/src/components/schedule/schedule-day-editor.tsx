@@ -151,7 +151,6 @@ export function ScheduleDayEditor({
         </div>
       )}
 
-      {/* Period slots */}
       <div className="overflow-x-auto">
         <Table className="table-fixed">
           <TableHeader>
@@ -188,7 +187,6 @@ export function ScheduleDayEditor({
                       : "border-l-transparent",
                   )}
                 >
-                  {/* Period Number */}
                   <TableCell
                     className={cn(
                       "w-12 px-3 py-2.5 text-center text-sm font-semibold tabular-nums",
@@ -198,7 +196,6 @@ export function ScheduleDayEditor({
                     {periodNumber}
                   </TableCell>
 
-                  {/* Course Selector / Link */}
                   <TableCell className="min-w-0 px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-2">
                       {isLunch ? (
@@ -252,7 +249,6 @@ export function ScheduleDayEditor({
                     </div>
                   </TableCell>
 
-                  {/* Time block */}
                   <TableCell
                     className={cn(
                       "hidden w-40 px-3 py-2.5 text-right text-[11px] tabular-nums sm:table-cell",

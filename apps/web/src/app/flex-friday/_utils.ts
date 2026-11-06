@@ -8,9 +8,3 @@ export function formatTimeRange(start?: string | null, end?: string | null) {
 
 export const toggleInArray = <T,>(arr: T[], value: T): T[] =>
   arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
-
-/** A workshop keeps one identity even when it spans several sessions. */
-export function workshopDetailHref(fridayId: string, workshopId: string, sessionId?: string) {
-  const path = `/flex-friday/${encodeURIComponent(fridayId)}/workshop/${encodeURIComponent(workshopId)}`;
-  return sessionId ? `${path}?${new URLSearchParams({ session: sessionId })}` : path;
-}

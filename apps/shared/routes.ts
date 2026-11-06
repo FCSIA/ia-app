@@ -50,6 +50,23 @@ export function clubChannelHref(
   return `${path}?view=whiteboard&board=${target.whiteboardId}`;
 }
 
+/** The channel URL's query string switched to the chat, or to the whiteboards (optionally one open board). Other parameters are kept. */
+export function clubChannelViewQuery(
+  current: { toString(): string } | null | undefined,
+  view: { view: "chat" } | { view: "whiteboard"; boardId?: string | null },
+) {
+  const next = new URLSearchParams(current?.toString());
+  if (view.view === "chat") {
+    next.delete("view");
+    next.delete("board");
+  } else {
+    next.set("view", "whiteboard");
+    if (view.boardId) next.set("board", view.boardId);
+    else next.delete("board");
+  }
+  return next.toString();
+}
+
 export function parseClubChannelLink(search: SearchParamsLike) {
   return {
     whiteboardRequested: search?.get("view") === "whiteboard",

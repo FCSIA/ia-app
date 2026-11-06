@@ -1,7 +1,6 @@
 'use client';
 
-import { hasAnyRole, isSuperAdmin, SCHEDULE_ROLES } from '~/apps/shared/roles';
-import { calendarQueryRange } from '~/apps/shared/calendar-date';
+import { hasAnyRole, isStudent, isSuperAdmin, SCHEDULE_ROLES } from '~/apps/shared/roles';
 
 /**
  * Starts a tab's queries when the user points at it, not when they sign in.
@@ -29,67 +28,56 @@ import { useCallback, useMemo } from 'react';
 import { useQueryKeepAlive, type KeepAliveEntry } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useCurrentUser, type AppUser } from '@/lib/auth';
-import { defaultCalendarRange } from '@/lib/calendar-range';
+import { ALL_CALENDAR_SOURCES, calendarListArgs, defaultCalendarRange } from '@/lib/calendar-range';
+import type { AppRoutePath } from '@/lib/routes';
 import { schoolDateKey } from '~/apps/shared/school-time';
 
 /**
  * The queries a route asks for on mount, with the arguments it asks for.
  *
- * These have to match the route's own call exactly — different arguments are a
- * different subscription, and the tab would open cold again.
+ * These have to match the route's own call exactly: different arguments are a
+ * different subscription, and the tab would open cold again. Routes whose
+ * queries are paginated have no entry, because every paginated hook adds its
+ * own id to the arguments and so can never share a subscription.
  */
-function queriesForRoute(pathname: string, user: AppUser): KeepAliveEntry[] {
-  switch (pathname) {
-    case '/announcements':
-      return [{ query: api.announcements.feed.list, args: { archived: false, now: Math.floor(Date.now() / 86_400_000) * 86_400_000 } }];
+const QUERIES_BY_ROUTE: Partial<Record<AppRoutePath, (user: AppUser) => KeepAliveEntry[]>> = {
+  '/clubs': (user) =>
+    isSuperAdmin(user)
+      ? [{ query: api.clubs.management.getAll }]
+      : [
+          { query: api.clubs.management.getMyClubs },
+          { query: api.clubs.management.listMyInvites },
+        ],
 
-    case '/clubs':
-      return isSuperAdmin(user)
-        ? [{ query: api.clubs.management.getAll }]
-        : [
-            { query: api.clubs.management.getMyClubs },
-            { query: api.clubs.management.listMyInvites },
-          ];
+  '/events': () => [
+    { query: api.events.events.list },
+    { query: api.clubs.management.getMyClubs },
+    { query: api.events.approvals.listPendingForSponsor },
+  ],
 
-    case '/events':
-      return [
-        { query: api.events.events.list },
-        { query: api.clubs.management.getMyClubs },
-        { query: api.events.approvals.listPendingForSponsor },
-      ];
+  '/calendar': (user) => [
+    {
+      query: api.events.calendar.list,
+      args: calendarListArgs(defaultCalendarRange(), ALL_CALENDAR_SOURCES),
+    },
+    ...(isStudent(user) ? [{ query: api.events.calendar.listPendingInvites }] : []),
+  ],
 
-    case '/calendar': {
-      const range = defaultCalendarRange();
-      return [
-        {
-          query: api.events.calendar.list,
-          args: calendarQueryRange(range.start, range.end),
-        },
-        { query: api.events.calendar.listPendingInvites },
-      ];
-    }
+  '/schedule': (user) =>
+    hasAnyRole(user, SCHEDULE_ROLES)
+      ? [{ query: api.schedule.dashboard.get, args: { dateKey: schoolDateKey() } }]
+      : [],
 
-    case '/schedule':
-      return hasAnyRole(user, SCHEDULE_ROLES)
-        ? [{ query: api.schedule.dashboard.get, args: { dateKey: schoolDateKey() } }]
-        : [];
+  '/flex-friday': () => [
+    { query: api.flexFriday.fridays.list },
+    { query: api.flexFriday.registration.getMyRegistrations },
+  ],
 
-    case '/flex-friday':
-      return [
-        { query: api.flexFriday.fridays.list },
-        { query: api.flexFriday.registration.getMyRegistrations },
-      ];
-
-    case '/':
-      // Widget layout is per user, and the widgets share their queries with the
-      // tabs above, so the dashboard rides on whichever of those was pointed at
-      // rather than pulling all of them.
-      return [{ query: api.schedule.dashboard.getDay, args: { dateKey: schoolDateKey() } }];
-
-    default:
-      return [];
-  }
-}
+  // Widget layout is per user, and the widgets share their queries with the
+  // tabs above, so the dashboard rides on whichever of those was pointed at
+  // rather than pulling all of them.
+  '/': () => [{ query: api.schedule.dashboard.getDay, args: { dateKey: schoolDateKey() } }],
+};
 
 /**
  * Returns a handler to call with a destination when the user shows intent to go
@@ -103,7 +91,7 @@ export function usePrewarmRoute() {
     (href: string) => {
       if (!cache || !user) return;
       const pathname = href.split(/[?#]/)[0] ?? href;
-      const entries = queriesForRoute(pathname, user);
+      const entries = QUERIES_BY_ROUTE[pathname as AppRoutePath]?.(user) ?? [];
       if (entries.length > 0) cache.prewarm(entries);
     },
     [cache, user],

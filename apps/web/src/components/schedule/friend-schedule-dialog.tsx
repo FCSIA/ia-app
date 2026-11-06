@@ -99,17 +99,14 @@ export function FriendScheduleDialog({
             }}
           />
 
-          {/* Schedule Display */}
           <div className="space-y-4">
             <div className="rounded-xl border border-border/40 bg-muted/20 overflow-hidden divide-y divide-border/40">
-              {/* Table header */}
               <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                 <div className="w-8 shrink-0 text-center">Per</div>
                 <div className="flex-1">Class</div>
                 <div className="w-24 shrink-0 text-right">Time</div>
               </div>
 
-              {/* Rows */}
               {periodNumbers.map((periodNumber) => {
                 const isLunch = periodNumber === lunchNumber;
                 const entry = isLunch
@@ -194,7 +191,6 @@ export function FriendScheduleDialog({
               })}
             </div>
 
-            {/* Non-period blocks */}
             {dayBlocks.filter((b) => b.periodNumber == null).length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {dayBlocks

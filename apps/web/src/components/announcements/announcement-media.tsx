@@ -22,7 +22,7 @@ const ImageViewer = dynamic(
   { ssr: false },
 );
 
-export const ANNOUNCEMENT_IMAGE_ACCEPT =
+const ANNOUNCEMENT_IMAGE_ACCEPT =
   'image/png,image/jpeg,image/gif,image/webp';
 
 const acceptedImageTypes = new Set<string>(STAGED_IMAGE_MIME_TYPES);

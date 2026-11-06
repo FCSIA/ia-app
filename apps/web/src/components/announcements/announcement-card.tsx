@@ -5,8 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { AnnouncementAudience } from '@/components/announcements/announcement-audience-label';
 import type { AnnouncementAudienceInput } from '@/components/announcements/announcement-audience';
-import { Badge } from '@/components/ui/badge';
-import type { BadgeColor } from '@/components/ui/badge';
+import { Badge, type BadgeColor } from '@/components/ui/badge';
 import { AnnouncementAuthor, type AnnouncementAuthorPerson } from '@/components/announcements/announcement-author';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -15,23 +14,7 @@ import { DropdownContent, DropdownMenu, DropdownTrigger } from '@/components/ui/
 import { MenuItem } from '@/components/ui/menu-item';
 import { cn } from '@/lib/utils';
 
-export const ANNOUNCEMENT_BADGE_TEXT_CLASS = 'text-[11px] leading-none';
-
-export const ANNOUNCEMENT_TAG_BADGE_COLORS: Record<string, BadgeColor> = {
-  SCHOOL_WIDE: 'blue',
-  GRADE: 'violet',
-  PATHWAY: 'emerald',
-  CLUB: 'amber',
-};
-
-export const ANNOUNCEMENT_TAG_LABELS: Record<string, string> = {
-  SCHOOL_WIDE: 'School-wide',
-  GRADE: 'Grade',
-  PATHWAY: 'Pathway',
-  CLUB: 'Club',
-};
-
-export type AnnouncementCardRecord = AnnouncementAudienceInput & {
+type AnnouncementCardRecord = AnnouncementAudienceInput & {
   _id: string;
   title: string;
   body: string;

@@ -1,6 +1,10 @@
 'use client';
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react';
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from 'react';
 
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip } from '@/components/ui/tooltip';

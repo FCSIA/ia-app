@@ -34,7 +34,7 @@ const longDayFormat = new Intl.DateTimeFormat('en-US', {
 });
 
 export const formatCount = (value: number) => countFormat.format(value);
-export const formatCompact = (value: number) => compactFormat.format(value);
+const formatCompact = (value: number) => compactFormat.format(value);
 export const formatPercent = (value: number) => percentFormat.format(value);
 export const formatRatio = (part: number, whole: number) =>
   whole > 0 ? formatPercent(part / whole) : '—';
@@ -55,7 +55,7 @@ export function useStableValue<T>(value: T | undefined) {
   return { value: value ?? last, refreshing: value === undefined && last !== undefined };
 }
 
-export type ChartTableData = {
+type ChartTableData = {
   columns: string[];
   rows: (string | number)[][];
 };
@@ -226,7 +226,7 @@ export function DailyTrendChart<T extends { day: string }>({
   );
 }
 
-export type BarItem = { label: string; value: number; display?: string };
+type BarItem = { label: string; value: number; display?: string };
 
 /**
  * Named categories compared by length. Each row prints its name and value on

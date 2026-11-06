@@ -1,3 +1,5 @@
+import { normalizeCsvHeader, readCsv } from '@/lib/csv';
+
 /** Local CSV review. No row is sent to the server until the whole preview is valid. */
 export type RosterCsvPreview<T> = {
   headers: string[];
@@ -5,71 +7,13 @@ export type RosterCsvPreview<T> = {
   issues: string[];
 };
 
-export const normalizeRosterHeader = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]/g, '');
 export const rosterCell = (row: Record<string, string>, ...keys: string[]) => {
   for (const key of keys) {
-    const value = row[normalizeRosterHeader(key)];
+    const value = row[normalizeCsvHeader(key)];
     if (value) return value;
   }
   return undefined;
 };
-
-/** Read quoted fields, escaped quotes, CRLF, and newlines inside quoted fields. */
-function records(text: string) {
-  const result: Array<{ line: number; cells: string[] }> = [];
-  let cells: string[] = [];
-  let cell = '';
-  let quoted = false;
-  let closedQuote = false;
-  let line = 1;
-  let recordLine = 1;
-  const source = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-  const finish = () => {
-    cells.push(cell.trim());
-    if (cells.some(Boolean)) result.push({ line: recordLine, cells });
-    cells = [];
-    cell = '';
-    closedQuote = false;
-  };
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === '"') {
-      if (quoted && source[index + 1] === '"') {
-        cell += '"';
-        index += 1;
-      } else if (quoted) {
-        quoted = false;
-        closedQuote = true;
-      } else if (!cell.trim() && !closedQuote) quoted = true;
-      else
-        throw new Error(
-          `Line ${recordLine}: a quote must start a field or escape another quote.`,
-        );
-    } else if (char === ',' && !quoted) {
-      cells.push(cell.trim());
-      cell = '';
-      closedQuote = false;
-    } else if (char === '\n') {
-      if (quoted) cell += char;
-      else {
-        finish();
-        recordLine = line + 1;
-      }
-      line += 1;
-    } else if (closedQuote && char?.trim())
-      throw new Error(
-        `Line ${recordLine}: unexpected text after a closing quote.`,
-      );
-    else cell += char;
-  }
-  if (quoted)
-    throw new Error(
-      `Line ${recordLine}: a quoted field is missing its closing quote.`,
-    );
-  finish();
-  return result;
-}
 
 export function reviewRosterCsv<T extends { uniqueId: string }>(
   text: string,
@@ -77,9 +21,9 @@ export function reviewRosterCsv<T extends { uniqueId: string }>(
   parse: (row: Record<string, string>, issues: string[]) => T,
   validateHeaders?: (headers: string[]) => string | undefined,
 ): RosterCsvPreview<T> {
-  let parsed: ReturnType<typeof records>;
+  let parsed: ReturnType<typeof readCsv>;
   try {
-    parsed = records(text);
+    parsed = readCsv(text);
   } catch (error) {
     return {
       headers: [],
@@ -88,7 +32,7 @@ export function reviewRosterCsv<T extends { uniqueId: string }>(
     };
   }
   const headers = parsed[0]?.cells ?? [];
-  const normalized = headers.map(normalizeRosterHeader);
+  const normalized = headers.map(normalizeCsvHeader);
   const issues: string[] = [];
   if (!headers.length)
     issues.push('Choose a CSV with a header row and at least one data row.');
@@ -100,7 +44,7 @@ export function reviewRosterCsv<T extends { uniqueId: string }>(
     for (const field of required) {
       if (
         !field.aliases.some((alias) =>
-          normalized.includes(normalizeRosterHeader(alias)),
+          normalized.includes(normalizeCsvHeader(alias)),
         )
       )
         issues.push(`CSV must include a ${field.label} column.`);

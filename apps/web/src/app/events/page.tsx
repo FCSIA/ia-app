@@ -12,22 +12,30 @@ import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimeField } from '@/components/forms/date-time-field';
+import type { FunctionReturnType } from 'convex/server';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { eventStatusClass, eventStatusLabel } from './_status';
 import { useEventsPage } from './use-events-page';
 
 
-function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
-  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
-  const isAuthor = event.authorId === user?.id || event.authorId === user?._id;
+type EventRecord =
+  | FunctionReturnType<typeof api.events.events.list>[number]
+  | FunctionReturnType<typeof api.events.approvals.listPendingForSponsor>[number];
 
-  const statusStyle = event.status === 'PUBLISHED'
-    ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'
-    : event.status === 'PENDING_APPROVAL'
-    ? 'bg-amber-500/15 text-amber-500 border-amber-500/30 hover:bg-amber-500/25'
-    : event.status === 'CANCELLED'
-    ? 'bg-red-500/15 text-red-500 border-red-500/30 hover:bg-red-500/25'
-    : 'bg-muted text-muted-foreground';
+function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: {
+  event: EventRecord;
+  onApprove: (eventId: Id<'events'>) => void;
+  onReject: (eventId: Id<'events'>) => void;
+  onCancel: (eventId: Id<'events'>) => void;
+  user: AppUser | null;
+  hydrated: boolean;
+}) {
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
+  const isAuthor = event.authorId === user?._id;
 
   const clubStyle = event.club
     ? 'text-blue-500 border-blue-500/30 bg-blue-500/10'
@@ -43,8 +51,8 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-2.5">
-                <Badge variant="solid" size="sm" className={cn(statusStyle)}>
-                  {event.status.replace(/_/g, ' ')}
+                <Badge variant="solid" size="sm" className={cn(eventStatusClass(event.status))}>
+                  {eventStatusLabel(event.status)}
                 </Badge>
                 <Badge variant="solid" size="sm" className={cn(clubStyle)}>
                   {event.club?.name || 'General'}

@@ -16,7 +16,7 @@ import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { workshopDetailHref } from "@/app/flex-friday/_utils";
+import { workshopDetailHref } from "@/lib/routes";
 
 export function FlexFridaySnapshotWidget() {
   const [from] = useState(() => startOfDay(calendarDate()).getTime());

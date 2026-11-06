@@ -1,5 +1,6 @@
 'use client';
 
+import { useMounted } from '@/hooks/use-mounted';
 import { hasAnyRole, MODERATION_ALERT_ROLES, SCHEDULE_ROLES } from '~/apps/shared/roles';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -55,7 +56,7 @@ function ProfilePageContent() {
   const user = useCurrentUser();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const showSchedule = hasAnyRole(user, SCHEDULE_ROLES);
   const navigationOptions = getMobileTabEditorItems({ pathname: '/profile', showAdmin: false, showSchedule, showWrapped: wrappedAvailability().open });
@@ -70,8 +71,6 @@ function ProfilePageContent() {
   const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
-
-  useEffect(() => setMounted(true), []);
 
   // Reading the section is what marks the release as read.
   useEffect(() => {

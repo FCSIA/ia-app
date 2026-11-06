@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { filterBySearchQuery } from '@/lib/search';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, usePaginatedQuery } from '@/lib/convex-react';
@@ -127,17 +128,15 @@ export default function NotificationsPage() {
       acknowledgingKeyRef.current = null;
   }, [activeTab, documentVisible]);
 
-  const filteredNotifications = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return notifications;
-    return notifications.filter((n) => {
-      const searchable = [n.title, n.body, n.category]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-  }, [notifications, deferredSearch]);
+  const filteredNotifications = useMemo(
+    () =>
+      filterBySearchQuery(notifications, deferredSearch, (notification) => [
+        notification.title,
+        notification.body,
+        notification.category,
+      ]),
+    [notifications, deferredSearch],
+  );
 
   function handleMarkRead(id: Id<'notificationDeliveries'>) {
     void markRead({ ids: [id] });

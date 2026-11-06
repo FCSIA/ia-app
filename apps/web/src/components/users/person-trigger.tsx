@@ -7,7 +7,7 @@ import { Copy, UserRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { UserProfileContent, UserProfileDialog, type UserProfilePerson } from '@/components/clubs/user-profile-dialog';
+import { UserProfileContent, UserProfileDialog, type UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { displayName } from '~/apps/shared/user-name';
 import { useCurrentUser } from '@/lib/auth';
 import { copyText } from '@/lib/share';

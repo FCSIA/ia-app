@@ -2,7 +2,7 @@
 
 import { useId, useMemo } from 'react';
 import type { FeedFilters } from '@/components/announcements/announcement-feed-filters';
-import { ANNOUNCEMENT_TAG_LABELS } from '@/components/announcements/announcement-card';
+import { ANNOUNCEMENT_SCOPE_LABELS } from '@/components/announcements/announcement-audience';
 import {
   AccordionContent,
   AccordionGroup,
@@ -22,11 +22,6 @@ type AnnouncementFilterPanelProps = {
   availableClubs: readonly { id: string; name: string }[];
   gradeOptions: readonly number[];
   pathwayOptions: readonly FilterOption<string>[];
-};
-
-const SCOPE_LABELS: Record<string, string> = {
-  ...ANNOUNCEMENT_TAG_LABELS,
-  INTERSECTION: 'Combined audience',
 };
 
 function FilterSelect<T extends string>({
@@ -159,7 +154,7 @@ export function AnnouncementFilterPanel({
               { value: 'all', label: 'Any' },
               ...scopes.map((scope) => ({
                 value: scope,
-                label: SCOPE_LABELS[scope] ?? scope.replaceAll('_', ' '),
+                label: ANNOUNCEMENT_SCOPE_LABELS[scope] ?? scope.replaceAll('_', ' '),
               })),
             ]}
             onValueChange={(scope) => onFiltersChange({ activeTag: scope === 'all' ? null : scope })}

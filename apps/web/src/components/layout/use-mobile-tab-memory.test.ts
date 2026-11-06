@@ -20,14 +20,12 @@ describe('mobile Home route memory', () => {
     ['//external.example', null],
     ['/dashboard-other', null],
   ])('normalizes the stored Home destination %s to %s', (stored, expected) => {
-    vi.stubGlobal('window', { localStorage: { getItem: () => stored } });
+    vi.stubGlobal('localStorage', { getItem: () => stored });
     expect(readStored('dashboard')).toBe(expected);
   });
 
   it('keeps saved channel destinations within the Clubs tab', () => {
-    vi.stubGlobal('window', {
-      localStorage: { getItem: () => '/clubs/club/channels/channel?thread=reply' },
-    });
+    vi.stubGlobal('localStorage', { getItem: () => '/clubs/club/channels/channel?thread=reply' });
     expect(readStored('clubs')).toBe('/clubs/club/channels/channel?thread=reply');
     expect(readStored('dashboard')).toBeNull();
   });

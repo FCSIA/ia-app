@@ -1,3 +1,4 @@
+import { readStorage } from '@/lib/browser-storage';
 import {
   blackOrWhiteOn,
   contrastRatio as contrastRatioOf,
@@ -18,7 +19,7 @@ export const customColorSlots = [
 
 export type CustomColorKey = (typeof customColorSlots)[number]['key'];
 export type CustomColors = Partial<Record<CustomColorKey, string>>;
-export type CustomColorWarnings = Partial<Record<CustomColorKey, string>>;
+type CustomColorWarnings = Partial<Record<CustomColorKey, string>>;
 
 const CUSTOM_COLORS_STYLE_ID = 'ia-custom-colors';
 const MIN_TEXT_CONTRAST = 4.5;
@@ -60,7 +61,7 @@ const colorVariables: Record<
 };
 
 /** Choose whichever of black or white has the greater WCAG contrast against the color. */
-export function readableForegroundParts(hex: string): string {
+function readableForegroundParts(hex: string): string {
   const rgb = parseHex(hex);
   if (!rgb) return '0 0% 100%';
   return blackOrWhiteOn(rgb) === 'black' ? '0 0% 0%' : '0 0% 100%';
@@ -128,12 +129,7 @@ export function parseCustomColors(raw: string | null): CustomColors {
 }
 
 export function loadCustomColors(): CustomColors {
-  if (typeof localStorage === 'undefined') return {};
-  try {
-    return parseCustomColors(localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY));
-  } catch {
-    return {};
-  }
+  return parseCustomColors(readStorage(CUSTOM_COLORS_STORAGE_KEY));
 }
 
 export function buildCustomThemeRule(colors: CustomColors): string | null {

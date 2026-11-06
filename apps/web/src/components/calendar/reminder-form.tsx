@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { calendarDate, calendarInputDate } from './calendar-date';
 
-export type ReminderValues = {
+type ReminderValues = {
   title: string;
   description: string;
   location: string;

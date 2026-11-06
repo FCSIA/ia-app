@@ -3,10 +3,8 @@
 import { displayName } from '~/apps/shared/user-name';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { type UserProfilePerson } from '@/components/clubs/user-profile-dialog';
+import { type UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { PersonTrigger } from './person-trigger';
-
-export type { UserProfilePerson } from '@/components/clubs/user-profile-dialog';
 
 type UserProfileAvatarProps = {
   person: UserProfilePerson;

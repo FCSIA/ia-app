@@ -1,11 +1,4 @@
-export type MobileTabId =
-  | "announcements"
-  | "clubs"
-  | "schedule"
-  | "calendar"
-  | "events"
-  | "flex-friday"
-  | "wrapped";
+import type { MobileTabId } from "@/lib/routes";
 
 export const MOBILE_TAB_DESTINATION_MIN = 4;
 export const MOBILE_TAB_DESTINATION_MAX = 5;

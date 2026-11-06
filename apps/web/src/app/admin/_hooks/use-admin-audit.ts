@@ -8,14 +8,13 @@ import { useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
-import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope } from '../_lib/types';
 
 function validDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value ? value : '';
 }
 
-export function useAdminAudit(activeTab: AdminTabId) {
+export function useAdminAudit() {
   const user = useCurrentUser();
   const searchParams = useSearchParams();
   const param = (name: string, fallback = '') => searchParams?.get(`audit_${name}`) ?? fallback;
@@ -86,11 +85,11 @@ export function useAdminAudit(activeTab: AdminTabId) {
     categories: auditCategoryFilters.length ? auditCategoryFilters : undefined,
   }), [deferredQuery, auditActor, auditActorId, auditEntityId, auditActionFilters, auditEntityTypeFilter, auditActorScope, auditStartDate, auditEndDate, auditCategoryFilters]);
   const { results: auditEvents, status: auditStatus, loadMore: loadMoreAuditEvents, isStale } = useStreamPaginatedQuery(
-    api.audit.events.listFilteredPage, activeTab === 'audit' ? auditQueryParams : 'skip',
+    api.audit.events.listFilteredPage, auditQueryParams,
     { initialNumItems: AUDIT_FETCH_LIMIT, keepPreviousResults: true, scopeKey: user?._id ?? 'signed-out' },
   );
-  const auditCounts = useQuery(api.audit.events.counts, activeTab === 'audit' ? auditQueryParams : 'skip');
-  const auditFilterOptions = useQuery(api.audit.events.listFilterOptions, activeTab === 'audit' ? {} : 'skip');
+  const auditCounts = useQuery(api.audit.events.counts, auditQueryParams);
+  const auditFilterOptions = useQuery(api.audit.events.listFilterOptions, {});
   const auditEventDetail = useQuery(api.audit.events.get, selectedAuditEventId ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> } : 'skip');
   const clearAuditFilters = () => {
     setDraft('');

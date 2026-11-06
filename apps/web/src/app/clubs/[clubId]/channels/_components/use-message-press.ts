@@ -1,15 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type TouchEvent, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type TouchEvent,
+  type MouseEvent,
+} from 'react';
 import { hapticTick } from '@/lib/haptics';
 import { lastScrollTime, useScrollActivity } from '@/lib/scroll-activity';
 
 /** A hold this long opens the message's actions: a deliberate hold, quicker than iOS's own menus. */
-const LONG_PRESS_MS = 420;
+export const LONG_PRESS_MS = 420;
 /** The pressed tint waits briefly so a touch that becomes a scroll never flashes a row. */
 const PRESS_FEEDBACK_DELAY_MS = 70;
 /** Small enough that a swipe or scroll cancels the press before its own gesture engages. */
-const MOVE_SLOP_PX = 8;
+export const MOVE_SLOP_PX = 8;
 /** A touch that lands while the list is still gliding only stops the scroll. */
 const SCROLL_SETTLE_MS = 150;
 const DOUBLE_TAP_MS = 300;
@@ -202,4 +208,22 @@ export function useMessagePress({
   };
 
   return handlers;
+}
+
+const DOUBLE_TAP_LEARNED_KEY = 'chat-double-tap-learned';
+
+export function hasLearnedDoubleTap() {
+  try {
+    return localStorage.getItem(DOUBLE_TAP_LEARNED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function markDoubleTapLearned() {
+  try {
+    localStorage.setItem(DOUBLE_TAP_LEARNED_KEY, 'true');
+  } catch {
+    // The hint only stops showing once learned; losing it is harmless.
+  }
 }

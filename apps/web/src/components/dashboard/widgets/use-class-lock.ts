@@ -6,7 +6,8 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { useQuery } from "@/lib/convex-react";
 import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { clockMinutes, schoolDateKey } from "~/apps/shared/school-time";
+import { schoolDateKey } from "~/apps/shared/school-time";
+import { findCurrentAndNext } from "@/components/schedule/schedule-utils";
 
 export type ClassLock = { label: string; endTime: string; joke: string };
 
@@ -68,12 +69,10 @@ export function useClassLock(): ClassLock | null {
   const hasClass = (entry: (typeof day.blocks)[number]["entry"]) => !!entry && (!!entry.courseId || !!entry.className.trim());
   // A saved schedule with no classes in it tells us nothing about free periods.
   const knowsFreePeriods = day.blocks.some(block => hasClass(block.entry));
-  const block = day.blocks.find(block =>
-    block.kind === "PERIOD" &&
-    minutes >= clockMinutes(block.startTime) &&
-    minutes < clockMinutes(block.endTime) &&
-    (!knowsFreePeriods || hasClass(block.entry)),
-  );
+  const block = findCurrentAndNext(
+    day.blocks.filter(block => block.kind === "PERIOD" && (!knowsFreePeriods || hasClass(block.entry))),
+    minutes,
+  ).current;
   if (!block) return null;
 
   const staff = !isStudent(user);

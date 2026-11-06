@@ -8,12 +8,12 @@ import { useClubId } from '../../../club-route';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubStructureEditor } from '@/components/clubs/dialogs/hierarchy-dialog';
 import { BulkStructureImportDialog } from '@/components/clubs/dialogs/bulk-structure-import-dialog';
-import type { ClubDetail } from '@/components/clubs/types';
+import { useClubDetail } from "@/components/clubs/use-club-detail";
 import { Button } from '@/components/ui/button';
 
 export default function ClubStructureSettingsPage() {
   const clubId = useClubId();
-  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
+  const club = useClubDetail(clubId);
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
   const canManageStructure = navigation?.viewer.canManageClubStructure ?? false;
 

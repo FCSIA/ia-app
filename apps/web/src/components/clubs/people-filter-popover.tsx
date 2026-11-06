@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
-import type { ClubDetail } from "@/components/clubs/types";
+import type { ClubDetail, ClubHierarchy } from "@/components/clubs/types";
 import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,18 +16,9 @@ import { Separator } from "@/components/ui/separator";
 
 export type PeopleKindFilter = "all" | "MEMBER" | "SPONSOR";
 
-type Hierarchy = {
-  units: Array<{
-    _id: Id<"clubUnits">;
-    parentUnitId: Id<"clubUnits"> | null;
-    name: string;
-    kind: string | null;
-  }>;
-};
-
 type Props = {
-  club: ClubDetail | undefined;
-  hierarchy: Hierarchy | undefined;
+  club: ClubDetail | null | undefined;
+  hierarchy: ClubHierarchy | undefined;
   selectedUnitId: Id<"clubUnits"> | null;
   onSelectedUnitIdChange: (id: Id<"clubUnits"> | null) => void;
   selectedRoleIds: Set<Id<"clubRoles">>;

@@ -4,13 +4,11 @@ import type { ReactNode } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
-import { ClubMark } from "@/components/clubs/club-mark";
+import { ClubMark } from "@/components/media/club-mark";
 import type { ClubSummary } from "@/components/clubs/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, type CardProps } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-export { ClubMark } from "@/components/clubs/club-mark";
 
 export function ClubListRow({
   club,

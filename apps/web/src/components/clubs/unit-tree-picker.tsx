@@ -9,17 +9,16 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import type { ClubUnit } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { childrenByParent } from "@/lib/club-units";
 
 const ANY_UNIT_VALUE = "__any-unit__";
 
-export type UnitTreePickerUnit = {
-  _id: Id<"clubUnits">;
-  parentUnitId: Id<"clubUnits"> | null;
-  name: string;
+export type UnitTreePickerUnit = Pick<ClubUnit, "_id" | "parentUnitId" | "name"> & {
   disabled?: boolean;
 };
 
@@ -65,16 +64,7 @@ export function UnitTreePicker({
     () => new Map<Id<"clubUnits">, UnitTreePickerUnit>(units.map((unit) => [unit._id, unit])),
     [units],
   );
-  const childrenByParentId = useMemo(() => {
-    const children = new Map<Id<"clubUnits"> | null, UnitTreePickerUnit[]>();
-    for (const unit of units) {
-      const parentId = unit.parentUnitId ?? null;
-      const siblings = children.get(parentId) ?? [];
-      siblings.push(unit);
-      children.set(parentId, siblings);
-    }
-    return children;
-  }, [units]);
+  const childrenByParentId = useMemo(() => childrenByParent(units), [units]);
   const parentUnitId = unitPath.at(-1) ?? null;
   const parentUnit = parentUnitId ? unitById.get(parentUnitId) : null;
   const currentUnits = childrenByParentId.get(parentUnitId) ?? [];

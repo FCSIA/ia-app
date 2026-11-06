@@ -1,9 +1,7 @@
 import { CLUB_SPONSOR_ELIGIBLE_ROLES, hasAnyRole } from '~/apps/shared/roles';
-import { displayName, nameInitials } from '~/apps/shared/user-name';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 
-/** Convex-backed club types — source of truth for ported club UI. */
 export type ClubSummary = FunctionReturnType<typeof api.clubs.management.getAll>[number];
 export type ClubDetail = NonNullable<FunctionReturnType<typeof api.clubs.detail.get>>;
 export type ClubWorkspaceNavigation = NonNullable<
@@ -13,15 +11,9 @@ export type ClubNavigationSummary = ClubWorkspaceNavigation['myClubs'][number];
 export type ClubNavigationChannel = ClubWorkspaceNavigation['channels'][number] & {
   hasUnreadMessages: boolean;
 };
-export type ClubMyClubs = FunctionReturnType<typeof api.clubs.management.getMyClubs>;
-export type ClubInvite = FunctionReturnType<typeof api.clubs.management.listMyInvites>[number];
 export type ClubChannel = NonNullable<ClubDetail['channels']>[number];
-export type ClubTag = NonNullable<ClubDetail['tags']>[number];
 export type ClubDirectoryEntry = ClubDetail['directory'][number];
-export type ClubMember = ClubDetail['members'][number];
-export type ClubSponsor = ClubDetail['sponsors'][number];
-export type ClubPerson = ClubMember['user'];
-export type ClubUserRef = ClubPerson;
+export type ClubPerson = ClubDetail['members'][number]['user'];
 export type ClubChannelMessage = FunctionReturnType<
   typeof api.clubs.channels.getMessagePage
 >['page'][number];
@@ -30,26 +22,6 @@ export type ClubUnit = ClubHierarchy['units'][number];
 export type ClubUnitMember = FunctionReturnType<
   typeof api.clubs.hierarchy.listMembers
 >[number];
-
-export interface AnnouncementSummary {
-  _id: string;
-  title: string;
-  body: string;
-  createdAt: number | string;
-  allowComments: boolean;
-  author?: Pick<ClubPerson, '_id' | 'firstName' | 'lastName' | 'preferredName'>;
-  _count?: {
-    comments?: number;
-  };
-}
-
-export function fullName(person: Pick<ClubPerson, 'firstName' | 'lastName' | 'preferredName'>) {
-  return displayName(person);
-}
-
-export function initialsOf(person: Pick<ClubPerson, 'firstName' | 'lastName' | 'preferredName'>) {
-  return nameInitials(person).toUpperCase();
-}
 
 export function formatClubRole(role?: string | null) {
   if (!role) return null;

@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import type { AdminUserRecord, AdminUserRoleGroup } from './types';
+import type { AdminUserRoleGroup } from './types';
 
 export const AUDIT_FETCH_LIMIT = 50;
 
@@ -25,10 +25,6 @@ export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; e
     emptyMessage: 'No users found.',
   },
 };
-
-export function getUserRoles(user: AdminUserRecord) {
-  return user.roles ?? [];
-}
 
 export function formatRoleLabel(role: string) {
   return role.replace(/_/g, ' ');

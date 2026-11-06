@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 import { APP_VERSION, compareVersions, releasesSince } from '@ia/devlog';
+import { readStorage, writeStorage } from '@/lib/browser-storage';
 
 const STORAGE_KEY = 'ia.devlog.seen-version';
 const STORAGE_CHANGE_EVENT = 'ia.devlog.seen-version.changed';
@@ -26,23 +27,11 @@ function getServerSeenVersion() {
 }
 
 function readSeenVersion(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY);
-  } catch {
-    // Private browsing and blocked storage both throw here. Treating that as
-    // "never seen" is harmless: the reader sees the whole log.
-    return null;
-  }
+  return readStorage(STORAGE_KEY);
 }
 
 function writeSeenVersion(version: string) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, version);
-    window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
-  } catch {
-    // Nothing to do — the badge simply reappears next visit.
-  }
+  if (writeStorage(STORAGE_KEY, version)) window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
 }
 
 type SeenRelease = {

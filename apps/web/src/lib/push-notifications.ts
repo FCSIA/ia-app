@@ -1,3 +1,4 @@
+import { getOrCreateStoredId, readStorage, removeStorage, writeStorage } from '@/lib/browser-storage';
 import { isIosDevice, isStandaloneDisplay } from '@/lib/pwa';
 import { randomId } from '@/lib/random-id';
 import { isCoveredByAcknowledgedDelivery, isCoveredByChannelReceipt } from '~/apps/shared/notifications';
@@ -94,7 +95,7 @@ const serviceWorkerReadyTimeoutMs = 10_000;
  * raced against a timeout rather than awaited indefinitely, turning a dead
  * worker into a visible error instead of a spinner that never stops.
  */
-export async function getServiceWorkerRegistration() {
+async function getServiceWorkerRegistration() {
   if (!browserSupportsPush()) return null;
 
   const existing = await navigator.serviceWorker.getRegistration();
@@ -160,7 +161,7 @@ export function subscriptionToPayload(subscription: PushSubscription): PushSubsc
   };
 }
 
-export function urlBase64ToUint8Array(value: string) {
+function urlBase64ToUint8Array(value: string) {
   const trimmed = value.trim();
   const padding = '='.repeat((4 - (trimmed.length % 4)) % 4);
   const base64 = (trimmed + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -261,15 +262,7 @@ const pushOptOutKey = 'ia.push-opted-out.v1';
  * case the device simply doesn't report.
  */
 export function getPushDeviceId() {
-  try {
-    const existing = localStorage.getItem(pushDeviceIdKey);
-    if (existing) return existing;
-    const created = randomId();
-    localStorage.setItem(pushDeviceIdKey, created);
-    return created;
-  } catch {
-    return null;
-  }
+  return getOrCreateStoredId(pushDeviceIdKey, randomId);
 }
 
 /**
@@ -279,18 +272,10 @@ export function getPushDeviceId() {
  * would quietly re-subscribe on the next launch and undo the choice.
  */
 export function isPushOptedOut() {
-  try {
-    return localStorage.getItem(pushOptOutKey) === 'true';
-  } catch {
-    return false;
-  }
+  return readStorage(pushOptOutKey) === 'true';
 }
 
 export function setPushOptedOut(optedOut: boolean) {
-  try {
-    if (optedOut) localStorage.setItem(pushOptOutKey, 'true');
-    else localStorage.removeItem(pushOptOutKey);
-  } catch {
-    // Without storage the choice lasts until the next launch.
-  }
+  if (optedOut) writeStorage(pushOptOutKey, 'true');
+  else removeStorage(pushOptOutKey);
 }

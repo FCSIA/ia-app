@@ -4,6 +4,7 @@ import { isSuperAdmin } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
+import type { OptimisticLocalStore } from "convex/browser";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -15,11 +16,12 @@ import {
   Trash2,
 } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
+import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useClubId } from "../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubStructureActions } from "@/components/clubs/dialogs/hierarchy-dialog";
 import { PeopleGroupsSettings } from "@/components/clubs/people-groups-settings";
-import type { ClubDetail } from "@/components/clubs/types";
+import { useClubDetail } from "@/components/clubs/use-club-detail";
 import { Button } from "@/components/ui/button";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import {
@@ -74,6 +76,8 @@ type PermissionKey = keyof RolePermissions;
 const permissionGroups: Array<{
   title: string;
   description: string;
+  /** Shown only while the club tracks volunteer hours. */
+  requiresVolunteerTracking?: boolean;
   items: Array<{ key: PermissionKey; label: string; description: string }>;
 }> = [
   {
@@ -176,6 +180,7 @@ const permissionGroups: Array<{
   },
   {
     title: "Volunteering",
+    requiresVolunteerTracking: true,
     description: "Check submitted service hours and proof photos.",
     items: [{
       key: "reviewVolunteerHours",
@@ -211,6 +216,21 @@ const permissionGroups: Array<{
   },
 ];
 
+function patchRole(
+  localStore: OptimisticLocalStore,
+  clubId: Id<"clubs">,
+  roleId: Id<"clubRoles">,
+  patch: (role: ClubRole) => ClubRole,
+) {
+  const roles = localStore.getQuery(api.clubs.management.listRoles, { clubId });
+  if (roles === undefined) return;
+  localStore.setQuery(
+    api.clubs.management.listRoles,
+    { clubId },
+    roles.map((role) => (role._id === roleId ? patch(role) : role)),
+  );
+}
+
 type Editor = { mode: "create" } | { mode: "rename"; role: ClubRole } | null;
 
 const settingsTitle = (
@@ -232,8 +252,7 @@ export default function ClubSettingsPage() {
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
   });
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    ClubDetail | undefined;
+  const club = useClubDetail(clubId);
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
   const createRole = useMutation(api.clubs.management.createRole);
   const renameRole = useMutation(api.clubs.management.renameRole);
@@ -242,71 +261,31 @@ export default function ClubSettingsPage() {
   const setRolePermission = useMutation(
     api.clubs.management.setRolePermission,
   ).withOptimisticUpdate((localStore, args) => {
-    const roles = localStore.getQuery(api.clubs.management.listRoles, {
-      clubId: args.clubId,
-    });
-    if (roles === undefined) return;
-    localStore.setQuery(
-      api.clubs.management.listRoles,
-      { clubId: args.clubId },
-      roles.map((role) =>
-        role._id === args.roleId
-          ? {
-              ...role,
-              permissions: {
-                ...role.permissions,
-                [args.permission]: args.enabled,
-              },
-            }
-          : role,
-      ),
-    );
+    patchRole(localStore, args.clubId, args.roleId, (role) => ({
+      ...role,
+      permissions: { ...role.permissions, [args.permission]: args.enabled },
+    }));
   });
   const setRolePermissionGroup = useMutation(
     api.clubs.management.setRolePermissionGroup,
   ).withOptimisticUpdate((localStore, args) => {
-    const roles = localStore.getQuery(api.clubs.management.listRoles, {
-      clubId: args.clubId,
-    });
-    if (roles === undefined) return;
-    localStore.setQuery(
-      api.clubs.management.listRoles,
-      { clubId: args.clubId },
-      roles.map((role) =>
-        role._id === args.roleId
-          ? {
-              ...role,
-              permissions: {
-                ...role.permissions,
-                ...Object.fromEntries(
-                  args.permissions.map((permission) => [
-                    permission,
-                    args.enabled,
-                  ]),
-                ),
-              },
-            }
-          : role,
-      ),
-    );
+    patchRole(localStore, args.clubId, args.roleId, (role) => ({
+      ...role,
+      permissions: {
+        ...role.permissions,
+        ...Object.fromEntries(
+          args.permissions.map((permission) => [permission, args.enabled]),
+        ),
+      },
+    }));
   });
   const setRoleDirectoryVisibility = useMutation(
     api.clubs.management.setRoleDirectoryVisibility,
   ).withOptimisticUpdate((localStore, args) => {
-    const roles = localStore.getQuery(api.clubs.management.listRoles, {
-      clubId: args.clubId,
-    });
-    if (roles !== undefined) {
-      localStore.setQuery(
-        api.clubs.management.listRoles,
-        { clubId: args.clubId },
-        roles.map((role) =>
-          role._id === args.roleId
-            ? { ...role, showInDirectory: args.showInDirectory }
-            : role,
-        ),
-      );
-    }
+    patchRole(localStore, args.clubId, args.roleId, (role) => ({
+      ...role,
+      showInDirectory: args.showInDirectory,
+    }));
     const detail = localStore.getQuery(api.clubs.detail.get, {
       clubId: args.clubId,
     });
@@ -710,7 +689,7 @@ export default function ClubSettingsPage() {
                         </div>
 
                         <div className="divide-y divide-border/70 px-5">
-                          {permissionGroups.filter((group) => group.title !== "Volunteering" || navigation?.club.volunteerTrackingEnabled).map((group) => (
+                          {permissionGroups.filter((group) => !group.requiresVolunteerTracking || navigation?.club.volunteerTrackingEnabled).map((group) => (
                             <Collapsible
                               key={group.title}
                               className="group/permission py-5"

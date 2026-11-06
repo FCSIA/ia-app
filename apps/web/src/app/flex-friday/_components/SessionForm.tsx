@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { useMutation } from '@/lib/convex-react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { SessionForm as SessionFormType } from '../_types';
+import type { SessionForm as SessionFormType, SessionType } from '../_types';
+import type { RunFlexAction } from '../_hooks/useFlexActions';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,11 +18,7 @@ interface Props {
   editingSessionId: string | null;
   initialData: SessionFormType;
   flexFridayId: Id<'flexFridays'>;
-  runAction: (key: string, fn: () => Promise<unknown>) => Promise<unknown>;
-  mutations: {
-    createSession: any;
-    updateSession: any;
-  };
+  runAction: RunFlexAction;
 }
 
 export function SessionForm({
@@ -29,9 +28,10 @@ export function SessionForm({
   initialData,
   flexFridayId,
   runAction,
-  mutations,
 }: Props) {
   const { toast } = useToast();
+  const createSession = useMutation(api.flexFriday.sessions.create);
+  const updateSession = useMutation(api.flexFriday.sessions.update);
   const [form, setForm] = useState<SessionFormType>(initialData);
   const [previousTarget, setPreviousTarget] = useState({ isOpen, editingSessionId });
 
@@ -43,37 +43,22 @@ export function SessionForm({
   }
 
   const handleSubmit = async () => {
-
-    const payload: any = {
+    const fields = {
       title: form.title.trim(),
       sessionType: form.sessionType,
       startTime: form.startTime,
       endTime: form.endTime,
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
     };
-    if (form.description.trim()) payload.description = form.description.trim();
 
-    try {
-      if (editingSessionId) {
-        await runAction('session-update', async () => {
-          await mutations.updateSession({
-            sessionId: editingSessionId as Id<'flexSessions'>,
-            ...payload,
-          });
-        });
-        toast({ title: 'Session updated' });
-      } else {
-        await runAction('session-create', async () => {
-          await mutations.createSession({
-            flexFridayId,
-            ...payload,
-          });
-        });
-        toast({ title: 'Session created' });
-      }
-      onOpenChange(false);
-    } catch {
-      // Error handled by runAction
-    }
+    const saved = editingSessionId
+      ? await runAction('session-update', () =>
+          updateSession({ sessionId: editingSessionId as Id<'flexSessions'>, ...fields }),
+        )
+      : await runAction('session-create', () => createSession({ flexFridayId, ...fields }));
+    if (!saved) return;
+    toast({ title: editingSessionId ? 'Session updated' : 'Session created' });
+    onOpenChange(false);
   };
 
   return (
@@ -99,7 +84,7 @@ export function SessionForm({
 
             <div className="space-y-2">
               <Label>Session Type</Label>
-              <Select value={form.sessionType} onValueChange={(v: string) => setForm({ ...form, sessionType: v as any })}>
+              <Select value={form.sessionType} onValueChange={(sessionType) => setForm({ ...form, sessionType: sessionType as SessionType })}>
                 <SelectTrigger placeholder="Select type" />
                 <SelectContent>
                   <SelectItem value="STUDENT_CHOICE" index={0}>Student Choice</SelectItem>

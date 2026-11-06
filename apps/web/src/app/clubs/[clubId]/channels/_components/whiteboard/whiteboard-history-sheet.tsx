@@ -19,7 +19,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { WhiteboardSnapshotImage } from './whiteboard-snapshot-image';
+import { WhiteboardSnapshotImage } from '@/components/whiteboard/whiteboard-snapshot-image';
 
 type Version = {
   key: string;

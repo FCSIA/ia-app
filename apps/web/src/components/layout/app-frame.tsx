@@ -28,6 +28,7 @@ import {
 } from "@/components/layout/app-shell-navigation";
 import {
   AppFrameActionsProvider,
+  useCommandHint,
   type AppFrameRouteConfig,
 } from "@/components/layout/app-frame-context";
 import { useMobileNavigationSwipe } from "@/components/layout/use-mobile-navigation-swipe";
@@ -62,8 +63,8 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
   const user = useCurrentUser();
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const commandHint = useCommandHint();
   const appRootRef = useRef<HTMLDivElement>(null);
   const mobileTabBarRef = useRef<HTMLElement>(null);
   const safePathname = pathname ?? "/";
@@ -76,8 +77,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
     setRegistration((current) => {
       if (current?.owner === owner &&
           current.config.pathname === config.pathname &&
-          current.config.scheduleTab === config.scheduleTab &&
-          current.config.scheduleSection === config.scheduleSection &&
+          current.config.activeHref === config.activeHref &&
           current.config.pageNavigation === config.pageNavigation &&
           current.config.viewportMode === config.viewportMode &&
           current.config.onMobileSwipeRight === config.onMobileSwipeRight &&
@@ -91,10 +91,6 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
   }, []);
   const openGlobalSearch = useCallback(() => setCommandOpen(true), []);
   const actions = useMemo(() => ({ register, unregister, openGlobalSearch }), [register, unregister, openGlobalSearch]);
-
-  useEffect(() => {
-    setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
-  }, []);
 
   useEffect(() => {
     const onOpenGlobalSearch = () => setCommandOpen(true);
@@ -218,8 +214,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
     showSchedule,
     showFriends: hasAnyRole(user, ["STUDENT"]),
     showDayPlans: isAdmin(user),
-    scheduleTab: routeConfig?.scheduleTab,
-    scheduleSection: routeConfig?.scheduleSection,
+    activeHref: routeConfig?.activeHref,
     pageNavigation: routeConfig?.pageNavigation,
     showWrapped,
     mobileTabLayout: user?.mobileTabLayout,

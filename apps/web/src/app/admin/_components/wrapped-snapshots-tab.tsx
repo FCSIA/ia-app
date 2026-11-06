@@ -20,42 +20,31 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select';
-import type { WrappedSnapshotStatus } from '../_hooks/use-admin-wrapped';
+import { useAdminWrapped } from '../_hooks/use-admin-wrapped';
 import { schoolYearLabel } from '~/apps/shared/school-time';
 import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
-export function WrappedSnapshotsTab({
-  wrappedSchoolYear,
-  onWrappedSchoolYearChange,
-  wrappedYearOptions,
-  status,
-  isLoading,
-  isError,
-  error,
-  generateMutation,
-}: {
-  wrappedSchoolYear: number;
-  onWrappedSchoolYearChange: (schoolYear: number) => void;
-  wrappedYearOptions: number[];
-  status?: WrappedSnapshotStatus;
-  isLoading: boolean;
-  isError: boolean;
-  error: unknown;
-  generateMutation: { isPending: boolean; mutate: (refresh: boolean) => void };
-}) {
+export function WrappedSnapshotsTab() {
+  const {
+    wrappedSchoolYear,
+    setWrappedSchoolYear,
+    wrappedYearOptions,
+    status,
+    isLoading,
+    generateMutation,
+  } = useAdminWrapped();
   const canGenerate =
     !!status &&
     status.eligibleUsers > 0 &&
     !isLoading &&
-    !isError &&
     !generateMutation.isPending;
   const actions = (
     <>
       <Select
         value={String(wrappedSchoolYear)}
         disabled={generateMutation.isPending}
-        onValueChange={(value) => onWrappedSchoolYearChange(Number(value))}
+        onValueChange={(value) => setWrappedSchoolYear(Number(value))}
       >
         <SelectTrigger
           aria-label="School year"
@@ -122,12 +111,6 @@ export function WrappedSnapshotsTab({
       >
         {isLoading ? (
           <AdminNotice message="Loading Wrapped snapshot status..." />
-        ) : isError ? (
-          <AdminNotice
-            tone="danger"
-            title="Could not load Wrapped snapshot status."
-            message={error instanceof Error ? error.message : 'Request failed.'}
-          />
         ) : status ? (
           <>
             <div className="flex flex-col gap-4 py-2 sm:flex-row sm:items-start sm:justify-between">

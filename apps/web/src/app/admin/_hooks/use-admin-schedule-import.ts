@@ -5,7 +5,6 @@ import { useAction, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { downloadCsv } from '../_lib/admin-utils';
-import type { AdminTabId } from './use-admin-tab';
 import type {
   StudentBulkUpdateResult,
   StudentImportResult,
@@ -17,7 +16,7 @@ import {
 import { canSubmitRoster, validRosterRows } from '../_lib/roster-csv';
 import { useRosterCsvFile } from './use-roster-csv-file';
 
-export function useAdminScheduleImport(activeTab: AdminTabId) {
+export function useAdminScheduleImport() {
   const { toast } = useToast();
 
   const file = useRosterCsvFile();
@@ -39,10 +38,7 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
   const [isExporting, setIsExporting] = useState(false);
   const importStudents = useAction(api.users.admin.importStudents);
   const updateStudents = useAction(api.users.admin.updateStudents);
-  const exportRows = useQuery(
-    api.users.admin.exportStudents,
-    activeTab === 'schedule' ? {} : 'skip',
-  );
+  const exportRows = useQuery(api.users.admin.exportStudents, {});
 
   const importStudentsMutation = {
     isPending: isImporting,
@@ -168,7 +164,6 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
   };
 
   return {
-    enabled: activeTab === 'schedule',
     studentCsvInputKey: file.inputKey,
     setStudentCsvFile: file.selectFile,
     fileName: file.fileName,

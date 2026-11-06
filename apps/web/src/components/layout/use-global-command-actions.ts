@@ -23,6 +23,7 @@ import { type AppUser } from '@/lib/auth';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { calendarDate, calendarInputDate } from '@/components/calendar/calendar-date';
 import { formatClockTime, schoolDateKey } from '~/apps/shared/school-time';
+import { workshopDetailHref } from '@/lib/routes';
 import {
   commandWhen,
   canSuggestFridayBrowse,
@@ -193,7 +194,7 @@ export function useGlobalCommandActions({
         id: `workshop-${personalWorkshops.friday!._id}-${workshop.workshopId}`,
         label: workshop.title,
         detail: [reason, date, times, workshop.location].filter(Boolean).join(' · '),
-        href: `/flex-friday/${personalWorkshops.friday!._id}/workshop/${workshop.workshopId}`,
+        href: workshopDetailHref(personalWorkshops.friday!._id, workshop.workshopId),
         Icon: Sparkles,
         keywords: ['workshop', 'flex friday', reason, times, workshop.location ?? '',
           ...workshop.sessions.flatMap((session) => [session.title, session.description ?? '', session.startTime, session.endTime])],

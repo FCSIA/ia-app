@@ -1,4 +1,4 @@
-export type ShareUrlResult = 'shared' | 'copied' | 'cancelled';
+type ShareUrlResult = 'shared' | 'copied' | 'cancelled';
 
 type ShareUrlOptions = {
   title?: string;

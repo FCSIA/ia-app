@@ -15,17 +15,7 @@ import {
   type ClubChannelMessageRichBody,
   type RichTextLeaf,
   type RichTextNode,
-} from './mention-serialize';
-
-export {
-  EMPTY_CLUB_CHANNEL_MESSAGE_VALUE,
-  createEmptyClubChannelMessageValue,
-  deserializeClubChannelMessageBody,
-  normalizeClubChannelMessageBody,
-  serializeClubChannelMessageMarkdown,
-  serializeClubChannelMessagePlainText,
-  type ClubChannelMessageRichBody,
-} from './mention-serialize';
+} from '@/components/chat/mention-serialize';
 
 type MentionBodyProps = {
   body: string;

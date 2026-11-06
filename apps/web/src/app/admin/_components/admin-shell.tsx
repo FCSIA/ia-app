@@ -1,26 +1,25 @@
 'use client';
 
+import { readStoredJson, writeStoredJson } from '@/lib/browser-storage';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ChartLine, ContactRound, FileText, Menu, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SidebarMenu, SidebarProvider, SidebarTrigger, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, useSidebar } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { WorkspaceSidebar, WorkspaceSidebarItem, WorkspaceSidebarPanel, WorkspaceSidebarSection } from '@/components/ui/workspace-sidebar';
-import type { AdminTabId } from '../_hooks/use-admin-tab';
+import { ADMIN_SECTION_GROUPS, visibleAdminSections, type AdminAccess, type AdminTabId } from '../_lib/admin-sections';
 
 type AdminNavigationProps = {
   activeTab: AdminTabId;
-  isSuperAdmin: boolean;
-  canManageWrapped: boolean;
+  access: AdminAccess;
   pendingReports: number;
 };
 
 function AdminNavigation({
   activeTab,
-  isSuperAdmin,
-  canManageWrapped,
+  access,
   pendingReports,
   onNavigate,
   bordered,
@@ -30,27 +29,18 @@ function AdminNavigation({
   const params = new URLSearchParams(searchParams?.toString() ?? '');
   params.delete('tab');
   const suffix = params.size ? `?${params}` : '';
-  const sections = [
-    { id: 'users' as const, label: 'Users', group: 'People', icon: Users, visible: true },
-    { id: 'schedule' as const, label: 'Student roster', group: 'People', icon: ContactRound, visible: isSuperAdmin },
-    { id: 'administrator-roster' as const, label: 'Admin roster', group: 'People', icon: ShieldCheck, visible: isSuperAdmin },
-    { id: 'moderation' as const, label: pendingReports ? `Reports (${pendingReports})` : 'Reports', group: 'Safety', icon: MessageSquareWarning, visible: true },
-    { id: 'feedback' as const, label: 'Feedback', group: 'Safety', icon: MessageSquareText, visible: isSuperAdmin },
-    { id: 'wrapped' as const, label: 'Wrapped', group: 'Insights', icon: Sparkles, visible: canManageWrapped },
-    { id: 'analytics' as const, label: 'Analytics', group: 'Insights', icon: ChartLine, visible: isSuperAdmin },
-    { id: 'audit' as const, label: 'Audit log', group: 'Insights', icon: FileText, visible: true },
-  ].filter((section) => section.visible);
+  const sections = visibleAdminSections(access);
 
   const groups = (
     <>
-      {['People', 'Safety', 'Insights'].map((group) => (
+      {ADMIN_SECTION_GROUPS.map((group) => (
         <WorkspaceSidebarSection key={group} title={group}>
           <SidebarMenu>
             {sections.filter((section) => section.group === group).map((section) => (
               <WorkspaceSidebarItem
                 key={section.id}
                 href={`/admin/${section.id}${suffix}`}
-                label={section.label}
+                label={section.id === 'moderation' && pendingReports ? `Reports (${pendingReports})` : section.label}
                 icon={section.icon}
                 selected={activeTab === section.id}
                 onClick={onNavigate}
@@ -79,16 +69,14 @@ function PersistAdminSidebar() {
   useEffect(() => {
     if (restored.current) return;
     restored.current = true;
-    try {
-      const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? 'null') as { width?: unknown; open?: unknown } | null;
-      const px = typeof saved?.width === 'string' ? Number.parseFloat(saved.width) : NaN;
-      if (Number.isFinite(px)) setWidth(`${Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, px))}px`);
-      if (saved?.open === false) setOpen(false);
-    } catch { /* A malformed entry falls back to the default layout. */ }
+    const saved = readStoredJson(LAYOUT_KEY) as { width?: unknown; open?: unknown } | null;
+    const px = typeof saved?.width === 'string' ? Number.parseFloat(saved.width) : NaN;
+    if (Number.isFinite(px)) setWidth(`${Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, px))}px`);
+    if (saved?.open === false) setOpen(false);
   }, [setOpen, setWidth]);
   useEffect(() => {
     if (!restored.current || isResizing) return;
-    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ width, open })); } catch { /* Storage can be unavailable. */ }
+    writeStoredJson(LAYOUT_KEY, { width, open });
   }, [width, open, isResizing]);
   return null;
 }

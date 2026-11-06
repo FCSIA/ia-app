@@ -15,7 +15,7 @@ import type { useAdminAudit } from '../../_hooks/use-admin-audit';
 type AuditState = ReturnType<typeof useAdminAudit>;
 export type AuditFilterColumn = 'When' | 'Person' | 'Action' | 'Record';
 /** `menu` is a header popup; `panel` is the same rows inline in the phone drawer. */
-export type AuditFilterSurface = 'menu' | 'panel';
+type AuditFilterSurface = 'menu' | 'panel';
 
 const matches = (text: string, query: string) => text.toLowerCase().includes(query.trim().toLowerCase());
 
@@ -115,7 +115,7 @@ function RecordFilter({ audit, surface }: { audit: AuditState; surface: AuditFil
 }
 
 const day = (offset: number) => format(subDays(new Date(), offset), 'yyyy-MM-dd');
-export const WHEN_PRESETS = [
+const WHEN_PRESETS = [
   { label: 'Any time', range: () => ['', ''] },
   { label: 'Today', range: () => [day(0), day(0)] },
   { label: 'Yesterday', range: () => [day(1), day(1)] },

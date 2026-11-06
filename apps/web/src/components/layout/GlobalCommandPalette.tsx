@@ -44,19 +44,26 @@ import {
 } from '@/components/layout/use-global-command-actions';
 import { personalCommandQueryArgs, rankCommandSuggestions } from './command-suggestions';
 import { schoolDateKey } from '~/apps/shared/school-time';
+import { routePath, type AppRouteId } from '@/lib/routes';
 
-const staticActions: CommandAction[] = [
-  { id: 'route-dashboard', label: 'Home', detail: 'Your widgets', href: '/', Icon: Home },
-  { id: 'route-announcements', label: 'Announcements', detail: 'Official updates', href: '/announcements', Icon: Megaphone },
-  { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: Waypoints },
-  { id: 'route-schedule', label: 'Schedule', detail: 'Classes and friends', href: '/schedule', Icon: ClipboardList },
-  { id: 'route-events', label: 'Events', detail: 'School and club events', href: '/events', Icon: Ticket },
-  { id: 'route-calendar', label: 'Calendar', detail: 'Shared calendar', href: '/calendar', Icon: CalendarRange },
-  { id: 'route-courses', label: 'Courses', detail: 'Course catalog', href: '/courses', Icon: BookOpen },
-  { id: 'route-flex', label: 'Flex Friday', detail: 'Workshops and passes', href: '/flex-friday', Icon: Presentation },
-  { id: 'route-notifications', label: 'Notifications', detail: 'Inbox and settings', href: '/notifications', Icon: Bell },
-  { id: 'route-profile', label: 'Profile Settings', detail: 'Account and preferences', href: '/profile', Icon: Settings },
+const ROUTE_ACTIONS: Array<{ route: AppRouteId; label: string; detail: string; Icon: CommandAction['Icon'] }> = [
+  { route: 'home', label: 'Home', detail: 'Your widgets', Icon: Home },
+  { route: 'announcements', label: 'Announcements', detail: 'Official updates', Icon: Megaphone },
+  { route: 'clubs', label: 'Clubs', detail: 'Directory and workspaces', Icon: Waypoints },
+  { route: 'schedule', label: 'Schedule', detail: 'Classes and friends', Icon: ClipboardList },
+  { route: 'events', label: 'Events', detail: 'School and club events', Icon: Ticket },
+  { route: 'calendar', label: 'Calendar', detail: 'Shared calendar', Icon: CalendarRange },
+  { route: 'courses', label: 'Courses', detail: 'Course catalog', Icon: BookOpen },
+  { route: 'flex-friday', label: 'Flex Friday', detail: 'Workshops and passes', Icon: Presentation },
+  { route: 'notifications', label: 'Notifications', detail: 'Inbox and settings', Icon: Bell },
+  { route: 'profile', label: 'Profile Settings', detail: 'Account and preferences', Icon: Settings },
 ];
+
+const staticActions: CommandAction[] = ROUTE_ACTIONS.map(({ route, ...action }) => ({
+  id: `route-${route}`,
+  href: routePath(route),
+  ...action,
+}));
 
 const commandTabs = [
   { value: 'all', label: 'All' },
@@ -184,7 +191,7 @@ function GlobalCommandPaletteContent({
         id: 'route-admin',
         label: 'Admin Panel',
         detail: 'Users, moderation, audit, and system controls',
-        href: '/admin',
+        href: routePath('admin'),
         Icon: Shield,
       });
     }

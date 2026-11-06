@@ -12,7 +12,8 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from '@/components/ui/drawer';
-import { ReactionPicker } from './reaction-picker';
+import { ReactionPicker, type ReactionOption } from './reaction-picker';
+import { hasLearnedDoubleTap, markDoubleTapLearned } from './use-message-press';
 import { hapticTick } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
@@ -23,13 +24,6 @@ export type MessageSheetAction = {
   onSelect: () => void;
   destructive?: boolean;
   disabled?: boolean;
-};
-
-export type MessageSheetReaction = {
-  value: string;
-  label: string;
-  name: string;
-  selected: boolean;
 };
 
 /**
@@ -55,7 +49,7 @@ export function MessageActionSheet({
     sentAt: string;
     text: string;
   };
-  reactions: MessageSheetReaction[];
+  reactions: ReactionOption[];
   /** The reaction a double tap adds, and how to change it. */
   doubleTap?: { value: string; onChange: (value: string) => void };
   onReact?: (value: string) => void;
@@ -64,13 +58,7 @@ export function MessageActionSheet({
   const groups = actionGroups.filter((group) => group.length > 0);
   const [learnedDoubleTap, setLearnedDoubleTap] = useState(false);
   useEffect(() => {
-    if (open) {
-      try {
-        setLearnedDoubleTap(
-          localStorage.getItem('chat-double-tap-learned') === 'true',
-        );
-      } catch {}
-    }
+    if (open) setLearnedDoubleTap(hasLearnedDoubleTap());
   }, [open]);
   const [choosingDoubleTap, setChoosingDoubleTap] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
@@ -142,9 +130,7 @@ export function MessageActionSheet({
                     doubleTap?.onChange(value);
                     setChoosingDoubleTap(false);
                     setLearnedDoubleTap(true);
-                    try {
-                      localStorage.setItem('chat-double-tap-learned', 'true');
-                    } catch {}
+                    markDoubleTapLearned();
                   } else {
                     hapticTick();
                     if (!keepOpen) flushSync(() => onOpenChange(false));

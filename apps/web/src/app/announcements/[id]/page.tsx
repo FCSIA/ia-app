@@ -38,7 +38,7 @@ import { AnnouncementComment } from '@/components/announcements/announcement-com
 import {
   ChannelMessageComposer,
   type ChannelMessageComposerHandle,
-} from '@/components/clubs/channel-message-composer';
+} from '@/components/chat/channel-message-composer';
 import { ConvexError } from 'convex/values';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';

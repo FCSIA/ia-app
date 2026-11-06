@@ -1,19 +1,16 @@
 import { isStaff } from '~/apps/shared/roles';
-import { useDeferredValue, useMemo, useState, useSyncExternalStore } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useCurrentUser } from '@/lib/auth';
+import { useMounted } from '@/hooks/use-mounted';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
-const subscribeToHydration = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
-
 export function useEventsPage() {
   const user = useCurrentUser();
-  const hydrated = useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot);
+  const hydrated = useMounted();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');

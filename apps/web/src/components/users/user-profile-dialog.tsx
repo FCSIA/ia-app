@@ -1,9 +1,10 @@
 'use client';
 
-import { hasAnyRole, isAdmin, STUDENT_ROLES } from '~/apps/shared/roles';
+import { isAdmin, isStudent } from '~/apps/shared/roles';
 import { useId, useRef, useState, type ComponentProps, type ReactElement } from 'react';
 import { ArrowLeft, Copy, UserPlus } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,22 +13,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { ClubMark } from '@/components/clubs/club-mark';
+import { ClubMark } from '@/components/media/club-mark';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
-import { fullName, formatClubRole } from '@/components/clubs/types';
-import type { ClubUserRef } from '@/components/clubs/types';
+import { formatClubRole } from '@/components/clubs/types';
+import { friendshipLabel, type FriendshipStatus } from '@/components/users/use-friendship';
+import type { ClubPerson } from '@/components/clubs/types';
 import { cn } from '@/lib/utils';
-import { regularName } from '~/apps/shared/user-name';
+import { displayName, regularName } from '~/apps/shared/user-name';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { copyText } from '@/lib/share';
 
-export type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
-
 export type UserProfilePerson = Pick<
-  ClubUserRef,
+  ClubPerson,
   '_id' | 'firstName' | 'lastName' | 'preferredName'
-> & Partial<Pick<ClubUserRef, 'avatarUrl' | 'uniqueId' | 'roles'>> & { isDeveloper?: boolean | null };
+> & Partial<Pick<ClubPerson, 'avatarUrl' | 'uniqueId' | 'roles'>> & { isDeveloper?: boolean | null };
 
 type UserProfileContentProps = {
   active: boolean;
@@ -39,19 +39,12 @@ type UserProfileContentProps = {
   canSendFriendRequest?: boolean;
   friendshipStatus?: FriendshipStatus;
   friendRequestPending?: boolean;
-  onSendFriendRequest?: (userId: string) => void;
+  onSendFriendRequest?: (userId: Id<'users'>) => void;
   variant?: 'preview' | 'dialog';
   onNavigate?: () => void;
   /** Opens another person's profile, e.g. from the mutual friends list. */
   onOpenPerson?: (person: UserProfilePerson) => void;
 };
-
-function relationshipLabel(status?: FriendshipStatus) {
-  if (status === 'FRIENDS') return 'Friends';
-  if (status === 'REQUEST_SENT') return 'Request sent';
-  if (status === 'REQUEST_RECEIVED') return 'Request received';
-  return null;
-}
 
 export function UserProfileContent({
   active,
@@ -78,7 +71,7 @@ export function UserProfileContent({
     api.clubs.detail.getMutualClubs,
     active && !isCurrentUser ? { personId: person._id } : 'skip',
   );
-  const name = fullName(person);
+  const name = displayName(person);
   const realName = regularName(person);
   const isPreview = variant === 'preview';
   const friendsListEnabled = !isPreview && !!onOpenPerson;
@@ -89,10 +82,10 @@ export function UserProfileContent({
       ? { personId: person._id }
       : 'skip',
   );
-  const isStudent = hasAnyRole(person, STUDENT_ROLES);
+  const personIsStudent = isStudent(person);
   const resolvedFriendshipStatus = profileContext?.friendshipStatus ?? friendshipStatus;
   const canOfferFriendRequest =
-    canSendFriendRequest && !isCurrentUser && isStudent && resolvedFriendshipStatus === 'NONE' && !!onSendFriendRequest;
+    canSendFriendRequest && !isCurrentUser && personIsStudent && resolvedFriendshipStatus === 'NONE' && !!onSendFriendRequest;
   const primaryRole =
     kind === 'SPONSOR'
       ? 'Sponsor'
@@ -100,7 +93,7 @@ export function UserProfileContent({
   const roleLabels = [primaryRole, ...(person.roles ?? []).map((role) => formatClubRole(role) ?? role)]
     .filter((label, index, labels): label is string => !!label && labels.indexOf(label) === index)
     .slice(0, 3);
-  const friendshipLabel = relationshipLabel(resolvedFriendshipStatus);
+  const relationship = friendshipLabel(resolvedFriendshipStatus);
   const classes = profileContext?.classes ?? [];
   const visibleClasses = classes.slice(0, isPreview ? 4 : 8);
   const visibleClubs = (mutualClubs ?? []).slice(0, isPreview ? 3 : 12);
@@ -125,11 +118,11 @@ export function UserProfileContent({
             <p className="mt-0.5 break-words text-xs text-muted-foreground">{realName}</p>
           ) : null}
           {person.uniqueId ? <p className="mt-0.5 truncate text-xs text-muted-foreground">ID {person.uniqueId}</p> : null}
-          {roleLabels.length > 0 || friendshipLabel ? (
+          {roleLabels.length > 0 || relationship ? (
             <div className="mt-2 flex flex-wrap gap-1">
-              {friendshipLabel ? (
+              {relationship ? (
                 <Badge variant="dot" color={resolvedFriendshipStatus === 'FRIENDS' ? 'green' : 'amber'} size="sm">
-                  {friendshipLabel}
+                  {relationship}
                 </Badge>
               ) : null}
               {roleLabels.map((role) => (
@@ -172,12 +165,12 @@ export function UserProfileContent({
                   {allMutualFriends.map((friend) => (
                     <Card
                       key={friend._id}
-                      label={`Open ${fullName(friend)}'s profile`}
+                      label={`Open ${displayName(friend)}'s profile`}
                       onClick={() => onOpenPerson?.(friend)}
                     >
                       <UserAvatar person={friend} size={32} />
                       <CardHeader>
-                        <CardTitle className="truncate">{fullName(friend)}</CardTitle>
+                        <CardTitle className="truncate">{displayName(friend)}</CardTitle>
                       </CardHeader>
                     </Card>
                   ))}
@@ -189,7 +182,7 @@ export function UserProfileContent({
               {profileContext.mutualFriends.map((friend) => (
                 <div key={friend._id} className="flex min-w-0 items-center gap-2">
                   <UserAvatar person={friend} size={24} />
-                  <span className="truncate text-xs text-foreground">{fullName(friend)}</span>
+                  <span className="truncate text-xs text-foreground">{displayName(friend)}</span>
                 </div>
               ))}
             </div>
@@ -280,7 +273,7 @@ export function UserProfileDialog({ open, onOpenChange, trigger, onCloseAutoFocu
   }
   const opened = trail.rootId === contentProps.person._id ? trail.people.at(-1) : undefined;
   const shownPerson = opened ?? contentProps.person;
-  const name = fullName(shownPerson);
+  const name = displayName(shownPerson);
   const openPerson = (person: UserProfilePerson) =>
     setTrail((current) => ({
       rootId: contentProps.person._id,

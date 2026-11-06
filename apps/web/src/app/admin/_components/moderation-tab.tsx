@@ -10,7 +10,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import type { Id, Doc } from '~/apps/convex/src/_generated/dataModel';
+import type { Doc } from '~/apps/convex/src/_generated/dataModel';
 import { Button, iconSizeFor } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
@@ -50,14 +50,10 @@ import {
 } from '@/components/moderation/report-status-actions';
 import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
 import { formatDateTime, formatShortDate } from '../_lib/admin-utils';
+import { useAdminModeration } from '../_hooks/use-admin-moderation';
+import { useAdminModerationPending } from '../_hooks/use-admin-moderation-pending';
 import { AdminNotice } from './admin-ui';
 
-type ModerationMutation<TArgs> = {
-  mutate: (args: TArgs) => void;
-  isPending: boolean;
-};
-
-type ModerationKeyword = Doc<'moderationKeywordRules'>;
 type ModerationReport = Doc<'moderationReports'> & {
   submitter: {
     firstName: string;
@@ -107,46 +103,28 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   CLUB_CHANNEL_MESSAGE: 'Club message',
 };
 
-export function ModerationTab({
-  keyword,
-  onKeywordChange,
-  keywords,
-  addKeywordMutation,
-  removeKeywordMutation,
-  moderationSearch,
-  onModerationSearchChange,
-  deferredModerationSearch,
-  filteredReports,
-  pendingReports,
-  reportMutation,
-  isLoading,
-  isKeywordsLoading,
-}: {
-  isLoading: boolean;
-  isKeywordsLoading: boolean;
-  keyword: string;
-  onKeywordChange: (value: string) => void;
-  keywords: ModerationKeyword[];
-  addKeywordMutation: ModerationMutation<string>;
-  removeKeywordMutation: ModerationMutation<string>;
-  moderationSearch: string;
-  onModerationSearchChange: (value: string) => void;
-  deferredModerationSearch: string;
-  filteredReports: ModerationReport[];
-  pendingReports: number;
-  reportMutation: ModerationMutation<{
-    id: Id<'moderationReports'>;
-    status: ModerationReportStatus;
-    expectedStatus: ModerationReportStatus;
-    reviewNote: string;
-  }>;
-}) {
+export function ModerationTab() {
+  const {
+    keyword,
+    setKeyword,
+    keywords,
+    addKeywordMutation,
+    removeKeywordMutation,
+    moderationSearch,
+    setModerationSearch,
+    deferredModerationSearch,
+    filteredReports,
+    reportMutation,
+    isLoading,
+    isKeywordsLoading,
+  } = useAdminModeration();
+  const pendingReports = useAdminModerationPending();
   const actions = (
     <>
       <SearchInput
         className="min-w-0 flex-1"
         value={moderationSearch}
-        onValueChange={onModerationSearchChange}
+        onValueChange={setModerationSearch}
         aria-label="Search reports"
         placeholder="Search reports…"
       />
@@ -185,7 +163,7 @@ export function ModerationTab({
                 placeholder="Add local term..."
                 value={keyword}
                 disabled={addKeywordMutation.isPending}
-                onChange={(e) => onKeywordChange(e.target.value)}
+                onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => {
                   if (
                     e.key === 'Enter' &&
@@ -254,7 +232,7 @@ export function ModerationTab({
       actionLabel={deferredModerationSearch ? 'Clear search' : undefined}
       onAction={
         deferredModerationSearch
-          ? () => onModerationSearchChange('')
+          ? () => setModerationSearch('')
           : undefined
       }
     />

@@ -10,7 +10,7 @@ export type AnnouncementAudienceInput = {
   club?: { name: string } | null;
 };
 
-export type AnnouncementAudiencePart =
+type AnnouncementAudiencePart =
   | { kind: 'grades'; values: number[]; shortLabel: string; label: string }
   | { kind: 'pathways'; values: string[]; labels: string[]; label: string }
   | { kind: 'club'; clubId?: string; label: string }
@@ -24,7 +24,16 @@ export type AnnouncementAudience = {
   accessibleLabel: string;
 };
 
-export function formatAnnouncementPathway(pathway: string): string {
+/** The audience scope an announcement is filed under, as feed filters name it. */
+export const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
+  SCHOOL_WIDE: 'School-wide',
+  GRADE: 'Grade',
+  PATHWAY: 'Pathway',
+  CLUB: 'Club',
+  INTERSECTION: 'Combined audience',
+};
+
+function formatAnnouncementPathway(pathway: string): string {
   return pathwayLabel(pathway) ?? pathway
     .replaceAll('_', ' ')
     .toLowerCase()

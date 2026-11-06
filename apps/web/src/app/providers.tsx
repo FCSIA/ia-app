@@ -5,7 +5,6 @@ import { Suspense, useEffect, useState } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
 import { useConvexAuth, useQuery } from '@/lib/convex-react';
 import { usePathname } from 'next/navigation';
-import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, useTheme } from 'next-themes';
 import { authClient } from '@/lib/auth-client';
 import { convex } from '@/lib/convex';
@@ -51,8 +50,6 @@ function CustomThemeBootstrap() {
   const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     if (theme === 'custom' && user?.customBackgroundUrl) {
       document.documentElement.style.setProperty(
         '--custom-bg-image',
@@ -77,8 +74,6 @@ function CustomThemeBootstrap() {
   }, [theme, user?.customBackgroundUrl, user?.customBackgroundTint, user?.customBackgroundBlur]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const applyColors = () => {
       applyCustomColors(loadCustomColors());
     };
@@ -163,7 +158,6 @@ export function Providers({ children, defaultSidebarOpen = true }: { children: R
               </NavigationLoadingProvider>
             </AuthenticatedRouteBoundary>
           </Suspense>
-          <Toaster position="top-right" />
         </ThemeProvider>
       </ConvexQueryCacheProvider>
     </ConvexBetterAuthProvider>

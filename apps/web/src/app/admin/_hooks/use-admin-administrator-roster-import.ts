@@ -9,9 +9,8 @@ import { previewAdministratorRosterCsv } from '../_lib/administrator-roster-csv'
 import { canSubmitRoster, validRosterRows } from '../_lib/roster-csv';
 import { useRosterCsvFile } from './use-roster-csv-file';
 import type { AdministratorImportResult } from '../_lib/types';
-import type { AdminTabId } from './use-admin-tab';
 
-export function useAdministratorRosterImport(activeTab: AdminTabId) {
+export function useAdministratorRosterImport() {
   const { toast } = useToast();
   const file = useRosterCsvFile();
   const preview = useMemo(
@@ -77,7 +76,6 @@ export function useAdministratorRosterImport(activeTab: AdminTabId) {
   };
 
   return {
-    enabled: activeTab === 'administrator-roster',
     fileInputKey: file.inputKey,
     setFile: file.selectFile,
     fileName: file.fileName,

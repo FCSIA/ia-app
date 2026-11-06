@@ -12,7 +12,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FlexAttendanceStatus } from '~/apps/convex/src/validators';
 
-export type AttendanceStatus = FlexAttendanceStatus;
+type AttendanceStatus = FlexAttendanceStatus;
 
 type RosterResponse = NonNullable<FunctionReturnType<typeof api.flexFriday.attendance.getRoster>>;
 type RosterStudent = NonNullable<RosterResponse['registrations'][number]['student']>;

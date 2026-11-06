@@ -16,9 +16,9 @@ import { formatWebAttachmentListSize } from '~/apps/shared/chat/attachments';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { ClubChannelVisibilityIcon } from '@/components/clubs/channel-visibility';
-import { ClubPersonAvatar } from '@/components/clubs/club-person-avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { PersonRow } from '@/components/users/person-row';
-import { fullName } from '@/components/clubs/types';
+import { displayName } from '~/apps/shared/user-name';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,6 +44,7 @@ import {
 import { useQuery } from '@/lib/convex-react';
 import { formatMessageTime } from '@/lib/message-time';
 import type { ClubChannelMessage } from '@/components/clubs/types';
+import { pinnedMessagePreview } from './pinned-messages';
 
 const DETAIL_TABS = ['Members', 'Pins', 'Media', 'Files', 'Links'] as const;
 
@@ -60,7 +61,10 @@ type ChannelDetailsSheetProps = {
   pinnedMessages: ClubChannelMessage[];
   pinnedHasMore?: boolean;
   /** Jumps the conversation to a message; the sheet closes first. */
-  onJump: (messageId: string, threadId?: string) => void;
+  onJump: (
+    messageId: Id<'clubChannelMessages'>,
+    threadId?: Id<'clubChannelMessages'>,
+  ) => void;
   /** Present when the club allows whiteboards in this channel. */
   whiteboard?: { showing: boolean; onToggle: () => void };
 };
@@ -91,7 +95,10 @@ export function ChannelDetailsSheet({
   );
   const tabsId = useId();
   const [tab, setTab] = useState(0);
-  const jump = (messageId: string, threadId?: string) => {
+  const jump = (
+    messageId: Id<'clubChannelMessages'>,
+    threadId?: Id<'clubChannelMessages'>,
+  ) => {
     onOpenChange(false);
     onJump(messageId, threadId);
   };
@@ -205,23 +212,20 @@ export function ChannelDetailsSheet({
                     <Card
                       key={message._id}
                       index={index}
-                      label={`Jump to pinned message by ${fullName(message.author)}`}
+                      label={`Jump to pinned message by ${displayName(message.author)}`}
                       onClick={() => jump(message._id)}
                     >
-                      <ClubPersonAvatar
+                      <UserAvatar
                         person={message.author}
                         className="size-9 self-start"
                       />
                       <CardHeader>
                         <CardDescription>
-                          {fullName(message.author)} ·{' '}
+                          {displayName(message.author)} ·{' '}
                           {formatMessageTime(message.createdAt)}
                         </CardDescription>
                         <CardTitle className="line-clamp-2 font-normal">
-                          {message.poll?.question ||
-                            message.body ||
-                            message.attachments[0]?.fileName ||
-                            'Attachment'}
+                          {pinnedMessagePreview(message)}
                         </CardTitle>
                       </CardHeader>
                     </Card>

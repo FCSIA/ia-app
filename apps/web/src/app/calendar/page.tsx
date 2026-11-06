@@ -91,14 +91,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { calendarDetailHref } from '@/components/calendar/calendar-links';
+import { useMounted } from '@/hooks/use-mounted';
 import { useToast } from '@/hooks/use-toast';
-import { defaultCalendarRange } from '@/lib/calendar-range';
+import { ALL_CALENDAR_SOURCES, calendarListArgs, defaultCalendarRange } from '@/lib/calendar-range';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 type CalendarEntry = FunctionReturnType<
   typeof api.events.calendar.list
 >[number] & { inviteId?: Id<'calendarInvites'>; sharedBy?: PersonName };
-const SOURCES = Object.keys(CALENDAR_SOURCES) as CalendarSource[];
 const DESKTOP_VIEWS: CalendarView[] = ['month', 'week', 'day', 'agenda'];
 const MOBILE_VIEWS: CalendarView[] = ['agenda', 'day', 'days'];
 const VIEW_LABELS: Partial<Record<CalendarView, string>> = {
@@ -267,8 +268,7 @@ export default function CalendarPage() {
 
 function CalendarMounted() {
   const isMobile = useIsMobile();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   return mounted ? (
     <CalendarWorkspace isMobile={isMobile} />
   ) : (
@@ -307,7 +307,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
         : 'month',
   );
   const [range, setRange] = useState(defaultCalendarRange);
-  const [sources, setSources] = useState<CalendarSource[]>(SOURCES);
+  const [sources, setSources] = useState<CalendarSource[]>(ALL_CALENDAR_SOURCES);
   const [active, setActive] = useState<{
     entry: CalendarEntry;
     rect: DOMRect;
@@ -319,11 +319,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
   const [feedsOpen, setFeedsOpen] = useState(
     search?.get('connect') === 'canvas',
   );
-  const entries = useQuery(api.events.calendar.list, {
-    startDate: range.start,
-    endDate: range.end,
-    sources,
-  });
+  const entries = useQuery(api.events.calendar.list, calendarListArgs(range, sources));
   const previous = useRef<CalendarEntry[]>([]);
   useEffect(() => {
     if (entries) previous.current = entries;
@@ -562,7 +558,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                       {isMobile ? (
                         <SlidersHorizontal />
                       ) : (
-                        `Sources${sources.length !== SOURCES.length ? ` (${sources.length})` : ''}`
+                        `Sources${sources.length !== ALL_CALENDAR_SOURCES.length ? ` (${sources.length})` : ''}`
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -574,7 +570,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                         setSources(next as CalendarSource[])
                       }
                     >
-                      {SOURCES.map((source) => (
+                      {ALL_CALENDAR_SOURCES.map((source) => (
                         <FilterToggleItem key={source} value={source}>
                           <CalendarSourceIcon source={source} />
                           {CALENDAR_SOURCES[source].label}
@@ -734,14 +730,7 @@ function CalendarDetails({
   const { toast } = useToast();
   anchor.current.getBoundingClientRect = () => rect ?? new DOMRect();
   if (!entry) return null;
-  const href =
-    entry.source === 'EXTERNAL'
-      ? entry.url
-      : entry.eventId
-        ? `/events/${entry.eventId}`
-        : entry.flexFridayId
-          ? '/flex-friday'
-          : null;
+  const href = calendarDetailHref(entry);
   const date = format(
     calendarDate(entry.startAt),
     entry.allDay ? "EEEE, MMMM d · 'All day'" : 'EEEE, MMMM d · h:mm a',

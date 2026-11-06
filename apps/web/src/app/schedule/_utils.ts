@@ -1,3 +1,4 @@
+import { isScheduleFriendsTab } from '@/lib/routes';
 import type { CourseSummary } from '@/components/courses/types';
 import type {
   ScheduleLunchPeriod,
@@ -48,9 +49,8 @@ export function resolveScheduleTab(
   canEditOwnSchedule: boolean,
   canManageBlocks: boolean,
 ): ScheduleTab {
-  if (requestedTab === 'friends' && canEditOwnSchedule) return 'friends';
-  // Groups live on the Friends page now; keep old links working.
-  if (requestedTab === 'groups' && canEditOwnSchedule) return 'friends';
+  // Groups live on the Friends page now; `?tab=groups` links still work.
+  if (isScheduleFriendsTab(requestedTab) && canEditOwnSchedule) return 'friends';
   if (requestedTab === 'admin' && canManageBlocks) return 'admin';
   if (requestedTab === 'my' && canEditOwnSchedule) return 'my';
   if (canEditOwnSchedule) return 'my';
