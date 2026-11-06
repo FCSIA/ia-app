@@ -64,7 +64,37 @@ The Zod 4 [upstream change](https://github.com/colinhacks/zod/pull/6652) rejects
 oversized *constrained* collections before visiting elements. Unbounded schemas
 are unchanged; this review does not claim arbitrary unbounded parsing is safe.
 
-## Verification
+## November 6 renewal
+
+PR [#227](https://github.com/FCSIA/ia-app/pull/227) reached CI after the
+November 6 00:00 UTC deadline. Re-fetched all ten OSV records and npm package
+metadata on November 6; the reviewed package versions and applicability remain
+unchanged. Renew the same advisory-specific exceptions through **November 13,
+2026 at 00:00 UTC**, retaining the owner, exact-version/configuration checks,
+source patches, exploit regressions, and fail-closed expiry check.
+
+- OSV now explicitly starts the minimatch affected range at 7.0.0, confirming
+  legacy 3.1.5 is outside it. Fixed minimatch still starts at 11.0.1 and fixed
+  glob at 14.0.2; current compatible releases do not remove the backport need.
+- deepmerge remains at 4.3.1; Zod's fixed range still starts at 4.6.6, with no
+  fixed Zod 3 release. The Vercel Sandbox package-identity collision remains.
+- The installed Convex auth integration still requires Better Auth below 1.7.
+  Unlike the October 30 snapshot, integration **0.13.0** is now available and
+  supports Better Auth `>=1.7.16 <1.8.0`; latest Better Auth is **1.7.18**.
+  That coordinated auth migration can remove the four configuration-specific
+  exceptions, but is separate from the sidebar repair. The current configuration
+  continues to exclude the affected adapters/plugins, as enforced by regression.
+
+Verification below describes the original October 30 assessment. The renewal
+rechecks the full lockfile inventory and existing security regressions; it does
+not change dependency versions or widen any exception's package/configuration
+scope. OSV-Scanner 2.5.1 (verified release SHA256) scans **2,334** locked package
+instances: the raw scan reports **15 package/advisory pairs across the same ten
+advisories**, and the reviewed configuration exits 0 with no remaining results.
+The difference from October's 16 pairs is the corrected minimatch range excluding
+legacy 3.1.5.
+
+## Verification (October 30)
 
 Verified with repository-pinned Bun 1.4.4, Node 24.22.1 and OSV-Scanner 2.5.1:
 
