@@ -512,6 +512,13 @@ function endpointLabel(ep: Endpoint) {
     : `Pinned spot on Floor ${ep.floor}`;
 }
 
+/** Internal placeholder IDs must never be presented as school stair numbers. */
+export function labelForStair(stairNum: number) {
+  if (stairNum === 9) return "West Xchange/Library stairs";
+  if (stairNum === 10) return "East Xchange/Library stairs";
+  return `Stair ${stairNum}`;
+}
+
 function addEndpoint(graph: Graph, ep: Endpoint, dir: "in" | "out") {
   return ep.kind === "room"
     ? addRoomTerminal(graph, ep.room, ep.floor, dir)

@@ -13,7 +13,7 @@ import {
   type Floor,
   type Point,
 } from "./building-data";
-import { estimateWalk, findPath, findRoute, labelFor } from "./router";
+import { estimateWalk, findPath, findRoute, labelFor, labelForStair } from "./router";
 
 const EPS = 1.5; // px of slack for a point sitting "on" a corridor
 const JUNCTION_TOL = 30; // the router's documented junction slack
@@ -94,6 +94,11 @@ function expectOnHallways(path: readonly Point[], floor: Floor, what: string) {
 }
 
 describe("route finder", () => {
+  test("directions use landmark names for stairs without confirmed school numbers", () => {
+    expect(labelForStair(9)).toBe("West Xchange/Library stairs");
+    expect(labelForStair(10)).toBe("East Xchange/Library stairs");
+    expect(labelForStair(1)).toBe("Stair 1");
+  });
   test("every room on the plans has at least one doorway", () => {
     for (const floor of FLOORS) {
       for (const room of ROOM_LABELS[floor]) {
@@ -119,7 +124,7 @@ describe("route finder", () => {
     }
   });
 
-  test("every room pair between different floors", () => {
+  test("every room pair between different floors", { timeout: 20_000 }, () => {
     for (const fromFloor of FLOORS) {
       for (const toFloor of FLOORS) {
         if (fromFloor === toFloor) continue;

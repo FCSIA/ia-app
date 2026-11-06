@@ -2,7 +2,7 @@
 // a convenience. Storage can throw (private mode, blocked site data), so every
 // read and write degrades to "no saved routes" rather than breaking the page.
 
-import { FLOORS, type Floor } from "./building-data";
+import { FLOORS, ROOM_LABELS, type Floor } from "./building-data";
 
 export type RouteEntry = { fromFloor: Floor; fromKey: string; toFloor: Floor; toKey: string };
 
@@ -20,8 +20,8 @@ function isRouteEntry(v: unknown): v is RouteEntry {
   const r = v as Record<string, unknown>;
   return (
     isFloor(r.fromFloor) && isFloor(r.toFloor) &&
-    typeof r.fromKey === "string" && !!r.fromKey &&
-    typeof r.toKey === "string" && !!r.toKey
+    typeof r.fromKey === "string" && ROOM_LABELS[r.fromFloor].includes(r.fromKey) &&
+    typeof r.toKey === "string" && ROOM_LABELS[r.toFloor].includes(r.toKey)
   );
 }
 

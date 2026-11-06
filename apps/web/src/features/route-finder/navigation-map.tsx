@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } fr
 import type { Floor, Point } from "./building-data";
 import { FLOOR_MAPS } from "./floor-maps";
 import { MapLabels, mapLabelsFor } from "./map-labels";
-import type { RouteResult } from "./router";
+import { labelForStair, type RouteResult } from "./router";
 
 const ROUTE_COLOR = "#E5484D";
 const MARKER_COLORS = ["#16a34a", "#dc2626"]; // green = start, red = end
@@ -225,7 +225,7 @@ export function NavigationMap({ route }: { route: RouteResult }) {
     );
   }
 
-  const stair = `Stair ${stairNum}`;
+  const stair = labelForStair(stairNum!);
   return (
     <ol className="flex flex-col gap-8">
       <Step title={`${fromLabel} to ${stair}`} floor={fromFloor}>

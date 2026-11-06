@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { FLOORS, ROOM_LABELS, type Floor } from '@/features/route-finder/building-data';
 import { NavigationMap } from '@/features/route-finder/navigation-map';
 import { RoomPicker, type RoomChoice } from '@/features/route-finder/room-picker';
-import { findPath, type RouteResult } from '@/features/route-finder/router';
+import { findPath, labelForStair, type RouteResult } from '@/features/route-finder/router';
 import {
   RECENT_ROUTES_KEY,
   SAVED_ROUTES_KEY,
@@ -246,7 +246,7 @@ export default function RouteFinderPage() {
                   </h2>
                   <p className="text-base text-muted-foreground">
                     {route.minutes} min walk · {route.meters} m
-                    {route.sameFloor ? ` · Floor ${route.fromFloor}` : ` · Stair ${route.stairNum} to Floor ${route.toFloor}`}
+                    {route.sameFloor ? ` · Floor ${route.fromFloor}` : ` · ${labelForStair(route.stairNum!)} to Floor ${route.toFloor}`}
                   </p>
                 </div>
                 {routeEntry ? (
