@@ -14,10 +14,7 @@
     "dev:mobile:tunnel": "bun run --filter mobile dev:client:tunnel",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "bun run test:routing && bun run test:schedule-ocr && bun run test:chat && turbo run test",
-    "test:routing": "vitest run --config vitest.routing.config.mts",
-    "test:chat": "vitest run --config vitest.chat.config.mts",
-    "test:schedule-ocr": "vitest run --config vitest.schedule-ocr.config.mts",
+    "test": "turbo run test",
     "cvx:dev": "bun run --filter cvx dev",
     "convex:dev": "bun run --filter cvx dev",
     "db:generate": "bun run --filter cvx codegen",
@@ -41,7 +38,7 @@
     "fluid:update": "node scripts/update-fluid-components.mjs",
     "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs",
-    "test:ci": "bun run test:routing && bun run test:schedule-ocr && bun run test:chat && turbo run test --filter=!cvx"
+    "test:ci": "turbo run test --filter=!cvx"
   },
   "overrides": {
     "react": "19.2.3",

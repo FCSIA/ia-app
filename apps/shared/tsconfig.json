@@ -5,7 +5,17 @@
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "~/*": [
+        "../../*"
+      ]
+    }
   },
-  "include": ["chat/**/*.ts"]
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

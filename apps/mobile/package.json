@@ -14,7 +14,7 @@
     "ios": "expo run:ios",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --config ../../vitest.mobile.config.mts",
+    "test": "vitest run",
     "test:maestro": "maestro test maestro",
     "build": "tsc --noEmit"
   },

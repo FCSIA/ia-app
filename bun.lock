@@ -110,6 +110,13 @@
         "vitest": "4.1.12",
       },
     },
+    "apps/shared": {
+      "name": "@ia/shared",
+      "devDependencies": {
+        "typescript": "~6.0.3",
+        "vitest": "4.1.12",
+      },
+    },
     "apps/web": {
       "name": "web",
       "version": "0.0.1",
@@ -737,6 +744,8 @@
     "@ia/devlog": ["@ia/devlog@workspace:packages/devlog"],
 
     "@ia/fun-facts": ["@ia/fun-facts@workspace:packages/fun-facts"],
+
+    "@ia/shared": ["@ia/shared@workspace:apps/shared"],
 
     "@iconify/types": ["@iconify/types@2.0.0", "", {}, "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="],
 

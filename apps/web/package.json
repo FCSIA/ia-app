@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",

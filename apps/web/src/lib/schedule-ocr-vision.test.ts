@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { extractVisionScheduleLines } from "./vision-ocr";
-import { parseInfiniteCampusSchedule } from "../../web/src/lib/schedule-ocr";
+import { extractVisionScheduleLines } from "~/apps/shared/schedule/vision-ocr";
+import { parseInfiniteCampusSchedule } from "./schedule-ocr";
 
 function word(text: string, left: number, top: number, lineEnd = false) {
   return {
