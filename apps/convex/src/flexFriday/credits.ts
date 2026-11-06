@@ -1,19 +1,14 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
+import {
+  schoolYearLabel,
+  schoolYearRange,
+  schoolYearStart,
+} from "../../../shared/school-time";
 
 export const FLEX_CREDITS_REQUIRED_PER_YEAR = 12;
 export const FLEX_CREDITS_REQUIRED_PER_SEMESTER = 6;
-
-function schoolYearStart(date: Date): number {
-  return date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
-}
-
-function schoolYearRange(startYear: number) {
-  const start = new Date(startYear, 7, 1).getTime();
-  const end = new Date(startYear + 1, 6, 31, 23, 59, 59, 999).getTime();
-  return { start, end };
-}
 
 function semesterRanges(startYear: number) {
   return [
@@ -88,7 +83,7 @@ export const getMyCredits = query({
     return {
       studentId: user._id,
       schoolYearStart: start,
-      schoolYearLabel: `${start}-${String(start + 1).slice(-2)}`,
+      schoolYearLabel: schoolYearLabel(start),
       required: FLEX_CREDITS_REQUIRED_PER_YEAR,
       earned,
       remaining: Math.max(FLEX_CREDITS_REQUIRED_PER_YEAR - earned, 0),

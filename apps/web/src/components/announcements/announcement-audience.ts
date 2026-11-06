@@ -1,3 +1,4 @@
+import { pathwayLabel } from "~/apps/shared/labels";
 export type AnnouncementAudienceInput = {
   targetType: string;
   targetGrade?: number | null;
@@ -23,14 +24,8 @@ export type AnnouncementAudience = {
   accessibleLabel: string;
 };
 
-const PATHWAY_LABELS: Record<string, string> = {
-  HEALTH_SCIENCE: 'Health Science',
-  INFORMATION_TECHNOLOGY: 'Information Technology',
-  ENGINEERING: 'Engineering',
-};
-
 export function formatAnnouncementPathway(pathway: string): string {
-  return PATHWAY_LABELS[pathway] ?? pathway
+  return pathwayLabel(pathway) ?? pathway
     .replaceAll('_', ' ')
     .toLowerCase()
     .replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());

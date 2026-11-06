@@ -6,6 +6,7 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import {
+  SCHEDULE_NOT_READY_ERROR,
   onboardingSteps,
   onboardingSaveError,
 } from "../../../shared/onboarding";
@@ -66,9 +67,9 @@ async function fixture() {
 }
 describe("onboarding lifecycle and ownership", () => {
   it("shows actionable validation while hiding unexpected diagnostics", () => {
-    const message =
-      "Save classes and a lunch period in Schedule first, or skip for now.";
-    expect(onboardingSaveError({ data: message })).toBe(message);
+    expect(onboardingSaveError({ data: SCHEDULE_NOT_READY_ERROR })).toBe(
+      SCHEDULE_NOT_READY_ERROR,
+    );
     expect(
       onboardingSaveError(
         new Error("[CONVEX request-id] Internal stack trace"),

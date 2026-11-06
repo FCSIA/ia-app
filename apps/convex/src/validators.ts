@@ -1,21 +1,15 @@
+import { FEEDBACK_STATUSES } from "../../shared/feedback-status";
+import { GITHUB_SYNC_STATES } from "../../shared/feedback-sync";
+import { NOTIFICATION_CATEGORIES } from "../../shared/notifications";
+import { PATHWAYS } from "../../shared/labels";
 import { v, type Infer } from "convex/values";
+import { APP_ROLES } from "../../shared/roles";
+import { SCHOOL_LUNCH_PERIODS, SCHOOL_WEEKDAYS } from "../../shared/school-time";
+import { CHANNEL_VISIBILITIES, CHAT_REACTIONS } from "../../shared/chat/protocol";
 
-export const appRoleValidator = v.union(
-  v.literal("STUDENT"),
-  v.literal("STUDENT_LEADER"),
-  v.literal("STUDENT_ADMIN"),
-  v.literal("TEACHER"),
-  v.literal("SPONSOR"),
-  v.literal("SUPPORT_STAFF"),
-  v.literal("ADMIN"),
-  v.literal("SUPER_ADMIN"),
-);
+export const appRoleValidator = v.union(...APP_ROLES.map((role) => v.literal(role)));
 
-export const pathwayValidator = v.union(
-  v.literal("INFORMATION_TECHNOLOGY"),
-  v.literal("HEALTH_SCIENCE"),
-  v.literal("ENGINEERING"),
-);
+export const pathwayValidator = v.union(...PATHWAYS.map((pathway) => v.literal(pathway)));
 
 export type Pathway = Infer<typeof pathwayValidator>;
 
@@ -50,18 +44,13 @@ export const courseTermValidator = v.union(
 export type CourseTerm = Infer<typeof courseTermValidator>;
 
 export const scheduleWeekdayValidator = v.union(
-  v.literal("MONDAY"),
-  v.literal("TUESDAY"),
-  v.literal("WEDNESDAY"),
-  v.literal("THURSDAY"),
-  v.literal("FRIDAY"),
+  ...SCHOOL_WEEKDAYS.map((weekday) => v.literal(weekday)),
 );
 
 export type ScheduleWeekday = Infer<typeof scheduleWeekdayValidator>;
 
 export const scheduleLunchPeriodValidator = v.union(
-  v.literal("PERIOD_4"),
-  v.literal("PERIOD_5"),
+  ...SCHOOL_LUNCH_PERIODS.map((period) => v.literal(period)),
 );
 
 export type ScheduleLunchPeriod = Infer<typeof scheduleLunchPeriodValidator>;
@@ -107,19 +96,7 @@ export const friendShareLinkModeValidator = v.union(
 export type FriendShareLinkMode = Infer<typeof friendShareLinkModeValidator>;
 
 export const notificationCategoryValidator = v.union(
-  v.literal("SCHOOL_ANNOUNCEMENT"),
-  v.literal("CLUB_ANNOUNCEMENT"),
-  v.literal("CLUB_JOIN_REQUEST"),
-  v.literal("CLUB_CHANNEL_MESSAGE"),
-  v.literal("CLUB_CHANNEL_MENTION"),
-  v.literal("CLUB_CHANNEL_TAG_MENTION"),
-  v.literal("CLUB_CHANNEL_THREAD"),
-  v.literal("EVENT"),
-  v.literal("FLEX_FRIDAY"),
-  v.literal("CONTENT_MODERATED"),
-  v.literal("FEEDBACK"),
-  v.literal("FRIEND_REQUEST"),
-  v.literal("FRIEND_SCHEDULE_CHANGE"),
+  ...NOTIFICATION_CATEGORIES.map((category) => v.literal(category)),
 );
 
 export type NotificationCategory = Infer<typeof notificationCategoryValidator>;
@@ -223,9 +200,7 @@ export const inviteStatusValidator = v.union(
 export type InviteStatus = Infer<typeof inviteStatusValidator>;
 
 export const clubChannelVisibilityValidator = v.union(
-  v.literal("PUBLIC"),
-  v.literal("PRIVATE"),
-  v.literal("MEMBER_READONLY"),
+  ...CHANNEL_VISIBILITIES.map((visibility) => v.literal(visibility)),
 );
 
 export type ClubChannelVisibility = Infer<
@@ -314,13 +289,7 @@ export type ClubChannelPollOption = Infer<
 >;
 
 export const clubChannelReactionValidator = v.union(
-  v.literal("LIKE"),
-  v.literal("HEART"),
-  v.literal("FIRE"),
-  v.literal("CELEBRATE"),
-  v.literal("EYES"),
-  v.literal("DONE"),
-  v.literal("SKULL"),
+  ...CHAT_REACTIONS.map(({ token }) => v.literal(token)),
 );
 
 export type ClubChannelReaction = Infer<typeof clubChannelReactionValidator>;
@@ -329,20 +298,8 @@ export type ClubChannelReaction = Infer<typeof clubChannelReactionValidator>;
 // the glyphs emitted by older mobile builds long enough to normalize them at
 // the mutation boundary.
 export const clubChannelReactionInputValidator = v.union(
-  v.literal("LIKE"),
-  v.literal("HEART"),
-  v.literal("FIRE"),
-  v.literal("CELEBRATE"),
-  v.literal("EYES"),
-  v.literal("DONE"),
-  v.literal("SKULL"),
-  v.literal("👍"),
-  v.literal("❤️"),
-  v.literal("🔥"),
-  v.literal("🎉"),
-  v.literal("👀"),
-  v.literal("✅"),
-  v.literal("💀"),
+  ...CHAT_REACTIONS.map(({ token }) => v.literal(token)),
+  ...CHAT_REACTIONS.map(({ glyph }) => v.literal(glyph)),
 );
 
 export type ClubChannelReactionInput = Infer<
@@ -425,3 +382,11 @@ export const flexAttendanceStatusValidator = v.union(
 );
 
 export type FlexAttendanceStatus = Infer<typeof flexAttendanceStatusValidator>;
+
+export const feedbackStatusValidator = v.union(
+  ...FEEDBACK_STATUSES.map((status) => v.literal(status)),
+);
+
+export const githubSyncStateValidator = v.union(
+  ...GITHUB_SYNC_STATES.map((state) => v.literal(state)),
+);

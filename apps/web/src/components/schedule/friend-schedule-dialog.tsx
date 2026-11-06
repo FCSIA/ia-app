@@ -1,5 +1,6 @@
 "use client";
 
+import { lunchPeriodNumber } from '~/apps/shared/school-time';
 import { greetingName } from '~/apps/shared/user-name';
 
 import { useState } from "react";
@@ -53,12 +54,9 @@ export function FriendScheduleDialog({
   );
 
   const currentStatus = getCurrentScheduleStatus(friend.schedule, blocks);
-  const lunchNumber =
-    friend.schedule?.lunchPeriod === "PERIOD_4"
-      ? 4
-      : friend.schedule?.lunchPeriod === "PERIOD_5"
-        ? 5
-        : null;
+  const lunchNumber = friend.schedule?.lunchPeriod
+    ? lunchPeriodNumber(friend.schedule.lunchPeriod)
+    : null;
   const dayBlocks = selectedWeekday
     ? getBlocksForDay(blocks, selectedWeekday)
     : [];

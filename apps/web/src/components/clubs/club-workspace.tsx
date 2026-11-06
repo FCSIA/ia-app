@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "~/apps/shared/roles";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -68,7 +69,7 @@ import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
-import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { DisclosureTitle } from "@/components/ui/pressable";
 import {

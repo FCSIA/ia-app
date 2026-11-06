@@ -1,3 +1,4 @@
+import { CLUB_SPONSOR_ELIGIBLE_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { displayName, nameInitials } from '~/apps/shared/user-name';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -29,8 +30,6 @@ export type ClubUnit = ClubHierarchy['units'][number];
 export type ClubUnitMember = FunctionReturnType<
   typeof api.clubs.hierarchy.listMembers
 >[number];
-
-export type { AppRole } from '~/apps/convex/lib/roles';
 
 export interface AnnouncementSummary {
   _id: string;
@@ -65,7 +64,5 @@ export function formatClubRole(role?: string | null) {
 }
 
 export function isSponsorEligible(person: { roles?: string[] }) {
-  return !!person.roles?.some((role) =>
-    ['TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(role),
-  );
+  return hasAnyRole(person, CLUB_SPONSOR_ELIGIBLE_ROLES);
 }

@@ -6,12 +6,14 @@ import {
   type MutationCtx,
 } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
+import { lunchPeriodNumber } from "../../../shared/school-time";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUserUnchecked,
 } from "../../lib/currentUser";
 import {
   ONBOARDING_VERSION,
+  SCHEDULE_NOT_READY_ERROR,
   hasOnboarding,
   onboardingSteps,
   hasStudentOnboarding,
@@ -59,7 +61,7 @@ async function status(
             q.eq("scheduleId", schedule._id),
           )
           .take(41);
-        const lunch = schedule.lunchPeriod === "PERIOD_4" ? 4 : 5;
+        const lunch = lunchPeriodNumber(schedule.lunchPeriod);
         if (
           entries.length <= 40 &&
           entries.some((e) => e.className.trim() && e.periodNumber !== lunch) &&
@@ -167,9 +169,7 @@ export const decide = mutation({
       args.decision === "done" &&
       step.state !== "done"
     )
-      throw new ConvexError(
-        "Save classes and a lunch period in Schedule first, or skip for now.",
-      );
+      throw new ConvexError(SCHEDULE_NOT_READY_ERROR);
     await ctx.db.patch(saved._id, {
       decisions: { ...saved.decisions, [args.step]: args.decision },
     });

@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -511,7 +512,7 @@ export const getWorkspaceNavigation = query({
       ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
       ...sponsorRows.map((sponsorship) => [sponsorship.clubId, "SPONSOR" as const] as const),
     ]);
-    const myClubs = user.roles.includes("SUPER_ADMIN")
+    const myClubs = isSuperAdmin(user)
       ? (
           await ctx.db
             .query("clubs")

@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   MAX_CHANNEL_MESSAGE_BODY_CHARACTERS,
   MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS,
+} from "../../../shared/chat/protocol";
+import {
   assertChannelMessageBodyBounds,
   normalizeChannelPoll,
 } from "./channelValidation";

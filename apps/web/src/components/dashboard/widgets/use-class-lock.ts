@@ -1,12 +1,12 @@
 "use client";
 
+import { isStudent } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useQuery } from "@/lib/convex-react";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { parseTimeToMinutes } from "@/components/schedule/schedule-utils";
-import { schoolDateKey } from "@/lib/school-date";
+import { clockMinutes, schoolDateKey } from "~/apps/shared/school-time";
 
 export type ClassLock = { label: string; endTime: string; joke: string };
 
@@ -70,13 +70,13 @@ export function useClassLock(): ClassLock | null {
   const knowsFreePeriods = day.blocks.some(block => hasClass(block.entry));
   const block = day.blocks.find(block =>
     block.kind === "PERIOD" &&
-    minutes >= parseTimeToMinutes(block.startTime) &&
-    minutes < parseTimeToMinutes(block.endTime) &&
+    minutes >= clockMinutes(block.startTime) &&
+    minutes < clockMinutes(block.endTime) &&
     (!knowsFreePeriods || hasClass(block.entry)),
   );
   if (!block) return null;
 
-  const staff = !hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
+  const staff = !isStudent(user);
   return {
     label: block.entry?.className.trim() || block.displayLabel,
     endTime: block.endTime,

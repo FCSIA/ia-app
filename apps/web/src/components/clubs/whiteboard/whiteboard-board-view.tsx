@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { MAX_WHITEBOARD_TITLE_CHARACTERS } from '~/apps/shared/chat/whiteboard-limits';
 import {
   Archive,
   ArchiveRestore,
@@ -28,6 +29,7 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { WhiteboardCanvasHandle, WhiteboardSyncState } from './whiteboard-canvas';
 import { WhiteboardHistorySheet } from './whiteboard-history-sheet';
 import { useWhiteboardActions, useWhiteboardRoute } from './use-whiteboard-actions';
+import { isDarkTheme } from '~/packages/design-tokens/src/color';
 
 // The editor is large and browser-only; load it only when a board is opened.
 const WhiteboardCanvas = dynamic(() => import('./whiteboard-canvas'), {
@@ -39,9 +41,6 @@ const WhiteboardCanvas = dynamic(() => import('./whiteboard-canvas'), {
     </div>
   ),
 });
-
-/** Themes that render on a dark surface (mirrors the app's dark variant). */
-const DARK_THEMES = new Set(['dark', 'high-contrast', 'bubblegum-dark', 'custom']);
 
 function SyncStatus({ state }: { state: WhiteboardSyncState }) {
   const content =
@@ -82,7 +81,7 @@ function TitleEditor({
       <Input
         autoFocus
         value={draft}
-        maxLength={80}
+        maxLength={MAX_WHITEBOARD_TITLE_CHARACTERS}
         aria-label="Whiteboard name"
         className="h-7 w-56 max-w-[40vw] text-sm"
         onChange={(event) => setDraft(event.target.value)}
@@ -239,7 +238,7 @@ export function WhiteboardBoardView({
           key={board._id}
           boardId={board._id}
           readOnly={archived}
-          theme={DARK_THEMES.has(resolvedTheme ?? '') ? 'dark' : 'light'}
+          theme={isDarkTheme(resolvedTheme) ? 'dark' : 'light'}
           onSyncStateChange={setSyncState}
           handleRef={canvas}
         />

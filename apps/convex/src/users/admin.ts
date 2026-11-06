@@ -16,7 +16,14 @@ import {
   requireAnyRole,
   requireAnyRoleSafe,
 } from "../../lib/currentUser";
-import { USER_MANAGEMENT_ROLES } from "../../lib/roles";
+import {
+  ADMIN_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLES,
+  isPrivilegedAccount,
+  isStudent,
+  isSuperAdmin,
+} from "../../../shared/roles";
 import {
   appRoleValidator,
   pathwayValidator,
@@ -43,7 +50,6 @@ import {
   searchText,
   setBetterAuthPassword,
   syncBetterAuthRole,
-  isStudentUser,
   administratorImportResultValidator,
   studentExportRowValidator,
   studentImportResultValidator,
@@ -87,7 +93,7 @@ export const list = query({
   returns: listUsersResultValidator,
   handler: async (ctx, args) => {
     const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"])) {
+    if (!actor || !requireAnyRoleSafe(actor, STAFF_ROLES)) {
       return {
         page: [],
         isDone: true,
@@ -169,7 +175,7 @@ export const count = query({
   returns: v.number(),
   handler: async (ctx, args) => {
     const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"])) {
+    if (!actor || !requireAnyRoleSafe(actor, STAFF_ROLES)) {
       return 0;
     }
 
@@ -234,15 +240,12 @@ export const createUser = mutation({
   returns: createUserResultValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     const requestedRoles = args.roles?.length
       ? args.roles
       : ["STUDENT"];
-    const createsPrivilegedUser = requestedRoles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    if (createsPrivilegedUser && !actor.roles.includes("SUPER_ADMIN")) {
+    if (isPrivilegedAccount(requestedRoles) && !isSuperAdmin(actor)) {
       throw new ConvexError("Only super admins can create admin accounts.");
     }
 
@@ -336,7 +339,7 @@ export const requireStudentImportActor = internalQuery({
   returns: v.id("users"),
   handler: async (ctx): Promise<Id<"users">> => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
     return actor._id;
   },
 });
@@ -705,7 +708,7 @@ export const requireAdministratorImportActor = internalQuery({
   returns: v.id("users"),
   handler: async (ctx): Promise<Id<"users">> => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
     return actor._id;
   },
 });
@@ -885,7 +888,7 @@ export const exportStudents = query({
   returns: v.array(studentExportRowValidator),
   handler: async (ctx) => {
     const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, ["SUPER_ADMIN"])) return [];
+    if (!actor || !requireAnyRoleSafe(actor, SUPER_ADMIN_ROLES)) return [];
 
     const students = await ctx.db
       .query("users")
@@ -914,11 +917,11 @@ export const setFeedbackReviewer = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) throw new ConvexError("User not found.");
-    if (!isStudentUser(target)) {
+    if (!isStudent(target)) {
       throw new ConvexError("Feedback review access is reserved for student developers.");
     }
 
@@ -951,7 +954,7 @@ export const setDeveloper = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) throw new ConvexError("User not found.");
@@ -981,7 +984,7 @@ export const activate = mutation({
   returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) {
@@ -1026,7 +1029,7 @@ export const deactivate = mutation({
   returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     if (actor._id === args.userId) {
       throw new ConvexError("You cannot deactivate your own account.");
@@ -1083,7 +1086,7 @@ export const deleteUsers = mutation({
   }),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
 
     const userIds = Array.from(new Set(args.userIds));
     if (userIds.length === 0) {
@@ -1152,7 +1155,7 @@ export const assignRoles = mutation({
   returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) {
@@ -1165,28 +1168,19 @@ export const assignRoles = mutation({
       throw new ConvexError("User must have at least one role.");
     }
 
-    if (
-      nextRoles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role)) &&
-      !actor.roles.includes("SUPER_ADMIN")
-    ) {
+    if (isPrivilegedAccount(nextRoles) && !isSuperAdmin(actor)) {
       throw new ConvexError("Only super admins can assign admin roles.");
     }
     if (
-      nextRoles.includes("SUPER_ADMIN") &&
-      !target.roles.includes("SUPER_ADMIN")
+      isSuperAdmin(nextRoles) &&
+      !isSuperAdmin(target)
     ) {
       throw new ConvexError("Super-admin promotion requires an out-of-band process.");
     }
 
-    const nextPrivileged = nextRoles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    const currentPrivileged = target.roles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
     if (
-      (nextPrivileged || currentPrivileged) &&
-      !actor.roles.includes("SUPER_ADMIN")
+      (isPrivilegedAccount(nextRoles) || isPrivilegedAccount(target)) &&
+      !isSuperAdmin(actor)
     ) {
       throw new ConvexError("Only super admins can change admin roles.");
     }
@@ -1249,7 +1243,7 @@ export const resetPassword = mutation({
   }),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    requireAnyRole(actor, STAFF_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) {

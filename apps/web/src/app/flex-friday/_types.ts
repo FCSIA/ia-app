@@ -38,10 +38,3 @@ export interface FridayForm {
   isSchoolDay: boolean;
 }
 
-export const PATHWAY_OPTIONS = [
-  { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
-  { value: 'HEALTH_SCIENCE', label: 'Health Science' },
-  { value: 'ENGINEERING', label: 'Engineering' },
-];
-
-export const GRADE_OPTIONS = [9, 10, 11, 12];

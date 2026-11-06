@@ -1,3 +1,4 @@
+import { canManageExistingFlexSessions } from "./permissions";
 import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
@@ -30,14 +31,6 @@ export const upcomingPersonal = query({
   handler: async (ctx, args) =>
     getUpcomingPersonalWorkshops(ctx, await getCurrentAppUser(ctx), args),
 });
-
-function canManageWorkshops(user: { roles: string[] }) {
-  return (
-    user.roles.includes("TEACHER") ||
-    user.roles.includes("ADMIN") ||
-    user.roles.includes("SUPER_ADMIN")
-  );
-}
 
 function validateWorkshopCapacity(capacity: number | null | undefined) {
   if (capacity == null) return undefined;
@@ -140,7 +133,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canManageWorkshops(user)) throw new Error("Unauthorized");
+    if (!canManageExistingFlexSessions(user.roles)) throw new Error("Unauthorized");
 
     if (args.sessionIds.length === 0) {
       throw new Error("Workshop must be attached to at least one session");
@@ -197,7 +190,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canManageWorkshops(user)) throw new Error("Unauthorized");
+    if (!canManageExistingFlexSessions(user.roles)) throw new Error("Unauthorized");
 
     const workshop = await ctx.db.get(args.workshopId);
     if (!workshop) throw new Error("Workshop not found");
@@ -271,7 +264,7 @@ export const remove = mutation({
   args: { workshopId: v.id("flexWorkshops") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canManageWorkshops(user)) throw new Error("Unauthorized");
+    if (!canManageExistingFlexSessions(user.roles)) throw new Error("Unauthorized");
 
     const workshop = await ctx.db.get(args.workshopId);
     if (!workshop) throw new Error("Workshop not found");

@@ -1,8 +1,14 @@
 'use client';
 
+import {
+  hasAnyRole,
+  isAdmin,
+  isStaff,
+  SUPER_ADMIN_ROLES,
+} from '~/apps/shared/roles';
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { AdminPageLayout } from './admin-page-layout';
 import { AdminMobileNavigation, AdminShell } from './admin-shell';
 import { AdminScrollTabPanel } from './admin-tab-panel';
@@ -21,10 +27,10 @@ export function AdminPageContent() {
   const user = useCurrentUser();
   const router = useRouter();
   const reportId = useParams<{ reportId?: string }>()?.reportId;
-  const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+  const isSuperAdmin = hasAnyRole(user, SUPER_ADMIN_ROLES);
   const canReviewFeedback = isSuperAdmin || user?.canReviewFeedback === true;
-  const canManageWrapped = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const hasAdministrativeAccess = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const canManageWrapped = isAdmin(user);
+  const hasAdministrativeAccess = isStaff(user);
 
   const { activeTab } = useAdminTab(isSuperAdmin, canManageWrapped);
   const pendingReports = useAdminModerationPending();

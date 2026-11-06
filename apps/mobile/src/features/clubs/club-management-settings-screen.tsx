@@ -1,3 +1,4 @@
+import { isAdmin } from "~/apps/shared/roles";
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
@@ -14,7 +15,7 @@ import {
   parseMemberLimit,
   type ClubJoinPolicy,
 } from "@/features/clubs/club-management-controls";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -59,7 +60,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
   const [deactivating, setDeactivating] = useState(false);
   const { showToast } = useToast();
   const { color } = useTheme();
-  const canDeactivate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const canDeactivate = isAdmin(user);
   const parsedMemberLimit = memberLimit.trim() ? parseMemberLimit(memberLimit) : undefined;
   const limitIsValid = parsedMemberLimit !== null && !(club.memberLimit !== undefined && parsedMemberLimit === undefined);
   const nextName = name.trim();

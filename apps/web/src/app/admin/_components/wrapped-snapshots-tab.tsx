@@ -21,7 +21,8 @@ import {
   SelectTrigger,
 } from '@/components/ui/select';
 import type { WrappedSnapshotStatus } from '../_hooks/use-admin-wrapped';
-import { formatDateTime, schoolYearLabel } from '../_lib/admin-utils';
+import { schoolYearLabel } from '~/apps/shared/school-time';
+import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
 export function WrappedSnapshotsTab({

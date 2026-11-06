@@ -1,5 +1,6 @@
 'use client';
 
+import { THEME_NAMES } from '~/packages/design-tokens/src/color';
 import { Suspense, useEffect, useState } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
 import { useConvexAuth, useQuery } from '@/lib/convex-react';
@@ -148,7 +149,7 @@ export function Providers({ children, defaultSidebarOpen = true }: { children: R
           attribute="class"
           defaultTheme="dark"
           enableSystem
-          themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'bubblegum-dark', 'custom']}
+          themes={[...THEME_NAMES, 'system']}
         >
           <ThemeFavicon />
           <ThemeChrome />

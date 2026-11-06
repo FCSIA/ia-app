@@ -1,3 +1,4 @@
+import { GLOBAL_SCOPE_KEY, NOTIFICATION_CATEGORY_DETAILS } from "~/apps/shared/notifications";
 import { useState } from "react";
 import { useAction, useConvex, useMutation, useQuery } from "@/lib/convex-react";
 import { Smartphone } from "lucide-react-native";
@@ -74,8 +75,8 @@ export default function NotificationSettingsScreen() {
 
       <Section title="Topics">
         {categories.map(([category, label]) => {
-          const pref = preferences?.find((item: any) => item.category === category && item.scopeKey === "global");
-          const enabled = pref ? pref.enabled : category !== "CLUB_CHANNEL_MESSAGE";
+          const pref = preferences?.find((item: any) => item.category === category && item.scopeKey === GLOBAL_SCOPE_KEY);
+          const enabled = pref ? pref.enabled : NOTIFICATION_CATEGORY_DETAILS[category].defaultEnabled;
           return (
             <ListRow
               key={category}
@@ -88,7 +89,7 @@ export default function NotificationSettingsScreen() {
                     upsertPreference({
                       category: category as any,
                       enabled: next,
-                      scopeKey: "global",
+                      scopeKey: GLOBAL_SCOPE_KEY,
                       level: next ? "PUSH" : "OFF",
                     }).catch(() => showToast({ title: "Preference didn't update", body: "Try again.", tone: "warning" }))
                   }

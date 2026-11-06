@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { schoolDayBounds, weekStart } from "../analytics/_days";
-import { nextActivity, schoolHour } from "./_activity";
+import { schoolDayBounds } from "../../../shared/school-time";
+import { weekStart } from "../analytics/_days";
+import { nextActivity } from "./_activity";
 
 const hour = 60 * 60 * 1000;
 // Thursday, Oct 1 2026, 9:15 in New York.
@@ -43,9 +44,7 @@ describe("activity marks", () => {
     expect(monday.mark).toMatchObject({ day: "2026-10-05", newDay: true, newWeek: true });
   });
 
-  test("hours and weeks follow the school's clock", () => {
-    expect(schoolHour(schoolDayBounds("2026-11-01").start)).toBe(0);
-    expect(schoolHour(schoolDayBounds("2026-11-01").end - 1)).toBe(23);
+  test("weeks start on the school's Monday", () => {
     expect(weekStart("2026-10-04")).toBe("2026-09-28");
     expect(weekStart("2026-10-05")).toBe("2026-10-05");
   });

@@ -1,11 +1,15 @@
 import { ConvexError } from "convex/values";
+import {
+  lunchPeriodNumber,
+  resolveLunchPeriod,
+  weekdayForDateKey,
+} from "../../../shared/school-time";
 import type {
   ScheduleLunchPeriod,
   ScheduleWeekday,
 } from "../validators";
 
 export const CANONICAL_PERIODS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
-export const DEFAULT_LUNCH_PERIOD: ScheduleLunchPeriod = "PERIOD_5";
 export const MAX_DAY_BLOCKS = 24;
 
 export type DayBlockInput = {
@@ -54,17 +58,6 @@ export type ResolveSchoolDayInput<TEntry extends CanonicalScheduleEntry> = {
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-export function dateKeyForSchoolTime(now: Date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const byType = new Map(parts.map((part) => [part.type, part.value]));
-  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
-}
-
 export function normalizeDateKey(value: string) {
   const match = DATE_KEY_PATTERN.exec(value);
   if (!match) {
@@ -83,21 +76,6 @@ export function normalizeDateKey(value: string) {
     throw new ConvexError("Date is not valid.");
   }
   return value;
-}
-
-export function weekdayForDateKey(dateKey: string): ScheduleWeekday | null {
-  const normalized = normalizeDateKey(dateKey);
-  const date = new Date(`${normalized}T12:00:00.000Z`);
-  const weekdays: Array<ScheduleWeekday | null> = [
-    null,
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    null,
-  ];
-  return weekdays[date.getUTCDay()] ?? null;
 }
 
 export function academicDateDisposition(
@@ -174,28 +152,6 @@ export function normalizeDayBlocks(
       durationMinutes: endMinutes - startMinutes,
     };
   });
-}
-
-export function lunchPeriodNumber(lunchPeriod: ScheduleLunchPeriod) {
-  return lunchPeriod === "PERIOD_4" ? 4 : 5;
-}
-
-export function resolveLunchPeriod(
-  lunchPeriod: ScheduleLunchPeriod | undefined,
-  entries: Array<Pick<CanonicalScheduleEntry, "periodNumber">> = [],
-): ScheduleLunchPeriod | null {
-  return lunchPeriod ?? inferLegacyLunchPeriod(entries);
-}
-
-export function inferLegacyLunchPeriod(
-  entries: Array<Pick<CanonicalScheduleEntry, "periodNumber">>,
-): ScheduleLunchPeriod | null {
-  const hasPeriod4 = entries.some((entry) => entry.periodNumber === 4);
-  const hasPeriod5 = entries.some((entry) => entry.periodNumber === 5);
-  if (!hasPeriod4 && hasPeriod5) return "PERIOD_4";
-  if (hasPeriod4 && !hasPeriod5) return "PERIOD_5";
-  if (!hasPeriod4 && !hasPeriod5) return DEFAULT_LUNCH_PERIOD;
-  return null;
 }
 
 export function assertNoLunchCourseConflict(

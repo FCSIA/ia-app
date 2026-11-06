@@ -1,3 +1,4 @@
+import { isAdmin, isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -6,17 +7,18 @@ import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   WRAPPED_SCHEMA_VERSION,
-  WRAPPED_STUDENT_ROLES,
   WrappedSummary,
-  etHour,
   extractTopWord,
   longestMessageStreak,
-  schoolYearLabel,
-  schoolYearRange,
-  toEtDayKey,
-  wrappedAvailability,
   PATHWAY_META,
 } from "./_lib";
+import {
+  schoolDateKey,
+  schoolHour,
+  schoolYearLabel,
+  schoolYearRange,
+} from "../../../shared/school-time";
+import { wrappedAvailability } from "../../../shared/wrapped-window";
 
 const availabilityValidator = v.object({
   open: v.boolean(),
@@ -98,16 +100,6 @@ const wrappedSummaryValidator = v.object({
   longestMessageChars: v.number(),
 });
 
-function isStudentRole(roles: string[]) {
-  return roles.some((r) =>
-    (WRAPPED_STUDENT_ROLES as readonly string[]).includes(r),
-  );
-}
-
-function isAdmin(roles: string[]) {
-  return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
-}
-
 const SNAPSHOT_BATCH_SIZE = 10;
 
 function currentSchoolYearStart(now: Date): number {
@@ -141,8 +133,8 @@ async function buildSummaryForUser(
   const channelCounts = new Map<Id<"clubChannels">, number>();
 
   for (const m of userMessages) {
-    hourCounts[etHour(new Date(m.createdAt))] += 1;
-    const dk = toEtDayKey(new Date(m.createdAt));
+    hourCounts[schoolHour(m.createdAt)] += 1;
+    const dk = schoolDateKey(m.createdAt);
     dayCounts.set(dk, (dayCounts.get(dk) ?? 0) + 1);
     if (m.body.length > longestMessageChars) longestMessageChars = m.body.length;
     channelCounts.set(m.channelId, (channelCounts.get(m.channelId) ?? 0) + 1);
@@ -471,7 +463,7 @@ export const snapshotStatus = query({
       )
       .take(5000);
     const eligibleUsers = students.filter(
-      (u) => u.isActive && isStudentRole(u.roles),
+      (u) => u.isActive && isStudent(u),
     ).length;
 
     const snapshots = await ctx.db
@@ -580,7 +572,7 @@ export const runSnapshotBatch = internalMutation({
     }
 
     for (const student of students) {
-      if (!student.isActive || !isStudentRole(student.roles)) continue;
+      if (!student.isActive || !isStudent(student)) continue;
       if (!args.refresh) {
         const existing = await ctx.db
           .query("wrappedSnapshots")

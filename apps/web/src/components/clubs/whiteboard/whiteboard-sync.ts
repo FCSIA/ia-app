@@ -3,6 +3,11 @@
  * Excalidraw and React so the rules can be unit tested directly.
  */
 
+import {
+  CLIENT_WHITEBOARD_ELEMENTS_PER_SAVE,
+  CLIENT_WHITEBOARD_SAVE_BYTES,
+} from '~/apps/shared/chat/whiteboard-limits';
+
 type SyncableElement = {
   id: string;
   type: string;
@@ -57,8 +62,6 @@ export function pendingWhiteboardElements<T extends SyncableElement>(
   });
 }
 
-export const MAX_ELEMENTS_PER_SAVE = 100;
-export const MAX_SAVE_BYTES = 900_000;
 
 /** Splits serialized elements into saves within the server's bounds. */
 export function chunkWhiteboardElements(serialized: readonly string[]) {
@@ -69,7 +72,7 @@ export function chunkWhiteboardElements(serialized: readonly string[]) {
     const size = new TextEncoder().encode(element).length;
     if (
       current.length > 0 &&
-      (current.length >= MAX_ELEMENTS_PER_SAVE || bytes + size > MAX_SAVE_BYTES)
+      (current.length >= CLIENT_WHITEBOARD_ELEMENTS_PER_SAVE || bytes + size > CLIENT_WHITEBOARD_SAVE_BYTES)
     ) {
       chunks.push(current);
       current = [];

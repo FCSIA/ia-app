@@ -1,4 +1,6 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
+import { lunchPeriodNumber } from "../../../shared/school-time";
 import { internalMutation } from "../_generated/server";
 import {
   BASE_BLOCKS,
@@ -10,7 +12,6 @@ import {
   stableLunchPeriod,
 } from "../../seed-data/schedule";
 import {
-  isStudentUser,
   scheduleSeedResultValidator,
   deleteSeedBatch,
   getFriendshipBetween,
@@ -60,7 +61,7 @@ export const seedFromStaticData = internalMutation({
       .filter(
         (user) =>
           user.isActive &&
-          isStudentUser(user) &&
+          isStudent(user) &&
           user.gradeLevel &&
           user.major &&
           user.minor,
@@ -107,7 +108,7 @@ export const seedFromStaticData = internalMutation({
       const scheduleCourses = buildScheduleCourses(student, courseMap);
       if (scheduleCourses.length === 0) continue;
       const lunchPeriod = stableLunchPeriod(student.uniqueId);
-      const lunchNumber = lunchPeriod === "PERIOD_4" ? 4 : 5;
+      const lunchNumber = lunchPeriodNumber(lunchPeriod);
       const instructionalPeriods = [1, 2, 3, 4, 5, 6, 7, 8].filter(
         (periodNumber) => periodNumber !== lunchNumber,
       );

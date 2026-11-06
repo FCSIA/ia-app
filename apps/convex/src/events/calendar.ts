@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
 import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import {
@@ -6,12 +7,11 @@ import {
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
 import { createDocLoader } from "../../lib/docLoader";
-import { schoolDaySpan, schoolTimestamp } from "../../lib/schoolTime";
+import { schoolDateParts, schoolDaySpan, schoolTimestamp } from "../../../shared/school-time";
 import { calendarSourceValidator } from "../validators";
 import { schema } from "../schema";
 import {
   getFriendshipBetween,
-  isStudentUser,
   requireStudentUser,
   serializeUser,
   scheduleFriendUserValidator,
@@ -226,11 +226,11 @@ export const listEligibleFriends = query({
   returns: v.array(scheduleFriendUserValidator),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
-    if (!isStudentUser(user)) return [];
+    if (!isStudent(user)) return [];
     const friendIds = await acceptedFriendIds(ctx, user._id);
     const candidates = await Promise.all(friendIds.map((friendId) => ctx.db.get(friendId)));
     const friends = candidates.flatMap((friend) =>
-      friend?.isActive && isStudentUser(friend) ? [serializeUser(friend)] : [],
+      friend?.isActive && isStudent(friend) ? [serializeUser(friend)] : [],
     );
     return friends.sort(
       (left, right) =>
@@ -314,7 +314,7 @@ export const inviteFriends = mutation({
           senderId: user._id,
           recipientId: friendId,
           recipientIsActive: friend.isActive,
-          recipientIsStudent: isStudentUser(friend),
+          recipientIsStudent: isStudent(friend),
           friendshipStatus:
             friendship?.status === "ACCEPTED"
               ? "ACCEPTED"
@@ -480,13 +480,6 @@ export const remove = mutation({
 });
 
 /** Move an owned reminder without overwriting fields changed in another editor. */
-function schoolDateParts(timestamp: number) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric",
-  }).formatToParts(timestamp).map(({ type, value }) => [type, Number(value)]));
-  return { year: parts.year, month: parts.month, day: parts.day };
-}
-
 export const reschedule = mutation({
   args: {
     entryId: v.id("calendarEntries"),

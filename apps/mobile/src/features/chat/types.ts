@@ -1,6 +1,6 @@
+import type { ChannelVisibility } from "~/apps/shared/chat/protocol";
 import { displayName } from '~/apps/shared/user-name';
 import type { ClubChannelReaction } from "~/apps/convex/src/validators";
-import { isGifAttachment } from "../../../../shared/chat/gifs";
 
 export type ChatUser = {
   _id: string;
@@ -78,7 +78,7 @@ export type ChatThread = {
 export type ChatChannel = {
   name: string;
   description?: string | null;
-  visibility: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
+  visibility: ChannelVisibility;
   viewerCanPost: boolean;
 };
 
@@ -123,33 +123,4 @@ export function chatAuthorName(message: ChatMessage) {
   return (
     displayName(message.author) || "Member"
   );
-}
-
-export function isImageAttachment(attachment: ChatAttachment) {
-  if (isGifAttachment(attachment)) return true;
-  if (attachment.mimeType) {
-    return (
-      attachment.mimeType.toLowerCase().startsWith("image/") &&
-      attachment.mimeType.split(";", 1)[0].trim().toLowerCase() !== "image/svg+xml"
-    );
-  }
-  const source = `${attachment.fileName} ${attachment.fileUrl}`.toLowerCase();
-  return /\.(avif|gif|heic|heif|jpe?g|png|webp)(?:\?|#|\s|$)/.test(source);
-}
-
-export function isPdfAttachment(attachment: ChatAttachment) {
-  if (
-    attachment.mimeType?.split(";", 1)[0].trim().toLowerCase() ===
-    "application/pdf"
-  ) {
-    return true;
-  }
-  return /\.pdf(?:\?|#|$)/i.test(attachment.fileName);
-}
-
-export function formatAttachmentSize(size?: number) {
-  if (!size || size < 1) return null;
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(size < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }

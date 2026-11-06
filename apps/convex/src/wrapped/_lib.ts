@@ -1,12 +1,8 @@
+import { PATHWAY_LABELS } from "../../../shared/labels";
+import { schoolDateKey } from "../../../shared/school-time";
 import type { Pathway } from "../validators";
 
 export const WRAPPED_SCHEMA_VERSION = 1;
-
-export const WRAPPED_STUDENT_ROLES = [
-  "STUDENT",
-  "STUDENT_LEADER",
-  "STUDENT_ADMIN",
-] as const;
 
 const STOPWORDS = new Set<string>([
   "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
@@ -23,43 +19,6 @@ const STOPWORDS = new Set<string>([
   "where", "which", "while", "every", "these", "those", "other", "stuff",
   "first", "next", "last", "long", "think", "https", "http", "message",
 ]);
-
-export function schoolYearRange(startYear: number): { start: number; end: number } {
-  const start = new Date(startYear, 7, 1).getTime();
-  const end = new Date(startYear + 1, 6, 31, 23, 59, 59, 999).getTime();
-  return { start, end };
-}
-
-export function schoolYearLabel(startYear: number): string {
-  return `${startYear}-${String((startYear + 1) % 100).padStart(2, "0")}`;
-}
-
-export function wrappedAvailability(now: Date = new Date()): {
-  open: boolean;
-  schoolYear: number;
-  opensAt: Date;
-  closesAt: Date;
-} {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  if (month === 4) {
-    return {
-      open: true,
-      schoolYear: year - 1,
-      opensAt: new Date(year, 4, 1),
-      closesAt: new Date(year, 4, 31, 23, 59, 59, 999),
-    };
-  }
-
-  const nextOpensYear = month < 4 ? year : year + 1;
-  return {
-    open: false,
-    schoolYear: nextOpensYear - 1,
-    opensAt: new Date(nextOpensYear, 4, 1),
-    closesAt: new Date(nextOpensYear, 4, 31, 23, 59, 59, 999),
-  };
-}
 
 export function extractTopWord(bodies: string[]): { word: string; count: number } | null {
   const counts = new Map<string, number>();
@@ -82,33 +41,10 @@ export function extractTopWord(bodies: string[]): { word: string; count: number 
   return top;
 }
 
-export function toEtDayKey(d: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d);
-  const y = parts.find((p) => p.type === "year")?.value ?? "0000";
-  const m = parts.find((p) => p.type === "month")?.value ?? "01";
-  const day = parts.find((p) => p.type === "day")?.value ?? "01";
-  return `${y}-${m}-${day}`;
-}
-
-export function etHour(d: Date): number {
-  const hourStr = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "2-digit",
-    hour12: false,
-  }).format(d);
-  const n = parseInt(hourStr, 10) % 24;
-  return Number.isFinite(n) ? n : 0;
-}
-
 export function longestMessageStreak(dates: Date[]): number {
   if (dates.length === 0) return 0;
   const dayKeys = new Set<string>();
-  for (const d of dates) dayKeys.add(toEtDayKey(d));
+  for (const d of dates) dayKeys.add(schoolDateKey(d));
   const sorted = [...dayKeys].sort();
   let longest = 1;
   let current = 1;
@@ -130,9 +66,9 @@ export const PATHWAY_META: Record<
   Pathway,
   { label: string; lanyard: string }
 > = {
-  HEALTH_SCIENCE: { label: "Health Science", lanyard: "Green" },
-  INFORMATION_TECHNOLOGY: { label: "Information Technology", lanyard: "Blue" },
-  ENGINEERING: { label: "Engineering", lanyard: "Yellow" },
+  HEALTH_SCIENCE: { label: PATHWAY_LABELS.HEALTH_SCIENCE, lanyard: "Green" },
+  INFORMATION_TECHNOLOGY: { label: PATHWAY_LABELS.INFORMATION_TECHNOLOGY, lanyard: "Blue" },
+  ENGINEERING: { label: PATHWAY_LABELS.ENGINEERING, lanyard: "Yellow" },
 };
 
 export type WrappedSummary = {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lock } from "lucide-react";
+import { lunchPeriodNumber } from "~/apps/shared/school-time";
 
 import { CoursePicker } from "@/components/courses/course-picker";
 import type { CourseSummary } from "@/components/courses/types";
@@ -174,8 +175,7 @@ export function ScheduleDayEditor({
                 activeStatus?.weekday === weekday &&
                 activeStatus?.currentBlock?.periodNumber === periodNumber;
               const isLunch =
-                (lunchPeriod === "PERIOD_4" && periodNumber === 4) ||
-                (lunchPeriod === "PERIOD_5" && periodNumber === 5);
+                lunchPeriod !== null && lunchPeriodNumber(lunchPeriod) === periodNumber;
 
               return (
                 <TableRow

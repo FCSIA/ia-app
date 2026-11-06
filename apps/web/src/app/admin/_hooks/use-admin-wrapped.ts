@@ -5,7 +5,8 @@ import { useMutation, useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
-import { refreshWrappedResultTitle, schoolYearLabel } from '../_lib/admin-utils';
+import { schoolYearLabel } from '~/apps/shared/school-time';
+import { refreshWrappedResultTitle } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 
 export type WrappedSnapshotStatus = FunctionReturnType<

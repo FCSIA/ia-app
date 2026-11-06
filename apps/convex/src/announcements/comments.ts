@@ -1,3 +1,4 @@
+import { isAdmin } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -9,10 +10,8 @@ import {
 } from "./_lib";
 import { serializeComments } from "./serialize";
 import { contentRateLimiter } from "../rateLimits";
-import {
-  MAX_ANNOUNCEMENT_COMMENT_CHARACTERS,
-  normalizeBoundedText,
-} from "./contentValidation";
+import { MAX_ANNOUNCEMENT_COMMENT_CHARACTERS } from "../../../shared/limits";
+import { normalizeBoundedText } from "./contentValidation";
 
 export const list = query({
   args: { announcementId: v.id("announcements") },
@@ -80,9 +79,8 @@ export const remove = mutation({
     const comment = await ctx.db.get(args.commentId);
     if (!comment) throw new ConvexError("Comment not found");
 
-    const isAdmin =
-      user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
-    if (comment.authorId !== user._id && !isAdmin) {
+    const viewerIsAdmin = isAdmin(user);
+    if (comment.authorId !== user._id && !viewerIsAdmin) {
       throw new ConvexError("Unauthorized");
     }
 

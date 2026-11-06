@@ -1,9 +1,18 @@
+import {
+  FLEX_ATTENDANCE_ROLES,
+  FLEX_FRIDAY_CREATOR_ROLES,
+  FLEX_MANAGER_ROLES,
+  FLEX_SESSION_CREATOR_ROLES,
+  hasAnyRole,
+  isAdmin,
+  STUDENT_ROLES,
+} from '~/apps/shared/roles';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery } from '@/lib/search';
 import { FlexFridayDoc, FlexSessionDoc, FlexWorkshopDoc } from '../_types';
 
@@ -27,7 +36,7 @@ export function useFlexFriday() {
   const [workshopSearch, setWorkshopSearch] = useState('');
   const deferredWorkshopSearch = useDeferredValue(workshopSearch);
 
-  const canManage = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const canManage = isAdmin(user);
   // Activity retains the existing audit-query role contract. A query string
   // selects a destination, never permission to read staff activity.
   const requestedView = searchParams?.get('view');
@@ -35,26 +44,12 @@ export function useFlexFriday() {
     canManage && (requestedView === 'activity' || requestedView === 'audit')
       ? 'audit'
       : 'schedule';
-  const canCreateFriday =
-    !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
-  const canCreateSession =
-    !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
-  const canManageSessions =
-    !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canManageWorkshops =
-    !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canManageAttendance =
-    !!user &&
-    hasRole(
-      user,
-      'TEACHER',
-      'ADMIN',
-      'SUPER_ADMIN',
-      'SUPPORT_STAFF',
-      'STUDENT_ADMIN',
-    );
-  const isStudent =
-    !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const canCreateFriday = hasAnyRole(user, FLEX_FRIDAY_CREATOR_ROLES);
+  const canCreateSession = hasAnyRole(user, FLEX_SESSION_CREATOR_ROLES);
+  const canManageSessions = hasAnyRole(user, FLEX_MANAGER_ROLES);
+  const canManageWorkshops = hasAnyRole(user, FLEX_MANAGER_ROLES);
+  const canManageAttendance = hasAnyRole(user, FLEX_ATTENDANCE_ROLES);
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
 
   const fridaysQuery = useQuery(api.flexFriday.fridays.list, {});
   const fridays = fridaysQuery ?? [];

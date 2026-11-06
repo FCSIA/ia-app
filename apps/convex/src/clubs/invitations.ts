@@ -1,3 +1,4 @@
+import { clubHref, clubPeopleRequestsHref } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { displayName } from '../../../shared/user-name';
 import { v } from "convex/values";
@@ -284,7 +285,7 @@ export const requestToJoin = mutation({
           category: "CLUB_JOIN_REQUEST",
           title: "New club join request",
           body: `${displayName(user)} requested to join ${club.name}.`,
-          href: `/clubs/${args.clubId}/people?tab=requests`,
+          href: clubPeopleRequestsHref(args.clubId),
           subject: { kind: "club", clubId: args.clubId },
         },
       );
@@ -340,7 +341,7 @@ export const respondToJoinRequest = mutation({
       category: "CLUB_JOIN_REQUEST",
       title: args.accept ? "Club request approved" : "Club request declined",
       body: `${club?.name ?? "Club"} ${args.accept ? "approved" : "declined"} your join request.`,
-      href: `/clubs/${args.clubId}`,
+      href: clubHref(args.clubId),
       subject: { kind: "club", clubId: args.clubId },
     });
 

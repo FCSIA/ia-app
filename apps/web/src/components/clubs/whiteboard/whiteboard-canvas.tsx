@@ -18,7 +18,7 @@ import { useMutation } from '@/lib/convex-react';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { WHITEBOARD_ELEMENT_TYPES } from '~/apps/convex/src/clubs/whiteboardElements';
+import { WHITEBOARD_ELEMENT_TYPES } from '~/apps/shared/chat/whiteboard-limits';
 import { chunkWhiteboardElements, pendingWhiteboardElements } from './whiteboard-sync';
 import { useWhiteboardCursors } from './use-whiteboard-cursors';
 import { useWhiteboardRemoteChanges } from './use-whiteboard-remote-changes';

@@ -1,3 +1,10 @@
+import { sentenceCaseEnum } from "~/apps/shared/labels";
+import {
+  SCHOOL_WEEKDAYS,
+  lunchPeriodNumber,
+  type SchoolLunchPeriod,
+  type SchoolWeekday,
+} from '~/apps/shared/school-time';
 import { displayName, greetingName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
@@ -25,14 +32,11 @@ import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
-const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
 const fallbackPeriods = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 const lunchPeriodOptions = [
   { value: "PERIOD_4", label: "Period 4" },
   { value: "PERIOD_5", label: "Period 5" },
 ] as const;
-type Weekday = (typeof weekdays)[number];
-type LunchPeriod = "PERIOD_4" | "PERIOD_5";
 
 export function MyWeekView() {
   const liveData = useQuery(api.schedule.dashboard.get, {});
@@ -46,9 +50,9 @@ export function MyWeekView() {
   const { color } = useTheme();
   const [editing, setEditing] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
-  const [lunchPeriod, setLunchPeriod] = useState<LunchPeriod | null>(null);
+  const [lunchPeriod, setLunchPeriod] = useState<SchoolLunchPeriod | null>(null);
   const [draftEntries, setDraftEntries] = useState<any[]>([]);
-  const [selectedDay, setSelectedDay] = useState<Weekday>(initialWeekday);
+  const [selectedDay, setSelectedDay] = useState<SchoolWeekday>(initialWeekday);
   const [selectedPeriod, setSelectedPeriod] = useState(1);
   const [courseSearch, setCourseSearch] = useState("");
   const [friendSearch, setFriendSearch] = useState("");
@@ -83,7 +87,7 @@ export function MyWeekView() {
     setEditing(true);
   }
 
-  function selectLunchPeriod(nextLunchPeriod: LunchPeriod) {
+  function selectLunchPeriod(nextLunchPeriod: SchoolLunchPeriod) {
     const periodNumber = lunchPeriodNumber(nextLunchPeriod);
     const conflict = draftEntries.find(
       (entry) => entry.periodNumber === periodNumber,
@@ -91,7 +95,7 @@ export function MyWeekView() {
     if (conflict) {
       showToast({
         title: `Period ${periodNumber} has a class`,
-        body: `Clear or move the ${formatWeekday(conflict.weekday)} class before making it lunch.`,
+        body: `Clear or move the ${sentenceCaseEnum(conflict.weekday)} class before making it lunch.`,
       });
       return;
     }
@@ -119,7 +123,7 @@ export function MyWeekView() {
         },
       ].sort(
         (left, right) =>
-          weekdays.indexOf(left.weekday) - weekdays.indexOf(right.weekday) ||
+          SCHOOL_WEEKDAYS.indexOf(left.weekday) - SCHOOL_WEEKDAYS.indexOf(right.weekday) ||
           left.periodNumber - right.periodNumber,
       );
     });
@@ -202,7 +206,7 @@ export function MyWeekView() {
                     setSelectedDay(day);
                     setCourseSearch("");
                   }}
-                  segments={weekdays.map((day) => ({
+                  segments={SCHOOL_WEEKDAYS.map((day) => ({
                     value: day,
                     label: `${day[0]}${day.slice(1, 3).toLowerCase()}`,
                   }))}
@@ -533,10 +537,10 @@ function ScheduleTable({
   onSelectPeriod,
   embedded = false,
 }: {
-  day: Weekday;
+  day: SchoolWeekday;
   entries: any[];
   blocks: any[];
-  lunchPeriod?: LunchPeriod | null;
+  lunchPeriod?: SchoolLunchPeriod | null;
   selectedPeriod?: number;
   onSelectPeriod?: (period: number) => void;
   embedded?: boolean;
@@ -739,8 +743,8 @@ function LunchPeriodPicker({
   value,
   onChange,
 }: {
-  value: LunchPeriod | null;
-  onChange: (value: LunchPeriod) => void;
+  value: SchoolLunchPeriod | null;
+  onChange: (value: SchoolLunchPeriod) => void;
 }) {
   const { color } = useTheme();
   return (
@@ -783,18 +787,10 @@ function LunchPeriodPicker({
   );
 }
 
-function lunchPeriodNumber(lunchPeriod: LunchPeriod) {
-  return lunchPeriod === "PERIOD_4" ? 4 : 5;
-}
 
-function formatWeekday(weekday: string) {
-  const label = weekday.toLowerCase();
-  return `${label[0]?.toUpperCase() ?? ""}${label.slice(1)}`;
-}
-
-function initialWeekday(): Weekday {
+function initialWeekday(): SchoolWeekday {
   const day = new Date().getDay();
-  return weekdays[day - 1] ?? "MONDAY";
+  return SCHOOL_WEEKDAYS[day - 1] ?? "MONDAY";
 }
 
 function formatSchoolTime(startTime: string, endTime: string) {

@@ -7,6 +7,8 @@ import {
   appRoleValidator,
   courseCatalogSourceValidator,
   courseTermValidator,
+  feedbackStatusValidator,
+  githubSyncStateValidator,
   friendshipStatusValidator,
   friendShareLinkModeValidator,
   notificationCategoryValidator,
@@ -1524,14 +1526,9 @@ export const schema = defineSchema({
     clubId: v.optional(v.id("clubs")),
     reportedUserId: v.optional(v.id("users")),
     reason: v.string(),
-    status: v.union(
-      v.literal("PENDING"),
-      // General feedback only: a reviewer has picked it up. GitHub keeps the
-      // issue open, as for PENDING.
-      v.literal("IN_REVIEW"),
-      v.literal("RESOLVED"),
-      v.literal("DISMISSED"),
-    ),
+    // IN_REVIEW is general feedback only: a reviewer has picked it up. GitHub
+    // keeps the issue open, as for PENDING.
+    status: feedbackStatusValidator,
     isEscalated: v.boolean(),
     // Recorded with general feedback so staff can reproduce the issue against
     // the same in-app release. Optional preserves existing report records.
@@ -1543,9 +1540,7 @@ export const schema = defineSchema({
     // They are optional so existing reports remain valid during the migration.
     githubIssueNumber: v.optional(v.number()),
     githubIssueUrl: v.optional(v.string()),
-    githubIssueSyncState: v.optional(
-      v.union(v.literal("PENDING"), v.literal("SYNCED"), v.literal("FAILED")),
-    ),
+    githubIssueSyncState: v.optional(githubSyncStateValidator),
     githubIssueSyncError: v.optional(v.union(v.string(), v.null())),
     // When the current PENDING sync was queued, so a sync that died without
     // recording an outcome can be retried. Absent on reports queued before.

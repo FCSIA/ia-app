@@ -1,5 +1,7 @@
 "use client";
 
+import { clubJoinHref, parseClubPeopleLink } from "~/apps/shared/routes";
+import { isPrivilegedAccount, isSuperAdmin } from "~/apps/shared/roles";
 import { nameSearchValues } from "~/apps/shared/user-name";
 
 import {
@@ -106,7 +108,7 @@ import { Tabs, TabPanel, TabsList, TabItem } from "@/components/ui/tabs";
 import { api } from "~/apps/convex/src/_generated/api";
 import { parseInviteCsv } from "@/lib/parse-invite-csv";
 import { parseUnitAssignmentCsv } from "@/lib/parse-unit-assignment-csv";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { ImpersonateUserAction } from "@/components/auth/impersonate-user-action";
 import { useToast } from "@/hooks/use-toast";
 import { filterBySearchQuery } from "@/lib/search";
@@ -272,7 +274,7 @@ function ManagePeopleDialog({
 
   const joinUrl =
     origin && club.activeJoinCode?.code
-      ? `${origin}/clubs/${club._id}?joinCode=${club.activeJoinCode.code}`
+      ? `${origin}${clubJoinHref(club._id, { code: club.activeJoinCode.code })}`
       : "";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -840,11 +842,11 @@ export default function ClubPeoplePage() {
   >(null);
 
   const [filter, setFilter] = useState(() =>
-    searchParams?.get("tab") === "requests" ? "requests" : "all",
+    parseClubPeopleLink(searchParams).requestsTab ? "requests" : "all",
   );
 
   useEffect(() => {
-    if (searchParams?.get("tab") === "requests") setFilter("requests");
+    if (parseClubPeopleLink(searchParams).requestsTab) setFilter("requests");
   }, [searchParams]);
 
   const club = useQuery(api.clubs.detail.get, { clubId }) as
@@ -1349,10 +1351,8 @@ export default function ClubPeoplePage() {
                       canRemove={canRemoveMembers && person.kind === "MEMBER"}
                       canImpersonate={Boolean(
                         user &&
-                        hasRole(user, "SUPER_ADMIN") &&
-                        !person.roles.some(
-                          (role) => role === "ADMIN" || role === "SUPER_ADMIN",
-                        ),
+                        isSuperAdmin(user) &&
+                        !isPrivilegedAccount(person),
                       )}
                       onRemove={setRemoveTarget}
                     />

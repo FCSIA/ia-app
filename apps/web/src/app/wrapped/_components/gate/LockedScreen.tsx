@@ -4,7 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { Clock, Lock, X } from 'lucide-react';
-import { formatCountdown, schoolYearLabel } from '@/lib/wrapped';
+import { formatCountdown } from '@/lib/wrapped';
+import { schoolYearLabel } from '~/apps/shared/school-time';
 import { prefersReducedMotion, startAmbientLoops } from '../../_lib/motion';
 
 // Only the dashed rings rotate; a solid circle spinning about its own centre

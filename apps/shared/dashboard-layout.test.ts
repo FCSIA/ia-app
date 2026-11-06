@@ -5,7 +5,7 @@ import {
   isDashboardReviewer,
   normalizeDashboardColumns,
   normalizeDashboardLayout,
-} from "./dashboardLayout";
+} from "./dashboard-layout";
 
 describe("authored dashboard defaults", () => {
   it("starts every role with the work queue, then unread news", () => {

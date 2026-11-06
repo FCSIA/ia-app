@@ -6,6 +6,7 @@ import type {
 import { WEEKDAYS } from '@/components/schedule/schedule-utils';
 import type { ScheduleTab } from './_types';
 import type { ImportedScheduleRow } from '@/lib/schedule-ocr';
+import { DEFAULT_LUNCH_PERIOD, lunchPeriodNumber } from '~/apps/shared/school-time';
 
 export type ScheduleClassSelection = CourseSummary | { className: string };
 
@@ -24,7 +25,7 @@ export function mergeImportedSchedule(
   }
   // Partial pictures update only their recognized periods. The selected lunch
   // slot still cannot retain a class from the preceding draft.
-  const lunchNumber = nextLunch === 'PERIOD_4' ? 4 : nextLunch === 'PERIOD_5' ? 5 : null;
+  const lunchNumber = nextLunch ? lunchPeriodNumber(nextLunch) : null;
   return { entries: next.filter((entry) => entry.periodNumber !== lunchNumber), lunchPeriod: nextLunch };
 }
 
@@ -105,8 +106,8 @@ export function moveClassesToFormerLunchPeriod(
   if (currentLunchPeriod === nextLunchPeriod) return entries;
 
   const formerLunchPeriodNumber =
-    currentLunchPeriod === 'PERIOD_4' ? 4 : 5;
-  const nextLunchPeriodNumber = nextLunchPeriod === 'PERIOD_4' ? 4 : 5;
+    lunchPeriodNumber(currentLunchPeriod);
+  const nextLunchPeriodNumber = lunchPeriodNumber(nextLunchPeriod);
 
   return entries.map((entry) =>
     entry.periodNumber === nextLunchPeriodNumber
@@ -150,7 +151,7 @@ export function isScheduleDraftDirty({
   // editor. Do not prompt them to save until they make a deliberate change.
   if (!source) {
     return (
-      entries.length > 0 || isPublic || lunchPeriod !== 'PERIOD_5'
+      entries.length > 0 || isPublic || lunchPeriod !== DEFAULT_LUNCH_PERIOD
     );
   }
 

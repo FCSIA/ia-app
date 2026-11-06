@@ -1,3 +1,10 @@
+import { ADMIN_MODERATION_TAB_HREF, REPORT_HREF, adminFeedbackHref } from "../../../shared/routes";
+import {
+  isSuperAdmin,
+  MODERATION_READER_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLES,
+} from "../../../shared/roles";
 import { displayName } from '../../../shared/user-name';
 import { canRetryGithubSync } from '../../../shared/feedback-sync';
 import { ConvexError, v } from "convex/values";
@@ -215,7 +222,7 @@ async function createReport(
 
   const isFeedback = input.contentType === "GENERAL";
   const recipients = (await activeAdmins(ctx)).filter((admin) =>
-    isFeedback ? admin.roles.includes("SUPER_ADMIN") : true,
+    isFeedback ? isSuperAdmin(admin) : true,
   );
 
   await deliverMany(
@@ -225,7 +232,7 @@ async function createReport(
       category: isFeedback ? "FEEDBACK" : "CONTENT_MODERATED",
       title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
       body: `${displayName(user)} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
-      href: isFeedback ? `/admin/feedback/${reportId}` : "/admin?tab=moderation",
+      href: isFeedback ? adminFeedbackHref(reportId) : ADMIN_MODERATION_TAB_HREF,
       subject: { kind: "moderationReport", reportId },
     },
   );
@@ -295,12 +302,7 @@ export const list = query({
     const user = await getMaybeCurrentAppUser(ctx);
     if (
       !user ||
-      !requireAnyRoleSafe(user, [
-        "ADMIN",
-        "SUPER_ADMIN",
-        "SUPPORT_STAFF",
-        "TEACHER",
-      ])
+      !requireAnyRoleSafe(user, MODERATION_READER_ROLES)
     ) {
       return [];
     }
@@ -481,7 +483,7 @@ export const update = mutation({
     const isFeedback = report.contentType === "GENERAL";
     requireAnyRole(
       user,
-      isFeedback ? ["SUPER_ADMIN"] : ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"],
+      isFeedback ? SUPER_ADMIN_ROLES : STAFF_ROLES,
     );
     if (args.status === "IN_REVIEW" && !isFeedback) {
       throw new ConvexError("Only feedback can be marked in review");
@@ -522,7 +524,7 @@ export const update = mutation({
         category: "FEEDBACK",
         title: "Your feedback is being reviewed",
         body: args.reviewNote || "School staff started reviewing your feedback.",
-        href: "/report",
+        href: REPORT_HREF,
         subject: { kind: "moderationReport", reportId: report._id },
       });
     }
@@ -537,7 +539,7 @@ export const update = mutation({
         category: "FEEDBACK",
         title: "Your feedback was resolved",
         body: args.reviewNote || "School staff reviewed your feedback.",
-        href: "/report",
+        href: REPORT_HREF,
         subject: { kind: "moderationReport", reportId: report._id },
       });
     }
@@ -559,7 +561,7 @@ export const retryGithubIssueSync = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["SUPER_ADMIN"]);
+    requireAnyRole(user, SUPER_ADMIN_ROLES);
     const report = await ctx.db.get(args.reportId);
     if (!report || report.contentType !== "GENERAL") {
       throw new ConvexError("Feedback not found");
@@ -599,7 +601,7 @@ export const addFeedbackResponse = mutation({
   returns: v.id("feedbackReportResponses"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["SUPER_ADMIN"]);
+    requireAnyRole(user, SUPER_ADMIN_ROLES);
 
     const report = await ctx.db.get(args.reportId);
     if (!report || report.contentType !== "GENERAL") {
@@ -630,7 +632,7 @@ export const addFeedbackResponse = mutation({
       category: "FEEDBACK",
       title: "School staff replied to your feedback",
       body,
-      href: "/report",
+      href: REPORT_HREF,
       subject: { kind: "moderationReport", reportId: report._id },
     });
 

@@ -6,9 +6,8 @@ import { convex } from '@/lib/convex';
 import { devicePlatform } from '@/lib/pwa';
 import { randomId } from '@/lib/random-id';
 import { api } from '~/apps/convex/src/_generated/api';
+import { PRESENCE_HEARTBEAT_INTERVAL_MS } from '~/apps/shared/limits';
 
-// Matches the server's presence interval; a missed beat goes offline after a few.
-const heartbeatMs = 30_000;
 const sessionKey = 'ia.presence-session.v1';
 
 /** One id per tab, so two tabs are two sessions of the same person. */
@@ -64,7 +63,7 @@ export function PresenceHeartbeat() {
     const start = () => {
       if (timer) return;
       beat();
-      timer = setInterval(beat, heartbeatMs);
+      timer = setInterval(beat, PRESENCE_HEARTBEAT_INTERVAL_MS);
     };
     const stop = () => {
       if (timer) clearInterval(timer);

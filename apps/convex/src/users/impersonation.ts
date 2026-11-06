@@ -1,3 +1,4 @@
+import { isPrivilegedAccount, isSuperAdmin, SUPER_ADMIN_ROLES } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -11,7 +12,7 @@ export const prepare = mutation({
   returns: v.object({ authUserId: v.string() }),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
     const target = await ctx.db.get(args.userId);
     const reason = args.reason.trim();
     if (!reason) throw new ConvexError("A reason is required.");
@@ -20,8 +21,7 @@ export const prepare = mutation({
     }
     if (
       target._id === actor._id ||
-      target.roles.includes("ADMIN") ||
-      target.roles.includes("SUPER_ADMIN")
+      isPrivilegedAccount(target)
     ) {
       throw new ConvexError("Privileged accounts cannot be impersonated.");
     }
@@ -45,7 +45,7 @@ export const performImpersonationChecks = internalMutation({
       .withIndex("by_authUserId", (q) => q.eq("authUserId", args.authUserId))
       .unique();
     if (!actor) throw new ConvexError("Actor not found.");
-    if (!actor.roles.includes("SUPER_ADMIN")) {
+    if (!isSuperAdmin(actor)) {
       throw new ConvexError("Unauthorized.");
     }
 
@@ -57,8 +57,7 @@ export const performImpersonationChecks = internalMutation({
     }
     if (
       target._id === actor._id ||
-      target.roles.includes("ADMIN") ||
-      target.roles.includes("SUPER_ADMIN")
+      isPrivilegedAccount(target)
     ) {
       throw new ConvexError("Privileged accounts cannot be impersonated.");
     }

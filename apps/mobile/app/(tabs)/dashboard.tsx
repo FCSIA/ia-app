@@ -1,4 +1,6 @@
+import { sentenceCaseEnum } from "~/apps/shared/labels";
 import { calendarDisplayDate, isUpcomingCalendarEntry } from '~/apps/shared/calendar-date';
+import { clockMinutes, formatClockTime } from '~/apps/shared/school-time';
 import { greetingName } from '~/apps/shared/user-name';
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
@@ -161,7 +163,7 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
               <HomeRow
                 title={shortDate(nextFlexFriday.date)}
                 subtitle={[
-                  sentenceCase(nextFlexFriday.type),
+                  sentenceCaseEnum(nextFlexFriday.type),
                   `${nextFlexFriday._count?.sessions ?? 0} session${(nextFlexFriday._count?.sessions ?? 0) === 1 ? "" : "s"}`,
                 ].join(" · ")}
                 onPress={() => router.push("/flex-friday" as never)}
@@ -334,7 +336,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
                   key={club._id}
                   divider={index > 0}
                   title={club.name}
-                  subtitle={club.role ? formatRole(club.role) : undefined}
+                  subtitle={club.role ? sentenceCaseEnum(club.role) : undefined}
                   onPress={() => router.push(`/clubs/${club._id}` as never)}
                 />
               )) : <HomeEmpty text="No clubs yet." />}
@@ -450,7 +452,7 @@ function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardS
                   : undefined}
                 title={resolvedBlockTitle(block)}
                 subtitle={subtitle}
-                meta={formatSchoolTime(block.startTime)}
+                meta={formatClockTime(block.startTime)}
                 accessibilityLabel={courseSlug
                   ? `Period ${block.periodNumber}, ${block.entry.className}. Open course details`
                   : undefined}
@@ -483,7 +485,7 @@ function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardS
             divider={index > 0}
             leading={<PeriodBadge periodNumber={entry.periodNumber} emphasized={isCurrent} />}
             title={entry.className}
-            meta={block ? formatSchoolTime(block.startTime) : undefined}
+            meta={block ? formatClockTime(block.startTime) : undefined}
             accessibilityLabel={entry.course?.slug
               ? `Period ${entry.periodNumber}, ${entry.className}. Open course details`
               : undefined}
@@ -644,13 +646,6 @@ function getDashboardSchoolDay() {
   return { ...weekdays[0], isToday: false };
 }
 
-function formatSchoolTime(value: string) {
-  const [hour = 0, minute = 0] = value.split(":").map(Number);
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
-}
-
 function isCurrentBlock(
   block: { startTime: string; endTime: string } | undefined,
   isToday: boolean,
@@ -658,12 +653,7 @@ function isCurrentBlock(
 ) {
   if (!block || !isToday) return false;
   const minutes = now.getHours() * 60 + now.getMinutes();
-  return minutes >= timeToMinutes(block.startTime) && minutes < timeToMinutes(block.endTime);
-}
-
-function timeToMinutes(value: string) {
-  const [hour = 0, minute = 0] = value.split(":").map(Number);
-  return hour * 60 + minute;
+  return minutes >= clockMinutes(block.startTime) && minutes < clockMinutes(block.endTime);
 }
 
 function getDashboardDayContext(schedule: any, schoolDay: DashboardSchoolDay) {
@@ -718,20 +708,20 @@ function resolveSchoolDayStatus(
     return {
       title: resolvedBlockTitle(current),
       subtitle: "In progress",
-      meta: `${formatSchoolTime(current.startTime)}–${formatSchoolTime(current.endTime)}`,
+      meta: `${formatClockTime(current.startTime)}–${formatClockTime(current.endTime)}`,
     };
   }
 
   const minutes = now.getHours() * 60 + now.getMinutes();
   const next = dayContext.isToday
-    ? dayBlocks.find((block: any) => timeToMinutes(block.startTime) > minutes)
+    ? dayBlocks.find((block: any) => clockMinutes(block.startTime) > minutes)
     : dayBlocks[0];
 
   if (next) {
     return {
       title: resolvedBlockTitle(next),
       subtitle: dayContext.isToday ? "Next today" : `Next school day · ${schoolDay.label}`,
-      meta: `${formatSchoolTime(next.startTime)}–${formatSchoolTime(next.endTime)}`,
+      meta: `${formatClockTime(next.startTime)}–${formatClockTime(next.endTime)}`,
     };
   }
 
@@ -754,14 +744,7 @@ function resolveNextFlexFriday(fridays: any[]) {
     .sort((left, right) => left.date - right.date)[0];
 }
 
-function sentenceCase(value: string) {
-  const text = value.toLowerCase().replaceAll("_", " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
-function formatRole(role: string) {
-  return role.toLowerCase().replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase());
-}
 
 function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule: any; schoolDay: DashboardSchoolDay }) {
   const { color } = useTheme();
@@ -779,7 +762,7 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
   const dayContext = getDashboardDayContext(schedule, schoolDay);
   const hasPersonalSchedule = getAppPersona(user) !== "student" || Boolean(schedule?.mySchedule);
   const lastBlockEnd = dayContext.blocks.reduce(
-    (latest: number, block: any) => Math.max(latest, timeToMinutes(block.endTime)),
+    (latest: number, block: any) => Math.max(latest, clockMinutes(block.endTime)),
     -1,
   );
   const schoolIsOver =

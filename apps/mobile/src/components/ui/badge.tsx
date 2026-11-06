@@ -1,5 +1,5 @@
 import { Text, View } from "react-native";
-import { badgeColors, type BadgeColor } from "@ia/design-tokens";
+import { badgeColors, parseHex, type BadgeColor } from "@ia/design-tokens";
 import { useTheme } from "@/lib/theme";
 
 type BadgeProps = {
@@ -41,9 +41,6 @@ export function Badge({ label, color = "gray", variant = "solid" }: BadgeProps) 
 }
 
 function hexToRgba(hex: string, alpha: number) {
-  const value = hex.replace("#", "");
-  const r = Number.parseInt(value.slice(0, 2), 16);
-  const g = Number.parseInt(value.slice(2, 4), 16);
-  const b = Number.parseInt(value.slice(4, 6), 16);
+  const { r, g, b } = parseHex(hex) ?? { r: 0, g: 0, b: 0 };
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

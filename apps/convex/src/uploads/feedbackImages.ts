@@ -1,18 +1,16 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import {
+  MAX_FEEDBACK_IMAGES,
+  MAX_FEEDBACK_IMAGE_BYTES,
+  STAGED_IMAGE_MIME_TYPES,
+} from "../../../shared/limits";
 import { normalizeStoredFileMime } from "./fileSignatures";
 
-export const MAX_FEEDBACK_IMAGES = 3;
-export const MAX_FEEDBACK_IMAGE_BYTES = 5 * 1024 * 1024;
 export const STAGED_FEEDBACK_IMAGE_TTL_MS = 60 * 60 * 1000;
 
-const ALLOWED_FEEDBACK_IMAGE_TYPES = new Set([
-  "image/gif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
+const ALLOWED_FEEDBACK_IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 type StorageMetadataInput = {
   contentType?: string;

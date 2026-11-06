@@ -1,5 +1,6 @@
 'use client';
 
+import { clubJoinHref } from '~/apps/shared/routes';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@/lib/convex-react';
@@ -591,7 +592,7 @@ function JoinCodePanel({ clubId, unit }: { clubId: Id<'clubs'>; unit: ClubUnit }
   const [origin, setOrigin] = useState('');
   useEffect(() => setOrigin(window.location.origin), []);
   const joinUrl = origin && unit.joinCode
-    ? `${origin}/clubs/${clubId}?unitId=${unit._id}&unitCode=${unit.joinCode}`
+    ? `${origin}${clubJoinHref(clubId, { unitId: unit._id, unitCode: unit.joinCode })}`
     : '';
   return (
     <section className="space-y-3 border-t pt-5">

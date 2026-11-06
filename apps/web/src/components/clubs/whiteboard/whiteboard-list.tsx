@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { MAX_WHITEBOARD_TITLE_CHARACTERS } from '~/apps/shared/chat/whiteboard-limits';
 import {
   Archive,
   ArchiveRestore,
@@ -166,7 +167,7 @@ function RenameDialog({
         <Input
           autoFocus
           value={title}
-          maxLength={80}
+          maxLength={MAX_WHITEBOARD_TITLE_CHARACTERS}
           onChange={(event) => setTitle(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') submit();

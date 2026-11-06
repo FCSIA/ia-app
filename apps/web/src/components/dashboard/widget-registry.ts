@@ -15,8 +15,8 @@ import {
   getDefaultDashboardColumns,
   isDashboardReviewer,
   isDashboardNoteId,
-} from '~/apps/convex/src/users/dashboardLayout';
-import type { AppRole } from '~/apps/convex/lib/roles';
+} from '~/apps/shared/dashboard-layout';
+import type { AppRole } from '~/apps/shared/roles';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { AnnouncementsWidget } from './widgets/AnnouncementsWidget';

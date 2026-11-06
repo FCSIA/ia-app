@@ -1,8 +1,8 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
 import { query, mutation } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
-  isStudentUser,
   serializeScheduleForUser,
   serializeBlock,
   serializeUser,
@@ -22,11 +22,10 @@ import {
   type MaterialScheduleSnapshot,
 } from "./scheduleChangeNotifications";
 import { scheduleLunchPeriodValidator } from "../validators";
+import { resolveLunchPeriod, schoolDateKey } from "../../../shared/school-time";
 import {
   assertNoLunchCourseConflict,
-  dateKeyForSchoolTime,
   normalizeDateKey,
-  resolveLunchPeriod,
   resolveSchoolDay,
 } from "./dayResolver";
 import { loadDayPlanSource } from "./dayPlans";
@@ -36,13 +35,13 @@ export const get = query({
   returns: scheduleDashboardValidator,
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    const isStudent = user ? isStudentUser(user) : false;
+    const viewerIsStudent = user ? isStudent(user) : false;
     const dateKey = args.dateKey
       ? normalizeDateKey(args.dateKey)
-      : dateKeyForSchoolTime();
+      : schoolDateKey();
 
     const [mySchedule, blocks, dayPlanSource] = await Promise.all([
-      isStudent && user ? serializeScheduleForUser(ctx, user._id) : Promise.resolve(null),
+      viewerIsStudent && user ? serializeScheduleForUser(ctx, user._id) : Promise.resolve(null),
       ctx.db.query("schoolDayBlocks").take(250),
       loadDayPlanSource(ctx, dateKey),
     ]);
@@ -62,7 +61,7 @@ export const get = query({
     const incomingRequests = [];
     const outgoingRequests = [];
 
-    if (isStudent && user) {
+    if (viewerIsStudent && user) {
       const outgoing = await ctx.db
         .query("studentScheduleFriends")
         .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
@@ -82,7 +81,7 @@ export const get = query({
             ? friendship.addresseeId
             : friendship.requesterId;
         const other = await ctx.db.get(otherUserId);
-        if (!other || !other.isActive || !isStudentUser(other)) continue;
+        if (!other || !other.isActive || !isStudent(other)) continue;
 
         if (friendship.status === "PENDING") {
           const request = {
@@ -146,7 +145,7 @@ export const getDay = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     const dateKey = normalizeDateKey(args.dateKey);
-    const mySchedule = user && isStudentUser(user)
+    const mySchedule = user && isStudent(user)
       ? await serializeScheduleForUser(ctx, user._id)
       : null;
     const dayPlanSource = await loadDayPlanSource(ctx, dateKey);

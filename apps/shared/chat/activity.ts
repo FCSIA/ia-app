@@ -1,3 +1,5 @@
+import { isOptimisticId } from "./protocol";
+
 type ChatActivityMessage = {
   _id: string;
   createdAt: number | string;
@@ -38,7 +40,7 @@ export function latestVisibleChatActivity(
       // Read receipts must wait for the server to replace them with real IDs.
       if (
         candidate &&
-        !candidate.messageId.startsWith("optimistic:") &&
+        !isOptimisticId(candidate.messageId) &&
         (!latest || candidate.occurredAt > latest.occurredAt)
       )
         latest = candidate;

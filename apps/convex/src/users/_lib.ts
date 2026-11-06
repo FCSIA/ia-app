@@ -4,10 +4,18 @@ import { createAuth } from "../auth";
 import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
-import { type AppRole } from "../../lib/roles";
+import {
+  STAFF_ROLES,
+  STUDENT_GROUP_ROLES,
+  TEACHER_GROUP_ROLES,
+  hasAnyRole,
+  isStudent,
+  type AppRole,
+} from "../../../shared/roles";
 import { incrementUserCounts } from "../stats";
 import { schema } from "../schema";
 import { ONBOARDING_VERSION } from '../../../shared/onboarding';
+import { MIN_PASSWORD_LENGTH } from '../../../shared/limits';
 
 const userProfileValidator = schema
   .doc("users")
@@ -208,23 +216,17 @@ export function searchText(args: {
 }
 
 export function classifyRoles(roles: AppRole[]) {
-  const isStudent = roles.some((role) =>
-    ["STUDENT", "STUDENT_LEADER"].includes(role),
-  );
-  const isTeacherStaff = roles.some((role) =>
-    ["TEACHER", "SPONSOR"].includes(role),
-  );
+  const isStudentGroup = hasAnyRole(roles, STUDENT_GROUP_ROLES);
+  const isTeacherStaff = hasAnyRole(roles, TEACHER_GROUP_ROLES);
   const isStudentAdmin = roles.includes("STUDENT_ADMIN");
-  const isPrivileged = roles.some((role) =>
-    ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
-  );
+  const isPrivileged = hasAnyRole(roles, STAFF_ROLES);
 
   return {
-    isStudent,
+    isStudent: isStudentGroup,
     isTeacherStaff,
     isStudentAdmin,
     isOtherRole:
-      !isStudent && !isTeacherStaff && !isStudentAdmin && isPrivileged,
+      !isStudentGroup && !isTeacherStaff && !isStudentAdmin && isPrivileged,
   };
 }
 
@@ -255,7 +257,7 @@ export function assertInitialPasswordAllowed(
   password: string,
   uniqueId: string,
 ) {
-  if (password.length < 6) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
     throw new ConvexError("Password must be at least 6 characters.");
   }
   if (password.toUpperCase() === uniqueId.toUpperCase()) {
@@ -301,9 +303,7 @@ export function assertCanResetPassword(
   assertCanActOn(actor, target);
   if (
     actor.roles.includes("SUPPORT_STAFF") &&
-    !target.roles.some((role) =>
-      ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-    )
+    !isStudent(target)
   ) {
     throw new ConvexError("Support staff can only reset student passwords.");
   }
@@ -451,10 +451,4 @@ export async function createLinkedUser(
     user: toAdminUserProfile(user),
     temporaryPassword: args.password ? null : password,
   };
-}
-
-export function isStudentUser(user: Doc<"users">) {
-  return user.roles.some((role) =>
-    ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-  );
 }

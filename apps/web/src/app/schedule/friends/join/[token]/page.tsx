@@ -1,5 +1,6 @@
 'use client';
 
+import { scheduleFriendHref } from '~/apps/shared/routes';
 import { displayName, greetingName } from '~/apps/shared/user-name';
 
 import { use, useState } from 'react';
@@ -98,7 +99,7 @@ export default function FriendLinkRedemptionPage({
                   href={
                     result.status === 'PENDING'
                       ? '/schedule?tab=friends&section=requests'
-                      : `/schedule?tab=friends&friend=${result.owner._id}`
+                      : scheduleFriendHref(result.owner._id)
                   }
                 >
                   Open friend schedules

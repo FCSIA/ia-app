@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import {
-  MAX_ELEMENTS_PER_SAVE,
+  MAX_WHITEBOARD_ELEMENTS_PER_SAVE,
+  MAX_WHITEBOARD_SAVE_BYTES,
+} from '~/apps/shared/chat/whiteboard-limits';
+import {
   chunkWhiteboardElements,
   cursorActiveSince,
   cursorColor,
@@ -57,14 +60,18 @@ describe('pending whiteboard elements', () => {
 });
 
 describe('whiteboard save chunks', () => {
-  test('respects the element count bound', () => {
-    const chunks = chunkWhiteboardElements(Array.from({ length: MAX_ELEMENTS_PER_SAVE * 2 + 1 }, () => '{}'));
-    expect(chunks.map((chunk) => chunk.length)).toEqual([MAX_ELEMENTS_PER_SAVE, MAX_ELEMENTS_PER_SAVE, 1]);
+  test("stays within the server's element count bound", () => {
+    const elements = Array.from({ length: MAX_WHITEBOARD_ELEMENTS_PER_SAVE * 2 + 1 }, () => '{}');
+    const chunks = chunkWhiteboardElements(elements);
+    expect(chunks.every((chunk) => chunk.length <= MAX_WHITEBOARD_ELEMENTS_PER_SAVE)).toBe(true);
+    expect(chunks.flat()).toHaveLength(elements.length);
   });
 
-  test('respects the byte bound', () => {
-    const big = 'x'.repeat(400_000);
-    expect(chunkWhiteboardElements([big, big, big]).map((chunk) => chunk.length)).toEqual([2, 1]);
+  test("stays within the server's byte bound", () => {
+    const elements = Array.from({ length: 6 }, () => 'x'.repeat(200_000));
+    const chunks = chunkWhiteboardElements(elements);
+    expect(chunks.every((chunk) => chunk.join('').length <= MAX_WHITEBOARD_SAVE_BYTES)).toBe(true);
+    expect(chunks.flat()).toHaveLength(elements.length);
   });
 });
 

@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { workshopDetailHref } from '../_utils';
+import { formatTimeRange, workshopDetailHref } from '../_utils';
 
 type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
 type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
@@ -38,16 +38,8 @@ type FridayGroup = {
   passes: PassRecord[];
 };
 
-function formatTimeRange(start?: string | null, end?: string | null) {
-  const fmt = (t?: string | null) => {
-    if (!t) return '';
-    const [h, m] = t.split(':').map((x) => parseInt(x, 10));
-    const hour12 = ((h + 11) % 12) + 1;
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
-  };
-  if (!start && !end) return '';
-  return `${fmt(start)} – ${fmt(end)}`;
+function passTimeRange(start?: string | null, end?: string | null) {
+  return !start && !end ? '' : formatTimeRange(start, end);
 }
 
 function fridayForPass(pass: PassRecord) {
@@ -352,12 +344,12 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
         <div className="flex-shrink-0 text-right">
           <div className="flex items-center justify-end gap-1 text-sm font-semibold tabular-nums text-foreground">
             <Clock size={13} className="text-muted-foreground" />
-            {first ? formatTimeRange(first.startTime, first.endTime) : '—'}
+            {first ? passTimeRange(first.startTime, first.endTime) : '—'}
           </div>
           {linkedSessions.length > 1 ? (
             <div className="text-[10px] text-muted-foreground">
               through{' '}
-              {formatTimeRange(
+              {passTimeRange(
                 undefined,
                 linkedSessions[linkedSessions.length - 1].endTime,
               ).replace(/^ – /, '')}
@@ -375,7 +367,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
             >
               <span className="truncate">{session.title}</span>
               <span className="flex-shrink-0 tabular-nums">
-                {formatTimeRange(session.startTime, session.endTime)}
+                {passTimeRange(session.startTime, session.endTime)}
               </span>
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { latestVisibleChatActivity } from "../../../shared/chat/activity";
-import { createOptimisticMessageShape } from "../../../shared/chat/optimistic-message-shape";
+import { latestVisibleChatActivity } from "./activity";
+import { createOptimisticMessageShape } from "./optimistic-message-shape";
 
 const pending = createOptimisticMessageShape(
   { channelId: "channel", body: "Sending", clientGeneratedId: "pending", clientSentAt: 30 },

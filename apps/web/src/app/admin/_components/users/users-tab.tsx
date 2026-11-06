@@ -1,5 +1,7 @@
 'use client';
 
+import { isPathway, PATHWAY_ABBREVIATIONS } from '~/apps/shared/labels';
+import { isPrivilegedAccount } from '~/apps/shared/roles';
 import { displayName } from '~/apps/shared/user-name';
 
 import { forwardRef, useState } from 'react';
@@ -42,14 +44,9 @@ function roleLabel(role: string) {
 
 function PathwayCell({ value }: { value?: string | null }) {
   const label = formatPathwayLabel(value);
-  const codes: Record<string, string> = {
-    INFORMATION_TECHNOLOGY: 'IT',
-    HEALTH_SCIENCE: 'HS',
-    ENGINEERING: 'ENG',
-  };
   return (
     <abbr title={label} aria-label={label} className="block truncate no-underline">
-      {(value && codes[value]) || label}
+      {(value && isPathway(value) && PATHWAY_ABBREVIATIONS[value]) || label}
     </abbr>
   );
 }
@@ -328,7 +325,7 @@ function UserTableSection({
           onResetPassword={onResetPassword}
         />
       ) : null}
-      {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
+      {isSuperAdmin && user._id !== currentUserId && !isPrivilegedAccount(user) ? (
         <ImpersonateUserAction
           userId={user._id}
           name={displayName(user)}

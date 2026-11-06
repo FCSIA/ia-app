@@ -104,7 +104,7 @@ import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
 import { ChannelWhiteboard } from '@/components/clubs/whiteboard/channel-whiteboard';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import type { AppRole } from '~/apps/convex/lib/roles';
+import { isStudent } from '~/apps/shared/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import { hapticTick } from '@/lib/haptics';
@@ -199,30 +199,33 @@ import {
   optimisticallyInsertPostedMessage,
   optimisticallyToggleMessageReaction,
 } from '~/apps/shared/chat/optimistic-message';
+import {
+  formatWebAttachmentSize,
+  isWebPreviewableImage,
+} from '~/apps/shared/chat/attachments';
+import {
+  CHANNEL_TYPING_TTL_MS,
+  CHAT_REACTIONS,
+  WEB_MESSAGE_GROUP_WINDOW_MS,
+  isChatReaction,
+  type ChatReaction,
+} from '~/apps/shared/chat/protocol';
+import { parseClubChannelLink } from '~/apps/shared/routes';
 
-const QUICK_REACTIONS = [
-  { value: 'LIKE', label: '👍', name: 'Like' },
-  { value: 'HEART', label: '❤️', name: 'Love' },
-  { value: 'FIRE', label: '🔥', name: 'Fire' },
-  { value: 'CELEBRATE', label: '🎉', name: 'Celebrate' },
-  { value: 'EYES', label: '👀', name: 'Watching' },
-  { value: 'DONE', label: '✅', name: 'Done' },
-  { value: 'SKULL', label: '💀', name: 'Skull' },
-] as const;
+const QUICK_REACTIONS = CHAT_REACTIONS.map(({ token, glyph, name }) => ({
+  value: token,
+  label: glyph,
+  name,
+}));
 
 const REACTION_LABELS = Object.fromEntries(
   QUICK_REACTIONS.map((reaction) => [reaction.value, reaction.label]),
 ) as Record<string, string>;
 
-type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
+type ChannelReaction = ChatReaction;
 type FriendshipStatus =
   'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
-const MESSAGE_GROUP_WINDOW_MS = 7 * 60 * 1000;
-
-function isChannelReaction(value: string): value is ChannelReaction {
-  return QUICK_REACTIONS.some((reaction) => reaction.value === value);
-}
 
 function shouldGroupMessages(
   previous: ClubChannelMessage | undefined,
@@ -238,14 +241,8 @@ function shouldGroupMessages(
   if (!isSameDay(previousDate, currentDate)) return false;
 
   const elapsed = currentDate.getTime() - previousDate.getTime();
-  return elapsed >= 0 && elapsed <= MESSAGE_GROUP_WINDOW_MS;
+  return elapsed >= 0 && elapsed <= WEB_MESSAGE_GROUP_WINDOW_MS;
 }
-
-const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
-  'STUDENT',
-  'STUDENT_LEADER',
-  'STUDENT_ADMIN',
-]);
 
 type ComposerSubmitArgs = {
   body: string;
@@ -259,30 +256,11 @@ type ComposerSubmitArgs = {
   mode: 'root' | 'thread';
 };
 
-function formatBytes(size?: number | null) {
-  if (!size) return null;
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${Math.round(size / 102.4) / 10} KB`;
-  return `${Math.round(size / (1024 * 102.4)) / 10} MB`;
-}
-
-function isImageAttachment(attachment: ClubChannelMessageAttachment) {
-  if (attachment.mimeType?.toLowerCase() === 'image/svg+xml') return false;
-  return (
-    attachment.mimeType?.startsWith('image/') ||
-    /\.(png|jpe?g|gif|webp)$/i.test(attachment.fileName)
-  );
-}
-
-function hasStudentScheduleRole(roles?: AppRole[] | null) {
-  return roles?.some((role) => STUDENT_SCHEDULE_ROLES.has(role)) ?? false;
-}
-
 function getAttachmentDescription(attachment: ClubChannelMessageAttachment) {
   const extension = attachment.fileName.split('.').pop()?.trim().toUpperCase();
   return [
-    extension || (isImageAttachment(attachment) ? 'Image' : 'File'),
-    formatBytes(attachment.size),
+    extension || (isWebPreviewableImage(attachment.mimeType, attachment.fileName) ? 'Image' : 'File'),
+    formatWebAttachmentSize(attachment.size),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -325,7 +303,7 @@ function MessageAttachmentCard({
   onOpenImage?: () => void;
 }) {
   const href = attachment.fileUrl;
-  const isImage = isImageAttachment(attachment);
+  const isImage = isWebPreviewableImage(attachment.mimeType, attachment.fileName);
 
   if (isGifAttachment(attachment)) {
     return <AnimatedGif key={href} src={href} name={attachment.fileName} />;
@@ -394,9 +372,11 @@ function MessageAttachments({
   if (attachments.length === 0) return null;
 
   // The viewer pages through this message's images, starting at the one tapped.
-  const images = attachments.filter(isImageAttachment);
+  const images = attachments.filter((attachment) =>
+    isWebPreviewableImage(attachment.mimeType, attachment.fileName),
+  );
   const openImage = (attachment: ClubChannelMessageAttachment) =>
-    isImageAttachment(attachment)
+    isWebPreviewableImage(attachment.mimeType, attachment.fileName)
       ? () =>
           openImageViewer({
             images: images.map(toViewerImage),
@@ -778,7 +758,7 @@ function MessageAuthorPreview({
       actions={
         canSendFriendRequest &&
         !isCurrentUser &&
-        hasStudentScheduleRole(author.roles) ? (
+        isStudent(author.roles) ? (
           <Button
             size="sm"
             variant="ghost"
@@ -1103,7 +1083,7 @@ function ReactionButton({
           held.current = false;
           return;
         }
-        if (isChannelReaction(reaction.emoji)) {
+        if (isChatReaction(reaction.emoji)) {
           hapticTick();
           onToggleReaction(messageId, reaction.emoji);
         }
@@ -1257,7 +1237,7 @@ function TypingPresence({
         .catch(() => {});
     };
     ping();
-    const timer = setInterval(ping, 2_000);
+    const timer = setInterval(ping, CHANNEL_TYPING_TTL_MS);
     return () => {
       stopped = true;
       clearInterval(timer);
@@ -1968,7 +1948,7 @@ function MessageRow({
                                   reactions={reactionOptions}
                                   disabled={isReactionPending}
                                   onPick={(value, keepOpen) => {
-                                    if (isChannelReaction(value))
+                                    if (isChatReaction(value))
                                       onToggleReaction(message._id, value);
                                     if (!keepOpen) setReactionPickerOpen(false);
                                   }}
@@ -2123,7 +2103,7 @@ function MessageRow({
                 reactions={reactionOptions}
                 disabled={isReactionPending}
                 onPick={(value, keepOpen) => {
-                  if (isChannelReaction(value))
+                  if (isChatReaction(value))
                     onToggleReaction(message._id, value);
                   if (!keepOpen) setContextMenuOpen(false);
                 }}
@@ -2183,11 +2163,11 @@ function MessageRow({
           doubleTap={{
             value: doubleTapOption.value,
             onChange: (value) => {
-              if (isChannelReaction(value)) onChangeDoubleTapReaction(value);
+              if (isChatReaction(value)) onChangeDoubleTapReaction(value);
             },
           }}
           onReact={(value) => {
-            if (isChannelReaction(value)) onToggleReaction(message._id, value);
+            if (isChatReaction(value)) onToggleReaction(message._id, value);
           }}
           actionGroups={sheetActionGroups}
         />
@@ -2245,7 +2225,8 @@ export function ChannelWorkspace() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   // The view lives in the URL so audit links and shares can open the board.
-  const whiteboardRequested = searchParams?.get('view') === 'whiteboard';
+  const { whiteboardRequested, messageId: linkedMessageId } =
+    parseClubChannelLink(searchParams);
   const setChannelView = (view: 'chat' | 'whiteboard') => {
     const next = new URLSearchParams(searchParams?.toString());
     next.delete('board');
@@ -2337,7 +2318,6 @@ export function ChannelWorkspace() {
     clubId,
     channelId,
   });
-  const linkedMessageId = searchParams?.get('message');
   useEffect(() => {
     if (linkedMessageId) {
       setJumpedToMessageId(linkedMessageId as Id<'clubChannelMessages'>);
@@ -2461,7 +2441,7 @@ export function ChannelWorkspace() {
       );
   });
   const doubleTapReaction =
-    user?.chatDoubleTapReaction && isChannelReaction(user.chatDoubleTapReaction)
+    user?.chatDoubleTapReaction && isChatReaction(user.chatDoubleTapReaction)
       ? user.chatDoubleTapReaction
       : DEFAULT_DOUBLE_TAP_REACTION;
   const votePoll = useMutation(api.clubs.channels.votePoll);
@@ -2736,7 +2716,7 @@ export function ChannelWorkspace() {
       last.authorId === user._id &&
       !last.isDeleted &&
       Date.now() - new Date(last.createdAt).getTime() <=
-        MESSAGE_GROUP_WINDOW_MS;
+        WEB_MESSAGE_GROUP_WINDOW_MS;
     // Retry and Discard unmount their own buttons; keep typing where it was.
     const refocusComposer = () =>
       (parentMessageId ? replyComposerRef : rootComposerRef).current?.focus();
@@ -2840,7 +2820,7 @@ export function ChannelWorkspace() {
       [
         ...new Set(
           flattenedMessages
-            .filter((message) => hasStudentScheduleRole(message.author.roles))
+            .filter((message) => isStudent(message.author.roles))
             .map((message) => message.author._id)
             .filter((userId) => userId !== user?._id),
         ),
@@ -2849,7 +2829,7 @@ export function ChannelWorkspace() {
   );
   const friendshipStatuses = useQuery(
     api.schedule.friends.getStatuses,
-    hasStudentScheduleRole(user?.roles) && friendshipTargetIds.length > 0
+    isStudent(user?.roles) && friendshipTargetIds.length > 0
       ? { userIds: friendshipTargetIds }
       : 'skip',
   );
@@ -2907,7 +2887,7 @@ export function ChannelWorkspace() {
   };
 
   const handleSendFriendRequest = async (friendId: string) => {
-    if (!hasStudentScheduleRole(user?.roles) || friendRequestPendingId) return;
+    if (!isStudent(user?.roles) || friendRequestPendingId) return;
     setFriendRequestPendingId(friendId);
     try {
       await sendFriendRequest({ friendId: friendId as Id<'users'> });
@@ -2997,7 +2977,7 @@ export function ChannelWorkspace() {
               }),
             )
           }
-          canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
+          canSendFriendRequest={isStudent(user?.roles)}
           friendshipStatus={friendshipStatusByUserId.get(message.author._id)}
           onSendFriendRequest={(friendId) =>
             void handleSendFriendRequest(friendId)

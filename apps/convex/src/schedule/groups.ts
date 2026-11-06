@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
@@ -6,7 +7,6 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import {
   getFriendshipBetween,
-  isStudentUser,
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
@@ -146,7 +146,7 @@ export const listEligibleFriends = query({
     const friends = [];
     for (const friendId of friendIds) {
       const friend = await ctx.db.get(friendId);
-      if (friend?.isActive && isStudentUser(friend)) friends.push(serializeUser(friend));
+      if (friend?.isActive && isStudent(friend)) friends.push(serializeUser(friend));
     }
     return friends.sort(
       (left, right) =>
@@ -198,7 +198,7 @@ export const get = query({
       const friendship = await getFriendshipBetween(ctx, user._id, member._id);
       const friendshipActive = friendship?.status === "ACCEPTED";
       const schedule =
-        friendshipActive && member.isActive && isStudentUser(member)
+        friendshipActive && member.isActive && isStudent(member)
           ? await serializeScheduleForUser(ctx, member._id)
           : null;
       const visibility = studentVisibility(schedule);
@@ -281,7 +281,7 @@ export const addMember = mutation({
     requireStudentUser(user);
     const group = await requireOwnedGroup(ctx, args.groupId, user._id);
     const friend = await ctx.db.get(args.friendId);
-    if (!friend?.isActive || !isStudentUser(friend)) throw new ConvexError("Student not found.");
+    if (!friend?.isActive || !isStudent(friend)) throw new ConvexError("Student not found.");
     const friendship = await getFriendshipBetween(ctx, user._id, friend._id);
     if (
       !canAddAcceptedFriendToGroup({

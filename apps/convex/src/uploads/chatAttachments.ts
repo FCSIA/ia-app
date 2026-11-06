@@ -5,12 +5,14 @@ import {
   isSupportedStoredFileMime,
   normalizeStoredFileMime,
 } from "./fileSignatures";
+import {
+  MAX_CHANNEL_MESSAGE_ATTACHMENTS,
+  MAX_CHAT_ATTACHMENT_BYTES,
+  MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS,
+} from "../../../shared/chat/attachments";
 
-export const MAX_CHAT_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-export const MAX_CHANNEL_MESSAGE_ATTACHMENTS = 5;
 export const STAGED_CHAT_ATTACHMENT_TTL_MS = 60 * 60 * 1000;
 
-const MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS = 160;
 type StorageMetadataInput = {
   contentType?: string;
   size: number;
@@ -51,7 +53,7 @@ export function assertStagedChatAttachmentIds(
   attachmentUploadIds: Id<"clubChannelAttachmentUploads">[],
 ) {
   if (attachmentUploadIds.length > MAX_CHANNEL_MESSAGE_ATTACHMENTS) {
-    throw new ConvexError("A message can include at most 5 attachments");
+    throw new ConvexError(`A message can include at most ${MAX_CHANNEL_MESSAGE_ATTACHMENTS} attachments`);
   }
   if (new Set(attachmentUploadIds).size !== attachmentUploadIds.length) {
     throw new ConvexError("An attachment can only be added once");

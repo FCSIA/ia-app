@@ -1,3 +1,5 @@
+import { optimisticMessageId } from "./protocol";
+
 /** Framework-neutral shape used by both chat clients. */
 export type OptimisticMessageShapeAuthor = {
   _id: string;
@@ -42,7 +44,7 @@ export function createOptimisticMessageShape(
   }
   const sentAt = args.clientSentAt as number;
   const createdAt = new Date(sentAt).toISOString();
-  const optimisticId = `optimistic:${args.clientGeneratedId}`;
+  const optimisticId = optimisticMessageId(args.clientGeneratedId);
   const poll =
     args.pollQuestion && args.pollOptions?.length
       ? {

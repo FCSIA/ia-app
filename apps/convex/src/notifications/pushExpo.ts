@@ -1,3 +1,5 @@
+import { NOTIFICATIONS_HREF } from "../../../shared/routes";
+import { GLOBAL_SCOPE_KEY, type PushDeliveryFields } from "../../../shared/notifications";
 import { v } from "convex/values";
 import {
   action,
@@ -191,7 +193,7 @@ export const sendTestToMe = action({
       {
       userId: user._id,
       category: "SCHOOL_ANNOUNCEMENT",
-      scopeKey: "global",
+      scopeKey: GLOBAL_SCOPE_KEY,
       },
     );
 
@@ -200,7 +202,7 @@ export const sendTestToMe = action({
         to: target.token,
         title: args.title ?? "Innovation Academy",
         body: args.body ?? "Native push notifications are connected.",
-        data: { href: "/notifications" },
+        data: { href: NOTIFICATIONS_HREF },
       })),
     );
 
@@ -312,7 +314,7 @@ export const sendForDelivery = internalAction({
           deliveryCreatedAt: delivery.deliveryCreatedAt,
           channelId: delivery.channelId ?? undefined,
           sourceCreatedAt: delivery.sourceCreatedAt ?? undefined,
-        },
+        } satisfies PushDeliveryFields & { href: string },
       })),
     );
 

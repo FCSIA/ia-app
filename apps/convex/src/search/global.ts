@@ -1,3 +1,4 @@
+import { isAdmin } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -42,7 +43,7 @@ async function getSearchableClubs(
   ctx: QueryCtx,
   user: Doc<"users">,
 ) {
-  if (user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN")) {
+  if (isAdmin(user)) {
     return await ctx.db
       .query("clubs")
       .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))

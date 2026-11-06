@@ -6,8 +6,8 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import type { QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import type { AppRole } from "../../lib/roles";
-import { schoolDayBounds } from "./_days";
+import type { AppRole } from "../../../shared/roles";
+import { schoolDayBounds } from "../../../shared/school-time";
 
 vi.mock("../../lib/currentUser", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../lib/currentUser")>();

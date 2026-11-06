@@ -1,8 +1,6 @@
 import { describe, expect, test } from "vitest";
-import {
-  MAX_FEEDBACK_IMAGE_BYTES,
-  validateFeedbackImageMetadata,
-} from "./feedbackImages";
+import { MAX_FEEDBACK_IMAGE_BYTES } from "../../../shared/limits";
+import { validateFeedbackImageMetadata } from "./feedbackImages";
 
 describe("feedback image validation", () => {
   test("accepts a supported image within the size limit", () => {

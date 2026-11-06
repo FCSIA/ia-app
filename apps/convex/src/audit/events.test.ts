@@ -16,7 +16,6 @@ import {
   isFlexAudit,
   matchesAuditSearch,
   parseAuditSearch,
-  AUDIT_ACTIONS,
 } from '../../../shared/audit';
 
 vi.mock('../../lib/currentUser', async (importOriginal) => ({
@@ -590,12 +589,6 @@ describe('audit index integrity', () => {
     const sources = import.meta.glob('../**/*.ts', { eager: true, query: '?raw', import: 'default' });
     const bypasses = Object.entries(sources).filter(([path, source]) => !path.endsWith('.test.ts') && path !== './_lib.ts' && /\.insert\(\s*['"]auditEvents['"]/.test(String(source))).map(([path]) => path);
     expect(bypasses).toEqual([]);
-    const unregistered = Object.entries(sources).filter(([path]) => !path.endsWith('.test.ts')).flatMap(([path, source]) =>
-      [...String(source).matchAll(/logAuditEvent\(ctx,\s*\{([\s\S]*?)\n\s*\}\)/g)].flatMap((call) => {
-        const action = call[1]?.match(/\baction:\s*['"]([^'"]+)['"]/)?.[1];
-        return action && !AUDIT_ACTIONS[action] ? [`${path}: ${action}`] : [];
-      }));
-    expect(unregistered).toEqual([]);
   });
   test('distinguishes missing historical actors from explicit automation and tolerates malformed URL person IDs', async () => {
     const f = await fixture();

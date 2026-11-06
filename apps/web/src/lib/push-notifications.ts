@@ -1,9 +1,6 @@
 import { isIosDevice, isStandaloneDisplay } from '@/lib/pwa';
 import { randomId } from '@/lib/random-id';
-import {
-  shouldDismissAcknowledgedNotification,
-  shouldDismissReadChannelNotification,
-} from './notification-dismissal';
+import { isCoveredByAcknowledgedDelivery, isCoveredByChannelReceipt } from '~/apps/shared/notifications';
 
 type PushSubscriptionPayload = {
   endpoint: string;
@@ -29,7 +26,7 @@ export async function dismissAcknowledgedWebNotifications(
     if (typeof registration.getNotifications !== 'function') return;
     const notifications = await registration.getNotifications();
     for (const notification of notifications) {
-      if (shouldDismissAcknowledgedNotification(notification.data, cutoff, acknowledgedDeliveryIds)) {
+      if (isCoveredByAcknowledgedDelivery(notification.data, cutoff, acknowledgedDeliveryIds)) {
         notification.close();
       }
     }
@@ -50,7 +47,7 @@ export async function dismissReadChannelWebNotifications(
     if (typeof registration.getNotifications !== 'function') return;
     const notifications = await registration.getNotifications();
     for (const notification of notifications) {
-      if (shouldDismissReadChannelNotification(notification.data, channelId, throughSourceCreatedAt)) {
+      if (isCoveredByChannelReceipt(notification.data, channelId, throughSourceCreatedAt)) {
         notification.close();
       }
     }

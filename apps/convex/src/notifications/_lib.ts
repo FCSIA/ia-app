@@ -1,3 +1,4 @@
+import { preferenceScopeKey } from "../../../shared/notifications";
 import { v } from "convex/values";
 import { preferenceIsOn } from "./deliveryPreference";
 import type { QueryCtx } from "../_generated/server";
@@ -88,11 +89,7 @@ export function scopeKey(opts?: {
   eventId?: string | null;
 }) {
   if (opts?.scopeKey?.trim()) return opts.scopeKey.trim();
-  if (opts?.channelId) return `channel:${opts.channelId}`;
-  if (opts?.announcementId) return `announcement:${opts.announcementId}`;
-  if (opts?.eventId) return `event:${opts.eventId}`;
-  if (opts?.clubId) return `club:${opts.clubId}`;
-  return "global";
+  return preferenceScopeKey(opts ?? {});
 }
 
 // Older feedback deliveries used the moderation category. Read their linked

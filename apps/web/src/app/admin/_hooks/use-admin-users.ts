@@ -2,14 +2,19 @@
 
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
+import { USER_ROLE_GROUP_META } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
-import type { AppRole } from '~/apps/convex/lib/roles';
+import {
+  type AppRole,
+  canManageUser,
+  hasAnyRole,
+  SUPER_ADMIN_ROLES,
+} from '~/apps/shared/roles';
 
 const USERS_PAGE_SIZE = 30;
 
@@ -46,16 +51,10 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
     page: undefined,
   });
 
-  const canManageUser = (targetUser: AdminUserRecord) => {
-    if (!user) return false;
-    const targetRoles = getUserRoles(targetUser);
-    const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
-    if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
-    return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  };
+  const canManage = (targetUser: AdminUserRecord) => canManageUser(user, targetUser);
 
-  const canDeactivate = canManageUser;
-  const canResetPassword = canManageUser;
+  const canDeactivate = canManage;
+  const canResetPassword = canManage;
 
   const usersPage = useQuery(
     api.users.admin.list,
@@ -138,7 +137,7 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
   };
 
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
-  const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+  const isSuperAdmin = hasAnyRole(user, SUPER_ADMIN_ROLES);
   const status: UsersPageStatus = displayedPage
     ? usersPage
       ? usersPage.isDone

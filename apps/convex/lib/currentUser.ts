@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 import { authComponent } from "../src/auth";
 import type { Doc } from "../src/_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../src/_generated/server";
-import type { AppRole } from "./roles";
+import { hasAnyRole, type AppRole } from "../../shared/roles";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -58,12 +58,12 @@ export async function getMaybeCurrentAppUserUnchecked(
   return user;
 }
 
-export function requireAnyRole(user: Doc<"users">, allowed: AppRole[]) {
+export function requireAnyRole(user: Doc<"users">, allowed: readonly AppRole[]) {
   if (!requireAnyRoleSafe(user, allowed)) {
     throw new ConvexError("Forbidden");
   }
 }
 
-export function requireAnyRoleSafe(user: Doc<"users">, allowed: AppRole[]): boolean {
-  return user.roles.some((role) => allowed.includes(role));
+export function requireAnyRoleSafe(user: Doc<"users">, allowed: readonly AppRole[]): boolean {
+  return hasAnyRole(user.roles, allowed);
 }

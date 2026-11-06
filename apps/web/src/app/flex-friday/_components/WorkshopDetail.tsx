@@ -1,5 +1,12 @@
 'use client';
 
+import { pathwayLabel } from '~/apps/shared/labels';
+import {
+  FLEX_ATTENDANCE_ROLES,
+  FLEX_MANAGER_ROLES,
+  hasAnyRole,
+  STUDENT_ROLES,
+} from '~/apps/shared/roles';
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -8,8 +15,8 @@ import { ArrowLeft, ClipboardList, Ticket } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { displayName } from '~/apps/shared/user-name';
 import { useConvexAuth, useMutation, useQuery } from '@/lib/convex-react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { formatSchoolTime } from '@/lib/time-format';
+import { useCurrentUser } from '@/lib/auth';
+import { formatClockTime } from '~/apps/shared/school-time';
 import { calendarDate } from '@/components/calendar/calendar-date';
 import { AppShell } from '@/components/layout/AppShell';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +45,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { PATHWAY_OPTIONS } from '../_types';
 
 function registrationErrorMessage(error: unknown) {
   if (error instanceof ConvexError && typeof error.data === 'string') {
@@ -172,16 +178,9 @@ export function WorkshopDetail({
   const scheduleHref = `/flex-friday?${scheduleParams}`;
   const rosterParams = new URLSearchParams(scheduleParams);
   rosterParams.set('attendance', workshop._id);
-  const isStudent = hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
-  const canManage = hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canTakeAttendance = hasRole(
-    user,
-    'TEACHER',
-    'ADMIN',
-    'SUPER_ADMIN',
-    'SUPPORT_STAFF',
-    'STUDENT_ADMIN',
-  );
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
+  const canManage = hasAnyRole(user, FLEX_MANAGER_ROLES);
+  const canTakeAttendance = hasAnyRole(user, FLEX_ATTENDANCE_ROLES);
   const requiresAssignment = sessions.some(
     (session) => session.sessionType === 'TEACHER_ASSIGNED',
   );
@@ -189,7 +188,7 @@ export function WorkshopDetail({
     isStudent && !viewer.assigned && !viewer.registered && !requiresAssignment;
   const fridayDate = calendarDate(friday.date);
   const pathwayName = (pathway: string) =>
-    PATHWAY_OPTIONS.find((option) => option.value === pathway)?.label ??
+    pathwayLabel(pathway) ??
     pathway.replaceAll('_', ' ');
   const audience = [
     workshop.targetGrades?.length
@@ -408,12 +407,12 @@ export function WorkshopDetail({
                     className="block"
                     dateTime={new Date(session.startAt).toISOString()}
                   >
-                    {formatSchoolTime(session.startTime, user?.use24HourTime)}
+                    {formatClockTime(session.startTime, user?.use24HourTime)}
                   </time>
                   <span aria-hidden>– </span>
                   <span className="sr-only">to </span>
                   <time dateTime={new Date(session.endAt).toISOString()}>
-                    {formatSchoolTime(session.endTime, user?.use24HourTime)}
+                    {formatClockTime(session.endTime, user?.use24HourTime)}
                   </time>
                 </TableCell>
               </TableRow>

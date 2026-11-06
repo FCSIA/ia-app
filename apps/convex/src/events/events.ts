@@ -1,3 +1,5 @@
+import { eventHref } from "../../../shared/routes";
+import { EVENT_MANAGER_ROLES, hasAnyRole } from "../../../shared/roles";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
@@ -11,13 +13,8 @@ import {
   normalizeOptionalEventDescription,
 } from "./contentValidation";
 
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
-
 function isAdmin(user: { roles: string[] } | null) {
-  if (!user) return false;
-  return user.roles.some((role) =>
-    (ADMIN_ROLES as readonly string[]).includes(role),
-  );
+  return hasAnyRole(user, EVENT_MANAGER_ROLES);
 }
 
 export const list = query({
@@ -183,7 +180,7 @@ export const create = mutation({
           category: "EVENT",
           title: event.title,
           body: event.description ?? "New event published.",
-          href: `/events/${event._id}`,
+          href: eventHref(event._id),
           subject: {
             kind: "event",
             eventId: event._id,

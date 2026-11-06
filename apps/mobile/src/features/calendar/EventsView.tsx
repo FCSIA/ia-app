@@ -1,3 +1,4 @@
+import { isStaff } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { ChevronRight, Plus, X } from "lucide-react-native";
@@ -31,9 +32,7 @@ export function EventsView() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const { showToast } = useToast();
-  const canCreateGeneral = !!user?.roles?.some((role) =>
-    ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
-  );
+  const canCreateGeneral = isStaff(user);
   const availableClubs = useMemo(
     () =>
       [

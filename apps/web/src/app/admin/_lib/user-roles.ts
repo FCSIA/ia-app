@@ -1,28 +1,29 @@
-import { getUserRoles } from './admin-utils';
+import { titleCaseEnum } from '~/apps/shared/labels';
+import { type AppRole, canGrantRole, isPrivilegedAccount } from '~/apps/shared/roles';
 import type { AdminUserRecord } from './types';
 
 export type AssignableRole = {
-  role: string;
+  role: AppRole;
   label: string;
   color: 'emerald' | 'blue' | 'purple' | 'amber' | 'red';
 };
 
-export const ASSIGNABLE_ROLES: AssignableRole[] = [
-  { role: 'STUDENT_ADMIN', label: 'Student Admin', color: 'emerald' },
-  { role: 'TEACHER', label: 'Teacher', color: 'blue' },
-  { role: 'SPONSOR', label: 'Sponsor', color: 'purple' },
-  { role: 'SUPPORT_STAFF', label: 'Support Staff', color: 'amber' },
-  { role: 'ADMIN', label: 'Admin', color: 'red' },
-];
+export const ASSIGNABLE_ROLES: AssignableRole[] = (
+  [
+    { role: 'STUDENT_ADMIN', color: 'emerald' },
+    { role: 'TEACHER', color: 'blue' },
+    { role: 'SPONSOR', color: 'purple' },
+    { role: 'SUPPORT_STAFF', color: 'amber' },
+    { role: 'ADMIN', color: 'red' },
+  ] as const
+).map((item) => ({ ...item, label: titleCaseEnum(item.role) }));
 
 export function getAssignableRoleOptions(isSuperAdmin: boolean) {
-  return ASSIGNABLE_ROLES.filter((item) => item.role !== 'ADMIN' || isSuperAdmin);
+  return ASSIGNABLE_ROLES.filter((item) => canGrantRole(isSuperAdmin, item.role));
 }
 
 export function canEditUserRoles(user: AdminUserRecord, isSuperAdmin: boolean) {
-  const roles = getUserRoles(user);
-  const isPrivileged = roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
-  return isPrivileged ? isSuperAdmin : true;
+  return isPrivilegedAccount(user) ? isSuperAdmin : true;
 }
 
 export function activeRoleClass(color: AssignableRole['color']) {

@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "~/apps/shared/roles";
 import { calendarQueryRange } from '~/apps/shared/calendar-date';
 /**
  * Starts a tab's queries when the user taps it, not when they sign in.
@@ -25,7 +26,7 @@ import { calendarQueryRange } from '~/apps/shared/calendar-date';
 import { useCallback } from "react";
 import { useQueryKeepAlive, type KeepAliveEntry } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
-import { getAppPersona, hasRole, type AppUser } from "@/lib/auth";
+import { getAppPersona, type AppUser } from "@/lib/auth";
 import {
   CALENDAR_SOURCES,
   monthRange,
@@ -91,7 +92,7 @@ function queriesForTab(tab: PrewarmTab, user: AppUser): KeepAliveEntry[] {
     }
 
     case "clubs":
-      return hasRole(user, "SUPER_ADMIN")
+      return isSuperAdmin(user)
         ? [{ query: api.clubs.management.getAll }]
         : [
             { query: api.clubs.management.getAll },

@@ -78,7 +78,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import {
   normalizeDashboardColumns,
   normalizeDashboardLayout,
-} from "~/apps/convex/src/users/dashboardLayout";
+} from "~/apps/shared/dashboard-layout";
 import {
   WIDGETS,
   getWidget,

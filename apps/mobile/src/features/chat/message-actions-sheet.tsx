@@ -12,12 +12,12 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Avatar, PressableScale, Sheet, Txt, useToast } from "@/components/ui";
+import { CHAT_REACTIONS } from "~/apps/shared/chat/protocol";
 import { messageGifUrls } from "~/apps/shared/chat/gifs";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import {
   normalizeReactionSummaries,
-  QUICK_REACTIONS,
 } from "./quick-reactions";
 import {
   chatAuthorName,
@@ -134,7 +134,7 @@ export function MessageActionsSheet({
                 gap: spacing.xs,
               }}
             >
-              {QUICK_REACTIONS.map(({ payload, label, glyph }) => {
+              {CHAT_REACTIONS.map(({ token: payload, name: label, glyph }) => {
                 const reaction = reactions.find(
                   (entry) => entry.emoji === payload,
                 );

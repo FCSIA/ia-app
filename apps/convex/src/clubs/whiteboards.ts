@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from "../../../shared/roles";
 import { displayName } from '../../../shared/user-name';
 import { ConvexError, v } from "convex/values";
 import {
@@ -46,8 +47,6 @@ import {
 
 type WhiteboardDbCtx = QueryCtx | MutationCtx;
 
-/** Roles that review audit rows may also inspect audited board snapshots. */
-const WHITEBOARD_REVIEW_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"] as const;
 const MAX_BOARDS_PER_CHANNEL = 100;
 const MAX_ACTIVE_VIEWERS_COUNTED = 20;
 const MAX_CURSORS = 50;
@@ -1166,7 +1165,7 @@ export const getAuditSnapshot = query({
   returns: v.union(snapshotValidator, v.null()),
   handler: async (ctx, args) => {
     const viewer = await getMaybeCurrentAppUser(ctx);
-    if (!viewer || !requireAnyRoleSafe(viewer, [...WHITEBOARD_REVIEW_ROLES])) {
+    if (!viewer || !requireAnyRoleSafe(viewer, STAFF_ROLES)) {
       return null;
     }
     return await getWhiteboardSnapshot(ctx, args.boardId, args.atSeq);

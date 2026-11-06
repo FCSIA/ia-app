@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
@@ -61,7 +62,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { Elevated } from "@/lib/elevated";
 
 type ClubRole = FunctionReturnType<

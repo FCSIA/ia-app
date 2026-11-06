@@ -11,7 +11,6 @@ export const presence = new Presence(components.presence);
  * comes or goes, never on every sign-in across the school.
  */
 export const appRoom = "app";
-export const heartbeatIntervalMs = 30_000;
 
 /** Do Not Disturb is on exactly while its row exists; expiry deletes it. */
 export async function isDoNotDisturb(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {

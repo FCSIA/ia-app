@@ -1,4 +1,5 @@
 import { displayName } from '../../../shared/user-name';
+import { isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -7,7 +8,6 @@ import {
   getScheduleFriendshipStatus,
   getStudentTarget,
   deliverNotification,
-  isStudentUser,
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
@@ -143,7 +143,7 @@ export const search = query({
   returns: v.array(scheduleSearchResultValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !isStudentUser(user)) return [];
+    if (!user || !isStudent(user)) return [];
     const search = args.query.trim().toLowerCase();
     if (search.length < 2) return [];
     const limit = Math.min(Math.max(args.limit ?? 20, 1), 50);
@@ -179,7 +179,7 @@ export const getStatuses = query({
   returns: v.array(scheduleFriendshipStateValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !isStudentUser(user)) return [];
+    if (!user || !isStudent(user)) return [];
 
     const userIds = [...new Set(args.userIds)]
       .filter((userId) => userId !== user._id)
@@ -235,7 +235,7 @@ export const listMutualFriends = query({
     const viewer = await getCurrentAppUser(ctx);
     if (args.personId === viewer._id) return [];
     const person = await ctx.db.get(args.personId);
-    if (!person?.isActive || !isStudentUser(person) || !isStudentUser(viewer))
+    if (!person?.isActive || !isStudent(person) || !isStudent(viewer))
       return [];
     const friends = await loadMutualFriends(ctx, viewer._id, person._id);
     return friends.map(toClubUserRef);
@@ -250,7 +250,7 @@ export const getProfileContext = query({
     if (args.personId === viewer._id) return null;
 
     const person = await ctx.db.get(args.personId);
-    if (!person?.isActive || !isStudentUser(person) || !isStudentUser(viewer))
+    if (!person?.isActive || !isStudent(person) || !isStudent(viewer))
       return null;
 
     const friendship = await getFriendshipBetween(ctx, viewer._id, person._id);

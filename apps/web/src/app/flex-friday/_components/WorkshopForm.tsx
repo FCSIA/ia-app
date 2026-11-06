@@ -1,3 +1,4 @@
+import { GRADE_LEVELS, PATHWAY_OPTIONS } from '~/apps/shared/labels';
 import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { GRADE_OPTIONS, PATHWAY_OPTIONS, WorkshopForm as WorkshopFormType } from '../_types';
+import { WorkshopForm as WorkshopFormType } from '../_types';
 import { formatTimeRange, toggleInArray } from '../_utils';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
@@ -163,7 +164,7 @@ export function WorkshopForm({
             <div className="space-y-2">
               <Label>Target Grades</Label>
               <div className="flex flex-wrap gap-2">
-                {GRADE_OPTIONS.map((g) => {
+                {GRADE_LEVELS.map((g) => {
                   const checked = form.targetGrades.includes(g);
                   return (
                     <Button

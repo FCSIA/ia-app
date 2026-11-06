@@ -3,7 +3,7 @@ import { FileText, Image as ImageIcon, X } from "lucide-react-native";
 import { IconButton, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
-import { formatAttachmentSize } from "./types";
+import { formatAttachmentSize } from "~/apps/shared/chat/attachments";
 import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 
 type AttachmentComposerProps = {

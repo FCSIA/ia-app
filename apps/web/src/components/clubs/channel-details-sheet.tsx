@@ -10,6 +10,8 @@ import {
   Play,
 } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
+import type { ChannelVisibility } from '~/apps/shared/chat/protocol';
+import { formatWebAttachmentListSize } from '~/apps/shared/chat/attachments';
 
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -53,7 +55,7 @@ type ChannelDetailsSheetProps = {
   channel: {
     name: string;
     description?: string | null;
-    visibility: 'PUBLIC' | 'PRIVATE' | 'MEMBER_READONLY';
+    visibility: ChannelVisibility;
   };
   pinnedMessages: ClubChannelMessage[];
   pinnedHasMore?: boolean;
@@ -288,7 +290,7 @@ export function ChannelDetailsSheet({
                           {item.fileName}
                         </CardTitle>
                         <CardDescription>
-                          {[formatSize(item.size), formatMessageTime(item.createdAt)]
+                          {[formatWebAttachmentListSize(item.size), formatMessageTime(item.createdAt)]
                             .filter(Boolean)
                             .join(' · ')}
                         </CardDescription>
@@ -375,12 +377,6 @@ function ListSkeleton() {
       ))}
     </div>
   );
-}
-
-function formatSize(size?: number) {
-  if (!size) return null;
-  if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function hostname(url: string) {

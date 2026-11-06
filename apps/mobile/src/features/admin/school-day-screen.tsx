@@ -20,16 +20,16 @@ import {
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { SCHOOL_WEEKDAYS, type SchoolWeekday } from "~/apps/shared/school-time";
 
-const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
-const weekdayLabels: Record<Weekday, string> = {
+const weekdayLabels: Record<SchoolWeekday, string> = {
   MONDAY: "Monday",
   TUESDAY: "Tuesday",
   WEDNESDAY: "Wednesday",
   THURSDAY: "Thursday",
   FRIDAY: "Friday",
 };
-const weekdayShortLabels: Record<Weekday, string> = {
+const weekdayShortLabels: Record<SchoolWeekday, string> = {
   MONDAY: "Mon",
   TUESDAY: "Tue",
   WEDNESDAY: "Wed",
@@ -42,7 +42,6 @@ const blockKinds = [
   { label: "Custom", value: "CUSTOM" },
 ] as const;
 
-type Weekday = (typeof weekdays)[number];
 type BlockKind = (typeof blockKinds)[number]["value"];
 type ScheduleDashboard = FunctionReturnType<typeof api.schedule.dashboard.get>;
 type SchoolDayBlock = ScheduleDashboard["blocks"][number];
@@ -59,7 +58,7 @@ export function SchoolDayScreen() {
   const createBlock = useMutation(api.schedule.blocks.createBlock);
   const updateBlock = useMutation(api.schedule.blocks.updateBlock);
   const deleteBlock = useMutation(api.schedule.blocks.deleteBlock);
-  const [weekday, setWeekday] = useState<Weekday>(currentWeekday);
+  const [weekday, setWeekday] = useState<SchoolWeekday>(currentWeekday);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<SchoolDayBlock | null>(null);
   const [form, setForm] = useState<BlockForm>(() => defaultForm([]));
@@ -73,7 +72,7 @@ export function SchoolDayScreen() {
     [data?.blocks, weekday],
   );
 
-  function selectWeekday(nextWeekday: Weekday) {
+  function selectWeekday(nextWeekday: SchoolWeekday) {
     if (pendingKey) return;
     setWeekday(nextWeekday);
     setSheetOpen(false);
@@ -186,7 +185,7 @@ export function SchoolDayScreen() {
   return (
     <Screen title="School day">
       <ChipGroup
-        values={weekdays}
+        values={SCHOOL_WEEKDAYS}
         selected={[weekday]}
         labels={weekdayShortLabels}
         onToggle={selectWeekday}
@@ -397,9 +396,9 @@ function validateForm(form: BlockForm) {
   return null;
 }
 
-function currentWeekday(): Weekday {
+function currentWeekday(): SchoolWeekday {
   const index = new Date().getDay() - 1;
-  return weekdays[index] ?? "MONDAY";
+  return SCHOOL_WEEKDAYS[index] ?? "MONDAY";
 }
 
 function isTime(value: string) {

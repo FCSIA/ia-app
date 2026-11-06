@@ -1,3 +1,4 @@
+import { hasAnyRole, STUDENT_ROLES } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { router, useLocalSearchParams } from 'expo-router';
 import { RefreshControl, View } from "react-native";
@@ -7,7 +8,7 @@ import { SegmentedControl } from "@/components/ui";
 import { EventsView } from "@/features/calendar/EventsView";
 import { MonthView } from "@/features/calendar/MonthView";
 import { MyWeekView } from "@/features/calendar/MyWeekView";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 
@@ -17,7 +18,7 @@ type NonStudentCalendarSegment = Exclude<CalendarSegment, "week">;
 export default function CalendarScreen() {
   const { view } = useLocalSearchParams<{ view?: string }>();
   const user = useLiveCurrentUser();
-  const isStudent = hasRole(user ?? null, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
   const [studentSegment, setStudentSegment] = useState<CalendarSegment>("week");
   const [nonStudentSegment, setNonStudentSegment] =
     useState<NonStudentCalendarSegment>("month");

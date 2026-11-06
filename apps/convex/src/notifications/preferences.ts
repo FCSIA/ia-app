@@ -1,3 +1,4 @@
+import { channelMuteScopeKey, GLOBAL_SCOPE_KEY } from "../../../shared/notifications";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -21,8 +22,8 @@ export const list = query({
       )
       .take(500);
     const preferences = rows.map(toPreference);
-    const hasFeedback = rows.some((row) => row.category === "FEEDBACK" && row.scopeKey === "global");
-    const legacy = rows.find((row) => row.category === "CONTENT_MODERATED" && row.scopeKey === "global");
+    const hasFeedback = rows.some((row) => row.category === "FEEDBACK" && row.scopeKey === GLOBAL_SCOPE_KEY);
+    const legacy = rows.find((row) => row.category === "CONTENT_MODERATED" && row.scopeKey === GLOBAL_SCOPE_KEY);
     if (!hasFeedback && legacy) {
       // Expose the effective inherited value without writing a migration row.
       preferences.push({ ...toPreference(legacy), category: "FEEDBACK", locked: false });
@@ -98,7 +99,7 @@ export const setChannelMute = mutation({
   returns: preferenceValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const key = `mute:channel:${args.channelId}`;
+    const key = channelMuteScopeKey(args.channelId);
     const now = Date.now();
     const existing = await ctx.db
       .query("notificationPreferences")

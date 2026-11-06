@@ -4,6 +4,7 @@ import { useMutation } from "@/lib/convex-react";
 import { FormScreen } from "@/components/screen";
 import { Button, Field, TextField, Txt } from "@/components/ui";
 import { api } from "~/apps/convex/src/_generated/api";
+import { MIN_PASSWORD_LENGTH } from "~/apps/shared/limits";
 
 export default function ForcedPasswordChangeScreen() {
   const changePassword = useMutation(api.users.auth.changePassword);
@@ -15,7 +16,7 @@ export default function ForcedPasswordChangeScreen() {
 
   async function submit() {
     setError(null);
-    if (newPassword.length < 6) {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setError("New password must be at least 6 characters.");
       return;
     }

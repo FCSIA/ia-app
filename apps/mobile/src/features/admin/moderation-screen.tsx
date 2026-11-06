@@ -1,3 +1,4 @@
+import { isStaff } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
@@ -231,9 +232,7 @@ function ButtonlessReportRow({ report, last, onPress }: { report: Report; last: 
 
 function KeywordRules() {
   const user = useLiveCurrentUser();
-  const canManageRules = !!user?.roles.some((role) =>
-    ["SUPPORT_STAFF", "ADMIN", "SUPER_ADMIN"].includes(role),
-  );
+  const canManageRules = isStaff(user);
   const rules = useQuery(api.moderation.keywords.list, canManageRules ? {} : "skip");
   const addRule = useMutation(api.moderation.keywords.add);
   const removeRule = useMutation(api.moderation.keywords.remove);

@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  isAdmin,
+  isStaff,
+  isStudent,
+  isSuperAdmin,
+} from '~/apps/shared/roles';
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useConvexAuth, useQuery } from '@/lib/convex-react';
@@ -19,7 +25,7 @@ import {
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
-import { hasRole, isSuperAdmin, type AppUser } from '@/lib/auth';
+import { type AppUser } from '@/lib/auth';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import {
   CommandMenu,
@@ -37,7 +43,7 @@ import {
   type CommandAction,
 } from '@/components/layout/use-global-command-actions';
 import { personalCommandQueryArgs, rankCommandSuggestions } from './command-suggestions';
-import { schoolDateKey } from '@/lib/school-date';
+import { schoolDateKey } from '~/apps/shared/school-time';
 
 const staticActions: CommandAction[] = [
   { id: 'route-dashboard', label: 'Home', detail: 'Your widgets', href: '/', Icon: Home },
@@ -109,7 +115,7 @@ function GlobalCommandPaletteContent({
   const deferredSearch = useDeferredValue(searchValue.trim());
   const shouldLoad = open && isAuthenticated && !!user;
   const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
-  const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const showAdmin = isStaff(user);
   const announcementNow = useAnnouncementFeedClock();
   const minuteNow = useAnnouncementFeedClock(60_000);
   const [openedAt] = useState(() => Date.now());
@@ -137,7 +143,7 @@ function GlobalCommandPaletteContent({
     api.schedule.dashboard.get,
     shouldLoad &&
       !!user &&
-      hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
+      (isStudent(user) || isAdmin(user))
       ? { dateKey: schoolDateKey(new Date(now)) }
       : 'skip',
   );

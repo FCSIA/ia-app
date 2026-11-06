@@ -1,3 +1,4 @@
+import { isStudent } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -29,11 +30,7 @@ export const snapshot = query({
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const student =
-      user.isStudent ||
-      user.roles.some((role) =>
-        ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-      );
+    const student = user.isStudent || isStudent(user);
     const friday = await ctx.db
       .query("flexFridays")
       .withIndex("by_date", (q) => q.gte("date", args.from))

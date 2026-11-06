@@ -1,3 +1,10 @@
+import {
+  ADMIN_ROLES,
+  type AppRole,
+  CLUB_CREATION_ROLES,
+  hasAnyRole,
+  isSuperAdmin,
+} from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -10,7 +17,6 @@ import { getChannelAccessForChannels } from "./channelAccess";
 import { clubSummaryValidator, clubSummaryWithCounts, toViewerState } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
 import { adjustClubCounts } from "./counts";
-import type { AppRole } from "../../lib/roles";
 import {
   clubRolePermissionValidator,
   clubRolePermissionsValidator,
@@ -21,14 +27,12 @@ import {
   getDefaultClubRole,
 } from "./rolePermissions";
 
-const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"] as const satisfies readonly AppRole[];
-
 export function canCreateClub(roles: readonly AppRole[]) {
-  return roles.some((role) => (CLUB_CREATION_ROLES as readonly AppRole[]).includes(role));
+  return hasAnyRole(roles, CLUB_CREATION_ROLES);
 }
 
 export function canPermanentlyDeleteClub(roles: readonly AppRole[]) {
-  return roles.includes("SUPER_ADMIN");
+  return isSuperAdmin(roles);
 }
 
 export const getAll = query({
@@ -227,7 +231,7 @@ export const deactivate = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN"]);
+    requireAnyRole(user, ADMIN_ROLES);
 
     await ctx.db.patch(args.clubId, { isActive: false, updatedAt: Date.now() });
 

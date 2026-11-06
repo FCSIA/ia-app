@@ -1,6 +1,7 @@
+import { isSuperAdmin } from "../../../shared/roles";
 export function canReviewFeedback(user: {
   roles: readonly string[];
   canReviewFeedback?: boolean;
 }) {
-  return user.roles.includes("SUPER_ADMIN") || user.canReviewFeedback === true;
+  return isSuperAdmin(user) || user.canReviewFeedback === true;
 }

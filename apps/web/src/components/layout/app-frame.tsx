@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  hasAnyRole,
+  isAdmin,
+  isStaff,
+  SCHEDULE_ROLES,
+} from "~/apps/shared/roles";
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -11,8 +17,8 @@ import {
 import { usePathname } from "next/navigation";
 import { useQuery } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
-import { hasRole, useCurrentUser } from "@/lib/auth";
-import { computeWrappedAvailability } from "@/lib/wrapped";
+import { useCurrentUser } from "@/lib/auth";
+import { wrappedAvailability } from "~/apps/shared/wrapped-window";
 import { GlobalCommandPalette } from "@/components/layout/GlobalCommandPalette";
 import { CommandMenuDialogRoot } from "@/components/ui/command-menu";
 import {
@@ -192,14 +198,14 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
   const unreadData = useQuery(api.notifications.inbox.unreadCount);
 
   const showAdmin = Boolean(
-    user && (hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF") || user.canReviewFeedback),
+    user && (isStaff(user) || user.canReviewFeedback),
   );
   const showSchedule = Boolean(
-    user && hasRole(user, "STUDENT", "ADMIN", "SUPER_ADMIN"),
+    user && hasAnyRole(user, SCHEDULE_ROLES),
   );
   // Wrapped only appears in the nav during its May window. Admins can still
   // navigate directly when they need to preview it outside that window.
-  const showWrapped = computeWrappedAvailability().open;
+  const showWrapped = wrappedAvailability().open;
   const unreadBadge = unreadData?.count
     ? unreadData.count > 9
       ? "9+"
@@ -210,8 +216,8 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
     unreadBadge,
     showAdmin,
     showSchedule,
-    showFriends: Boolean(user && hasRole(user, "STUDENT")),
-    showDayPlans: Boolean(user && hasRole(user, "ADMIN", "SUPER_ADMIN")),
+    showFriends: hasAnyRole(user, ["STUDENT"]),
+    showDayPlans: isAdmin(user),
     scheduleTab: routeConfig?.scheduleTab,
     scheduleSection: routeConfig?.scheduleSection,
     pageNavigation: routeConfig?.pageNavigation,

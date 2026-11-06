@@ -1,3 +1,4 @@
+import { isStaff } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@/lib/convex-react";
 import { Button, ChipGroup, Sheet, TextField, Txt, useToast } from "@/components/ui";
@@ -17,9 +18,7 @@ export function CreateEventSheet({ open, onClose, defaultClubId }: CreateEventSh
   const createEvent = useMutation(api.events.events.create);
   const { showToast } = useToast();
 
-  const canCreateGeneral = !!user?.roles?.some((role) =>
-    ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
-  );
+  const canCreateGeneral = isStaff(user);
 
   const availableClubs = useMemo(
     () =>

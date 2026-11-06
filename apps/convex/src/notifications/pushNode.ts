@@ -1,3 +1,5 @@
+import { NOTIFICATIONS_HREF } from "../../../shared/routes";
+import type { PushDeliveryFields } from "../../../shared/notifications";
 "use node";
 
 import webpush from "web-push";
@@ -157,7 +159,7 @@ export const sendForDelivery = internalAction({
       deliveryCreatedAt: delivery.deliveryCreatedAt,
       channelId: delivery.channelId,
       sourceCreatedAt: delivery.sourceCreatedAt,
-    });
+    } satisfies PushDeliveryFields & Record<string, unknown>);
 
     await sendToTargets(ctx, targets, payload);
 
@@ -227,7 +229,7 @@ export const sendTestToMe = action({
     const payload = JSON.stringify({
       title: "Innovation Academy",
       body: "Browser push notifications are working on this device.",
-      url: "/notifications",
+      url: NOTIFICATIONS_HREF,
       category: "SCHOOL_ANNOUNCEMENT",
     });
 

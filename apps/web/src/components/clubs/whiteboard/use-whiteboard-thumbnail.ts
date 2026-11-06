@@ -6,10 +6,10 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import { CLIENT_WHITEBOARD_THUMBNAIL_CHARACTERS } from '~/apps/shared/chat/whiteboard-limits';
 
 /** Wait after the last local save before rendering a new list preview. */
 const THUMBNAIL_DELAY_MS = 4_000;
-const THUMBNAIL_MAX_CHARACTERS = 60_000;
 
 function blobToDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
@@ -52,8 +52,8 @@ export function useWhiteboardThumbnail(
       // Dense boards can exceed the stored size at full preview width; a
       // half-size render is always small enough for the list card.
       let dataUrl = await exportAt(480);
-      if (dataUrl.length > THUMBNAIL_MAX_CHARACTERS) dataUrl = await exportAt(240);
-      if (dataUrl.length <= THUMBNAIL_MAX_CHARACTERS) {
+      if (dataUrl.length > CLIENT_WHITEBOARD_THUMBNAIL_CHARACTERS) dataUrl = await exportAt(240);
+      if (dataUrl.length <= CLIENT_WHITEBOARD_THUMBNAIL_CHARACTERS) {
         await setThumbnail({ boardId, dataUrl });
       }
     } catch {

@@ -6,7 +6,7 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import schema from "../schema";
-import { schoolTimestamp } from "../../lib/schoolTime";
+import { schoolTimestamp } from "../../../shared/school-time";
 
 // Exercise the real active-user/password-reset guards; replace only the auth adapter.
 vi.mock("../auth", async (original) => {

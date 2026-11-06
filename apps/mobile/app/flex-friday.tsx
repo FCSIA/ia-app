@@ -1,3 +1,4 @@
+import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { router } from "expo-router";
@@ -32,7 +33,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 
 export default function FlexFridayScreen() {
   const user = useCurrentUser();
-  const isAdmin = !!user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
   const [showCreate, setShowCreate] = useState(false);
   const liveFridays = useQuery(api.flexFriday.fridays.list, {});
   const fridays = useOfflineValue("flex-fridays", liveFridays);

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useRef, useState, type ReactNode } from 'react';
 import { format, subDays } from 'date-fns';
-import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditRecordLabel, type AuditCategory } from '~/apps/shared/audit';
+import { AUDIT_CATEGORIES, auditActionInfo, auditActionLabel, auditRecordLabel, type AuditCategory } from '~/apps/shared/audit';
 import { displayName } from '~/apps/shared/user-name';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
@@ -77,7 +77,7 @@ function ActionFilter({ audit, surface }: { audit: AuditState; surface: AuditFil
   const toggle = <T extends string>(values: T[], value: T) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
   const categories = (Object.entries(AUDIT_CATEGORIES) as [AuditCategory, string][]).filter(([, label]) => matches(label, search));
   const actions = audit.auditActionOptions.filter((action) =>
-    (!audit.auditCategoryFilters.length || audit.auditCategoryFilters.includes(AUDIT_ACTIONS[action]?.category))
+    (!audit.auditCategoryFilters.length || audit.auditCategoryFilters.some((category) => category === auditActionInfo(action)?.category))
     && matches(`${auditActionLabel(action)} ${action}`, search));
   const rows: Row[] = [
     ...categories.map(([category, label], index) => ({

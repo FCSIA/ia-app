@@ -1,3 +1,4 @@
+import { CLUB_CREATION_ROLES, hasAnyRole, isSuperAdmin } from "~/apps/shared/roles";
 import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
@@ -8,14 +9,14 @@ import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, Empty, IconButton, PressableScale, Txt } from "@/components/ui";
 import { CreateClubSheet } from "@/features/clubs/club-management-create-sheet";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ClubsScreen() {
   const user = useLiveCurrentUser();
-  const hasAdministrativeClubAccess = !!user && hasRole(user, "SUPER_ADMIN");
+  const hasAdministrativeClubAccess = isSuperAdmin(user);
   const all = useQuery(api.clubs.management.getAll, {});
   const mine = useQuery(
     api.clubs.management.getMyClubs,
@@ -23,7 +24,7 @@ export default function ClubsScreen() {
   );
   const [createOpen, setCreateOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
-  const canCreate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER");
+  const canCreate = hasAnyRole(user, CLUB_CREATION_ROLES);
   const memberIds = new Set((mine?.memberOf ?? []).map((club: any) => club._id));
   const sponsorIds = new Set((mine?.sponsoring ?? []).map((club: any) => club._id));
   const myClubs = [

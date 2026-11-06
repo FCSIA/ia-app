@@ -1,3 +1,4 @@
+import { eventHref } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
@@ -120,7 +121,7 @@ export const approveEvent = mutation({
         category: "EVENT",
         title: event.title,
         body: event.description ?? "New event published.",
-        href: `/events/${event._id}`,
+        href: eventHref(event._id),
         subject: {
           kind: "event",
           eventId: event._id,

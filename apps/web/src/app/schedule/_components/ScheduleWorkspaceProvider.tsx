@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAnyRole, isAdmin } from "~/apps/shared/roles";
 import {
   createContext,
   use,
@@ -26,9 +27,14 @@ import {
   getCurrentScheduleStatus,
 } from "@/components/schedule/schedule-utils";
 import { useToast } from "@/hooks/use-toast";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import type { ImportedScheduleRow } from "@/lib/schedule-ocr";
 import { api } from "~/apps/convex/src/_generated/api";
+import {
+  DEFAULT_LUNCH_PERIOD,
+  lunchPeriodNumber,
+  schoolDateKey,
+} from "~/apps/shared/school-time";
 import type { ScheduleDraftState, ScheduleTabState } from "../_types";
 import {
   buildScheduleRecord,
@@ -43,19 +49,6 @@ import {
 const EMPTY_BLOCKS: SchoolDayBlock[] = [];
 const EMPTY_COURSES: CourseSummary[] = [];
 const EMPTY_SEARCH_RESULTS: ScheduleSearchResult[] = [];
-const SCHOOL_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/New_York',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-
-function schoolDateKey() {
-  const parts = SCHOOL_DATE_FORMATTER.formatToParts(new Date());
-  const byType = new Map(parts.map((part) => [part.type, part.value]));
-  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
-}
-
 function useScheduleWorkspaceValue(initialSearch: string) {
   const { isAuthenticated } = useConvexAuth();
   const user = useCurrentUser();
@@ -64,8 +57,8 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   const { toast } = useToast();
   const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
-  const canEditOwnSchedule = !!user && hasRole(user, "STUDENT");
-  const canManageBlocks = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const canEditOwnSchedule = hasAnyRole(user, ["STUDENT"]);
+  const canManageBlocks = isAdmin(user);
   const requestedTab = searchParams?.get("tab") ?? null;
   const requestedSection = searchParams?.get("section") ?? null;
 
@@ -88,7 +81,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     source: undefined,
     entries: [],
     isPublic: false,
-    lunchPeriod: "PERIOD_5",
+    lunchPeriod: DEFAULT_LUNCH_PERIOD,
   });
   const [lastSavedSchedule, setLastSavedSchedule] = useState<
     Pick<ScheduleDraftState, "entries" | "isPublic" | "lunchPeriod"> | undefined
@@ -132,7 +125,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   if (scheduleDraft.source !== sourceSchedule) {
     scheduleEntries = sourceSchedule?.entries ?? [];
     isPublic = sourceSchedule?.isPublic ?? false;
-    lunchPeriod = sourceSchedule ? sourceSchedule.lunchPeriod : "PERIOD_5";
+    lunchPeriod = sourceSchedule ? sourceSchedule.lunchPeriod : DEFAULT_LUNCH_PERIOD;
     setScheduleDraft({
       source: sourceSchedule,
       entries: scheduleEntries,
@@ -187,7 +180,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     }));
   };
   const setLunchPeriod = (nextLunchPeriod: ScheduleLunchPeriod) => {
-    const targetPeriod = nextLunchPeriod === "PERIOD_4" ? 4 : 5;
+    const targetPeriod = lunchPeriodNumber(nextLunchPeriod);
     const conflict = scheduleEntries.find(
       (entry) => entry.periodNumber === targetPeriod,
     );

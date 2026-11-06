@@ -3,29 +3,19 @@
 import type { ClubChannel } from '@/components/clubs/types';
 import { Hash, Lock, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  CHANNEL_VISIBILITY_DESCRIPTIONS,
+  CHANNEL_VISIBILITY_LABELS,
+} from '~/apps/shared/chat/protocol';
 
 export type ClubChannelVisibility = ClubChannel['visibility'];
 
 export function getClubChannelVisibilityLabel(visibility: ClubChannelVisibility) {
-  switch (visibility) {
-    case 'PRIVATE':
-      return 'Private';
-    case 'MEMBER_READONLY':
-      return 'Read only';
-    default:
-      return 'Public';
-  }
+  return CHANNEL_VISIBILITY_LABELS[visibility] ?? CHANNEL_VISIBILITY_LABELS.PUBLIC;
 }
 
 export function getClubChannelVisibilityDescription(visibility: ClubChannelVisibility) {
-  switch (visibility) {
-    case 'PRIVATE':
-      return 'Only selected members, sponsors, and admins can read and post.';
-    case 'MEMBER_READONLY':
-      return 'All members can read, but only leaders, sponsors, and admins can post.';
-    default:
-      return 'Every club member can read and post here.';
-  }
+  return CHANNEL_VISIBILITY_DESCRIPTIONS[visibility] ?? CHANNEL_VISIBILITY_DESCRIPTIONS.PUBLIC;
 }
 
 export function ClubChannelVisibilityIcon({

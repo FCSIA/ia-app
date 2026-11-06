@@ -1,3 +1,4 @@
+import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { Redirect } from "expo-router";
@@ -6,21 +7,22 @@ import type { FunctionReturnType } from "convex/server";
 import { ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Badge, Button, IconButton, Section, SkeletonList, Txt, useToast } from "@/components/ui";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { schoolYearStart } from "~/apps/shared/school-time";
 
 type SnapshotStatus = FunctionReturnType<typeof api.wrapped.snapshots.snapshotStatus>;
 type RunKind = "missing" | "refresh";
 
 export function WrappedOperationsScreen() {
   const user = useLiveCurrentUser();
-  const currentSchoolYear = useMemo(getCurrentSchoolYear, []);
+  const currentSchoolYear = useMemo(() => schoolYearStart(new Date()), []);
   const earliestSchoolYear = currentSchoolYear - 4;
   const [schoolYear, setSchoolYear] = useState(currentSchoolYear);
   const [running, setRunning] = useState<RunKind | null>(null);
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
   const status = useQuery(
     api.wrapped.snapshots.snapshotStatus,
     isAdmin ? { schoolYear } : "skip",
@@ -208,11 +210,6 @@ function ReadinessSummary({ status }: { status: SnapshotStatus }) {
       </View>
     </Section>
   );
-}
-
-function getCurrentSchoolYear() {
-  const now = new Date();
-  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
 function schoolYearLabel(startYear: number) {

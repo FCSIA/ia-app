@@ -1,12 +1,13 @@
 'use client';
 
+import { ADMIN_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { displayName as profileName } from '~/apps/shared/user-name';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery as useConvexQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { computeWrappedAvailability } from '@/lib/wrapped';
+import { useCurrentUser } from '@/lib/auth';
+import { wrappedAvailability } from '~/apps/shared/wrapped-window';
 
 import { buildSlides } from './_lib/utils';
 import { SlideView } from './_components/slide/SlideView';
@@ -23,7 +24,7 @@ export default function WrappedPage() {
 
   const user = useCurrentUser();
   const displayName = user ? profileName(user) : 'You';
-  const isAdmin = user !== null && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
 
   // Recompute availability each mount + tick every 60s so the countdown
   // decrements without a page refresh (and the gate flips open at 12:00 AM
@@ -35,7 +36,7 @@ export default function WrappedPage() {
     return () => clearInterval(id);
   }, [mounted]);
 
-  const availability = useMemo(() => computeWrappedAvailability(nowTick), [nowTick]);
+  const availability = useMemo(() => wrappedAvailability(nowTick), [nowTick]);
   const gated = mounted && !availability.open && !isAdmin;
 
   const data = useConvexQuery(

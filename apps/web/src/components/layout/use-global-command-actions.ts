@@ -1,3 +1,4 @@
+import { hasAnyRole, isStudent } from '~/apps/shared/roles';
 import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 import { useMemo } from 'react';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -18,11 +19,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { hasRole, type AppUser } from '@/lib/auth';
+import { type AppUser } from '@/lib/auth';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { calendarDate, calendarInputDate } from '@/components/calendar/calendar-date';
-import { schoolDateKey } from '@/lib/school-date';
-import { formatSchoolTime } from '@/lib/time-format';
+import { formatClockTime, schoolDateKey } from '~/apps/shared/school-time';
 import {
   commandWhen,
   canSuggestFridayBrowse,
@@ -247,11 +247,11 @@ export function useGlobalCommandActions({
 
     const day = schedule?.resolvedDay;
     const nextBlock = day?.blocks.find((block) => calendarInputDate(`${day.dateKey}T${block.endTime}`).getTime() > now);
-    const todaySchedule: CommandAction[] = day && nextBlock && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN') ? [{
+    const todaySchedule: CommandAction[] = day && nextBlock && isStudent(user) ? [{
       id: `today-schedule-${day.dateKey}`,
       label: `${format(calendarInputDate(day.dateKey), 'EEEE')} schedule`,
       detail: [day.name, nextBlock.entry?.className || nextBlock.label,
-        formatSchoolTime(nextBlock.startTime, user?.use24HourTime)].filter(Boolean).join(' · '),
+        formatClockTime(nextBlock.startTime, user?.use24HourTime)].filter(Boolean).join(' · '),
       href: '/schedule?tab=mine',
       Icon: ClipboardList,
       keywords: ['today', 'schedule', 'next class', day.name],
@@ -275,7 +275,7 @@ export function useGlobalCommandActions({
       id: `person-${person._id}`,
       label: displayName(person),
       detail: 'IA community member',
-      href: hasRole(user, 'STUDENT')
+      href: hasAnyRole(user, ['STUDENT'])
         ? `/schedule?tab=friends&search=${encodeURIComponent(displayName(person))}`
         : `/admin?search=${encodeURIComponent(displayName(person))}`,
       Icon: UserRound,

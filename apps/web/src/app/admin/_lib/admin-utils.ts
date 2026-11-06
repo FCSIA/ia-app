@@ -38,10 +38,6 @@ export function formatPathwayLabel(pathway?: string | null) {
   return pathway ? pathway.replace(/_/g, ' ') : '—';
 }
 
-export function schoolYearLabel(startYear: number) {
-  return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
-}
-
 export function formatDateTime(value?: string | number | null) {
   if (!value) return 'Never';
   return format(new Date(value), 'MMM d, yyyy h:mm a');

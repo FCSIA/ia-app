@@ -1,3 +1,4 @@
+import { isAdmin } from "../../../shared/roles";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -45,20 +46,6 @@ export function anonymousClubContext(club: Doc<"clubs">): ClubContext {
     canSeePrivateChannels: false,
     hasPendingJoinRequest: false,
   };
-}
-
-export function isAdmin(roles: string[]) {
-  return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
-}
-
-export function isStaff(roles: string[]) {
-  return (
-    roles.includes("TEACHER") ||
-    roles.includes("SPONSOR") ||
-    roles.includes("SUPPORT_STAFF") ||
-    roles.includes("ADMIN") ||
-    roles.includes("SUPER_ADMIN")
-  );
 }
 
 export async function getViewerContext(
@@ -147,7 +134,7 @@ function buildClubContext({
   sponsor: Doc<"clubSponsors"> | null;
   hasPendingJoinRequest: boolean;
 }): ClubContext {
-  const userIsAdmin = isAdmin(user.roles as string[]);
+  const userIsAdmin = isAdmin(user);
   const isMember = !!membership;
   const isSponsor = !!sponsor;
   // Legacy enum rows are supported only until the role backfill assigns a

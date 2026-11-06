@@ -5,6 +5,7 @@ import type { Value } from 'platejs';
 import { MarkdownBody } from '@/components/ui/markdown-body';
 import { cn } from '@/lib/utils';
 import { extractChatGifLinks, hideChatGifLinks } from '~/apps/shared/chat/gifs';
+import { isMentionHref } from '~/apps/shared/chat/protocol';
 import {
   allowedMessageHref,
   isRichTextLeaf,
@@ -136,7 +137,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
             img: () => null,
             a: ({ href, children }) => {
               const safeHref = allowedMessageHref(href);
-              if (!safeHref || safeHref.startsWith('user://')) {
+              if (!safeHref || isMentionHref(safeHref)) {
                 return (
                   <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
                     {children}

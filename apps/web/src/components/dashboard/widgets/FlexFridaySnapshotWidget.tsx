@@ -13,10 +13,9 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
-import { formatSchoolTime } from "@/lib/time-format";
+import { formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { schoolDateKey } from "@/lib/school-date";
 import { workshopDetailHref } from "@/app/flex-friday/_utils";
 
 export function FlexFridaySnapshotWidget() {
@@ -45,7 +44,7 @@ export function FlexFridaySnapshotWidget() {
                 <CardTitle>{workshop.title}</CardTitle>
                 <CardDescription>
                   {format(calendarDate(data.date), "EEE, MMM d")} ·{" "}
-                  {formatSchoolTime(workshop.startTime, user?.use24HourTime)}
+                  {formatClockTime(workshop.startTime, user?.use24HourTime)}
                   {workshop.location ? ` · ${workshop.location}` : ""}
                   {!data.student
                     ? ` · ${workshop.registered}${workshop.hasMoreRegistrations ? "+" : ""} registered`

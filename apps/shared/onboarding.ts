@@ -1,8 +1,9 @@
 /** Shared product copy and destinations; clients own platform presentation. */
+import { isStudent, isSuperAdmin } from "./roles";
+
 export const ONBOARDING_VERSION = 1;
-export type OnboardingStepId =
-  "profile" | "schedule" | "privacy" | "notifications" | "essentials";
-export type OnboardingDecision = "done" | "skipped";
+export const ONBOARDING_DECISIONS = ["done", "skipped"] as const;
+export type OnboardingDecision = (typeof ONBOARDING_DECISIONS)[number];
 export const ONBOARDING_STEPS = [
   {
     id: "profile",
@@ -60,6 +61,12 @@ export const ONBOARDING_STEPS = [
     confirmation: "I know where to go",
   },
 ] as const;
+export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number]["id"];
+export const ONBOARDING_STEP_IDS = ONBOARDING_STEPS.map((step) => step.id);
+
+/** Thrown by the server when "schedule" is marked done before it is saved; clients show it as-is. */
+export const SCHEDULE_NOT_READY_ERROR =
+  "Save classes and a lunch period in Schedule first, or skip for now.";
 
 export function onboardingSteps(roles: readonly string[]) {
   const student = hasStudentOnboarding(roles);
@@ -77,23 +84,19 @@ export function onboardingSteps(roles: readonly string[]) {
 
 /** Super admins provision the school; the account checklist is not for them. */
 export function hasOnboarding(roles: readonly string[]) {
-  return !roles.includes("SUPER_ADMIN");
+  return !isSuperAdmin(roles);
 }
 
 export function hasStudentOnboarding(roles: readonly string[]) {
-  return roles.some((role) =>
-    ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-  );
+  return isStudent(roles);
 }
 
 /** Never surface Convex request IDs or stack traces in the setup UI. */
 export function onboardingSaveError(cause: unknown) {
-  const scheduleMessage =
-    "Save classes and a lunch period in Schedule first, or skip for now.";
   return cause &&
     typeof cause === "object" &&
     "data" in cause &&
-    cause.data === scheduleMessage
-    ? scheduleMessage
+    cause.data === SCHEDULE_NOT_READY_ERROR
+    ? SCHEDULE_NOT_READY_ERROR
     : "Could not save setup. Your progress is unchanged. Try again.";
 }

@@ -1,3 +1,5 @@
+import { CALENDAR_HREF, adminFeedbackHref, announcementHref, clubHref, eventHref } from "../../../shared/routes";
+import { isAdmin } from "../../../shared/roles";
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
@@ -90,7 +92,7 @@ export const list = query({
           id: `announcement:${post._id}`,
           kind: "announcement",
           title: post.title,
-          href: `/announcements/${post._id}`,
+          href: announcementHref(post._id),
           createdAt: post.createdAt,
         });
     }
@@ -130,7 +132,7 @@ export const list = query({
           id: `event:${event._id}`,
           kind: "event",
           title: event.title,
-          href: `/events/${event._id}`,
+          href: eventHref(event._id),
           createdAt: approval.createdAt,
         });
     }
@@ -141,7 +143,7 @@ export const list = query({
           id: `invite:${invite._id}`,
           kind: "invite",
           title: entry.title,
-          href: "/calendar",
+          href: CALENDAR_HREF,
           createdAt: invite.createdAt,
         });
     }
@@ -152,7 +154,7 @@ export const list = query({
           id: `club-invite:${invite._id}`,
           kind: "club-invite",
           title: club.name,
-          href: `/clubs/${club._id}`,
+          href: clubHref(club._id),
           createdAt: invite.createdAt,
         });
     }
@@ -161,11 +163,11 @@ export const list = query({
         id: `changes:${post._id}`,
         kind: "changes",
         title: post.title,
-        href: `/announcements/${post._id}`,
+        href: announcementHref(post._id),
         createdAt: post.updatedAt,
       });
     if (
-      user.roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role)) ||
+      isAdmin(user) ||
       canReviewFeedback(user)
     ) {
       const reports = await ctx.db
@@ -178,9 +180,7 @@ export const list = query({
         if (
           feedback
             ? !canReviewFeedback(user)
-            : !user.roles.some((role) =>
-                ["ADMIN", "SUPER_ADMIN"].includes(role),
-              )
+            : !isAdmin(user)
         )
           continue;
         add({
@@ -189,7 +189,7 @@ export const list = query({
           // Feedback reasons are whole messages; the queue row needs a headline.
           title: feedback ? issueTitle(report.reason) : report.reason,
           href: feedback
-            ? `/admin/feedback/${report._id}`
+            ? adminFeedbackHref(report._id)
             : "/admin?tab=reports",
           createdAt: report.createdAt,
         });

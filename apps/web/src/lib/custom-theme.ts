@@ -1,3 +1,11 @@
+import {
+  blackOrWhiteOn,
+  contrastRatio as contrastRatioOf,
+  hexToHslToken,
+  normalizeHex,
+  parseHex,
+} from '~/packages/design-tokens/src/color';
+
 export const CUSTOM_COLORS_STORAGE_KEY = 'ia_custom_colors';
 
 export const customColorSlots = [
@@ -51,60 +59,18 @@ const colorVariables: Record<
   },
 };
 
-/** Convert a six-digit hex color to the HSL component shape used by theme variables. */
-export function hexToHslParts(hex: string): string | null {
-  const value = normalizedHex(hex);
-  if (!value) return null;
-  const r = Number.parseInt(value.slice(1, 3), 16) / 255;
-  const g = Number.parseInt(value.slice(3, 5), 16) / 255;
-  const b = Number.parseInt(value.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const lightness = (max + min) / 2;
-  let hue = 0;
-  let saturation = 0;
-
-  if (max !== min) {
-    const delta = max - min;
-    saturation = lightness > 0.5
-      ? delta / (2 - max - min)
-      : delta / (max + min);
-    if (max === r) hue = (g - b) / delta + (g < b ? 6 : 0);
-    else if (max === g) hue = (b - r) / delta + 2;
-    else hue = (r - g) / delta + 4;
-    hue *= 60;
-  }
-
-  return `${Math.round(hue)} ${Math.round(saturation * 100)}% ${Math.round(lightness * 100)}%`;
-}
-
 /** Choose whichever of black or white has the greater WCAG contrast against the color. */
 export function readableForegroundParts(hex: string): string {
-  const value = normalizedHex(hex);
-  if (!value) return '0 0% 100%';
-  const channels = [
-    Number.parseInt(value.slice(1, 3), 16),
-    Number.parseInt(value.slice(3, 5), 16),
-    Number.parseInt(value.slice(5, 7), 16),
-  ].map((channel) => {
-    const srgb = channel / 255;
-    return srgb <= 0.04045
-      ? srgb / 12.92
-      : Math.pow((srgb + 0.055) / 1.055, 2.4);
-  });
-  const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-  const blackContrast = (luminance + 0.05) / 0.05;
-  const whiteContrast = 1.05 / (luminance + 0.05);
-  return blackContrast >= whiteContrast ? '0 0% 0%' : '0 0% 100%';
+  const rgb = parseHex(hex);
+  if (!rgb) return '0 0% 100%';
+  return blackOrWhiteOn(rgb) === 'black' ? '0 0% 0%' : '0 0% 100%';
 }
 
 export function contrastRatio(left: string, right: string): number | null {
-  const leftLuminance = relativeLuminance(left);
-  const rightLuminance = relativeLuminance(right);
-  if (leftLuminance === null || rightLuminance === null) return null;
-  const lighter = Math.max(leftLuminance, rightLuminance);
-  const darker = Math.min(leftLuminance, rightLuminance);
-  return (lighter + 0.05) / (darker + 0.05);
+  const leftRgb = parseHex(left);
+  const rightRgb = parseHex(right);
+  if (!leftRgb || !rightRgb) return null;
+  return contrastRatioOf(leftRgb, rightRgb);
 }
 
 export function customColorWarnings(colors: CustomColors): CustomColorWarnings {
@@ -152,7 +118,7 @@ export function parseCustomColors(raw: string | null): CustomColors {
     for (const { key } of customColorSlots) {
       const value = (parsed as Record<string, unknown>)[key];
       if (typeof value !== 'string') continue;
-      const normalized = normalizedHex(value);
+      const normalized = normalizeHex(value);
       if (normalized) colors[key] = normalized;
     }
     return colors;
@@ -177,8 +143,8 @@ export function buildCustomThemeRule(colors: CustomColors): string | null {
   for (const { key } of customColorSlots) {
     const value = colors[key];
     if (!value) continue;
-    const normalized = normalizedHex(value);
-    const hsl = normalized ? hexToHslParts(normalized) : null;
+    const normalized = normalizeHex(value);
+    const hsl = normalized ? hexToHslToken(normalized) : null;
     if (!normalized || !hsl) continue;
     validColors[key] = normalized;
     for (const variable of colorVariables[key].vars) {
@@ -216,25 +182,4 @@ export function applyCustomColors(colors: CustomColors) {
     document.head.appendChild(style);
   }
   style.textContent = rule;
-}
-
-function normalizedHex(value: string) {
-  const hex = value.trim().replace(/^#/, '').toLowerCase();
-  return /^[0-9a-f]{6}$/.test(hex) ? `#${hex}` : null;
-}
-
-function relativeLuminance(hex: string): number | null {
-  const value = normalizedHex(hex);
-  if (!value) return null;
-  const channels = [
-    Number.parseInt(value.slice(1, 3), 16),
-    Number.parseInt(value.slice(3, 5), 16),
-    Number.parseInt(value.slice(5, 7), 16),
-  ].map((channel) => {
-    const srgb = channel / 255;
-    return srgb <= 0.04045
-      ? srgb / 12.92
-      : Math.pow((srgb + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }

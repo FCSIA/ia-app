@@ -1,3 +1,4 @@
+import { isStaff } from "../../shared/roles";
 import type { GenericMutationCtx } from "convex/server";
 import { v } from "convex/values";
 import type { DataModel } from "./_generated/dataModel";
@@ -93,7 +94,7 @@ export const unlockAccount = mutation({
   args: { identifier: v.string() }, returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    if (!actor.roles.some((role) => role === "SUPPORT_STAFF" || role === "ADMIN" || role === "SUPER_ADMIN")) throw new Error("Unauthorized");
+    if (!isStaff(actor)) throw new Error("Unauthorized");
     await clearFailure(ctx, args.identifier);
     await logAuditEvent(ctx, { actorId: actor._id, action: "auth.login_unlocked", entityType: "authAccount", entityId: normalizeLoginIdentifier(args.identifier) });
     return null;

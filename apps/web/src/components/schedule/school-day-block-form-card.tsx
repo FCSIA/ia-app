@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { parseTimeToMinutes } from './schedule-utils';
+import { clockMinutes } from '~/apps/shared/school-time';
 import { SchoolDayBlock, SchoolDayBlockPayload, ScheduleWeekday } from './types';
 
 type SchoolDayBlockFormCardProps = {
@@ -24,7 +24,7 @@ type SchoolDayBlockFormCardProps = {
 };
 
 function addMinutes(time: string, durationMinutes: number) {
-  const next = parseTimeToMinutes(time) + durationMinutes;
+  const next = clockMinutes(time) + durationMinutes;
   const hours = Math.floor(next / 60)
     .toString()
     .padStart(2, '0');
@@ -62,7 +62,7 @@ export function SchoolDayBlockFormCard({
   }
 
   const durationMinutes = useMemo(() => {
-    const value = parseTimeToMinutes(endTime) - parseTimeToMinutes(startTime);
+    const value = clockMinutes(endTime) - clockMinutes(startTime);
     return Number.isFinite(value) && value > 0 ? value : 0;
   }, [endTime, startTime]);
 

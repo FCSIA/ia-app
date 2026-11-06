@@ -1,4 +1,4 @@
-import { auditCategory } from "../../../shared/audit";
+import { auditCategory, type AuditAction } from "../../../shared/audit";
 import { auditByActor, auditByCategory } from "./_aggregates";
 import { v } from "convex/values";
 import { auditContextResolver } from "./_context";
@@ -111,7 +111,7 @@ export async function logAuditEvent(
   ctx: MutationCtx,
   input: {
     actorId: Id<"users"> | "system";
-    action: string;
+    action: AuditAction;
     entityType: string;
     entityId?: string;
     meta?: unknown;

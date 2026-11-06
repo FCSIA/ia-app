@@ -1,3 +1,5 @@
+import { DASHBOARD_REVIEWER_ROLES, hasAnyRole } from "./roles";
+
 /**
  * Durable dashboard-layout contract shared by web clients and the mutation
  * that stores a user's preference. Keep the IDs data-only so clients can
@@ -62,17 +64,9 @@ export function normalizeDashboardColumns(
   return result;
 }
 
-const dashboardReviewerRoles = new Set([
-  "SPONSOR",
-  "TEACHER",
-  "ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_STAFF",
-]);
-
 /** Roles that approve other people's work keep their queue visible when empty. */
 export function isDashboardReviewer(roles: readonly string[] = []): boolean {
-  return roles.some((role) => dashboardReviewerRoles.has(role));
+  return hasAnyRole(roles, DASHBOARD_REVIEWER_ROLES);
 }
 
 /**

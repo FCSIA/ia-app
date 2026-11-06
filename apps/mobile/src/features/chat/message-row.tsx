@@ -30,13 +30,13 @@ import { useTheme } from "@/lib/theme";
 import { tapLight, tapMedium } from "@/lib/haptics";
 import { radii, spacing } from "@/lib/tokens";
 import {
-  normalizeReactionPayload,
   normalizeReactionSummaries,
-  reactionDefinition,
 } from "./quick-reactions";
 import { RichMessageBody } from "./rich-message-body";
 import { ChatGif, ChatGifLinks } from "./chat-gif";
 import { isGifAttachment } from "~/apps/shared/chat/gifs";
+import { formatAttachmentSize, isImageAttachment } from "~/apps/shared/chat/attachments";
+import { chatReactionDefinition, normalizeChatReaction } from "~/apps/shared/chat/protocol";
 import {
   resistedReplySwipeDistance,
   shouldTriggerSwipeReply,
@@ -44,8 +44,6 @@ import {
 } from "./swipe-reply";
 import {
   chatAuthorName,
-  formatAttachmentSize,
-  isImageAttachment,
   type ChatAttachment,
   type ChatMessage,
   type QuickReaction,
@@ -499,8 +497,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                     }}
                   >
                     {reactions.map((reaction) => {
-                      const quickReaction = reactionDefinition(reaction.emoji);
-                      const payload = normalizeReactionPayload(reaction.emoji);
+                      const quickReaction = chatReactionDefinition(reaction.emoji);
+                      const payload = normalizeChatReaction(reaction.emoji);
                       const pending =
                         !!payload &&
                         pendingActions.has(
@@ -509,7 +507,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                       return (
                         <PressableScale
                           key={reaction.emoji}
-                          accessibilityLabel={`${quickReaction?.label ?? reaction.emoji}, ${reaction.count}`}
+                          accessibilityLabel={`${quickReaction?.name ?? reaction.emoji}, ${reaction.count}`}
                           accessibilityState={{
                             selected: reaction.reactedByCurrentUser,
                             disabled: pending,

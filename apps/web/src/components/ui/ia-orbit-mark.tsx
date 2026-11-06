@@ -3,6 +3,7 @@
 import Image, { type ImageProps } from 'next/image';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+import { isDarkTheme } from '~/packages/design-tokens/src/color';
 
 type IaOrbitMarkProps = Omit<ImageProps, 'src'>;
 
@@ -11,7 +12,7 @@ type OrbitAppearance = 'default' | 'dark' | 'bubblegum' | 'contrast';
 export function orbitAppearance(theme: string | undefined): OrbitAppearance {
   if (theme === 'high-contrast') return 'contrast';
   if (theme === 'bubblegum' || theme === 'bubblegum-dark') return 'bubblegum';
-  return theme === 'dark' || theme === 'bubblegum-dark' || theme === 'custom' ? 'dark' : 'default';
+  return isDarkTheme(theme) ? 'dark' : 'default';
 }
 
 /** Keeps browser chrome in sync even on routes without an Orbit mark. */

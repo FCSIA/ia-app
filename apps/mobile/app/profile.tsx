@@ -22,6 +22,7 @@ import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import { MIN_PASSWORD_LENGTH } from "~/apps/shared/limits";
 
 export default function ProfileScreen() {
   const user = useCurrentUser();
@@ -95,7 +96,7 @@ export default function ProfileScreen() {
   }
 
   async function submitPassword() {
-    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < MIN_PASSWORD_LENGTH || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
         />
         <Button
           title="Change password"
-          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword}
+          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < MIN_PASSWORD_LENGTH || passwordForm.newPassword !== passwordForm.confirmPassword}
           onPress={() => void submitPassword()}
         />
       </Sheet>

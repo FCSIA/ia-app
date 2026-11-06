@@ -11,14 +11,14 @@ import type { MutationCtx } from "../_generated/server";
 import {
   MAX_USER_AVATAR_BYTES,
   MAX_USER_BACKGROUND_BYTES,
-} from "../uploads/limits";
+} from "../../../shared/limits";
 import { searchText, toUserSelfProfile, userSelfProfileValidator } from "./_lib";
 import { MAX_PREFERRED_NAME_LENGTH } from "../../../shared/user-name";
 import { clubChannelReactionValidator } from "../validators";
 import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
-import { isDashboardNoteId, normalizeDashboardColumns, normalizeDashboardLayout } from "./dashboardLayout";
+import { isDashboardNoteId, normalizeDashboardColumns, normalizeDashboardLayout } from "../../../shared/dashboard-layout";
 import { moderatePreferredName } from "../moderation/preferredNames";
 import { contentRateLimiter } from "../rateLimits";
 import { MAX_WALLPAPER_BLUR } from "../../../shared/custom-theme";

@@ -1,3 +1,4 @@
+import { clockMinutes, formatClockTime } from '~/apps/shared/school-time';
 import { displayName } from '~/apps/shared/user-name';
 import {
   ResolvedSchoolDay,
@@ -26,24 +27,9 @@ export function fullName(person: { firstName: string; lastName: string; preferre
   return displayName(person);
 }
 
-export function parseTimeToMinutes(value: string) {
-  const [hours, minutes] = value
-    .split(":")
-    .map((segment) => Number.parseInt(segment, 10));
-  return hours * 60 + minutes;
-}
-
-export function formatScheduleTime(value: string) {
-  const [hours, minutes] = value
-    .split(":")
-    .map((segment) => Number.parseInt(segment, 10));
-  const suffix = hours >= 12 ? "PM" : "AM";
-  const hour = ((hours + 11) % 12) + 1;
-  return `${hour}:${String(minutes).padStart(2, "0")} ${suffix}`;
-}
-
+/** Schedule tables always use a 12-hour clock, whatever the viewer's setting. */
 export function formatScheduleTimeRange(start: string, end: string) {
-  return `${formatScheduleTime(start)} – ${formatScheduleTime(end)}`;
+  return `${formatClockTime(start)} – ${formatClockTime(end)}`;
 }
 
 export function formatDuration(minutes: number) {
@@ -73,8 +59,8 @@ export function getBlocksForDay(
     .filter((block) => block.weekday === weekday)
     .sort(
       (left, right) =>
-        parseTimeToMinutes(left.startTime) -
-        parseTimeToMinutes(right.startTime),
+        clockMinutes(left.startTime) -
+        clockMinutes(right.startTime),
     );
 }
 
@@ -127,13 +113,13 @@ export function getCurrentScheduleStatus(
   const currentBlock =
     dayBlocks.find(
       (block) =>
-        currentMinutes >= parseTimeToMinutes(block.startTime) &&
-        currentMinutes < parseTimeToMinutes(block.endTime),
+        currentMinutes >= clockMinutes(block.startTime) &&
+        currentMinutes < clockMinutes(block.endTime),
     ) ?? null;
 
   const nextBlock =
     dayBlocks.find(
-      (block) => currentMinutes < parseTimeToMinutes(block.startTime),
+      (block) => currentMinutes < clockMinutes(block.startTime),
     ) ?? null;
 
   const currentEntry =
@@ -165,12 +151,12 @@ export function getCurrentResolvedScheduleStatus(
   const currentBlock =
     day.blocks.find(
       (block) =>
-        currentMinutes >= parseTimeToMinutes(block.startTime) &&
-        currentMinutes < parseTimeToMinutes(block.endTime),
+        currentMinutes >= clockMinutes(block.startTime) &&
+        currentMinutes < clockMinutes(block.endTime),
     ) ?? null;
   const nextBlock =
     day.blocks.find(
-      (block) => currentMinutes < parseTimeToMinutes(block.startTime),
+      (block) => currentMinutes < clockMinutes(block.startTime),
     ) ?? null;
 
   return {
@@ -198,12 +184,12 @@ export function getCurrentScheduleStatusForResolvedDay(
   const currentBlock =
     day.blocks.find(
       (block) =>
-        currentMinutes >= parseTimeToMinutes(block.startTime) &&
-        currentMinutes < parseTimeToMinutes(block.endTime),
+        currentMinutes >= clockMinutes(block.startTime) &&
+        currentMinutes < clockMinutes(block.endTime),
     ) ?? null;
   const nextBlock =
     day.blocks.find(
-      (block) => currentMinutes < parseTimeToMinutes(block.startTime),
+      (block) => currentMinutes < clockMinutes(block.startTime),
     ) ?? null;
 
   return {

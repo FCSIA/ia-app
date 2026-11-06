@@ -1,3 +1,9 @@
+import {
+  COURSE_SOURCE_LABELS,
+  courseGradeLabel,
+  pathwayLabel,
+  sentenceCaseEnum,
+} from "~/apps/shared/labels";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@/lib/convex-react";
@@ -8,26 +14,6 @@ import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
-function pathwayLabel(value?: string | null) {
-  if (value === "INFORMATION_TECHNOLOGY") return "Information Technology";
-  if (value === "HEALTH_SCIENCE") return "Health Science";
-  if (value === "ENGINEERING") return "Engineering";
-  return null;
-}
-
-function sourceLabel(value?: string | null) {
-  if (value === "AP_CATALOG") return "AP catalog";
-  if (value === "MERGED") return "IA and AP catalogs";
-  if (value === "COURSE_CATALOG") return "IA course catalog";
-  return null;
-}
-
-function gradeLabel(item: any) {
-  if (item.gradeText) return item.gradeText;
-  if (item.minGrade && item.minGrade === item.maxGrade) return `Grade ${item.minGrade}`;
-  return `Grades ${item.minGrade ?? "?"}–${item.maxGrade ?? "?"}`;
-}
-
 export default function CourseDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const course = useQuery(api.courses.catalog.get, slug ? { slug } : "skip");
@@ -36,7 +22,7 @@ export default function CourseDetailScreen() {
     <Screen contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <DataBoundary data={course} emptyTitle="Course unavailable">
         {(item: any) => {
-          const pathway = pathwayLabel(item.pathway);
+          const pathway = item.pathway ? pathwayLabel(item.pathway) ?? null : null;
 
           return (
             <View style={{ gap: spacing.xl }}>
@@ -46,7 +32,7 @@ export default function CourseDetailScreen() {
                 </Txt>
                 <Txt variant="display">{item.title}</Txt>
                 <Txt tone="muted">
-                  {[gradeLabel(item), item.courseNumbers?.join(", ")].filter(Boolean).join(" · ")}
+                  {[courseGradeLabel(item), item.courseNumbers?.join(", ")].filter(Boolean).join(" · ")}
                 </Txt>
               </View>
 
@@ -60,10 +46,10 @@ export default function CourseDetailScreen() {
                 <View>
                   <DetailRow label="Department" value={item.department} />
                   <DetailRow label="Pathway" value={pathway} />
-                  <DetailRow label="Term" value={item.term ? sentenceCase(item.term) : null} />
-                  <DetailRow label="Grades" value={gradeLabel(item)} />
+                  <DetailRow label="Term" value={item.term ? sentenceCaseEnum(item.term) : null} />
+                  <DetailRow label="Grades" value={courseGradeLabel(item)} />
                   <DetailRow label="Course number" value={item.courseNumbers?.join(", ")} />
-                  <DetailRow label="Source" value={sourceLabel(item.catalogSource)} last />
+                  <DetailRow label="Source" value={item.catalogSource ? COURSE_SOURCE_LABELS[item.catalogSource as keyof typeof COURSE_SOURCE_LABELS] ?? null : null} last />
                 </View>
               </Section>
             </View>
@@ -114,7 +100,3 @@ function DetailRow({
   );
 }
 
-function sentenceCase(value: string) {
-  const text = value.toLowerCase().replaceAll("_", " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}

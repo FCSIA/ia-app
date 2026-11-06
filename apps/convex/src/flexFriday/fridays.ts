@@ -1,3 +1,4 @@
+import { FLEX_FRIDAY_HREF } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
@@ -7,7 +8,7 @@ import { flexSessionTypeValidator } from "../validators";
 import { deliverMany, flexFridayAudience } from "../notifications/delivery";
 import { canCreateFlexFriday } from "./permissions";
 import { countFlexSessions } from "./counts";
-import { schoolDaySpan } from "../../lib/schoolTime";
+import { schoolDaySpan } from "../../../shared/school-time";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -110,7 +111,7 @@ export const create = mutation({
         category: "FLEX_FRIDAY",
         title: "Flex Friday scheduled",
         body: args.notes?.trim() || "A new Flex Friday has been added.",
-        href: "/flex-friday",
+        href: FLEX_FRIDAY_HREF,
         subject: { kind: "flexFriday", flexFridayId: friday._id },
       });
     }

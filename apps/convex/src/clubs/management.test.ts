@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { AppRole } from "../../lib/roles";
+import type { AppRole } from "../../../shared/roles";
 import type { Id } from "../_generated/dataModel";
 import {
   canCreateClub,

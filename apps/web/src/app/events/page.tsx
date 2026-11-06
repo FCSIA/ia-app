@@ -1,7 +1,7 @@
 'use client';
 
+import { ADMIN_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { AppShell } from '@/components/layout/AppShell';
-import { hasRole } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Plus, MapPin, Check, X, AlertCircle, Search, Calendar } from 'lucide-react';
@@ -18,7 +18,7 @@ import { useEventsPage } from './use-events-page';
 
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
-  const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
   const isAuthor = event.authorId === user?.id || event.authorId === user?._id;
 
   const statusStyle = event.status === 'PUBLISHED'

@@ -26,6 +26,7 @@ import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { PreferredNameSettings } from './PreferredNameSettings';
 import { PROFILE_SECTIONS, type ProfileSection } from './profile-sections';
+import { MIN_PASSWORD_LENGTH } from '~/apps/shared/limits';
 
 const cardClass = cn(
   'border border-border bg-card pb-0',
@@ -35,7 +36,7 @@ const cardClass = cn(
 const passwordFormSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required.'),
-    newPassword: z.string().min(6, 'Your new password must be at least 6 characters long.'),
+    newPassword: z.string().min(MIN_PASSWORD_LENGTH, 'Your new password must be at least 6 characters long.'),
     confirm: z.string().min(1, 'Confirm your new password.'),
   })
   .refine((form) => form.newPassword === form.confirm, {

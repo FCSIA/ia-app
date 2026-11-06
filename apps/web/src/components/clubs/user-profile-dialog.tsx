@@ -1,5 +1,6 @@
 'use client';
 
+import { hasAnyRole, isAdmin, STUDENT_ROLES } from '~/apps/shared/roles';
 import { useId, useRef, useState, type ComponentProps, type ReactElement } from 'react';
 import { ArrowLeft, Copy, UserPlus } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -17,7 +18,7 @@ import { fullName, formatClubRole } from '@/components/clubs/types';
 import type { ClubUserRef } from '@/components/clubs/types';
 import { cn } from '@/lib/utils';
 import { regularName } from '~/apps/shared/user-name';
-import { isAdmin, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { copyText } from '@/lib/share';
 
@@ -88,7 +89,7 @@ export function UserProfileContent({
       ? { personId: person._id }
       : 'skip',
   );
-  const isStudent = !!person.roles?.some((role) => ['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN'].includes(role));
+  const isStudent = hasAnyRole(person, STUDENT_ROLES);
   const resolvedFriendshipStatus = profileContext?.friendshipStatus ?? friendshipStatus;
   const canOfferFriendRequest =
     canSendFriendRequest && !isCurrentUser && isStudent && resolvedFriendshipStatus === 'NONE' && !!onSendFriendRequest;

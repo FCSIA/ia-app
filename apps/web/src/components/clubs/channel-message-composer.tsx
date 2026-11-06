@@ -71,6 +71,16 @@ import {
 import { cn } from '@/lib/utils';
 import { SchoolGifPicker } from './school-gif-picker';
 import { extractChatGifLinks, isGifAttachment } from '~/apps/shared/chat/gifs';
+import {
+  MAX_CHANNEL_MESSAGE_ATTACHMENTS,
+  MAX_CHAT_ATTACHMENT_BYTES,
+  isWebPreviewableImage,
+} from '~/apps/shared/chat/attachments';
+import {
+  MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS,
+  MAX_CHANNEL_POLL_OPTION_LABEL_CHARACTERS,
+  MAX_CHANNEL_POLL_QUESTION_CHARACTERS,
+} from '~/apps/shared/chat/protocol';
 import { AnimatedGif } from '@/components/media/animated-gif';
 
 export type ChannelMentionSuggestion = {
@@ -135,17 +145,6 @@ export type ChannelMessageComposerHandle = {
   clear: () => void;
 };
 
-const MAX_ATTACHMENTS = 5;
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS = 12_000;
-function isPreviewableImage(mimeType: string | undefined, fileName: string) {
-  if (mimeType?.toLowerCase() === 'image/svg+xml') return false;
-  return (
-    !!mimeType?.startsWith('image/') ||
-    /\.(png|jpe?g|gif|webp)$/i.test(fileName)
-  );
-}
-
 const IMAGE_EXTENSIONS: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
@@ -169,9 +168,6 @@ function nameForPastedFile(file: File) {
     },
   );
 }
-
-const MAX_CHANNEL_POLL_QUESTION_CHARACTERS = 240;
-const MAX_CHANNEL_POLL_OPTION_CHARACTERS = 120;
 
 type ComposerMark = 'bold' | 'italic' | 'underline';
 
@@ -390,12 +386,12 @@ export function ChannelMessageComposer({
 
   const addFiles = (incoming: File[]) => {
     if (!canAttach || isPending || incoming.length === 0) return;
-    const oversized = incoming.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    const oversized = incoming.find((file) => file.size > MAX_CHAT_ATTACHMENT_BYTES);
     if (oversized) {
       setAttachmentError(`${oversized.name} is larger than 10 MB.`);
       return;
     }
-    const room = MAX_ATTACHMENTS - attachmentCount;
+    const room = MAX_CHANNEL_MESSAGE_ATTACHMENTS - attachmentCount;
     if (room <= 0) {
       setAttachmentError('You can attach up to 5 files.');
       return;
@@ -408,7 +404,7 @@ export function ChannelMessageComposer({
     const accepted = incoming.slice(0, room).map((file): DraftFile => ({
       id: `draft-${++draftFileSequence}`,
       file,
-      previewUrl: isPreviewableImage(file.type, file.name)
+      previewUrl: isWebPreviewableImage(file.type, file.name)
         ? URL.createObjectURL(file)
         : null,
     }));
@@ -667,7 +663,7 @@ export function ChannelMessageComposer({
                     name={attachment.fileName}
                     mimeType={attachment.mimeType}
                     previewUrl={
-                      isPreviewableImage(
+                      isWebPreviewableImage(
                         attachment.mimeType,
                         attachment.fileName,
                       )
@@ -752,7 +748,7 @@ export function ChannelMessageComposer({
                       <Input
                         key={index}
                         value={option}
-                        maxLength={MAX_CHANNEL_POLL_OPTION_CHARACTERS}
+                        maxLength={MAX_CHANNEL_POLL_OPTION_LABEL_CHARACTERS}
                         onChange={(event) =>
                           setPollOptions((current) =>
                             current.map((entry, entryIndex) =>
@@ -865,7 +861,7 @@ export function ChannelMessageComposer({
                             type="button"
                             size="icon-sm"
                             aria-label="Attach files"
-                            disabled={attachmentCount >= MAX_ATTACHMENTS}
+                            disabled={attachmentCount >= MAX_CHANNEL_MESSAGE_ATTACHMENTS}
                             onClick={() => {
                               setToolsOpen(false);
                               fileInputRef.current?.click();

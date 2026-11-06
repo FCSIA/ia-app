@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditRecordLabel, parseAuditSearch, type AuditCategory } from '~/apps/shared/audit';
+import { AUDIT_CATEGORIES, auditActionInfo, auditActionLabel, auditRecordLabel, parseAuditSearch, type AuditCategory } from '~/apps/shared/audit';
 import { useQuery, useStreamPaginatedQuery } from '@/lib/convex-react';
 import { useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -120,7 +120,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     setAuditStartDateWithBounds: (value: string) => update({ from: value, ...(value && auditEndDate && value > auditEndDate ? { to: value } : {}) }),
     setAuditDateRange: (from: string, to: string) => update({ from, to }),
     setAuditEndDateWithBounds: (value: string) => update({ to: value, ...(value && auditStartDate && value < auditStartDate ? { from: value } : {}) }),
-    auditCategoryFilters, setAuditCategoryFilters: (values: AuditCategory[]) => update({ category: values.join(','), action: auditActionFilters.filter((action) => !values.length || !!AUDIT_ACTIONS[action] && values.includes(AUDIT_ACTIONS[action].category)).join(',') }),
+    auditCategoryFilters, setAuditCategoryFilters: (values: AuditCategory[]) => update({ category: values.join(','), action: auditActionFilters.filter((action) => !values.length || values.includes(auditActionInfo(action)?.category as AuditCategory)).join(',') }),
     selectedAuditEventId, setSelectedAuditEventId, auditEvents, displayedAuditEvents: auditEvents,
     isAuditLoading: auditStatus === 'LoadingFirstPage' && !isStale, isStale,
     auditStatus, loadMoreAuditEvents, auditCounts,

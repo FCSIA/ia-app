@@ -43,7 +43,8 @@ import {
   optimisticallyInsertPostedMessage,
 } from "~/apps/shared/chat/optimistic-message";
 import { ChatTimeline } from "./timeline";
-import { isPdfAttachment } from "./types";
+import { isPdfAttachment } from "~/apps/shared/chat/attachments";
+import { normalizeChatReaction, type ChannelVisibility } from "~/apps/shared/chat/protocol";
 import type {
   ChatAttachment,
   ChatMessage,
@@ -55,7 +56,6 @@ import type {
 import { useChatComposer } from "./use-chat-composer";
 import { useChatDraft } from "./use-chat-draft";
 import { useManagedChatAttachments } from "./use-managed-chat-attachments";
-import { normalizeReactionPayload } from "./quick-reactions";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
@@ -476,7 +476,7 @@ export function ClubChatScreen({
 
   const handleToggleReaction = useCallback(
     async (message: ChatMessage, emoji: QuickReaction) => {
-      const reaction = normalizeReactionPayload(emoji);
+      const reaction = normalizeChatReaction(emoji);
       if (!reaction) {
         showToast({
           title: "Reaction wasn’t updated",
@@ -843,7 +843,7 @@ function ChannelHeaderMark({
   visibility,
 }: {
   thread: boolean;
-  visibility?: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
+  visibility?: ChannelVisibility;
 }) {
   const { color } = useTheme();
   const Icon = thread

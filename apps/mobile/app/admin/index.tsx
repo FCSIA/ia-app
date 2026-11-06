@@ -1,3 +1,4 @@
+import { ADMIN_ROLES, hasAnyRole, SUPER_ADMIN_ROLES } from "~/apps/shared/roles";
 import { View } from "react-native";
 import { router } from "expo-router";
 import {
@@ -17,7 +18,7 @@ import { AdminRouteGuard } from "@/components/admin-route-guard";
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
 import { PressableScale, Txt } from "@/components/ui";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 
@@ -38,8 +39,8 @@ export default function AdminWorkspaceScreen() {
 
 function AdminWorkspace() {
   const user = useLiveCurrentUser();
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
-  const isSuperAdmin = !!user && hasRole(user, "SUPER_ADMIN");
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
+  const isSuperAdmin = hasAnyRole(user, SUPER_ADMIN_ROLES);
 
   const people: WorkspaceDestination[] = [
     {

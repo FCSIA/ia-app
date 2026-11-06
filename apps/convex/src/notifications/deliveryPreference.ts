@@ -1,3 +1,4 @@
+import { channelMuteScopeKey, GLOBAL_SCOPE_KEY, parseChannelScopeKey } from "../../../shared/notifications";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { NotificationCategory } from "../validators";
@@ -25,15 +26,15 @@ export async function resolveNotificationPreference(
     scopeKey: string;
   },
 ) {
-  if (input.scopeKey.startsWith("channel:")) {
-    const channelId = input.scopeKey.slice("channel:".length);
+  const channelId = parseChannelScopeKey(input.scopeKey);
+  if (channelId !== null) {
     const mutePreference = await ctx.db
       .query("notificationPreferences")
       .withIndex("by_userId_and_category_and_scopeKey", (q) =>
         q
           .eq("userId", input.userId)
           .eq("category", "CLUB_CHANNEL_MESSAGE")
-          .eq("scopeKey", `mute:channel:${channelId}`),
+          .eq("scopeKey", channelMuteScopeKey(channelId)),
       )
       .unique();
     if (mutePreference && isMuteActive(mutePreference, Date.now())) {
@@ -51,18 +52,18 @@ export async function resolveNotificationPreference(
 
   // Feedback previously shared moderation preferences. Preserve every existing
   // opt-out and delivery level until this user chooses a feedback preference.
-  if (input.category === "FEEDBACK" && input.scopeKey === "global") {
+  if (input.category === "FEEDBACK" && input.scopeKey === GLOBAL_SCOPE_KEY) {
     return await ctx.db.query("notificationPreferences")
       .withIndex("by_userId_and_category_and_scopeKey", (q) =>
-        q.eq("userId", input.userId).eq("category", "CONTENT_MODERATED").eq("scopeKey", "global"),
+        q.eq("userId", input.userId).eq("category", "CONTENT_MODERATED").eq("scopeKey", GLOBAL_SCOPE_KEY),
       ).unique();
   }
-  if (input.scopeKey === "global") return null;
+  if (input.scopeKey === GLOBAL_SCOPE_KEY) return null;
 
   return await ctx.db
     .query("notificationPreferences")
     .withIndex("by_userId_and_category_and_scopeKey", (q) =>
-      q.eq("userId", input.userId).eq("category", input.category).eq("scopeKey", "global"),
+      q.eq("userId", input.userId).eq("category", input.category).eq("scopeKey", GLOBAL_SCOPE_KEY),
     )
     .unique();
 }

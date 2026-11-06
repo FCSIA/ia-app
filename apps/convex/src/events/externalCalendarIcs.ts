@@ -1,5 +1,5 @@
 import ICAL from "ical.js";
-import { schoolTimestamp } from "../../lib/schoolTime";
+import { schoolTimestamp } from "../../../shared/school-time";
 
 // Keep this aligned with the maximum removable subscription size.
 const MAX_EVENTS_PER_FEED = 500;

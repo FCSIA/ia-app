@@ -1,5 +1,6 @@
 'use client';
 
+import { hasAnyRole, isSuperAdmin, SCHEDULE_ROLES } from '~/apps/shared/roles';
 import { calendarQueryRange } from '~/apps/shared/calendar-date';
 
 /**
@@ -27,9 +28,9 @@ import { calendarQueryRange } from '~/apps/shared/calendar-date';
 import { useCallback, useMemo } from 'react';
 import { useQueryKeepAlive, type KeepAliveEntry } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { hasRole, isSuperAdmin, useCurrentUser, type AppUser } from '@/lib/auth';
+import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { defaultCalendarRange } from '@/lib/calendar-range';
-import { schoolDateKey } from '@/lib/school-date';
+import { schoolDateKey } from '~/apps/shared/school-time';
 
 /**
  * The queries a route asks for on mount, with the arguments it asks for.
@@ -69,7 +70,7 @@ function queriesForRoute(pathname: string, user: AppUser): KeepAliveEntry[] {
     }
 
     case '/schedule':
-      return hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN')
+      return hasAnyRole(user, SCHEDULE_ROLES)
         ? [{ query: api.schedule.dashboard.get, args: { dateKey: schoolDateKey() } }]
         : [];
 

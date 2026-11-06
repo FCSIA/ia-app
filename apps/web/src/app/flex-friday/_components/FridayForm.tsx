@@ -1,3 +1,4 @@
+import { PATHWAY_OPTIONS } from '~/apps/shared/labels';
 import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DateField } from '@/components/forms/date-field';
 import { parseISO } from 'date-fns';
-import { FridayForm as FridayFormType, PATHWAY_OPTIONS } from '../_types';
+import { FridayForm as FridayFormType } from '../_types';
 import { useToast } from '@/hooks/use-toast';
 
 interface Props {

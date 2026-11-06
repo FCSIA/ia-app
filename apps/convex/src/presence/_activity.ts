@@ -1,16 +1,7 @@
 import type { Doc } from "../_generated/dataModel";
-import { schoolDayKey, weekStart } from "../analytics/_days";
+import { schoolDateKey, schoolHour } from "../../../shared/school-time";
+import { weekStart } from "../analytics/_days";
 import type { PushDevicePlatform } from "../validators";
-
-const schoolHourClock = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  hour: "2-digit",
-  hourCycle: "h23",
-});
-
-export function schoolHour(ms: number) {
-  return Number(schoolHourClock.format(new Date(ms))) % 24;
-}
 
 type LastSeen = Pick<
   Doc<"userActivity">,
@@ -35,7 +26,7 @@ export function nextActivity(
   platform: PushDevicePlatform,
   now: number,
 ): { mark: ActivityMark; lastSeen: LastSeen } | null {
-  const day = schoolDayKey(now);
+  const day = schoolDateKey(now);
   const hour = schoolHour(now);
   const hourKey = `${day}T${String(hour).padStart(2, "0")}`;
   const week = weekStart(day);

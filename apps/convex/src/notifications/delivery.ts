@@ -1,3 +1,10 @@
+import {
+  channelScopeKey,
+  clubScopeKey,
+  GLOBAL_SCOPE_KEY,
+  NOTIFICATION_CATEGORY_DETAILS,
+} from "../../../shared/notifications";
+import { isStaff } from "../../../shared/roles";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalQuery, type MutationCtx } from "../_generated/server";
@@ -181,18 +188,18 @@ export async function deliverMany(
 
 export function preferenceScope(subject: NotificationSubject) {
   if (subject.kind === "clubMessage" || subject.kind === "clubChannel") {
-    return { scopeKey: `channel:${subject.channelId}` };
+    return { scopeKey: channelScopeKey(subject.channelId) };
   }
   if (subject.kind === "club") {
-    return { scopeKey: `club:${subject.clubId}` };
+    return { scopeKey: clubScopeKey(subject.clubId) };
   }
   if (
     (subject.kind === "announcement" || subject.kind === "event") &&
     subject.clubId
   ) {
-    return { scopeKey: `club:${subject.clubId}` };
+    return { scopeKey: clubScopeKey(subject.clubId) };
   }
-  return { scopeKey: "global" };
+  return { scopeKey: GLOBAL_SCOPE_KEY };
 }
 
 async function deliveryDecision(
@@ -234,7 +241,7 @@ export function preferenceDeliveryDecision(
       push: preferenceAllowsPush(preference),
     };
   }
-  return { create: category !== "CLUB_CHANNEL_MESSAGE", push: false };
+  return { create: NOTIFICATION_CATEGORY_DETAILS[category].defaultEnabled, push: false };
 }
 
 export async function activeUsers(ctx: MutationCtx) {
@@ -245,12 +252,7 @@ export async function activeUsers(ctx: MutationCtx) {
 }
 
 export async function activeAdmins(ctx: MutationCtx) {
-  return (await activeUsers(ctx)).filter((user) =>
-    user.roles.some(
-      (role) =>
-        role === "ADMIN" || role === "SUPER_ADMIN" || role === "SUPPORT_STAFF",
-    ),
-  );
+  return (await activeUsers(ctx)).filter((user) => isStaff(user));
 }
 
 export async function activeStudents(ctx: MutationCtx) {

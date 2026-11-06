@@ -1,3 +1,4 @@
+import { clubChannelHref } from "../../../shared/routes";
 import { ConvexError, v } from "convex/values";
 import {
   paginationOptsValidator,
@@ -51,8 +52,13 @@ import {
   clubChannelReactionInputValidator,
   type ClubChannelReaction,
 } from "../validators";
+import { MAX_CHANNEL_MESSAGE_ATTACHMENTS } from "../../../shared/chat/attachments";
 import {
-  MAX_CHANNEL_MESSAGE_ATTACHMENTS,
+  CHANNEL_TYPING_TTL_MS,
+  MAX_CHANNEL_SEARCH_RESULTS,
+  normalizeChatReaction,
+} from "../../../shared/chat/protocol";
+import {
   assertStagedChatAttachmentIds,
   consumeStagedChatAttachments,
   deleteStoredChatAttachment,
@@ -68,10 +74,7 @@ import { logAuditEvent } from "../audit/_lib";
 import { channelWhiteboardsEnabled } from "./whiteboardElements";
 import { contentRateLimiter } from "../rateLimits";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
-import {
-  clubChannelReactionStorageValues,
-  normalizeClubChannelReaction,
-} from "./channelReactions";
+import { clubChannelReactionStorageValues } from "./channelReactions";
 import {
   channelNotificationAuthorName,
   channelNotificationTitle,
@@ -93,7 +96,6 @@ const MAX_SUMMARY_POLL_VOTES = 500;
 const MAX_THREAD_PARENT_DEPTH = 8;
 const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
 const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
-const MAX_CHANNEL_SEARCH_RESULTS = 30;
 const AUDIT_MESSAGE_PREVIEW_CHARACTERS = 240;
 const MAX_CHANNEL_MENTION_CONTEXT_MEMBERS = 60;
 const REPLY_PREVIEW_CHARACTERS = 160;
@@ -1124,7 +1126,7 @@ export const deliverPostedMessageNotifications = internalMutation({
     const mentionRecipients = new Map(
       args.mentionRecipients.map(({ userId, kind }) => [userId, kind]),
     );
-    const href = `/clubs/${channel.clubId}/channels/${channel._id}`;
+    const href = clubChannelHref(channel.clubId, channel._id);
     const subject = {
       kind: "clubMessage" as const,
       clubId: channel.clubId,
@@ -1306,7 +1308,7 @@ async function serializeMessage(
   >();
   for (const reaction of reactions) {
     const emoji =
-      normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
+      normalizeChatReaction(reaction.emoji) ?? reaction.emoji;
     const reactor = await ctx.db.get(reaction.userId);
     const entry = reactionMap.get(emoji) ?? {
       emoji,
@@ -1460,7 +1462,7 @@ async function serializeMessageSummary(
   >();
   for (const reaction of reactionRows.slice(0, MAX_SUMMARY_REACTION_ROWS)) {
     const emoji =
-      normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
+      normalizeChatReaction(reaction.emoji) ?? reaction.emoji;
     const entry = reactionMap.get(emoji) ?? {
       emoji,
       count: 0,
@@ -1840,7 +1842,7 @@ export const typingHeartbeat = mutation({
     const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
     if (!readable?.access.canPost) throw new ConvexError("Cannot post in this channel");
     if (!args.sessionId || args.sessionId.length > 64) throw new ConvexError("Invalid typing session");
-    const { sessionToken } = await presence.heartbeat(ctx, `channel-typing:${args.channelId}`, user._id, args.sessionId, 2_000);
+    const { sessionToken } = await presence.heartbeat(ctx, `channel-typing:${args.channelId}`, user._id, args.sessionId, CHANNEL_TYPING_TTL_MS);
     return { sessionToken };
   },
 });
@@ -2182,7 +2184,7 @@ export const listReactionUsers = query({
       return emptyMessagePage(args.paginationOpts.cursor);
     }
 
-    const reaction = normalizeClubChannelReaction(args.emoji);
+    const reaction = normalizeChatReaction(args.emoji);
     if (!reaction) return emptyMessagePage(args.paginationOpts.cursor);
 
     const reactions = await ctx.db
@@ -2197,7 +2199,7 @@ export const listReactionUsers = query({
 
     const reactors = await Promise.all(
       reactions.page.map(async (row) => {
-        if (normalizeClubChannelReaction(row.emoji) !== reaction) return null;
+        if (normalizeChatReaction(row.emoji) !== reaction) return null;
         const reactor = await ctx.db.get(row.userId);
         return reactor ? toClubUserRef(reactor) : null;
       }),
@@ -2621,7 +2623,7 @@ export const updateMessage = mutation({
     }
     const remainingCount = existingAttachments.length - removeIds.length;
     if (remainingCount + addIds.length > MAX_CHANNEL_MESSAGE_ATTACHMENTS) {
-      throw new ConvexError("A message can include at most 5 attachments");
+      throw new ConvexError(`A message can include at most ${MAX_CHANNEL_MESSAGE_ATTACHMENTS} attachments`);
     }
     if (!body && remainingCount + addIds.length === 0 && !message.pollQuestion) {
       throw new ConvexError("Message cannot be empty");
@@ -2740,7 +2742,7 @@ export const toggleReaction = mutation({
     );
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
 
-    const emoji = normalizeClubChannelReaction(args.emoji);
+    const emoji = normalizeChatReaction(args.emoji);
     if (!emoji) throw new ConvexError("Reaction is not supported");
 
     const existing = (

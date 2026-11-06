@@ -1,4 +1,5 @@
 import type { Value } from 'platejs';
+import { MENTION_URL_PROTOCOL, mentionHref } from '~/apps/shared/chat/protocol';
 
 // Pure conversion between the chat composer's rich value and the plain text
 // and Markdown stored with each message. Kept free of React so it can be
@@ -156,7 +157,7 @@ function serializeNodeMarkdown(node: RichTextNode): string {
 
   if (node.type === 'mention' && typeof node.value === 'string') {
     const token = typeof node.key === 'string' ? node.key : node.value;
-    return `[@${node.value}](user://${token})`;
+    return `[@${node.value}](${mentionHref(token)})`;
   }
 
   const content = joinInline(node.children ?? [], serializeNodeMarkdown);
@@ -199,7 +200,7 @@ export function allowedMessageHref(href?: string) {
   if (!href) return null;
   try {
     const url = new URL(href);
-    return ['http:', 'https:', 'user:'].includes(url.protocol) ? href : null;
+    return ['http:', 'https:', MENTION_URL_PROTOCOL].includes(url.protocol) ? href : null;
   } catch {
     return null;
   }

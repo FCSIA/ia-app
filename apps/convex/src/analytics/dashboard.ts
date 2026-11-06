@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_ROLES } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
@@ -10,10 +11,10 @@ import {
   dayKeysBetween,
   maxAnalyticsRangeDays,
   mondayIndex,
-  schoolDayKey,
   shiftDay,
   weekStart,
 } from "./_days";
+import { schoolDateKey } from "../../../shared/school-time";
 
 const maxBackfillDays = 90;
 const topClubCount = 8;
@@ -23,7 +24,7 @@ const rangeArgs = { fromDay: v.string(), toDay: v.string() };
 
 async function requireSuperAdmin(ctx: QueryCtx | MutationCtx) {
   const user = await getCurrentAppUser(ctx);
-  requireAnyRole(user, ["SUPER_ADMIN"]);
+  requireAnyRole(user, SUPER_ADMIN_ROLES);
   return user;
 }
 
@@ -353,7 +354,7 @@ export const fillHistory = mutation({
     if (!Number.isInteger(args.days) || args.days < 1 || args.days > maxBackfillDays) {
       throw new ConvexError(`Fill in between 1 and ${maxBackfillDays} days.`);
     }
-    const today = schoolDayKey(Date.now());
+    const today = schoolDateKey(Date.now());
     const lastAnnouncementDay = shiftDay(today, -2);
     let scheduled = 0;
     const filledDays = new Set<string>();

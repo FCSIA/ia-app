@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   captureChannelUnreadBoundary,
   firstUnreadChannelMessageId,
-} from "../../../shared/chat/unread-boundary";
+} from "./unread-boundary";
 
 const messages = [
   { _id: "read", createdAt: 10 },

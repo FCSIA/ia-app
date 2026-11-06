@@ -1,5 +1,7 @@
 "use client";
 
+import { parseClubJoinLink } from "~/apps/shared/routes";
+import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import {
   useDeferredValue,
   useEffect,
@@ -57,7 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { SearchInput } from "@/components/ui/search";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { filterBySearchQuery } from "@/lib/search";
 
@@ -570,7 +572,7 @@ export default function ClubOverviewPage() {
   const joinUnit = useMutation(api.clubs.hierarchy.join);
 
   useEffect(() => {
-    const code = searchParams?.get("joinCode");
+    const code = parseClubJoinLink(searchParams).code;
     const normalizedCode = code?.trim().toUpperCase();
     if (
       normalizedCode &&
@@ -606,8 +608,9 @@ export default function ClubOverviewPage() {
   }, [club, clubId, redeemJoinCode, searchParams, toast]);
 
   useEffect(() => {
-    const unitId = searchParams?.get("unitId") as Id<"clubUnits"> | null;
-    const unitCode = searchParams?.get("unitCode");
+    const join = parseClubJoinLink(searchParams);
+    const unitId = join.unitId as Id<"clubUnits"> | null;
+    const unitCode = join.unitCode;
     if (!unitId || !unitCode) return;
     const redemptionKey = `${unitId}:${unitCode}`;
     if (
@@ -661,7 +664,7 @@ export default function ClubOverviewPage() {
   const isSponsor = club.sponsors?.some(
     (sponsor) => sponsor.userId === user?._id,
   );
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
   const canPost = club.viewer.permissions.createAnnouncementDrafts;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
 

@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useMutation } from '@/lib/convex-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { MIN_PASSWORD_LENGTH } from '~/apps/shared/limits';
 import {
   Field,
   FieldDescription,
@@ -28,7 +29,7 @@ export default function ForcedPasswordChangePage() {
     event.preventDefault();
     setError(null);
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setError('New password must be at least 6 characters.');
       return;
     }
@@ -81,7 +82,7 @@ export default function ForcedPasswordChangePage() {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               aria-invalid={!!error}
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               required
             />
             <FieldDescription>Use at least 6 characters.</FieldDescription>
@@ -94,7 +95,7 @@ export default function ForcedPasswordChangePage() {
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               aria-invalid={!!error}
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               required
             />
             <FieldError>{error}</FieldError>
