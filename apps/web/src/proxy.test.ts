@@ -33,6 +33,9 @@ describe('dashboard root routing', () => {
     { path: '/logout', signedIn: false, reset: false, destination: null },
     { path: '/logout', signedIn: true, reset: true, destination: null },
     { path: '/clubs', signedIn: false, reset: false, destination: '/login' },
+    { path: '/route-finder', signedIn: false, reset: false, destination: '/login' },
+    { path: '/route-finder', signedIn: true, reset: false, destination: null },
+    { path: '/route-finder', signedIn: true, reset: true, destination: '/change-password' },
   ])('$path: signedIn=$signedIn, reset=$reset → $destination', async ({
     path, signedIn, reset, destination,
   }) => {

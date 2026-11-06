@@ -19,6 +19,7 @@ import {
   Shield,
   Presentation,
   LayoutTemplate,
+  MapPinned,
   School,
   Search,
   Star,
@@ -116,6 +117,7 @@ const primaryNav: NavItem[] = [
     icon: Presentation,
     mobileTabId: "flex-friday",
   },
+  { href: "/route-finder", label: "Route Finder", icon: MapPinned },
   { href: "/wrapped", label: "Wrapped", icon: Star, mobileTabId: "wrapped" },
 ];
 
