@@ -232,38 +232,35 @@ export default function RouteFinderPage() {
         ) : null}
 
         {route ? (
-          <section
+          <div
             ref={mapRef}
-            className="scroll-mt-20 rounded-3xl border bg-card p-1.5 shadow-sm"
+            className="scroll-mt-20"
+            role="region"
             aria-labelledby="route-title"
           >
-            {/* A stitched inner edge, like embroidery around the map. */}
-            <div className="flex flex-col gap-6 rounded-[1.3rem] border-2 border-dashed border-primary/30 p-4 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <h2 id="route-title" className="text-2xl font-semibold tracking-tight text-foreground">
-                    {route.fromLabel} to {route.toLabel}
-                  </h2>
-                  <p className="text-base text-muted-foreground">
-                    {route.minutes} min walk · {route.meters} m
-                    {route.sameFloor ? ` · Floor ${route.fromFloor}` : ` · ${labelForStair(route.stairNum!)} to Floor ${route.toFloor}`}
-                  </p>
-                </div>
-                {routeEntry ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => toggleSaved(routeEntry)}
-                    aria-pressed={currentSaved}
-                  >
-                    <Star className="size-4" fill={currentSaved ? 'currentColor' : 'none'} />
-                    {currentSaved ? 'Saved' : 'Save route'}
-                  </Button>
-                ) : null}
-              </div>
+            <Panel
+              title={<span id="route-title">{route.fromLabel} to {route.toLabel}</span>}
+              description={
+                <>
+                  {route.minutes} min walk · {route.meters} m
+                  {route.sameFloor ? ` · Floor ${route.fromFloor}` : ` · ${labelForStair(route.stairNum!)} to Floor ${route.toFloor}`}
+                </>
+              }
+              action={routeEntry ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => toggleSaved(routeEntry)}
+                  aria-pressed={currentSaved}
+                >
+                  <Star className="size-4" fill={currentSaved ? 'currentColor' : 'none'} />
+                  {currentSaved ? 'Saved' : 'Save route'}
+                </Button>
+              ) : null}
+            >
               <NavigationMap route={route} />
-            </div>
-          </section>
+            </Panel>
+          </div>
         ) : null}
       </PageFrame>
     </AppShell>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
+  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -64,12 +65,13 @@ export function RoomPicker({ id, value, onChange, placeholder }: RoomPickerProps
           variant="tertiary"
           type="button"
           trailingIcon={ChevronsUpDown}
-          className="h-auto min-h-11 w-full justify-between rounded-2xl border-border/70 bg-background/80 px-4 py-3 text-left shadow-sm"
+          active={open}
+          className="w-full justify-between text-left"
         >
-          <span className="flex min-w-0 flex-1 items-baseline gap-2 text-sm">
+          <span className="flex min-w-0 flex-1 items-baseline gap-2">
             {value ? (
               <>
-                <span className="truncate font-medium text-foreground">{labelFor(value.room, value.floor)}</span>
+                <span className="truncate">{labelFor(value.room, value.floor)}</span>
                 <span className="shrink-0 text-muted-foreground">Floor {value.floor}</span>
               </>
             ) : (
@@ -80,38 +82,39 @@ export function RoomPicker({ id, value, onChange, placeholder }: RoomPickerProps
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-(--radix-popover-trigger-width) min-w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl p-0"
+        className="w-(--radix-popover-trigger-width) min-w-[min(20rem,calc(100vw-2rem))] p-0"
       >
-        <Command shouldFilter={false} value={active} onValueChange={setActive}>
+        <Command surface="inherit" shouldFilter={false} value={active} onValueChange={setActive}>
           <CommandInput value={query} onValueChange={handleQueryChange} placeholder="Type a room number or name" />
-          <CommandList className="max-h-[22rem] p-1">
+          <CommandList className="max-h-[22rem]">
             <CommandEmpty>No rooms match &ldquo;{query.trim()}&rdquo;.</CommandEmpty>
-            {matches.map((choice) => {
-              const selected = !!value && itemValue(value) === itemValue(choice);
-              return (
-                <CommandItem
-                  key={itemValue(choice)}
-                  value={itemValue(choice)}
-                  onSelect={() => {
-                    onChange(choice);
-                    handleOpenChange(false);
-                  }}
-                  className="min-h-11 rounded-xl px-3 py-2"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                    {labelFor(choice.room, choice.floor)}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">Floor {choice.floor}</span>
-                  <Check
-                    aria-hidden
-                    className={cn(
-                      "ml-1 size-4 shrink-0 text-primary transition-opacity",
-                      selected ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                </CommandItem>
-              );
-            })}
+            <CommandGroup>
+              {matches.map((choice) => {
+                const selected = !!value && itemValue(value) === itemValue(choice);
+                return (
+                  <CommandItem
+                    key={itemValue(choice)}
+                    value={itemValue(choice)}
+                    onSelect={() => {
+                      onChange(choice);
+                      handleOpenChange(false);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {labelFor(choice.room, choice.floor)}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">Floor {choice.floor}</span>
+                    <Check
+                      aria-hidden
+                      className={cn(
+                        "ml-1 transition-opacity",
+                        selected ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
