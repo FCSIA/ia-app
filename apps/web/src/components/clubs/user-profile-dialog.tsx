@@ -96,8 +96,8 @@ export function UserProfileContent({
     kind === 'SPONSOR'
       ? 'Sponsor'
       : (roleName ?? (person.roles?.[0] ? (formatClubRole(person.roles[0]) ?? person.roles[0]) : null));
-  const roleLabels = [primaryRole, ...(person.roles ?? []).map((role) => formatClubRole(role) ?? role)]
-    .filter((label, index, labels): label is string => !!label && labels.indexOf(label) === index)
+  const roleLabels = [...(roleName ? [] : [primaryRole]), ...(person.roles ?? []).map((role) => formatClubRole(role) ?? role)]
+    .filter((label, index, labels): label is string => !!label && (!roleName || label !== primaryRole) && labels.indexOf(label) === index)
     .slice(0, 3);
   const friendshipLabel = relationshipLabel(resolvedFriendshipStatus);
   const classes = profileContext?.classes ?? [];
@@ -117,11 +117,14 @@ export function UserProfileContent({
         <UserAvatar person={person} className={isPreview ? 'size-12' : 'size-14'} />
         <div className="min-w-0 flex-1">
           <div id={headingId} className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-foreground">
-            <span className="truncate">{name}</span>
+            <span className="min-w-0 break-words">{name}</span>
             <DeveloperBadge user={person} size={15} />
           </div>
           {realName && realName !== name ? (
             <p className="mt-0.5 break-words text-xs text-muted-foreground">{realName}</p>
+          ) : null}
+          {roleName && primaryRole ? (
+            <p className="mt-0.5 break-words text-xs text-muted-foreground">{primaryRole}</p>
           ) : null}
           {person.uniqueId ? <p className="mt-0.5 truncate text-xs text-muted-foreground">ID {person.uniqueId}</p> : null}
           {roleLabels.length > 0 || friendshipLabel ? (

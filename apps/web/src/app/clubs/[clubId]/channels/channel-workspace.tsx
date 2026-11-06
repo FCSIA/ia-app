@@ -1848,18 +1848,31 @@ function MessageRow({
                       />
                       {message.author.clubRole &&
                       !message.author.clubRole.isDefault ? (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block">
                           · {message.author.clubRole.name}
                         </span>
                       ) : null}
-                      <span className="text-xs text-muted-foreground">
-                        {isSending
-                          ? 'Sending…'
-                          : formatMessageTime(message.createdAt)}
+                      <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                        {isSending ? (
+                          'Sending…'
+                        ) : (
+                          <time
+                            dateTime={new Date(message.createdAt).toISOString()}
+                            aria-label={formatMessageTime(message.createdAt, 'full')}
+                            title={formatMessageTime(message.createdAt, 'full')}
+                          >
+                            <span className="sm:hidden">
+                              {format(new Date(message.createdAt), 'h:mm a')}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {formatMessageTime(message.createdAt)}
+                            </span>
+                          </time>
+                        )}
                       </span>
                       {message.isPinned ? (
                         <Tooltip content="Pinned message">
-                          <span className="text-muted-foreground">
+                          <span className="shrink-0 text-muted-foreground">
                             <Pin
                               className="size-3"
                               aria-label="Pinned message"
@@ -1871,7 +1884,7 @@ function MessageRow({
                         <Tooltip
                           content={`Edited ${formatMessageTime(message.editedAt!, 'full')}`}
                         >
-                          <span className="text-xs text-muted-foreground">
+                          <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
                             (edited)
                           </span>
                         </Tooltip>
