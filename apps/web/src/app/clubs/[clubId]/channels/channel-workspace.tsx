@@ -745,7 +745,7 @@ function MessageAuthorPreview({
       <button
         type="button"
         aria-label={`View ${name} profile`}
-        className="inline-flex w-full min-w-0 items-center gap-1 rounded-sm py-0.5 text-[13px] font-semibold text-foreground outline-none hover:underline hover:underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
+        className="inline-flex min-w-0 items-center gap-1 rounded-sm py-0.5 text-[13px] font-semibold text-foreground outline-none hover:underline hover:underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <span className="truncate">{name}</span>
         <DeveloperBadge user={author} size={13} />
@@ -1835,7 +1835,7 @@ function MessageRow({
                     />
                   ) : null}
                   {!groupedWithPrevious ? (
-                    <MessageHeader className="flex-wrap gap-x-2 gap-y-0 px-0 text-[13px]">
+                    <MessageHeader className="gap-2 px-0 text-[13px]">
                       <MessageAuthorPreview
                         author={message.author}
                         compact={dense}
@@ -1848,18 +1848,31 @@ function MessageRow({
                       />
                       {message.author.clubRole &&
                       !message.author.clubRole.isDefault ? (
-                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground sm:flex-initial">
+                        <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block">
                           · {message.author.clubRole.name}
                         </span>
                       ) : null}
-                      <span className="ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground sm:ml-0">
-                        {isSending
-                          ? 'Sending…'
-                          : formatMessageTime(message.createdAt)}
+                      <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                        {isSending ? (
+                          'Sending…'
+                        ) : (
+                          <time
+                            dateTime={new Date(message.createdAt).toISOString()}
+                            aria-label={formatMessageTime(message.createdAt, 'full')}
+                            title={formatMessageTime(message.createdAt, 'full')}
+                          >
+                            <span className="sm:hidden">
+                              {format(new Date(message.createdAt), 'h:mm a')}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {formatMessageTime(message.createdAt)}
+                            </span>
+                          </time>
+                        )}
                       </span>
                       {message.isPinned ? (
                         <Tooltip content="Pinned message">
-                          <span className="text-muted-foreground">
+                          <span className="shrink-0 text-muted-foreground">
                             <Pin
                               className="size-3"
                               aria-label="Pinned message"
@@ -1871,7 +1884,7 @@ function MessageRow({
                         <Tooltip
                           content={`Edited ${formatMessageTime(message.editedAt!, 'full')}`}
                         >
-                          <span className="text-xs text-muted-foreground">
+                          <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
                             (edited)
                           </span>
                         </Tooltip>
