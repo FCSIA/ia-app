@@ -396,9 +396,9 @@
   /* Custom-theme background: the user-uploaded image sits behind every
      surface. The image URL is injected as a CSS variable by the client
      bootstrap script (apps/web/src/app/providers.tsx). */
-  /* Inset navigation is transparent, so its labels and icons share the page
-     Text color. The card palette's muted foreground can disappear over the
-     wallpaper. Elevated peek/drawer surfaces still scope their own foreground. */
+  /* Inset navigation shares its substrate's Text color. The wallpaper rule
+     below scopes the frosted rail to card text; peek/drawer surfaces scope
+     their own foreground independently. */
   .custom [data-slot="sidebar"][data-variant="inset"] [data-sidebar="sidebar"] {
     --muted-foreground: var(--foreground);
   }
@@ -458,8 +458,13 @@
     background-color: hsl(var(--card) / 0.48) !important;
   }
 
-  .custom[data-custom-wallpaper] aside[aria-label="Primary navigation"] {
-    background-color: hsl(var(--sidebar) / 0.72) !important;
+  /* Fluid's pinned inset rail is a div, not the old aside. Frost its shell
+     once so the full navigation (including its gutters) shares the card tint.
+     Keep collapsed shells unfiltered so their elevated peek stays independent. */
+  .custom[data-custom-wallpaper] [data-slot="sidebar"][data-variant="inset"][data-state="expanded"][aria-label="Primary navigation"] {
+    --foreground: var(--card-foreground);
+    background-color: color-mix(in oklab, var(--surface-2) 88%, transparent);
+    color: hsl(var(--card-foreground));
     backdrop-filter: blur(var(--custom-wallpaper-blur, 0px));
   }
 
