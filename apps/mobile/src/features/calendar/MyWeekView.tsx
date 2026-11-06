@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { sentenceCaseEnum } from "~/apps/shared/labels";
 import {
   SCHOOL_WEEKDAYS,
@@ -38,10 +39,14 @@ const lunchPeriodOptions = [
   { value: "PERIOD_5", label: "Period 5" },
 ] as const;
 
+import { calendarQueries } from "@/lib/tab-queries";
+
 export function MyWeekView() {
-  const liveData = useQuery(api.schedule.dashboard.get, {});
+  const scheduleQuery = calendarQueries.mySchedule();
+  const liveData = useQuery(scheduleQuery.query, scheduleQuery.args);
   const data = useOfflineValue("schedule", liveData);
-  const courses = useQuery(api.courses.catalog.list, { limit: 500 }) ?? [];
+  const courseCatalogQuery = calendarQueries.courseCatalog();
+  const courses = useQuery(courseCatalogQuery.query, courseCatalogQuery.args) ?? [];
   const saveSchedule = useMutation(api.schedule.dashboard.save);
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
   const acceptFriendRequest = useMutation(api.schedule.friends.acceptRequest);
@@ -167,7 +172,7 @@ export function MyWeekView() {
     } catch (error) {
       showToast({
         title: "Schedule not saved",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     }
   }
@@ -349,7 +354,7 @@ export function MyWeekView() {
                                 showToast({
                                   title: "Friend request",
                                   body:
-                                    error instanceof Error ? error.message : "Try again.",
+                                    errorMessage(error),
                                 }),
                               )
                             }
@@ -384,7 +389,7 @@ export function MyWeekView() {
                             (error) =>
                               showToast({
                                 title: "Friend request",
-                                body: error instanceof Error ? error.message : "Try again.",
+                                body: errorMessage(error),
                               }),
                           )
                         }
@@ -496,9 +501,7 @@ export function MyWeekView() {
                                       showToast({
                                         title: "Friend not removed",
                                         body:
-                                          error instanceof Error
-                                            ? error.message
-                                            : "Try again.",
+                                          errorMessage(error),
                                       }),
                                   ),
                               },
@@ -727,7 +730,7 @@ function ScheduleTable({
             key={row.key}
             accessibilityRole="link"
             accessibilityLabel={`Period ${row.periodNumber}, ${entry.className}. Open course details`}
-            onPress={() => router.push(`/courses/${courseSlug}` as never)}
+            onPress={() => router.push(`/courses/${courseSlug}`)}
           >
             {content}
           </PressableScale>

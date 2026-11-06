@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useDeferredValue, useMemo, useState } from "react";
 import { displayName } from '~/apps/shared/user-name';
 import { Alert, View } from "react-native";
@@ -95,7 +96,7 @@ export default function ClubDetailScreen() {
                   size="xs"
                   variant="ghost"
                   onPress={() =>
-                    router.push(`/clubs/${clubId}/settings` as never)
+                    router.push(`/clubs/${clubId}/settings`)
                   }
                 />
               </View>
@@ -130,7 +131,7 @@ export default function ClubDetailScreen() {
             } catch (error) {
               Alert.alert(
                 "Could not join",
-                error instanceof Error ? error.message : "Try again.",
+                errorMessage(error),
               );
             }
           }
@@ -217,7 +218,7 @@ export default function ClubDetailScreen() {
                       label="Shared"
                       icon={FolderOpen}
                       onPress={() =>
-                        router.push(`/clubs/${clubId}/shared` as never)
+                        router.push(`/clubs/${clubId}/shared`)
                       }
                     />
                   </View>
@@ -435,9 +436,7 @@ export default function ClubDetailScreen() {
                                   .catch((error) =>
                                     Alert.alert(
                                       "Could not approve",
-                                      error instanceof Error
-                                        ? error.message
-                                        : "Try again.",
+                                      errorMessage(error),
                                     ),
                                   );
                               }}
@@ -455,9 +454,7 @@ export default function ClubDetailScreen() {
                                 }).catch((error) =>
                                   Alert.alert(
                                     "Could not decline",
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Try again.",
+                                    errorMessage(error),
                                   ),
                                 )
                               }

@@ -1,4 +1,5 @@
-import { calendarEntryDays, calendarQueryRange } from '~/apps/shared/calendar-date';
+import { errorMessage } from "@/lib/errors";
+import { calendarEntryDays } from '~/apps/shared/calendar-date';
 import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
@@ -17,7 +18,9 @@ import {
   useToast,
 } from "@/components/ui";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { getAppPersona, useLiveCurrentUser } from "@/lib/auth";
+import { calendarQueries } from "@/lib/tab-queries";
+import { getAppPersona } from "@/lib/persona";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { CALENDAR_SOURCES as sources, monthRange } from "@/lib/calendar-window";
 import { timeRange } from "@/lib/format";
 import { warning } from "@/lib/haptics";
@@ -57,13 +60,12 @@ export function MonthView() {
   const user = useLiveCurrentUser();
   const canShareWithFriends = getAppPersona(user) === "student";
   const range = monthRange(offset);
-  const entries = useQuery(api.events.calendar.list, {
-    ...calendarQueryRange(range.start.getTime(), range.end.getTime()),
-    sources: activeSources,
-  });
+  const monthEntries = calendarQueries.month(offset, activeSources);
+  const entries = useQuery(monthEntries.query, monthEntries.args);
   const createEntry = useMutation(api.events.calendar.create);
   const removeEntry = useMutation(api.events.calendar.remove);
-  const subscriptions = useQuery(api.events.externalCalendars.listMine) ?? [];
+  const externalCalendars = calendarQueries.externalCalendars();
+  const subscriptions = useQuery(externalCalendars.query, externalCalendars.args) ?? [];
   const createConnection = useMutation(api.events.externalCalendars.createIcs);
   const removeConnection = useMutation(api.events.externalCalendars.remove);
   const inviteFriends = useMutation(api.events.calendar.inviteFriends);
@@ -72,7 +74,8 @@ export function MonthView() {
     api.events.calendar.listEligibleFriends,
     shareEntry && canShareWithFriends ? {} : "skip",
   );
-  const pendingInvites = useQuery(api.events.calendar.listPendingInvites, {}) ?? [];
+  const pendingInvitesQuery = calendarQueries.pendingInvites();
+  const pendingInvites = useQuery(pendingInvitesQuery.query, pendingInvitesQuery.args) ?? [];
   const { showToast } = useToast();
   const { color } = useTheme();
 
@@ -117,7 +120,7 @@ export function MonthView() {
     } catch (error) {
       showToast({
         title: "Entry not added",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     }
   }
@@ -133,7 +136,7 @@ export function MonthView() {
       setShowConnections(false);
       showToast({ title: "Calendar connected", tone: "success" });
     } catch (error) {
-      showToast({ title: "Calendar not connected", body: error instanceof Error ? error.message : "Try again." });
+      showToast({ title: "Calendar not connected", body: errorMessage(error) });
     }
   }
 
@@ -156,7 +159,7 @@ export function MonthView() {
           removeEntry({ entryId: entry._id }).catch((error) =>
             showToast({
               title: "Entry not deleted",
-              body: error instanceof Error ? error.message : "Try again.",
+              body: errorMessage(error),
             }),
           ),
       },
@@ -198,7 +201,7 @@ export function MonthView() {
     } catch (error) {
       showToast({
         title: "Invites not sent",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setSharing(false);
@@ -219,7 +222,7 @@ export function MonthView() {
     } catch (error) {
       showToast({
         title: "Invite not updated",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setPendingInviteId(null);

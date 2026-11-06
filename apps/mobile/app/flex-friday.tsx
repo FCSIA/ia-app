@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
@@ -80,7 +81,7 @@ export default function FlexFridayScreen() {
     } catch (error) {
       showToast({
         title: "Couldn’t update registration",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setPendingWorkshopId(null);
@@ -106,19 +107,14 @@ export default function FlexFridayScreen() {
             }
           />
         }
-        contentContainerStyle={{
-        width: "100%",
-        maxWidth: 760,
-        alignSelf: "center",
-        gap: spacing.xl,
-      }}
+        contentContainerStyle={{ gap: spacing.xl }}
     >
       {fridays.isOffline || fridays.isStale ? <OfflineBanner stale={fridays.isStale} /> : null}
 
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Show my Flex pass"
-        onPress={() => router.push("/flex-friday/pass" as never)}
+        onPress={() => router.push("/flex-friday/pass")}
       >
         <View
           style={{

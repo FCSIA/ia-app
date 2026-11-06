@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { isAdmin } from "~/apps/shared/roles";
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -37,7 +38,7 @@ export function ClubManagementSettingsScreen() {
           club.viewer?.canManageMembership ? (
             <ClubSettingsForm key={club._id} club={club} />
           ) : (
-            <Redirect href={`/clubs/${club._id}` as never} />
+            <Redirect href={`/clubs/${club._id}`} />
           )
         }
       </DataBoundary>
@@ -90,7 +91,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
     } catch (error) {
       showToast({
         title: "Settings weren't saved",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -104,11 +105,11 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
     try {
       await deactivateClub({ clubId: club._id });
       showToast({ title: "Club deactivated", tone: "success" });
-      router.replace("/clubs" as never);
+      router.replace("/clubs");
     } catch (error) {
       showToast({
         title: "Club wasn't deactivated",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -181,7 +182,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel="Manage mention groups"
-          onPress={() => router.push(`/clubs/${club._id}/tags` as never)}
+          onPress={() => router.push(`/clubs/${club._id}/tags`)}
           style={{
             minHeight: 52,
             flexDirection: "row",

@@ -10,17 +10,19 @@ import { Screen } from "@/components/screen";
 import { Avatar, Button, Empty, IconButton, PressableScale, Txt } from "@/components/ui";
 import { CreateClubSheet } from "@/features/clubs/club-management-create-sheet";
 import { useLiveCurrentUser } from "@/lib/auth";
+import { clubsQueries } from "@/lib/tab-queries";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
-import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ClubsScreen() {
   const user = useLiveCurrentUser();
   const hasAdministrativeClubAccess = isSuperAdmin(user);
-  const all = useQuery(api.clubs.management.getAll, {});
+  const allClubs = clubsQueries.all();
+  const myClubsQuery = clubsQueries.mine();
+  const all = useQuery(allClubs.query, allClubs.args);
   const mine = useQuery(
-    api.clubs.management.getMyClubs,
-    hasAdministrativeClubAccess ? "skip" : {},
+    myClubsQuery.query,
+    hasAdministrativeClubAccess ? "skip" : myClubsQuery.args,
   );
   const [createOpen, setCreateOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
@@ -164,7 +166,7 @@ function ClubRow({
   return (
     <PressableScale
       accessibilityLabel={`${club.name}, ${memberCount} ${memberCount === 1 ? "member" : "members"}${membershipLabel ? `, ${membershipLabel.toLowerCase()}` : ""}`}
-      onPress={() => router.push(`/clubs/${club._id}` as never)}
+      onPress={() => router.push(`/clubs/${club._id}`)}
       style={{
         minHeight: 76,
         paddingVertical: spacing.md,

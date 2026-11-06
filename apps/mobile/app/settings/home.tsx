@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { useMutation } from "@/lib/convex-react";
@@ -50,7 +51,7 @@ export default function HomeSettingsScreen() {
       setLayout(previous);
       showToast({
         title: "Home not updated",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

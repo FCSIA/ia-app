@@ -1,3 +1,4 @@
+import { nameInitials } from "~/apps/shared/user-name";
 import { Image, View } from "react-native";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
@@ -11,7 +12,7 @@ type AvatarProps = {
 
 export function Avatar({ uri, name, size = 40 }: AvatarProps) {
   const { color } = useTheme();
-  const initials = getInitials(name);
+  const initials = (name ? nameInitials({ preferredName: name }).toUpperCase() : "") || "IA";
 
   if (uri) {
     return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: radii.pill }} />;
@@ -33,10 +34,4 @@ export function Avatar({ uri, name, size = 40 }: AvatarProps) {
       </Txt>
     </View>
   );
-}
-
-function getInitials(name?: string | null) {
-  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
-  if (!parts.length) return "IA";
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
 }

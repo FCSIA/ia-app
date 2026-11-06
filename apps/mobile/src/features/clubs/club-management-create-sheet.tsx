@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
@@ -55,11 +56,11 @@ export function CreateClubSheet({ open, onClose }: CreateClubSheetProps) {
       reset();
       onClose();
       showToast({ title: "Club created", tone: "success" });
-      router.push(`/clubs/${clubId}` as never);
+      router.push(`/clubs/${clubId}`);
     } catch (error) {
       showToast({
         title: "Club wasn't created",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

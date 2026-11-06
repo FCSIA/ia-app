@@ -20,15 +20,13 @@ import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { AttachmentComposer } from "./attachment-composer";
 import { chatMessageLengthError } from "./chat-markdown";
-import {
-  ComposerToolButton,
-  RichChatInput,
-  type ChatMentionSuggestion,
-} from "./rich-chat-input";
+import type { ChatMentionSuggestion } from "./mention-format";
+import { ComposerToolButton, RichChatInput } from "./rich-chat-input";
 import type { ChatComposerController } from "./use-chat-composer";
 import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 import { chatAuthorName } from "./types";
 import { SchoolGifPicker } from "./school-gif-picker";
+import { MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS } from "~/apps/shared/chat/protocol";
 import { extractChatGifLinks } from "~/apps/shared/chat/gifs";
 
 type ChatComposerProps = {
@@ -335,6 +333,8 @@ export function ChatComposer({
   );
 }
 
+const MARKDOWN_LENGTH_WARNING_THRESHOLD = MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS - 2_000;
+
 function ComposerLengthStatus({
   error,
   markdownLength,
@@ -342,11 +342,11 @@ function ComposerLengthStatus({
   error: string | null;
   markdownLength: number;
 }) {
-  if (!error && markdownLength < 10_000) return null;
+  if (!error && markdownLength < MARKDOWN_LENGTH_WARNING_THRESHOLD) return null;
   return (
     <Txt variant="caption" tone={error ? "destructive" : "muted"}>
       {error ??
-        `${markdownLength.toLocaleString()} / 12,000 Markdown characters`}
+        `${markdownLength.toLocaleString()} / ${MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS.toLocaleString()} Markdown characters`}
     </Txt>
   );
 }

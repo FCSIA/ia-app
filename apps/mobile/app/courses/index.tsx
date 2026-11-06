@@ -46,7 +46,6 @@ export default function CoursesScreen() {
   return (
     <Screen
       title="Courses"
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}
       keyboardShouldPersistTaps="handled"
     >
       <View
@@ -151,7 +150,7 @@ function CourseRow({ course, showDivider }: { course: any; showDivider: boolean 
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`Open ${course.title}`}
-      onPress={() => router.push(`/courses/${course.slug}` as never)}
+      onPress={() => router.push(`/courses/${course.slug}`)}
       style={{ minHeight: 92, paddingHorizontal: spacing.md }}
     >
       <View

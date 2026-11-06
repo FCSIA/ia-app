@@ -58,9 +58,9 @@ function PasswordResetGate() {
   useEffect(() => {
     if (!user) return;
     if (user.mustResetPassword && !onPasswordPage) {
-      router.replace("/change-password" as never);
+      router.replace("/change-password");
     } else if (!user.mustResetPassword && onPasswordPage) {
-      router.replace("/dashboard" as never);
+      router.replace("/dashboard");
     }
   }, [onPasswordPage, router, user]);
 

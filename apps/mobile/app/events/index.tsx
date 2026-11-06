@@ -3,7 +3,7 @@ import { Screen } from "@/components/screen";
 
 export default function EventsScreen() {
   return (
-    <Screen title="Events" contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}>
+    <Screen title="Events">
       <EventsView />
     </Screen>
   );

@@ -1,22 +1,14 @@
-import { isAdmin, isStaff, isStudent } from "~/apps/shared/roles";
+import { isStaff } from "~/apps/shared/roles";
 import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useConvexAuth, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "~/apps/convex/src/_generated/api";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
-export type AppPersona = "admin" | "student" | "staff" | "unknown";
 
-const CACHE_KEY = "ia_user";
 const EMPTY_ARGS = {};
-
-export function getAppPersona(user: AppUser | null | undefined): AppPersona {
-  if (!user) return "unknown";
-  if (isAdmin(user)) return "admin";
-  if (isStudent(user)) return "student";
-  return "staff";
-}
 
 export function canAccessAdminWorkspace(user: AppUser | null | undefined) {
   return isStaff(user);
@@ -34,7 +26,7 @@ export function useCurrentUser() {
   const lastUserSnapshot = useRef<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(CACHE_KEY)
+    AsyncStorage.getItem(STORAGE_KEYS.user)
       .then((raw) => {
         lastUserSnapshot.current = raw;
         setCachedUser(raw ? JSON.parse(raw) as AppUser : null);
@@ -50,12 +42,12 @@ export function useCurrentUser() {
       const snapshot = JSON.stringify(user);
       if (lastUserSnapshot.current !== snapshot) {
         lastUserSnapshot.current = snapshot;
-        AsyncStorage.setItem(CACHE_KEY, snapshot).catch(() => {});
+        AsyncStorage.setItem(STORAGE_KEYS.user, snapshot).catch(() => {});
         setCachedUser(user);
       }
     } else if (!isLoading && !isAuthenticated) {
       lastUserSnapshot.current = null;
-      AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
+      AsyncStorage.removeItem(STORAGE_KEYS.user).catch(() => {});
       setCachedUser(null);
     }
   }, [isAuthenticated, isLoading, user]);

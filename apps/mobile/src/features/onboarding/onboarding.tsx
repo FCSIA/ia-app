@@ -150,7 +150,7 @@ export function Onboarding() {
                       variant="tertiary"
                       onPress={() => {
                         setOpen(false);
-                        router.push(step.native as never);
+                        router.push(step.native);
                       }}
                     />
                     {status.phase === "active" && state === "pending" ? (

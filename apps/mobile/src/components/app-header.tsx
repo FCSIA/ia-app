@@ -32,7 +32,7 @@ export function AppHeader({ title, subtitle, action }: AppHeaderProps) {
     <View style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md }}>
       <PressableScale
         accessibilityLabel={`Open profile for ${name}`}
-        onPress={() => router.push("/profile" as never)}
+        onPress={() => router.push("/profile")}
         style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
       >
         <Avatar uri={user?.avatarUrl} name={name} size={40} />
@@ -55,7 +55,7 @@ export function AppHeader({ title, subtitle, action }: AppHeaderProps) {
             label={unread?.count ? `Open inbox, ${unread.count} unread` : "Open inbox"}
             onPress={() => {
               prewarm("notifications");
-              router.push("/notifications" as never);
+              router.push("/notifications");
             }}
           />
           {unread?.count ? (

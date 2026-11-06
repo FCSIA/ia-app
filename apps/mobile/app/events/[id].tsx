@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { sentenceCaseEnum } from "~/apps/shared/labels";
 import { isStaff } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
@@ -36,7 +37,7 @@ export default function EventDetailScreen() {
     } catch (error) {
       showToast({
         title: "Couldn’t cancel event",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setIsCancelling(false);
@@ -58,7 +59,7 @@ export default function EventDetailScreen() {
     } catch (error) {
       showToast({
         title: "Report not sent",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setIsReporting(false);

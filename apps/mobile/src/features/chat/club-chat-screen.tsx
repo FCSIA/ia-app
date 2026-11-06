@@ -12,14 +12,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery, useQuery } from "@/lib/convex-react";
-import {
-  FolderOpen,
-  Hash,
-  LockKeyhole,
-  Megaphone,
-  MessageCircle,
-  Search,
-} from "lucide-react-native";
+import { FolderOpen, MessageCircle, Search } from "lucide-react-native";
 import {
   KeyboardGestureArea,
   KeyboardStickyView,
@@ -27,6 +20,7 @@ import {
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import { AppDetailHeader } from "@/components/screen";
 import { Empty, IconButton, useToast } from "@/components/ui";
+import { errorMessage } from "@/lib/errors";
 import { useCurrentUser, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
@@ -44,22 +38,21 @@ import {
 } from "~/apps/shared/chat/optimistic-message";
 import { ChatTimeline } from "./timeline";
 import { isPdfAttachment } from "~/apps/shared/chat/attachments";
-import { normalizeChatReaction, type ChannelVisibility } from "~/apps/shared/chat/protocol";
-import type {
-  ChatAttachment,
-  ChatMessage,
-  ChatThread,
-  ClubChatData,
-  ClubMentionContext,
-  QuickReaction,
-} from "./types";
+import {
+  MAX_CHANNEL_POLL_OPTIONS,
+  normalizeChatReaction,
+  type ChannelVisibility,
+} from "~/apps/shared/chat/protocol";
+import type { ChatAttachment, ChatMessage, QuickReaction } from "./types";
+import { pendingKey } from "./pending-actions";
 import { useChatComposer } from "./use-chat-composer";
 import { useChatDraft } from "./use-chat-draft";
 import { useManagedChatAttachments } from "./use-managed-chat-attachments";
 import { chatMessageLengthError } from "./chat-markdown";
-import type { ChatMentionSuggestion } from "./rich-chat-input";
+import type { ChatMentionSuggestion } from "./mention-format";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
 import { latestVisibleChatActivity } from "~/apps/shared/chat/activity";
+import { channelVisibilityIcon } from "@/features/clubs/channel-visibility";
 import { dismissPresentedChannelNotificationsThrough } from "@/lib/push";
 
 type ClubChatScreenProps = {
@@ -95,7 +88,7 @@ export function ClubChatScreen({
         },
     { initialNumItems: MESSAGE_PAGE_SIZE },
   );
-  const rawThread = useQuery(
+  const thread = useQuery(
     api.clubs.channels.getThread,
     threadRootId
       ? {
@@ -105,7 +98,7 @@ export function ClubChatScreen({
         }
       : "skip",
   );
-  const rawChannelContext = useQuery(
+  const channelContext = useQuery(
     api.clubs.channels.getConversationContext,
     {
       clubId: clubId as Id<"clubs">,
@@ -113,7 +106,7 @@ export function ClubChatScreen({
     },
   );
   const [mentionContextRequested, setMentionContextRequested] = useState(false);
-  const rawMentionContext = useQuery(
+  const mentionContext = useQuery(
     api.clubs.channels.getMentionContext,
     mentionContextRequested
       ? {
@@ -126,19 +119,13 @@ export function ClubChatScreen({
     () =>
       paginationStatus === "LoadingFirstPage"
         ? undefined
-        : ([...(results as ChatMessage[])].reverse() as ChatMessage[]),
+        : [...results].reverse(),
     [paginationStatus, results],
   );
   const latestVisibleActivity = useMemo(
     () => latestVisibleChatActivity(messages),
     [messages],
   );
-  const thread = rawThread as ChatThread | null | undefined;
-  const channelContext = rawChannelContext as ClubChatData | null | undefined;
-  const mentionContext = rawMentionContext as
-    | ClubMentionContext
-    | null
-    | undefined;
   const postMessageMutation = useMutation(api.clubs.channels.postMessage);
   const postMessage = useMemo(
     () =>
@@ -258,7 +245,7 @@ export function ClubChatScreen({
   const threadIsMissing = !!threadRootId && thread !== undefined && !thread;
   const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
   const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
-  const composerPending = pendingActions.has("composer");
+  const composerPending = pendingActions.has(pendingKey.composer);
   // The composer is a normal-flow sibling, so its height already reduces the
   // timeline viewport. Only the safe-area correction belongs in the dynamic
   // KeyboardChatScrollView/KeyboardStickyView translation offset.
@@ -345,7 +332,7 @@ export function ClubChatScreen({
   );
 
   const submitComposer = useCallback(async () => {
-    if (pendingKeysRef.current.has("composer")) return;
+    if (pendingKeysRef.current.has(pendingKey.composer)) return;
     const mode = composer.mode;
     const draft = composer.draft.trim();
 
@@ -357,10 +344,10 @@ export function ClubChatScreen({
         return;
       }
       const completed = await runPending(
-        "composer",
+        pendingKey.composer,
         () =>
           updateMessage({
-            messageId: mode.target._id as Id<"clubChannelMessages">,
+            messageId: mode.target._id,
             body: draft,
             bodyMarkdown: composer.markdownDraft.trim() || undefined,
           }),
@@ -376,10 +363,10 @@ export function ClubChatScreen({
     if (mode.kind === "report") {
       if (!draft) return;
       const completed = await runPending(
-        "composer",
+        pendingKey.composer,
         () =>
           reportMessage({
-            messageId: mode.target._id as Id<"clubChannelMessages">,
+            messageId: mode.target._id,
             reason: draft,
           }),
         "Report wasn’t sent",
@@ -400,7 +387,7 @@ export function ClubChatScreen({
       .split(",")
       .map((option) => option.trim())
       .filter(Boolean)
-      .slice(0, 6);
+      .slice(0, MAX_CHANNEL_POLL_OPTIONS);
     if (mode.kind === "poll" && pollOptions.length < 2) {
       showToast({ title: "Add at least two poll choices", tone: "warning" });
       return;
@@ -417,11 +404,11 @@ export function ClubChatScreen({
     const parentMessageId = threadRootId
       ? (threadRootId as Id<"clubChannelMessages">)
       : mode.kind === "reply"
-        ? (mode.target._id as Id<"clubChannelMessages">)
+        ? (mode.target._id)
         : undefined;
     const clientIdentity = createClientMessageIdentity();
     const completed = await runPending(
-      "composer",
+      pendingKey.composer,
       () =>
         postMessage({
           channelId: channelId as Id<"clubChannels">,
@@ -486,10 +473,10 @@ export function ClubChatScreen({
         return;
       }
       await runPending(
-        `reaction:${message._id}:${reaction}`,
+        pendingKey.reaction(message._id, reaction),
         () =>
           toggleReaction({
-            messageId: message._id as Id<"clubChannelMessages">,
+            messageId: message._id,
             emoji: reaction,
           }),
         "Reaction wasn’t updated",
@@ -501,10 +488,10 @@ export function ClubChatScreen({
   const handleVotePoll = useCallback(
     async (message: ChatMessage, optionId: string) => {
       await runPending(
-        `poll:${message._id}`,
+        pendingKey.poll(message._id),
         () =>
           votePoll({
-            messageId: message._id as Id<"clubChannelMessages">,
+            messageId: message._id,
             optionId,
           }),
         "Vote wasn’t updated",
@@ -517,10 +504,10 @@ export function ClubChatScreen({
     async (message: ChatMessage) => {
       setActionMessage(null);
       const completed = await runPending(
-        `pin:${message._id}`,
+        pendingKey.pin(message._id),
         () =>
           setPinned({
-            messageId: message._id as Id<"clubChannelMessages">,
+            messageId: message._id,
             pinned: !message.isPinned,
           }),
         message.isPinned ? "Message wasn’t unpinned" : "Message wasn’t pinned",
@@ -537,10 +524,10 @@ export function ClubChatScreen({
   const deleteSelectedMessage = useCallback(
     async (message: ChatMessage) => {
       const completed = await runPending(
-        `delete:${message._id}`,
+        pendingKey.delete(message._id),
         () =>
           deleteMessage({
-            messageId: message._id as Id<"clubChannelMessages">,
+            messageId: message._id,
           }),
         "Message wasn’t deleted",
       );
@@ -564,52 +551,52 @@ export function ClubChatScreen({
     [deleteSelectedMessage],
   );
 
+  const leaveComposerMode = useCallback(() => {
+    void flushDraft().catch(() => {});
+    void attachments.abandonAttachments();
+  }, [attachments.abandonAttachments, flushDraft]);
+
   const startReply = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
-      void flushDraft().catch(() => {});
-      void attachments.abandonAttachments();
+      leaveComposerMode();
       composer.startReply(message);
     },
-    [attachments.abandonAttachments, composer.startReply, flushDraft],
+    [composer.startReply, leaveComposerMode],
   );
 
   const startEdit = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
-      void flushDraft().catch(() => {});
-      void attachments.abandonAttachments();
+      leaveComposerMode();
       composer.startEdit(message);
     },
-    [attachments.abandonAttachments, composer.startEdit, flushDraft],
+    [composer.startEdit, leaveComposerMode],
   );
 
   const startReport = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
-      void flushDraft().catch(() => {});
-      void attachments.abandonAttachments();
+      leaveComposerMode();
       composer.startReport(message);
     },
-    [attachments.abandonAttachments, composer.startReport, flushDraft],
+    [composer.startReport, leaveComposerMode],
   );
 
   const resetComposer = useCallback(() => {
-    void flushDraft().catch(() => {});
-    void attachments.abandonAttachments();
+    leaveComposerMode();
     composer.reset();
-  }, [attachments.abandonAttachments, composer.reset, flushDraft]);
+  }, [composer.reset, leaveComposerMode]);
 
   const startPoll = useCallback(() => {
-    void flushDraft().catch(() => {});
-    void attachments.abandonAttachments();
+    leaveComposerMode();
     composer.startPoll();
-  }, [attachments.abandonAttachments, composer.startPoll, flushDraft]);
+  }, [composer.startPoll, leaveComposerMode]);
 
   const openThread = useCallback(
     (message: ChatMessage) => {
       router.push(
-        `/clubs/${clubId}/channels/${channelId}/threads/${message._id}` as never,
+        `/clubs/${clubId}/channels/${channelId}/threads/${message._id}`,
       );
     },
     [channelId, clubId],
@@ -619,13 +606,12 @@ export function ClubChatScreen({
   const switchChannel = useCallback(
     (nextChannelId: string) => {
       setChannelSwitcherOpen(false);
-      void flushDraft().catch(() => {});
-      void attachments.abandonAttachments();
+      leaveComposerMode();
       // Replace rather than push so back still returns to wherever the
       // channel was opened from instead of stepping through every channel.
-      router.replace(`/clubs/${clubId}/channels/${nextChannelId}` as never);
+      router.replace(`/clubs/${clubId}/channels/${nextChannelId}`);
     },
-    [attachments.abandonAttachments, clubId, flushDraft],
+    [clubId, leaveComposerMode],
   );
 
   const openAttachment = useCallback(
@@ -706,7 +692,7 @@ export function ClubChatScreen({
                       variant="ghost"
                       onPress={() =>
                         router.push(
-                          `/clubs/${clubId}/channels/${channelId}/search` as never,
+                          `/clubs/${clubId}/channels/${channelId}/search`,
                         )
                       }
                     />
@@ -717,7 +703,7 @@ export function ClubChatScreen({
                       variant="ghost"
                       onPress={() =>
                         router.push(
-                          `/clubs/${clubId}/shared?channelId=${channelId}` as never,
+                          `/clubs/${clubId}/shared?channelId=${channelId}`,
                         )
                       }
                     />
@@ -846,13 +832,7 @@ function ChannelHeaderMark({
   visibility?: ChannelVisibility;
 }) {
   const { color } = useTheme();
-  const Icon = thread
-    ? MessageCircle
-    : visibility === "PRIVATE"
-      ? LockKeyhole
-      : visibility === "MEMBER_READONLY"
-        ? Megaphone
-        : Hash;
+  const Icon = thread ? MessageCircle : channelVisibilityIcon(visibility ?? "PUBLIC");
   return (
     <View
       style={{
@@ -865,8 +845,4 @@ function ChannelHeaderMark({
       <Icon size={18} color={color("mutedForeground")} strokeWidth={2} />
     </View>
   );
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Try again.";
 }

@@ -3,10 +3,11 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
 import type { ConvexReactClient } from "@/lib/convex-react";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { api } from "~/apps/convex/src/_generated/api";
 import { isCoveredByAcknowledgedDelivery, isCoveredByChannelReceipt } from "~/apps/shared/notifications";
 
-const TOKEN_STORAGE_KEY = "ia_expo_push_token";
+const TOKEN_STORAGE_KEY = STORAGE_KEYS.expoPushToken;
 const EXPO_GO_PUSH_MESSAGE =
   "Native push requires a development build on Expo SDK 53+; Expo Go can still test the rest of the app.";
 const PUSH_NOT_CONFIGURED_MESSAGE =

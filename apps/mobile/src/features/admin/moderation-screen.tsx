@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { isStaff } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
@@ -74,7 +75,7 @@ export function ModerationScreen() {
     } catch (error) {
       showToast({
         title: "Report wasn't updated",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -254,7 +255,7 @@ function KeywordRules() {
     } catch (error) {
       showToast({
         title: "Rule wasn't added",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -271,7 +272,7 @@ function KeywordRules() {
     } catch (error) {
       showToast({
         title: "Rule wasn't removed",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

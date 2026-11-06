@@ -2,52 +2,25 @@ import { displayName } from '~/apps/shared/user-name';
 import { View } from "react-native";
 import { router } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "lucide-react-native";
-import { useMutation } from "@/lib/convex-react";
-import { PressableScale, Txt, useToast } from "@/components/ui";
+import { PressableScale, Txt } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
-import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
+import { announcementAudience } from "@/features/announcements/model";
+import { AnnouncementIconAction } from "@/features/announcements/ui";
+import { useAnnouncementActions } from "@/features/announcements/use-announcement-actions";
 import { announcementUnreadColors } from "@/features/announcements/unread-colors";
 import { relativeTime } from "@/lib/format";
-import { success } from "@/lib/haptics";
 import { radii, spacing } from "@/lib/tokens";
 import { useTheme } from "@/lib/theme";
-import { api } from "~/apps/convex/src/_generated/api";
 
 export function AnnouncementCard({ announcement }: { announcement: any }) {
   const { color, name: themeName, tokens } = useTheme();
-  const markRead = useMutation(api.announcements.engagement.markRead);
-  const markUnread = useMutation(api.announcements.engagement.markUnread);
-  const bookmark = useMutation(api.announcements.engagement.bookmark);
-  const unbookmark = useMutation(api.announcements.engagement.unbookmark);
-  const { showToast } = useToast();
+  const { toggleRead, toggleBookmark } = useAnnouncementActions();
   const authorName = displayName(announcement.author);
   const audience = announcementAudience(announcement);
   const unreadColors = announcementUnreadColors(tokens);
   const isUnread = !announcement.isRead;
   const foreground = isUnread ? unreadColors.foreground : undefined;
   const mutedForeground = isUnread ? unreadColors.mutedForeground : undefined;
-
-  async function toggleRead() {
-    try {
-      const args = { announcementId: announcement._id };
-      await (announcement.isRead ? markUnread(args as any) : markRead(args as any));
-      await success();
-      showToast({ title: announcement.isRead ? "Marked unread" : "Marked read", tone: "success" });
-    } catch {
-      showToast({ title: "Read status didn't change", body: "Try again.", tone: "warning" });
-    }
-  }
-
-  async function toggleBookmark() {
-    try {
-      const args = { announcementId: announcement._id };
-      await (announcement.isBookmarked ? unbookmark(args as any) : bookmark(args as any));
-      await success();
-      showToast({ title: announcement.isBookmarked ? "Removed from saved" : "Saved", tone: "success" });
-    } catch {
-      showToast({ title: "Saved status didn't change", body: "Try again.", tone: "warning" });
-    }
-  }
 
   return (
     <View
@@ -66,7 +39,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
       <PressableScale
         accessibilityRole="link"
         accessibilityLabel={`${announcement.isRead ? "" : "Unread: "}${announcement.title}`}
-        onPress={() => router.push(`/announcements/${announcement._id}` as never)}
+        onPress={() => router.push(`/announcements/${announcement._id}`)}
         style={{ flex: 1 }}
       >
         <View style={{ gap: spacing.xs }}>
@@ -145,7 +118,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
           label={announcement.isRead ? "Mark unread" : "Mark read"}
           selected={announcement.isRead}
           iconColor={isUnread ? unreadColors.mutedForeground : undefined}
-          onPress={() => void toggleRead()}
+          onPress={() => void toggleRead(announcement._id, announcement.isRead)}
         />
         <AnnouncementIconAction
           icon={announcement.isBookmarked ? BookmarkCheck : Bookmark}
@@ -153,7 +126,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
           selected={announcement.isBookmarked}
           accentWhenSelected
           iconColor={isUnread ? unreadColors.icon : undefined}
-          onPress={() => void toggleBookmark()}
+          onPress={() => void toggleBookmark(announcement._id, announcement.isBookmarked)}
         />
       </View>
     </View>

@@ -91,7 +91,7 @@ export default function ThemeScreen() {
   return (
     <Screen
       title="Appearance"
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+      contentContainerStyle={{ gap: spacing.xl }}
     >
       <Section title="Animations">
         <ListRow title="Autoplay GIFs" subtitle="Play automatically on this device. Turn off to start paused. Reduced motion starts paused; individual play buttons still work." trailing={

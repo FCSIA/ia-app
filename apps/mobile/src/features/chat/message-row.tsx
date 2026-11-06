@@ -22,7 +22,6 @@ import {
   FileText,
   MessageCircle,
   Pin,
-  RotateCcw,
 } from "lucide-react-native";
 import { Avatar, PressableScale, Txt } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
@@ -32,6 +31,7 @@ import { radii, spacing } from "@/lib/tokens";
 import {
   normalizeReactionSummaries,
 } from "./quick-reactions";
+import { pendingKey } from "./pending-actions";
 import { RichMessageBody } from "./rich-message-body";
 import { ChatGif, ChatGifLinks } from "./chat-gif";
 import { isGifAttachment } from "~/apps/shared/chat/gifs";
@@ -61,7 +61,6 @@ type MessageRowProps = {
   onToggleReaction: (message: ChatMessage, reaction: QuickReaction) => void;
   onVotePoll: (message: ChatMessage, optionId: string) => void;
   onOpenAttachment?: (attachment: ChatAttachment) => void;
-  onRetry?: (message: ChatMessage) => void;
 };
 
 function partitionAttachments(attachments: ChatAttachment[] = []) {
@@ -87,7 +86,6 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   onToggleReaction,
   onVotePoll,
   onOpenAttachment,
-  onRetry,
 }: MessageRowProps) {
   const { color } = useTheme();
   const authorName = chatAuthorName(message);
@@ -100,7 +98,6 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   const hasThread = message.hasReplies ?? message.replyCount > 0;
   const replyCountIsExact = message.replyCountIsExact !== false;
   const isSending = message.deliveryState === "sending";
-  const failedToSend = message.deliveryState === "failed";
   const reduceMotion = useReducedMotion();
   const swipeX = useSharedValue(0);
   const replyThresholdReached = useSharedValue(false);
@@ -110,7 +107,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
     onLongPress(message);
   };
   const swipeToReply = Gesture.Pan()
-    .enabled(canReply && !isSending && !failedToSend)
+    .enabled(canReply && !isSending)
     .activeOffsetX(-18)
     .failOffsetX(12)
     .failOffsetY([-14, 14])
@@ -184,7 +181,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           backgroundColor: color("background"),
         }}
       >
-        {canReply && !isSending && !failedToSend ? (
+        {canReply && !isSending ? (
           <View
             pointerEvents="none"
             style={{
@@ -414,7 +411,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                             (option.count / message.poll.totalVotes) * 100,
                           )
                         : 0;
-                      const pending = pendingActions.has(`poll:${message._id}`);
+                      const pending = pendingActions.has(pendingKey.poll(message._id));
                       return (
                         <PressableScale
                           key={option.id}
@@ -501,9 +498,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                       const payload = normalizeChatReaction(reaction.emoji);
                       const pending =
                         !!payload &&
-                        pendingActions.has(
-                          `reaction:${message._id}:${payload}`,
-                        );
+                        pendingActions.has(pendingKey.reaction(message._id, payload));
                       return (
                         <PressableScale
                           key={reaction.emoji}
@@ -603,30 +598,6 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                         {message.latestReplyPreview.body || "Open thread"}
                       </Txt>
                     ) : null}
-                  </PressableScale>
-                ) : null}
-                {failedToSend ? (
-                  <PressableScale
-                    accessibilityLabel="Retry sending message"
-                    haptic={false}
-                    onLongPress={openContextMenu}
-                    onPress={() => onRetry?.(message)}
-                    style={{
-                      minHeight: 44,
-                      alignSelf: "flex-start",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: spacing.xs,
-                    }}
-                  >
-                    <RotateCcw size={15} color={color("destructive")} />
-                    <Txt
-                      variant="caption"
-                      tone="destructive"
-                      style={{ fontWeight: "700" }}
-                    >
-                      Not sent · Tap to retry
-                    </Txt>
                   </PressableScale>
                 ) : null}
               </View>

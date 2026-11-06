@@ -1,6 +1,6 @@
-import { radii, spacing, typography } from "@ia/design-tokens";
+import { radii, spacing } from "@ia/design-tokens";
 
-export { radii, spacing, typography };
+export { radii, spacing };
 
 export const text = {
   display: { fontSize: 30, fontWeight: "800", lineHeight: 36 },

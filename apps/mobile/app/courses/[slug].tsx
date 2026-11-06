@@ -19,7 +19,7 @@ export default function CourseDetailScreen() {
   const course = useQuery(api.courses.catalog.get, slug ? { slug } : "skip");
 
   return (
-    <Screen contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}>
+    <Screen>
       <DataBoundary data={course} emptyTitle="Course unavailable">
         {(item: any) => {
           const pathway = item.pathway ? pathwayLabel(item.pathway) ?? null : null;

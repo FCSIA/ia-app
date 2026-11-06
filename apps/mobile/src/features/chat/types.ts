@@ -1,114 +1,31 @@
-import type { ChannelVisibility } from "~/apps/shared/chat/protocol";
+import type { PaginatedQueryItem } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { api } from "~/apps/convex/src/_generated/api";
 import { displayName } from '~/apps/shared/user-name';
 import type { ClubChannelReaction } from "~/apps/convex/src/validators";
 
-export type ChatUser = {
-  _id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  preferredName?: string | null;
-  avatarUrl?: string | null;
-  isDeveloper?: boolean | null;
-};
+type ChannelsApi = typeof api.clubs.channels;
 
-export type ChatAttachment = {
-  _id: string;
-  fileName: string;
-  fileUrl: string;
-  mimeType?: string;
-  size?: number;
+/** A message as the server returns it, plus the marker an unsent local copy carries. */
+export type ChatMessage = PaginatedQueryItem<ChannelsApi["getMessagePage"]> & {
+  deliveryState?: "sending";
 };
-
-export type ChatReaction = {
-  emoji: string;
-  count: number;
-  reactedByCurrentUser: boolean;
-  countIsCapped?: boolean;
-};
-
-export type ChatPollOption = {
-  id: string;
-  label: string;
-  count: number;
-  votedByCurrentUser: boolean;
-};
-
-export type ChatPoll = {
-  question: string;
-  options: ChatPollOption[];
-  totalVotes: number;
-  votesTruncated?: boolean;
-};
-
-export type ChatMessage = {
-  _id: string;
-  clientGeneratedId?: string;
-  deliveryState?: "sending" | "failed";
-  authorId: string;
-  parentMessageId?: string;
-  threadRootId?: string;
-  body: string;
-  bodyMarkdown?: string;
-  bodyRich?: unknown;
-  author?: ChatUser | null;
-  attachments?: ChatAttachment[];
-  attachmentsTruncated?: boolean;
-  reactions?: ChatReaction[];
-  replies?: ChatMessage[];
-  replyCount: number;
-  replyCountIsExact?: boolean;
-  hasReplies?: boolean;
-  latestReplyPreview?: {
-    _id: string;
-    body: string;
-    createdAt: string;
-  } | null;
-  poll?: ChatPoll | null;
-  isPinned: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ChatThread = {
-  root: ChatMessage;
-  replies: ChatMessage[];
-  hasMoreReplies: boolean;
-};
-
-export type ChatChannel = {
-  name: string;
-  description?: string | null;
-  visibility: ChannelVisibility;
-  viewerCanPost: boolean;
-};
-
-export type ClubChatData = {
-  clubName: string;
-  channel: ChatChannel;
-  canCreatePolls: boolean;
-  canPinMessages: boolean;
-  canModerateMessages: boolean;
-};
-
-export type ClubMentionContext = {
-  canMentionEveryone: boolean;
-  members: Array<{
-    uniqueId: string;
-    firstName: string;
-    lastName: string;
-    preferredName?: string | null;
-  }>;
-  tags: Array<{
-    slug: string;
-    name: string;
-  }>;
-  groups: Array<{
-    token: string;
-    label: string;
-    detail: string;
-    kind: "role" | "unit";
-  }>;
-};
+export type ChatAttachment = Pick<
+  ChatMessage["attachments"][number],
+  "_id" | "fileName" | "fileUrl" | "mimeType" | "size"
+>;
+export type ChatReaction = Pick<
+  ChatMessage["reactions"][number],
+  "emoji" | "count" | "reactedByCurrentUser" | "countIsCapped"
+>;
+export type ChatPoll = NonNullable<ChatMessage["poll"]>;
+export type ChatThread = NonNullable<FunctionReturnType<ChannelsApi["getThread"]>>;
+export type ClubChatData = NonNullable<
+  FunctionReturnType<ChannelsApi["getConversationContext"]>
+>;
+export type ClubMentionContext = NonNullable<
+  FunctionReturnType<ChannelsApi["getMentionContext"]>
+>;
 
 export type QuickReaction = ClubChannelReaction;
 

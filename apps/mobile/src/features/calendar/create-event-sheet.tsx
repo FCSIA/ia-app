@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { isStaff } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -87,7 +88,7 @@ export function CreateEventSheet({ open, onClose, defaultClubId }: CreateEventSh
     } catch (error) {
       showToast({
         title: "Event not submitted",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

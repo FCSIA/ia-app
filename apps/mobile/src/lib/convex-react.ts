@@ -29,9 +29,9 @@ import { convexToJson, type Value } from "convex/values";
 export * from "convex/react";
 
 /** How long an unused subscription is held before it is dropped. */
-export const DEFAULT_IDLE_MS = 5 * 60 * 1000;
+const IDLE_MS = 5 * 60 * 1000;
 /** Upper bound on idle subscriptions, so long sessions cannot grow unbounded. */
-export const DEFAULT_MAX_IDLE = 40;
+const MAX_IDLE = 40;
 
 type AnyQuery = FunctionReference<"query">;
 type QueryArgs = Record<string, Value>;
@@ -159,12 +159,8 @@ class KeepAliveCache {
 /** The cache instance type; construct one with `createQueryKeepAlive`. */
 export type QueryKeepAlive = KeepAliveCache;
 
-export function createQueryKeepAlive(
-  client: ConvexReactClient,
-  idleMs = DEFAULT_IDLE_MS,
-  maxIdle = DEFAULT_MAX_IDLE,
-): QueryKeepAlive {
-  return new KeepAliveCache(client, idleMs, maxIdle);
+export function createQueryKeepAlive(client: ConvexReactClient): QueryKeepAlive {
+  return new KeepAliveCache(client, IDLE_MS, MAX_IDLE);
 }
 
 export const QueryKeepAliveContext = createContext<QueryKeepAlive | null>(null);

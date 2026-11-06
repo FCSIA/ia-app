@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { router } from "expo-router";
 import { useMutation } from "@/lib/convex-react";
@@ -28,9 +29,9 @@ export default function ForcedPasswordChangeScreen() {
     setPending(true);
     try {
       await changePassword({ currentPassword, newPassword });
-      router.replace("/dashboard" as never);
+      router.replace("/dashboard");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Password change failed.");
+      setError(errorMessage(cause, "Password change failed."));
     } finally {
       setPending(false);
     }

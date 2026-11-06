@@ -113,29 +113,6 @@ export function FeedScreen({
   );
 }
 
-export function WorkspaceScreen({
-  contentContainerStyle,
-  ...props
-}: ComposedScreenProps) {
-  const { width } = useWindowDimensions();
-  const wide = width >= 768;
-
-  return (
-    <Screen
-      contentContainerStyle={[
-        {
-          maxWidth: wide ? 960 : 720,
-          paddingHorizontal: wide ? spacing.md : spacing.sm,
-          paddingTop: wide ? spacing.sm : spacing.xs,
-          gap: spacing.sm,
-        },
-        contentContainerStyle,
-      ]}
-      {...props}
-    />
-  );
-}
-
 export function FormScreen({
   contentContainerStyle,
   ...props

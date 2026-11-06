@@ -1,6 +1,6 @@
 import { ADMIN_ROLES, hasAnyRole, SUPER_ADMIN_ROLES } from "~/apps/shared/roles";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import {
   CalendarDays,
   ChevronRight,
@@ -25,7 +25,7 @@ import { radii, spacing } from "@/lib/tokens";
 type WorkspaceDestination = {
   title: string;
   detail: string;
-  href: string;
+  href: Href;
   icon: LucideIcon;
 };
 
@@ -36,6 +36,8 @@ export default function AdminWorkspaceScreen() {
     </AdminRouteGuard>
   );
 }
+
+const destination = (value: WorkspaceDestination) => value;
 
 function AdminWorkspace() {
   const user = useLiveCurrentUser();
@@ -50,30 +52,30 @@ function AdminWorkspace() {
       icon: Users,
     },
     ...(isSuperAdmin
-      ? [{
+      ? [destination({
           title: "Student roster",
           detail: "Import or export student records",
           href: "/admin/roster",
           icon: FileUp,
-        }]
+        })]
       : []),
   ];
 
   const operations: WorkspaceDestination[] = [
     ...(isAdmin
       ? [
-          {
+          destination({
             title: "School day",
             detail: "Blocks used by student schedules",
             href: "/admin/school-day",
             icon: ClipboardList,
-          },
-          {
+          }),
+          destination({
             title: "Flex Friday",
             detail: "Dates, sessions, workshops, and attendance",
             href: "/flex-friday",
             icon: Presentation,
-          },
+          }),
         ]
       : []),
     {
@@ -101,12 +103,12 @@ function AdminWorkspace() {
 
   const system: WorkspaceDestination[] = [
     ...(isAdmin
-      ? [{
+      ? [destination({
           title: "Wrapped",
           detail: "Snapshot readiness and generation",
           href: "/admin/wrapped",
           icon: Star,
-        }]
+        })]
       : []),
     {
       title: "Audit log",
@@ -119,7 +121,7 @@ function AdminWorkspace() {
   return (
     <Screen
       header={<AppHeader title="Admin" />}
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+      contentContainerStyle={{ gap: spacing.xl }}
     >
       <WorkspaceGroup title="People" destinations={people} />
       <WorkspaceGroup title="School operations" destinations={operations} />
@@ -152,9 +154,9 @@ function WorkspaceGroup({
       >
         {destinations.map((destination, index) => (
           <PressableScale
-            key={destination.href}
+            key={destination.title}
             accessibilityLabel={`${destination.title}. ${destination.detail}`}
-            onPress={() => router.push(destination.href as never)}
+            onPress={() => router.push(destination.href)}
             style={{ minHeight: 72, paddingHorizontal: spacing.md }}
           >
             <View

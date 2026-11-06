@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
@@ -54,7 +55,7 @@ export function WrappedOperationsScreen() {
     } catch (error) {
       showToast({
         title: "Snapshot run failed",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

@@ -16,6 +16,7 @@ import { CHAT_REACTIONS } from "~/apps/shared/chat/protocol";
 import { messageGifUrls } from "~/apps/shared/chat/gifs";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
+import { hasPendingAction, pendingKey } from "./pending-actions";
 import {
   normalizeReactionSummaries,
 } from "./quick-reactions";
@@ -72,8 +73,7 @@ export function MessageActionsSheet({
   const canPinMessage = mine || canPinMessages;
   const canDeleteMessage = mine || canModerateMessages;
   const disabled =
-    !!message &&
-    [...pendingActions].some((key) => key.includes(message._id));
+    !!message && hasPendingAction(pendingActions, message._id);
   const reactions = normalizeReactionSummaries(message?.reactions ?? []);
 
   return (
@@ -140,7 +140,7 @@ export function MessageActionsSheet({
                 );
                 const selected = !!reaction?.reactedByCurrentUser;
                 const reactionPending =
-                  pendingActions.has(`reaction:${message._id}:${payload}`);
+                  pendingActions.has(pendingKey.reaction(message._id, payload));
                 return (
                   <PressableScale
                     key={payload}

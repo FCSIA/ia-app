@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -138,7 +139,7 @@ export function SchoolDayScreen() {
     } catch (error) {
       showToast({
         title: editingBlock ? "Block wasn't updated" : "Block wasn't added",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -172,7 +173,7 @@ export function SchoolDayScreen() {
     } catch (error) {
       showToast({
         title: "Block wasn't deleted",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

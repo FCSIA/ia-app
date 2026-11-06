@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { displayName } from '~/apps/shared/user-name';
 import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
@@ -98,7 +99,7 @@ export function UserManagementScreen() {
     } catch (error) {
       showToast({
         title: `${label} failed`,
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
       return false;
@@ -157,7 +158,7 @@ export function UserManagementScreen() {
     } catch (error) {
       showToast({
         title: "Password reset failed",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
