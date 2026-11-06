@@ -1848,11 +1848,11 @@ function MessageRow({
                       />
                       {message.author.clubRole &&
                       !message.author.clubRole.isDefault ? (
-                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground sm:flex-initial">
                           · {message.author.clubRole.name}
                         </span>
                       ) : null}
-                      <span className="ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                      <span className="ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground sm:ml-0">
                         {isSending
                           ? 'Sending…'
                           : formatMessageTime(message.createdAt)}
