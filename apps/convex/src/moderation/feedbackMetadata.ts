@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import type { FeedbackMetadata } from "../../../shared/feedback-metadata";
+import { FEEDBACK_DISPLAY_MODES, type FeedbackMetadata } from "../../../shared/feedback-metadata";
 
 export const feedbackMetadataValidator = v.object({
   userAgent: v.string(),
@@ -12,8 +12,9 @@ export const feedbackMetadataValidator = v.object({
   screenHeight: v.number(),
   pixelRatio: v.number(),
   touchPoints: v.number(),
-  displayMode: v.union(v.literal("browser"), v.literal("standalone")),
+  displayMode: v.union(...FEEDBACK_DISPLAY_MODES.map((mode) => v.literal(mode))),
 });
+
 
 export function validateFeedbackMetadata(metadata: FeedbackMetadata) {
   for (const value of [metadata.userAgent, metadata.platform, metadata.language, metadata.timezone]) {

@@ -16,7 +16,7 @@ import { AdminNotice } from '../admin-ui';
 import { AUDIT_FETCH_LIMIT } from '../../_lib/admin-utils';
 import type { AuditEventRecord } from '../../_lib/types';
 import type { useAdminAudit } from '../../_hooks/use-admin-audit';
-import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditCategory, auditPersonName, auditRecordTitle } from '~/apps/shared/audit';
+import { AUDIT_CATEGORIES, auditActionInfo, auditActionLabel, auditCategory, auditPersonName, auditRecordTitle } from '~/apps/shared/audit';
 import { AuditColumnFilter, WhenRangeFields, auditFilterActive, type AuditFilterColumn } from './audit-filters';
 import { AuditPerson } from './audit-person';
 
@@ -104,7 +104,7 @@ function WhereCell({ event }: { event: AuditEventRecord }) {
 function Action({ event }: { event: AuditEventRecord }) {
   const category = auditCategory(event.entityType, event.action);
   const Icon = icons[category];
-  return <span className="flex min-w-0 items-center gap-2"><Icon size={14} className="shrink-0 text-muted-foreground" aria-label={AUDIT_CATEGORIES[category]} /><span className={`truncate ${AUDIT_ACTIONS[event.action]?.destructive ? 'text-destructive' : 'text-foreground'}`}>{auditActionLabel(event.action)}</span></span>;
+  return <span className="flex min-w-0 items-center gap-2"><Icon size={14} className="shrink-0 text-muted-foreground" aria-label={AUDIT_CATEGORIES[category]} /><span className={`truncate ${auditActionInfo(event.action)?.destructive ? 'text-destructive' : 'text-foreground'}`}>{auditActionLabel(event.action)}</span></span>;
 }
 export function AuditTable({ audit }: { audit: AuditState }) {
   const isMobile = useIsMobile();

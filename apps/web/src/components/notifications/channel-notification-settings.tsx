@@ -1,5 +1,7 @@
 'use client';
 
+import { channelMuteScopeKey, channelScopeKey, parseChannelMuteScopeKey } from '~/apps/shared/notifications';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowLeft, Bell, BellOff } from 'lucide-react';
@@ -35,7 +37,6 @@ const CHANNEL_CATEGORIES = [
 
 type NotificationMode = 'default' | 'all' | 'mentions' | 'nothing';
 
-const MUTE_SCOPE_PREFIX = 'mute:channel:';
 
 /** Channels the viewer has muted right now, mapped to when the mute ends
  *  (`null` = until turned back on). Lapsed timed mutes drop out on the next
@@ -46,16 +47,14 @@ export function useMutedChannels(): ReadonlyMap<string, number | null> {
   return useMemo(() => {
     const muted = new Map<string, number | null>();
     for (const preference of preferences ?? []) {
+      const mutedChannelId = parseChannelMuteScopeKey(preference.scopeKey);
       if (
         preference.category === MESSAGE_CATEGORY &&
-        preference.scopeKey?.startsWith(MUTE_SCOPE_PREFIX) &&
+        mutedChannelId !== null &&
         preference.isMuted &&
         (preference.mutedUntil == null || preference.mutedUntil > now)
       ) {
-        muted.set(
-          preference.scopeKey.slice(MUTE_SCOPE_PREFIX.length),
-          preference.mutedUntil ?? null,
-        );
+        muted.set(mutedChannelId, preference.mutedUntil ?? null);
       }
     }
     return muted;
@@ -114,7 +113,7 @@ function scopePreference(
 ) {
   return preferences.find(
     (preference) =>
-      preference.category === category && preference.scopeKey === `channel:${channelId}`,
+      preference.category === category && preference.scopeKey === channelScopeKey(channelId),
   );
 }
 
@@ -179,7 +178,7 @@ export function ChannelNotificationSettings({
   const mutePreference = preferences.find(
     (preference) =>
       preference.category === MESSAGE_CATEGORY &&
-      preference.scopeKey === `mute:channel:${channelId}`,
+      preference.scopeKey === channelMuteScopeKey(channelId),
   );
   const storedMuted = isMuteActive(mutePreference, Date.now());
   const muted = optimisticMuted ?? storedMuted;

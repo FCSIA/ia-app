@@ -3,7 +3,8 @@ import { StyleSheet } from "react-native";
 import { CalendarDays, Compass, Home, Megaphone, UsersRound } from "lucide-react-native";
 import { useConvexAuth } from "@/lib/convex-react";
 import { useLiveCurrentUser } from "@/lib/auth";
-import { usePrewarmTab, type PrewarmTab } from "@/lib/route-prewarm";
+import { usePrewarmTab } from "@/lib/route-prewarm";
+import type { PrewarmTab } from "@/lib/tab-queries";
 import { useTheme } from "@/lib/theme";
 import { tapLight } from "@/lib/haptics";
 

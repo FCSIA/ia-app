@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lock } from "lucide-react";
+import { lunchPeriodNumber } from "~/apps/shared/school-time";
 
 import { CoursePicker } from "@/components/courses/course-picker";
 import type { CourseSummary } from "@/components/courses/types";
@@ -150,7 +151,6 @@ export function ScheduleDayEditor({
         </div>
       )}
 
-      {/* Period slots */}
       <div className="overflow-x-auto">
         <Table className="table-fixed">
           <TableHeader>
@@ -174,8 +174,7 @@ export function ScheduleDayEditor({
                 activeStatus?.weekday === weekday &&
                 activeStatus?.currentBlock?.periodNumber === periodNumber;
               const isLunch =
-                (lunchPeriod === "PERIOD_4" && periodNumber === 4) ||
-                (lunchPeriod === "PERIOD_5" && periodNumber === 5);
+                lunchPeriod !== null && lunchPeriodNumber(lunchPeriod) === periodNumber;
 
               return (
                 <TableRow
@@ -188,7 +187,6 @@ export function ScheduleDayEditor({
                       : "border-l-transparent",
                   )}
                 >
-                  {/* Period Number */}
                   <TableCell
                     className={cn(
                       "w-12 px-3 py-2.5 text-center text-sm font-semibold tabular-nums",
@@ -198,7 +196,6 @@ export function ScheduleDayEditor({
                     {periodNumber}
                   </TableCell>
 
-                  {/* Course Selector / Link */}
                   <TableCell className="min-w-0 px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-2">
                       {isLunch ? (
@@ -252,7 +249,6 @@ export function ScheduleDayEditor({
                     </div>
                   </TableCell>
 
-                  {/* Time block */}
                   <TableCell
                     className={cn(
                       "hidden w-40 px-3 py-2.5 text-right text-[11px] tabular-nums sm:table-cell",

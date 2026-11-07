@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { filterBySearchQuery } from '@/lib/search';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, usePaginatedQuery } from '@/lib/convex-react';
@@ -21,7 +22,7 @@ import {
 import { SearchInput } from '@/components/ui/search';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
-import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notification-category-options';
+import { NOTIFICATION_CATEGORY_DETAILS } from '~/apps/shared/notifications';
 import { cn } from '@/lib/utils';
 import { Elevated } from '@/lib/elevated';
 import { dismissAcknowledgedWebNotifications } from '@/lib/push-notifications';
@@ -127,17 +128,15 @@ export default function NotificationsPage() {
       acknowledgingKeyRef.current = null;
   }, [activeTab, documentVisible]);
 
-  const filteredNotifications = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return notifications;
-    return notifications.filter((n) => {
-      const searchable = [n.title, n.body, n.category]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-  }, [notifications, deferredSearch]);
+  const filteredNotifications = useMemo(
+    () =>
+      filterBySearchQuery(notifications, deferredSearch, (notification) => [
+        notification.title,
+        notification.body,
+        notification.category,
+      ]),
+    [notifications, deferredSearch],
+  );
 
   function handleMarkRead(id: Id<'notificationDeliveries'>) {
     void markRead({ ids: [id] });

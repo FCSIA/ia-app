@@ -29,9 +29,7 @@ const RECORD_LABELS: Record<string, string> = {
   user: 'Person',
 };
 export function auditRecordLabel(type: string): string {
-  return (
-    RECORD_LABELS[type.replace(/[_\s]/g, '').toLowerCase()] ?? auditLabel(type)
-  );
+  return RECORD_LABELS[auditEntityKey(type)] ?? auditLabel(type);
 }
 export const AUDIT_CATEGORIES = {
   "people-access": "People & access",
@@ -45,7 +43,15 @@ export type AuditCategory = keyof typeof AUDIT_CATEGORIES;
 export const auditEntityKey = (type: string) => type.replace(/[_\s]/g, '').toLowerCase();
 /** Known stored spellings share one semantic filter without rewriting history. */
 export const AUDIT_ENTITY_TYPES = ['User', 'authAccount', 'Club', 'ClubChannel', 'ClubChannelMessage', 'ClubWhiteboard', 'ClubUnit', 'ClubPeopleGroup', 'ClubJoinRequest', 'Announcement', 'Comment', 'Report', 'KeywordRule', 'StudentSchedule', 'StudentScheduleGroup', 'StudentFriendShareLink', 'SchoolDayBlock', 'SchoolDayTemplate', 'SchoolDayDateOverride', 'SchoolScheduleSettings', 'FlexFriday', 'FlexSession', 'FlexWorkshop', 'FlexRegistration', 'FlexAssignment', 'FlexAttendance', 'Event', 'user', 'club', 'studentSchedule', 'studentScheduleGroup', 'studentFriendShareLink', 'schoolDayBlock', 'schoolDayTemplate', 'schoolDayDateOverride', 'schoolScheduleSettings', 'FLEX_FRIDAY', 'FLEX_SESSION', 'FLEX_WORKSHOP', 'FLEX_REGISTRATION', 'FLEX_ASSIGNMENT', 'FLEX_ATTENDANCE', 'EVENT'] as const;
-export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCategory; destructive?: boolean }> = {
+type AuditActionInfo = {
+  label: string;
+  category: AuditCategory;
+  destructive?: boolean;
+  /** Written by the system itself, so an event without an actor is not "unknown". */
+  system?: boolean;
+};
+/** Every action the backend writes; `logAuditEvent` accepts only these keys. */
+export const AUDIT_ACTIONS = {
   "ADMINISTRATOR_CSV_IMPORT": { label: "Imported administrators from CSV", category: "people-access" },
   "ANNOUNCEMENT_APPROVED": { label: "Approved announcement", category: "announcements" },
   "ANNOUNCEMENT_ARCHIVED": { label: "Archived announcement", category: "announcements" },
@@ -109,10 +115,10 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   "EVENT_CANCELLED": { label: "Cancelled event", category: "flex-events" },
   "EVENT_CREATED": { label: "Created event", category: "flex-events" },
   "EVENT_REJECTED": { label: "Rejected event", category: "flex-events", destructive: true },
-  "FEEDBACK_GITHUB_ISSUE_CREATED": { label: "Created feedback GitHub issue", category: "moderation" },
-  "FEEDBACK_GITHUB_ISSUE_FAILED": { label: "Failed feedback GitHub issue", category: "moderation" },
+  "FEEDBACK_GITHUB_ISSUE_CREATED": { label: "Created feedback GitHub issue", category: "moderation", system: true },
+  "FEEDBACK_GITHUB_ISSUE_FAILED": { label: "Failed feedback GitHub issue", category: "moderation", system: true },
   "FEEDBACK_GITHUB_ISSUE_RETRY_QUEUED": { label: "Queued feedback GitHub issue retry", category: "moderation" },
-  "FEEDBACK_GITHUB_ISSUE_STATE_SYNCED": { label: "Synced feedback GitHub issue state", category: "moderation" },
+  "FEEDBACK_GITHUB_ISSUE_STATE_SYNCED": { label: "Synced feedback GitHub issue state", category: "moderation", system: true },
   "FEEDBACK_RESPONSE_ADDED": { label: "Added feedback response", category: "moderation" },
   "FLEX_ATTENDANCE_CLEARED": { label: "Cleared attendance", category: "flex-events" },
   "FLEX_ATTENDANCE_MARKED": { label: "Recorded attendance", category: "flex-events" },
@@ -135,7 +141,7 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   "USER_CSV_IMPORT": { label: "Imported people from CSV", category: "people-access" },
   "USER_DEVELOPER_STATUS_UPDATED": { label: "Updated user developer status", category: "people-access" },
   "USER_FEEDBACK_REVIEW_ACCESS_UPDATED": { label: "Updated user feedback review access", category: "people-access" },
-  "auth.login_locked": { label: "Temporarily locked sign-in", category: "people-access" },
+  "auth.login_locked": { label: "Temporarily locked sign-in", category: "people-access", system: true },
   "auth.login_unlocked": { label: "Unlocked sign-in", category: "people-access" },
   "club.unit_channel_defaults_updated": { label: "Updated club group channel defaults", category: "clubs-chat" },
   "club.unit_channels_created": { label: "Created club group channels", category: "clubs-chat" },
@@ -167,15 +173,23 @@ export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCateg
   "user.bulk_deleted": { label: "Deleted people in bulk", category: "people-access", destructive: true },
   "user.created": { label: "Created user", category: "people-access" },
   "user.deactivated": { label: "Deactivated user", category: "people-access", destructive: true },
-  "user.legacy_credential_rotated": { label: "Rotated user legacy credential", category: "people-access" },
+  "user.legacy_credential_rotated": { label: "Rotated user legacy credential", category: "people-access", system: true },
   "user.password_changed": { label: "Changed password", category: "people-access" },
   "user.password_reset": { label: "Reset user password", category: "people-access" },
   "user.roles_assigned": { label: "Assigned user roles", category: "people-access" },
-};
+} satisfies Record<string, AuditActionInfo>;
+export type AuditAction = keyof typeof AUDIT_ACTIONS;
+const AUDIT_ACTION_INFO: Partial<Record<string, AuditActionInfo>> = AUDIT_ACTIONS;
+/** Stored rows may carry retired actions, so lookups take any string. */
+export function auditActionInfo(action: string): AuditActionInfo | undefined {
+  return AUDIT_ACTION_INFO[action];
+}
 /** Legacy rows are classified by the same semantics as new writes. */
 export function auditCategory(entityType: string, action?: string): AuditCategory {
-  if (action && AUDIT_ACTIONS[action]) return AUDIT_ACTIONS[action].category;
-  const type = entityType.replace(/[_\s]/g, "").toLowerCase();
+  return (action && auditActionInfo(action)?.category) || entityCategory(entityType);
+}
+function entityCategory(entityType: string): AuditCategory {
+  const type = auditEntityKey(entityType);
   if (type.startsWith("flex") || type === "event") return "flex-events";
   if (type.startsWith("club")) return "clubs-chat";
   if (["announcement", "comment"].includes(type)) return "announcements";
@@ -184,11 +198,10 @@ export function auditCategory(entityType: string, action?: string): AuditCategor
   return "people-access";
 }
 export function auditActionLabel(action: string): string {
-  return AUDIT_ACTIONS[action]?.label ?? auditLabel(action);
+  return auditActionInfo(action)?.label ?? auditLabel(action);
 }
 export function isFlexAudit(entityType: string): boolean {
-  const type = entityType.replace(/[_\s]/g, '').toLowerCase();
-  return type.startsWith('flex') || type === 'event';
+  return entityCategory(entityType) === 'flex-events';
 }
 export type AuditSearchField =
   | 'text'
@@ -291,9 +304,13 @@ export type SearchableAuditEvent = {
     links?: { id: string; label: string; name: string; href: string | null }[];
   } | null;
 };
+function auditMeta(event: SearchableAuditEvent): Record<string, unknown> {
+  return event.meta && typeof event.meta === 'object' && !Array.isArray(event.meta)
+    ? event.meta as Record<string, unknown>
+    : {};
+}
 export function isAuditSystem(event: SearchableAuditEvent): boolean {
-  const meta = event.meta && typeof event.meta === 'object' ? event.meta as Record<string, unknown> : {};
-  return !event.actorId && !event.actor && (meta.auditSource === 'system' || ['auth.login_locked', 'user.legacy_credential_rotated', 'FEEDBACK_GITHUB_ISSUE_CREATED', 'FEEDBACK_GITHUB_ISSUE_FAILED', 'FEEDBACK_GITHUB_ISSUE_STATE_SYNCED'].includes(event.action));
+  return !event.actorId && !event.actor && (auditMeta(event).auditSource === 'system' || auditActionInfo(event.action)?.system === true);
 }
 export function auditPersonName(event: SearchableAuditEvent): string {
   return event.actor
@@ -345,7 +362,7 @@ export function matchesAuditSearch(
 
 /** The record is meaningful content; opaque identifiers remain in Details. */
 export function auditRecordTitle(event: SearchableAuditEvent): string {
-  const meta = event.meta && typeof event.meta === 'object' ? event.meta as Record<string, unknown> : {};
+  const meta = auditMeta(event);
   if (['Message', 'Comment'].includes(auditRecordLabel(event.entityType)) && typeof meta.bodyPreview === 'string' && meta.bodyPreview.trim()) return meta.bodyPreview;
   return event.context?.title || auditRecordLabel(event.entityType);
 }
@@ -370,8 +387,7 @@ const CATEGORY_META_FIELDS: Record<AuditCategory, readonly string[]> = {
 };
 /** Human details use known fields; complete unrecognized metadata stays technical. */
 export function auditMetaFields(event: SearchableAuditEvent): { key: string; label: string; value: unknown }[] {
-  if (!event.meta || typeof event.meta !== 'object' || Array.isArray(event.meta)) return [];
-  const meta = event.meta as Record<string, unknown>;
+  const meta = auditMeta(event);
   const fields = ACTION_META_FIELDS[event.action] ?? CATEGORY_META_FIELDS[auditCategory(event.entityType, event.action)].map((key) => [key, auditLabel(key)] as const);
   return fields.flatMap(([key, label]) => {
     const value = key === 'enabled' && typeof meta[key] === 'boolean' ? meta[key] ? 'Enabled' : 'Disabled' : meta[key];

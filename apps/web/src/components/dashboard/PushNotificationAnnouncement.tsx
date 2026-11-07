@@ -1,5 +1,6 @@
 'use client';
 
+import { readStorage, writeStorage } from '@/lib/browser-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BellOff } from 'lucide-react';
 import { Banner, BannerTitle, BannerActions, BannerAction } from '@/components/ui/banner';
@@ -41,15 +42,11 @@ export function PushNotificationAnnouncement() {
       permission: permissionState(),
       optedOut: isPushOptedOut(),
     });
-    try {
-      const dismissedAt = Number(localStorage.getItem(DISMISSED_AT_KEY));
-      setDismissed(
-        dismissedForSession.current ||
-        (dismissedAt > 0 && Date.now() - dismissedAt < DISMISSAL_MS),
-      );
-    } catch {
-      setDismissed((previous) => previous ?? false);
-    }
+    const dismissedAt = Number(readStorage(DISMISSED_AT_KEY));
+    setDismissed(
+      dismissedForSession.current ||
+      (dismissedAt > 0 && Date.now() - dismissedAt < DISMISSAL_MS),
+    );
   }, []);
 
   useEffect(() => {
@@ -121,11 +118,7 @@ export function PushNotificationAnnouncement() {
   const dismiss = () => {
     dismissedForSession.current = true;
     setDismissed(true);
-    try {
-      localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()));
-    } catch {
-      // The announcement remains dismissed for this session if storage is unavailable.
-    }
+    writeStorage(DISMISSED_AT_KEY, String(Date.now()));
   };
 
   return (

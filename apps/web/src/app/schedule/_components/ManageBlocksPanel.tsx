@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { usePathname, useSearchParams } from "next/navigation";
+import { clockMinutes, formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import {
   ArrowLeft,
   CalendarPlus,
@@ -47,7 +48,6 @@ import {
   SortableItem,
   SortableItemHandle,
 } from "@/components/reui/sortable";
-import { formatScheduleTime } from "@/components/schedule/schedule-utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
@@ -65,19 +65,6 @@ type AdminWorkspace = NonNullable<
 type DayTemplate = AdminWorkspace["templates"][number];
 
 const EMPTY_BLOCKS: PlanBlock[] = [];
-const SCHOOL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function schoolDateKey() {
-  const parts = SCHOOL_DATE_FORMATTER.formatToParts(new Date());
-  const byType = new Map(parts.map((part) => [part.type, part.value]));
-  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
-}
-
 function dateFromKey(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day, 12);
@@ -108,8 +95,7 @@ function toPlanBlocks(
 }
 
 function addMinutes(time: string, minutes: number) {
-  const [hours, currentMinutes] = time.split(":").map(Number);
-  const total = Math.min(hours * 60 + currentMinutes + minutes, 23 * 60 + 59);
+  const total = Math.min(clockMinutes(time) + minutes, 23 * 60 + 59);
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
@@ -145,7 +131,7 @@ function ReadOnlyPlanBlockTable({ blocks }: { blocks: PlanBlock[] }) {
             <TableRow key={planBlockValue(block)} index={index}>
               <TableCell className="font-medium text-foreground">{block.label}</TableCell>
               <TableCell className="whitespace-nowrap tabular-nums">
-                {formatScheduleTime(block.startTime)} – {formatScheduleTime(block.endTime)}
+                {formatClockTime(block.startTime)} – {formatClockTime(block.endTime)}
               </TableCell>
             </TableRow>
           ))}

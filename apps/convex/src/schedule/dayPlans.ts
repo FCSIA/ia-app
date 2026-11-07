@@ -1,5 +1,5 @@
+import { type AppRole, isAdmin } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
-import type { AppRole } from "../../lib/roles";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -15,9 +15,9 @@ import {
   academicDateDisposition,
   normalizeDateKey,
   normalizeDayBlocks,
-  weekdayForDateKey,
   type DayBlockInput,
 } from "./dayResolver";
+import { weekdayForDateKey } from "../../../shared/school-time";
 
 const SETTINGS_KEY = "default";
 const MAX_TEMPLATES = 100;
@@ -91,7 +91,7 @@ const adminWorkspaceValidator = v.object({
 type DatabaseCtx = QueryCtx | MutationCtx;
 
 export function canManageDayPlans(roles: AppRole[]) {
-  return roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
+  return isAdmin(roles);
 }
 
 export function isCalendarSetupRequired(
@@ -237,7 +237,7 @@ function assertAcademicDate(
   if (!start || !end) {
     throw new ConvexError("Set up the academic year before assigning dates.");
   }
-  if (dateKey < start || dateKey > end || !weekdayForDateKey(dateKey)) {
+  if (dateKey < start || dateKey > end || !weekdayForDateKey(normalizeDateKey(dateKey))) {
     throw new ConvexError("Choose a weekday inside the configured academic year.");
   }
 }

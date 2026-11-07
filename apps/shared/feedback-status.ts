@@ -1,6 +1,7 @@
 /** General-feedback review states, shared by backend and clients. */
 
-export type FeedbackStatus = "PENDING" | "IN_REVIEW" | "RESOLVED" | "DISMISSED";
+export const FEEDBACK_STATUSES = ["PENDING", "IN_REVIEW", "RESOLVED", "DISMISSED"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
 
 /** Staff queue names: new, claimed, and the two decisions. */
 export const STAFF_FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {

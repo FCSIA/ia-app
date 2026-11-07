@@ -1,6 +1,7 @@
-import { v } from 'convex/values';
+import { v, type Infer } from 'convex/values';
 import { ConvexError } from 'convex/values';
 import {
+  AUDIT_CATEGORIES,
   auditCategory,
   auditActionLabel,
   auditLabel,
@@ -13,6 +14,10 @@ import {
 import type { AuditCategory, SearchableAuditEvent } from '../../../shared/audit';
 import { nameSearchValues } from '../../../shared/user-name';
 import type { Doc } from '../_generated/dataModel';
+
+const auditCategoryValidator = v.union(
+  ...(Object.keys(AUDIT_CATEGORIES) as AuditCategory[]).map((category) => v.literal(category)),
+);
 
 export const auditFilters = {
   query: v.optional(v.string()),
@@ -29,27 +34,11 @@ export const auditFilters = {
   startAt: v.optional(v.number()),
   endAt: v.optional(v.number()),
   advancedQuery: v.optional(v.string()),
-  category: v.optional(v.union(v.literal('general'), v.literal('flex'), v.literal('people-access'), v.literal('clubs-chat'), v.literal('announcements'), v.literal('moderation'), v.literal('schedules'), v.literal('flex-events'))),
-  categories: v.optional(v.array(v.union(v.literal('people-access'), v.literal('clubs-chat'), v.literal('announcements'), v.literal('moderation'), v.literal('schedules'), v.literal('flex-events')))),
+  category: v.optional(v.union(v.literal('general'), v.literal('flex'), auditCategoryValidator)),
+  categories: v.optional(v.array(auditCategoryValidator)),
 };
-export type AuditFilters = {
-  query?: string;
-  actor?: string;
-  actorId?: string;
-  recordId?: string;
-  entityId?: string;
-  action?: string;
-  actions?: string[];
-  entityType?: string;
-  actorScope?: 'USER' | 'SYSTEM';
-  startDate?: string;
-  endDate?: string;
-  startAt?: number;
-  endAt?: number;
-  advancedQuery?: string;
-  category?: 'general' | 'flex' | AuditCategory;
-  categories?: AuditCategory[];
-};
+const auditFiltersValidator = v.object(auditFilters);
+export type AuditFilters = Infer<typeof auditFiltersValidator>;
 /** Reject stored-field mismatches before reading actors and related records. */
 export function auditRecordMatcher(args: AuditFilters) {
   const start = args.startAt ??

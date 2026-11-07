@@ -1,5 +1,6 @@
 'use client';
 
+import { hasAnyRole, isSuperAdmin, MODERATION_ALERT_ROLES } from '~/apps/shared/roles';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -26,10 +27,10 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { hasRole, isSuperAdmin, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import type { NotificationCategory } from '~/apps/convex/src/validators';
+import { clubScopeKey, GLOBAL_SCOPE_KEY, type NotificationCategory } from '~/apps/shared/notifications';
 
 const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   SCHOOL_ANNOUNCEMENT: Megaphone,
@@ -59,7 +60,7 @@ export function NotificationSettingsPanel() {
     api.clubs.management.getMyClubs,
     hasAdministrativeClubAccess ? 'skip' : {},
   );
-  const canSeeStaffCategories = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
+  const canSeeStaffCategories = hasAnyRole(user, MODERATION_ALERT_ROLES);
 
   const involvedClubs = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
@@ -95,7 +96,7 @@ export function NotificationSettingsPanel() {
           {globalSettings.map((setting) => {
             const Icon = CATEGORY_ICONS[setting.key];
             const preference = preferences?.find(
-              (entry) => entry.category === setting.key && entry.scopeKey === 'global',
+              (entry) => entry.category === setting.key && entry.scopeKey === GLOBAL_SCOPE_KEY,
             );
             const enabled =
               optimisticGlobalEnabled[setting.key] ??
@@ -178,9 +179,9 @@ function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; c
     [navigation],
   );
   const clubPreference = preferences?.find(
-    (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === `club:${clubId}`,
+    (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === clubScopeKey(clubId),
   ) ?? preferences?.find(
-    (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === 'global',
+    (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === GLOBAL_SCOPE_KEY,
   );
   const storedClubEnabled = clubPreference?.enabled !== false;
   const clubEnabled = optimisticClubEnabled ?? storedClubEnabled;

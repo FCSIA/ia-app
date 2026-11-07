@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import { createLinkedUser } from "./users/_lib";
 import { incrementUserCounts } from "./stats";
 import { createAuthOptions } from "./auth";
-import { type AppRole } from "../lib/roles";
+import { type AppRole } from "../../shared/roles";
 import {
   seedProfileValidator,
   type Pathway,

@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
 import { getOwnedGroupOrNull } from "./groups";
+import { insertUser } from "../../test/fixtures";
 
 const modules = import.meta.glob("../**/*.*s");
 
@@ -12,22 +13,7 @@ describe("schedule group lookup", () => {
     const t = convexTest(schema, modules);
 
     await t.run(async (ctx) => {
-      const ownerId = await ctx.db.insert("users", {
-        uniqueId: "STUDENT001",
-        firstName: "Schedule",
-        lastName: "Owner",
-        roles: ["STUDENT"],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: "Schedule Owner STUDENT001",
-        createdAt: 1,
-        updatedAt: 1,
-      });
+      const ownerId = await insertUser(ctx, { uniqueId: "STUDENT001", firstName: "Schedule", lastName: "Owner", roles: ["STUDENT"] });
       const groupId = await ctx.db.insert("studentScheduleGroups", {
         ownerId,
         name: "Friends",

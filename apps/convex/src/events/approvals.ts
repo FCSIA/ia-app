@@ -5,7 +5,7 @@ import { mutation, query, type MutationCtx } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializedEventValidator } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
-import { deliverMany, eventAudience } from "../notifications/delivery";
+import { publishEvent } from "./_publish";
 
 /**
  * Remove the approvals still waiting on a decision once the event has left
@@ -93,40 +93,7 @@ export const approveEvent = mutation({
       .collect();
 
     if (pending.length === 0) {
-      await ctx.db.patch(args.eventId, {
-        status: "PUBLISHED",
-        publishedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-      const existingCalendar = await ctx.db
-        .query("calendarEntries")
-        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
-        .first();
-      if (!existingCalendar) {
-        await ctx.db.insert("calendarEntries", {
-          eventId: args.eventId,
-          title: event.title,
-          description: event.description,
-          location: event.location,
-          startAt: event.startAt,
-          endAt: event.endAt,
-          tags: ["event"],
-          source: event.clubId ? "CLUB" : "SCHOOL",
-          createdById: event.authorId,
-          createdAt: Date.now(),
-        });
-      }
-      await deliverMany(ctx, await eventAudience(ctx, event), {
-        category: "EVENT",
-        title: event.title,
-        body: event.description ?? "New event published.",
-        href: `/events/${event._id}`,
-        subject: {
-          kind: "event",
-          eventId: event._id,
-          ...(event.clubId ? { clubId: event.clubId } : {}),
-        },
-      });
+      await publishEvent(ctx, event);
     }
 
     await logAuditEvent(ctx, {

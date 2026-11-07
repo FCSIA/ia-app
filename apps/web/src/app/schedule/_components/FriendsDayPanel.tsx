@@ -11,11 +11,15 @@ import { useKeepAliveQueries, useMutation, useQuery } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import {
+  clockMinutes,
+  formatClockTime,
   lunchPeriodNumber,
   resolveLunchPeriod,
+  schoolDateKey,
   weekdayForDateKey,
-} from "~/apps/convex/src/schedule/dayResolver";
+} from "~/apps/shared/school-time";
 import type { ScheduleWeekday } from "~/apps/convex/src/validators";
+import { findCurrentAndNext } from "@/components/schedule/schedule-utils";
 import { Panel } from "@/components/layout/page-frame";
 import { AvatarStack } from "@/components/ui/avatar-stack";
 import { Badge } from "@/components/ui/badge";
@@ -50,14 +54,11 @@ import { TabsSubtle, TabsSubtleItem } from "@/components/ui/tabs-subtle";
 import { ToggleGroup } from "@/components/ui/toggle-group";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { FriendScheduleDialog } from "@/components/schedule/friend-schedule-dialog";
-import { parseTimeToMinutes } from "@/components/schedule/schedule-utils";
 import type {
   ScheduleFriend,
   StudentScheduleEntry,
 } from "@/components/schedule/types";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { schoolDateKey } from "@/lib/school-date";
-import { formatSchoolTime } from "@/lib/time-format";
 import { useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { FriendSearch } from "./FriendSearch";
@@ -163,13 +164,7 @@ export function FriendsDayPanel() {
   const isToday = dateKey === schoolDateKey(calendarDate());
   const now = calendarDate();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentKey = isToday
-    ? day?.blocks.find(
-        (block) =>
-          nowMinutes >= parseTimeToMinutes(block.startTime) &&
-          nowMinutes < parseTimeToMinutes(block.endTime),
-      )?.key
-    : undefined;
+  const currentKey = isToday ? findCurrentAndNext(day?.blocks ?? [], nowMinutes).current?.key : undefined;
   const [openKey, setOpenKey] = useState<string | null | undefined>(undefined);
   const expandedKey = openKey === undefined ? currentKey : openKey;
 
@@ -282,7 +277,7 @@ export function FriendsDayPanel() {
                         {blockTitle(block)}
                       </CardTitle>
                       <CardDescription className="text-xs tabular-nums">
-                        {formatSchoolTime(block.startTime, use24HourTime)}
+                        {formatClockTime(block.startTime, use24HourTime)}
                         {block.key === currentKey ? (
                           <span className="font-medium text-foreground">
                             {" "}
@@ -609,7 +604,7 @@ function dayIsOver(
   const now = calendarDate();
   const minutes = now.getHours() * 60 + now.getMinutes();
   return today.blocks.every(
-    (block) => minutes >= parseTimeToMinutes(block.endTime),
+    (block) => minutes >= clockMinutes(block.endTime),
   );
 }
 

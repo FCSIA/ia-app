@@ -1,3 +1,4 @@
+import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { View } from "react-native";
 import { useQuery } from "@/lib/convex-react";
 import { Sparkles } from "lucide-react-native";
@@ -12,7 +13,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 export default function WrappedScreen() {
   const user = useCurrentUser();
   const availability = useQuery(api.wrapped.snapshots.availability, {});
-  const isAdmin = !!user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
   const summary = useQuery(api.wrapped.snapshots.getMine, availability?.open || isAdmin ? {} : "skip");
 
   return (

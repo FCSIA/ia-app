@@ -1,3 +1,4 @@
+import { REPORT_HREF } from "../../../shared/routes";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
@@ -6,13 +7,19 @@ import { deliverNotification } from "../notifications/delivery";
 import { feedbackMetadataValidator } from "./feedbackMetadata";
 import { feedbackGithubToken } from "./feedbackGithubToken";
 import { logAuditEvent } from "../audit/_lib";
-import { isOpenFeedbackStatus, type FeedbackStatus } from "../../../shared/feedback-status";
+import { FEEDBACK_STATUSES, isOpenFeedbackStatus, type FeedbackStatus } from "../../../shared/feedback-status";
+import { feedbackStatusValidator } from "../validators";
 
 const GITHUB_REPOSITORY = "FCSIA/ia-app";
 const GITHUB_API_VERSION = "2022-11-28";
 
 /** Statuses a GitHub issue event can express; IN_REVIEW is app-only. */
 type GithubFeedbackStatus = Exclude<FeedbackStatus, "IN_REVIEW">;
+const githubFeedbackStatusValidator = v.union(
+  ...FEEDBACK_STATUSES.filter(
+    (status): status is GithubFeedbackStatus => status !== "IN_REVIEW",
+  ).map((status) => v.literal(status)),
+);
 
 // PATCHes one push run sends before handing over to a fresh run.
 const MAX_PUSH_ROUNDS = 3;
@@ -46,16 +53,6 @@ export async function requestGithubIssuePush(
     reportId: report._id,
   });
 }
-
-const githubFeedbackStatusValidator = v.union(
-  v.literal("PENDING"),
-  v.literal("RESOLVED"),
-  v.literal("DISMISSED"),
-);
-const feedbackStatusValidator = v.union(
-  githubFeedbackStatusValidator,
-  v.literal("IN_REVIEW"),
-);
 
 /** The GitHub issue state that matches a feedback status set in the app. */
 export function githubIssueStateFor(status: FeedbackStatus) {
@@ -526,7 +523,7 @@ export const applyGithubIssueState = internalMutation({
         category: "FEEDBACK",
         title: "Your feedback was resolved",
         body: reviewNote,
-        href: "/report",
+        href: REPORT_HREF,
         subject: { kind: "moderationReport", reportId: report._id },
       });
     }

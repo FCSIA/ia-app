@@ -1,3 +1,4 @@
+import { titleCaseEnum } from "~/apps/shared/labels";
 import { displayName } from '~/apps/shared/user-name';
 import { useDeferredValue, useState } from "react";
 import { View } from "react-native";
@@ -113,7 +114,7 @@ function AuditList({
         <PressableScale
           key={event.id}
           accessibilityRole="button"
-          accessibilityLabel={`Inspect ${humanize(event.action)} audit record`}
+          accessibilityLabel={`Inspect ${titleCaseEnum(event.action)} audit record`}
           onPress={() => onOpen(event.id)}
           style={{
             minHeight: 76,
@@ -127,7 +128,7 @@ function AuditList({
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <Txt variant="label" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>
-              {humanize(event.action)}
+              {titleCaseEnum(event.action)}
             </Txt>
             <Txt variant="caption" tone="muted">{formatRelativeDate(event.createdAt)}</Txt>
           </View>
@@ -147,7 +148,7 @@ function AuditDetail({ event }: { event: NonNullable<FunctionReturnType<typeof a
     <View style={{ gap: spacing.lg }}>
       <View style={{ gap: spacing.sm }}>
         <Badge label={event.entityType} variant="dot" />
-        <Txt variant="section">{humanize(event.action)}</Txt>
+        <Txt variant="section">{titleCaseEnum(event.action)}</Txt>
         <Txt variant="caption" tone="muted">{event.action}</Txt>
       </View>
 
@@ -164,7 +165,7 @@ function AuditDetail({ event }: { event: NonNullable<FunctionReturnType<typeof a
         <View style={{ gap: spacing.sm }}>
           <Txt variant="overline" tone="muted">Metadata</Txt>
           {metadata.slice(0, 8).map((row) => (
-            <DetailRow key={row.label} label={humanize(row.label)} value={row.value} />
+            <DetailRow key={row.label} label={titleCaseEnum(row.label)} value={row.value} />
           ))}
           {metadata.length > 8 ? (
             <Txt variant="caption" tone="muted">{metadata.length - 8} more metadata fields</Txt>
@@ -210,12 +211,6 @@ function actorName(event: AuditEvent) {
   return event.actor ? displayName(event.actor) : "System";
 }
 
-function humanize(value: string) {
-  return value
-    .replace(/[_-]+/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-}
 
 function shortId(value: string) {
   return value.length > 10 ? `${value.slice(0, 8)}…` : value;

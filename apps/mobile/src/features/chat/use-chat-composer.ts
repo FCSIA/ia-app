@@ -15,59 +15,41 @@ export function useChatComposer() {
     setDraftRevision(draftRevisionRef.current);
   }, []);
 
-  const reset = useCallback(() => {
-    setMode({ kind: "message" });
-    setDraft("");
-    setMarkdownDraft("");
-    bumpDraftRevision();
-    setPollQuestion("");
-    setPollOptions("");
-  }, [bumpDraftRevision]);
-
-  const startReply = useCallback(
-    (target: ChatMessage) => {
-      setMode({ kind: "reply", target });
-      setDraft("");
-      setMarkdownDraft("");
+  const enter = useCallback(
+    (nextMode: ComposerMode, plainText = "", markdown = "") => {
+      setMode(nextMode);
+      setDraft(plainText);
+      setMarkdownDraft(markdown);
       bumpDraftRevision();
       setPollQuestion("");
       setPollOptions("");
     },
     [bumpDraftRevision],
+  );
+
+  const reset = useCallback(() => enter({ kind: "message" }), [enter]);
+
+  const startReply = useCallback(
+    (target: ChatMessage) => enter({ kind: "reply", target }),
+    [enter],
   );
 
   const startEdit = useCallback(
-    (target: ChatMessage) => {
-      setMode({ kind: "edit", target });
-      setDraft(target.body);
-      setMarkdownDraft(target.bodyMarkdown?.trim() || target.body);
-      bumpDraftRevision();
-      setPollQuestion("");
-      setPollOptions("");
-    },
-    [bumpDraftRevision],
+    (target: ChatMessage) =>
+      enter(
+        { kind: "edit", target },
+        target.body,
+        target.bodyMarkdown?.trim() || target.body,
+      ),
+    [enter],
   );
 
   const startReport = useCallback(
-    (target: ChatMessage) => {
-      setMode({ kind: "report", target });
-      setDraft("");
-      setMarkdownDraft("");
-      bumpDraftRevision();
-      setPollQuestion("");
-      setPollOptions("");
-    },
-    [bumpDraftRevision],
+    (target: ChatMessage) => enter({ kind: "report", target }),
+    [enter],
   );
 
-  const startPoll = useCallback(() => {
-    setMode({ kind: "poll" });
-    setDraft("");
-    setMarkdownDraft("");
-    bumpDraftRevision();
-    setPollQuestion("");
-    setPollOptions("");
-  }, [bumpDraftRevision]);
+  const startPoll = useCallback(() => enter({ kind: "poll" }), [enter]);
 
   const setRichDraft = useCallback(
     (plainText: string, markdown: string) => {

@@ -201,7 +201,7 @@ export function Onboarding() {
   );
 }
 
-export function OnboardingChecklist({
+function OnboardingChecklist({
   status,
   roles,
   busy,

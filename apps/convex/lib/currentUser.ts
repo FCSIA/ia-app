@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 import { authComponent } from "../src/auth";
 import type { Doc } from "../src/_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../src/_generated/server";
-import type { AppRole } from "./roles";
+import { hasAnyRole, type AppRole } from "../../shared/roles";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -58,12 +58,21 @@ export async function getMaybeCurrentAppUserUnchecked(
   return user;
 }
 
-export function requireAnyRole(user: Doc<"users">, allowed: AppRole[]) {
-  if (!requireAnyRoleSafe(user, allowed)) {
+export function requireAnyRole(user: Doc<"users">, allowed: readonly AppRole[]) {
+  if (!hasAnyRole(user.roles, allowed)) {
     throw new ConvexError("Forbidden");
   }
 }
 
-export function requireAnyRoleSafe(user: Doc<"users">, allowed: AppRole[]): boolean {
-  return user.roles.some((role) => allowed.includes(role));
+/** The signed-in user when they hold one of `allowed`, else null: for queries that answer empty instead of throwing. */
+export async function viewerWithRoles(
+  ctx: Ctx,
+  allowed: readonly AppRole[],
+): Promise<Doc<"users"> | null> {
+  const user = await getMaybeCurrentAppUser(ctx);
+  return user && hasAnyRole(user.roles, allowed) ? user : null;
+}
+
+export function requireAnyRoleSafe(user: Doc<"users">, allowed: readonly AppRole[]): boolean {
+  return hasAnyRole(user.roles, allowed);
 }

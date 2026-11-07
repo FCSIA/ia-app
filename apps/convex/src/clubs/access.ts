@@ -1,3 +1,4 @@
+import { isAdmin } from "../../../shared/roles";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -5,9 +6,9 @@ import type { ClubRolePermissions } from "../validators";
 import {
   LEADER_CLUB_PERMISSIONS,
   NO_CLUB_PERMISSIONS,
-  getMembershipRole,
   permissionsForRole,
 } from "./rolePermissions";
+import { getMembershipRole, grantsAnyPermission } from "./membership";
 
 type ClubDbCtx = QueryCtx | MutationCtx;
 
@@ -28,39 +29,28 @@ export interface ClubContext {
   hasPendingJoinRequest: boolean;
 }
 
-export function anonymousClubContext(club: Doc<"clubs">): ClubContext {
-  return {
-    club,
-    membership: null,
-    role: null,
-    permissions: NO_CLUB_PERMISSIONS,
-    isMember: false,
-    hasClubRole: false,
-    isSponsor: false,
-    isAdmin: false,
-    canAccessWorkspace: false,
-    canManageChannels: false,
-    canManageMembership: false,
-    canApproveJoinRequests: false,
-    canSeePrivateChannels: false,
-    hasPendingJoinRequest: false,
-  };
+async function loadMembershipAndSponsor(
+  ctx: ClubDbCtx,
+  clubId: Id<"clubs">,
+  userId: Id<"users">,
+) {
+  return await Promise.all([
+    ctx.db
+      .query("clubMembers")
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", clubId).eq("userId", userId),
+      )
+      .first(),
+    ctx.db
+      .query("clubSponsors")
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", clubId).eq("userId", userId),
+      )
+      .first(),
+  ]);
 }
 
-export function isAdmin(roles: string[]) {
-  return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
-}
-
-export function isStaff(roles: string[]) {
-  return (
-    roles.includes("TEACHER") ||
-    roles.includes("SPONSOR") ||
-    roles.includes("SUPPORT_STAFF") ||
-    roles.includes("ADMIN") ||
-    roles.includes("SUPER_ADMIN")
-  );
-}
-
+/** Loads the club and the viewer's standing in it, including a pending join request. */
 export async function getViewerContext(
   ctx: ClubDbCtx,
   clubId: Id<"clubs">,
@@ -69,19 +59,8 @@ export async function getViewerContext(
   const club = await ctx.db.get(clubId);
   if (!club) throw new ConvexError("Club not found");
 
-  const [membership, sponsor, pendingJoinRequest] = await Promise.all([
-    ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId_and_userId", (q) =>
-        q.eq("clubId", clubId).eq("userId", user._id),
-      )
-      .first(),
-    ctx.db
-      .query("clubSponsors")
-      .withIndex("by_clubId_and_userId", (q) =>
-        q.eq("clubId", clubId).eq("userId", user._id),
-      )
-      .first(),
+  const [[membership, sponsor], pendingJoinRequest] = await Promise.all([
+    loadMembershipAndSponsor(ctx, clubId, user._id),
     ctx.db
       .query("clubJoinRequests")
       .withIndex("by_clubId_and_requesterId_and_status", (q) =>
@@ -101,26 +80,17 @@ export async function getViewerContext(
   });
 }
 
+/** Same context for callers that already hold the club; skips the join-request read. */
 export async function getChannelViewerContext(
   ctx: ClubDbCtx,
   club: Doc<"clubs">,
   user: Doc<"users">,
 ): Promise<ClubContext> {
-  const [membership, sponsor] = await Promise.all([
-    ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId_and_userId", (q) =>
-        q.eq("clubId", club._id).eq("userId", user._id),
-      )
-      .first(),
-    ctx.db
-      .query("clubSponsors")
-      .withIndex("by_clubId_and_userId", (q) =>
-        q.eq("clubId", club._id).eq("userId", user._id),
-      )
-      .first(),
-  ]);
-
+  const [membership, sponsor] = await loadMembershipAndSponsor(
+    ctx,
+    club._id,
+    user._id,
+  );
   const role = await getMembershipRole(ctx, membership);
   return buildClubContext({
     club,
@@ -147,7 +117,7 @@ function buildClubContext({
   sponsor: Doc<"clubSponsors"> | null;
   hasPendingJoinRequest: boolean;
 }): ClubContext {
-  const userIsAdmin = isAdmin(user.roles as string[]);
+  const userIsAdmin = isAdmin(user);
   const isMember = !!membership;
   const isSponsor = !!sponsor;
   // Legacy enum rows are supported only until the role backfill assigns a
@@ -159,7 +129,7 @@ function buildClubContext({
       : membership?.role === "LEADER" || membership?.role === "SPONSOR"
         ? LEADER_CLUB_PERMISSIONS
         : NO_CLUB_PERMISSIONS;
-  const hasClubRole = Object.values(permissions).some(Boolean);
+  const hasClubRole = grantsAnyPermission(permissions);
   const canAccessWorkspace = isMember || isSponsor || userIsAdmin;
   const canManageChannels = permissions.createChannels || permissions.editChannels || permissions.deleteChannels;
   const canManageMembership = permissions.inviteMembers || permissions.removeMembers || permissions.assignRoles;
@@ -194,29 +164,4 @@ export async function getClubContext(
     throw new ConvexError("Not a club member");
   }
   return context;
-}
-
-export function canReadChannel(
-  channel: Doc<"clubChannels"> & { memberships: Doc<"clubChannelMemberships">[] },
-  context: ClubContext,
-  userId: Id<"users">
-) {
-  if (channel.visibility === "PRIVATE") {
-    return (
-      context.canSeePrivateChannels ||
-      channel.memberships.some((m) => m.userId === userId)
-    );
-  }
-  return context.canAccessWorkspace;
-}
-
-export function canPostInChannel(
-  channel: Doc<"clubChannels"> & { memberships: Doc<"clubChannelMemberships">[] },
-  context: ClubContext,
-  userId: Id<"users">
-) {
-  if (channel.visibility === "MEMBER_READONLY") {
-    return context.permissions.postToReadOnlyChannels;
-  }
-  return canReadChannel(channel, context, userId);
 }

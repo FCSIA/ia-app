@@ -3,6 +3,7 @@ import { action, internalMutation, mutation, type ActionCtx, type MutationCtx } 
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser } from "../../lib/currentUser";
+import { deleteStorageQuietly } from "../../lib/storage";
 import { getClubContext, type ClubContext } from "../clubs/access";
 import { assertSafeStoredFile } from "./fileSignatures";
 import { chatGifRateLimiter, uploadRateLimiter } from "../rateLimits";
@@ -19,20 +20,10 @@ import {
   UPLOAD_INTENT_TTL_MS,
   uploadPurposeValidator,
 } from "./uploadIntents";
-import {
-  STAGED_FEEDBACK_IMAGE_TTL_MS,
-  validateFeedbackImageMetadata,
-} from "./feedbackImages";
-import {
-  STAGED_ANNOUNCEMENT_IMAGE_TTL_MS,
-  validateAnnouncementImageMetadata,
-} from "./announcementImages";
-import {
-  STAGED_VOLUNTEER_PROOF_TTL_MS,
-  validateVolunteerProofMetadata,
-} from "./volunteerProofs";
-
-export { validateChatAttachmentMetadata } from "./chatAttachments";
+import { validateFeedbackImageMetadata } from "./feedbackImages";
+import { validateAnnouncementImageMetadata } from "./announcementImages";
+import { validateVolunteerProofMetadata } from "./volunteerProofs";
+import { STAGED_IMAGE_TTL_MS, finalizeStagedImage } from "./_stagedImage";
 
 /** Links that could not be resolved are retried after this long. */
 const GIF_LINK_RETRY_MS = 60 * 60 * 1000;
@@ -226,17 +217,6 @@ export function assertCanManageClubImage(
   }
 }
 
-async function deleteRejectedUpload(
-  ctx: MutationCtx,
-  storageId: Id<"_storage">,
-) {
-  try {
-    await ctx.storage.delete(storageId);
-  } catch {
-    // Best effort cleanup. The user-facing validation error is more useful.
-  }
-}
-
 async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) {
   const metadata = await ctx.db.system.get("_storage", storageId);
   if (!metadata) throw new ConvexError("Upload not found");
@@ -317,7 +297,7 @@ export const finalizeChatAttachmentMutation = internalMutation({
         throw new ConvexError("Upload failed");
       }
     } catch (error) {
-      await deleteRejectedUpload(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw error;
     }
 
@@ -359,38 +339,19 @@ export const finalizeFeedbackImageMutation = internalMutation({
     storageId: v.id("_storage"),
   },
   returns: v.object({ imageUploadId: v.id("feedbackImageUploads") }),
-  handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    await claimUploadIntent(ctx, {
-      ...args,
-      uploaderId: user._id,
+  handler: async (ctx, args): Promise<{ imageUploadId: Id<"feedbackImageUploads"> }> => {
+    const imageUploadId = await finalizeStagedImage(ctx, args, {
       purpose: "FEEDBACK_IMAGE",
+      validate: validateFeedbackImageMetadata,
+      insert: (row) => ctx.db.insert("feedbackImageUploads", row),
+      scheduleCleanup: (imageUploadId) =>
+        ctx.scheduler.runAfter(
+          STAGED_IMAGE_TTL_MS,
+          internal.uploads.feedbackImages.cleanupStagedFeedbackImage,
+          { imageUploadId },
+        ),
     });
-    try {
-      const metadata = await getUploadedMetadata(ctx, args.storageId);
-      const validated = validateFeedbackImageMetadata(metadata);
-      await recordUploadUsage(ctx, {
-        uploaderId: user._id,
-        uploadIntentId: args.uploadIntentId,
-        size: validated.size,
-      });
-      const imageUploadId = await ctx.db.insert("feedbackImageUploads", {
-        uploaderId: user._id,
-        storageId: args.storageId,
-        mimeType: validated.mimeType,
-        size: validated.size,
-        createdAt: Date.now(),
-      });
-      await ctx.scheduler.runAfter(
-        STAGED_FEEDBACK_IMAGE_TTL_MS,
-        internal.uploads.feedbackImages.cleanupStagedFeedbackImage,
-        { imageUploadId },
-      );
-      return { imageUploadId };
-    } catch (error) {
-      await deleteRejectedUpload(ctx, args.storageId);
-      throw error;
-    }
+    return { imageUploadId };
   },
 });
 
@@ -412,38 +373,19 @@ export const finalizeAnnouncementImageMutation = internalMutation({
     storageId: v.id("_storage"),
   },
   returns: v.object({ imageUploadId: v.id("announcementImageUploads") }),
-  handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    await claimUploadIntent(ctx, {
-      ...args,
-      uploaderId: user._id,
+  handler: async (ctx, args): Promise<{ imageUploadId: Id<"announcementImageUploads"> }> => {
+    const imageUploadId = await finalizeStagedImage(ctx, args, {
       purpose: "ANNOUNCEMENT_IMAGE",
+      validate: validateAnnouncementImageMetadata,
+      insert: (row) => ctx.db.insert("announcementImageUploads", row),
+      scheduleCleanup: (imageUploadId) =>
+        ctx.scheduler.runAfter(
+          STAGED_IMAGE_TTL_MS,
+          internal.uploads.announcementImages.cleanupStagedAnnouncementImage,
+          { imageUploadId },
+        ),
     });
-    try {
-      const metadata = await getUploadedMetadata(ctx, args.storageId);
-      const validated = validateAnnouncementImageMetadata(metadata);
-      await recordUploadUsage(ctx, {
-        uploaderId: user._id,
-        uploadIntentId: args.uploadIntentId,
-        size: validated.size,
-      });
-      const imageUploadId = await ctx.db.insert("announcementImageUploads", {
-        uploaderId: user._id,
-        storageId: args.storageId,
-        mimeType: validated.mimeType,
-        size: validated.size,
-        createdAt: Date.now(),
-      });
-      await ctx.scheduler.runAfter(
-        STAGED_ANNOUNCEMENT_IMAGE_TTL_MS,
-        internal.uploads.announcementImages.cleanupStagedAnnouncementImage,
-        { imageUploadId },
-      );
-      return { imageUploadId };
-    } catch (error) {
-      await deleteRejectedUpload(ctx, args.storageId);
-      throw error;
-    }
+    return { imageUploadId };
   },
 });
 
@@ -459,41 +401,33 @@ export const finalizeAnnouncementImage = action({
   },
 });
 
+/** A retried finalize returns the proof it already staged instead of staging the file twice. */
 export const finalizeVolunteerProofMutation = internalMutation({
   args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage") },
   returns: v.object({ proofUploadId: v.id("volunteerProofUploads") }),
-  handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    await claimUploadIntent(ctx, { ...args, uploaderId: user._id, purpose: "VOLUNTEER_PROOF" });
-    const submitted = await ctx.db.query("clubVolunteerLogs")
-      .withIndex("by_proofStorageId", q => q.eq("proofStorageId", args.storageId)).first();
-    if (submitted) throw new ConvexError("Proof image has already been submitted");
-    const existing = await ctx.db.query("volunteerProofUploads")
-      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId)).unique();
-    if (existing) {
-      if (existing.uploaderId !== user._id) throw new ConvexError("Proof image not found");
-      return { proofUploadId: existing._id };
-    }
-    try {
-      const metadata = await getUploadedMetadata(ctx, args.storageId);
-      const validated = validateVolunteerProofMetadata(metadata);
-      await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: validated.size });
-      const proofUploadId = await ctx.db.insert("volunteerProofUploads", {
-        uploaderId: user._id,
-        storageId: args.storageId,
-        ...validated,
-        createdAt: Date.now(),
-      });
-      await ctx.scheduler.runAfter(
-        STAGED_VOLUNTEER_PROOF_TTL_MS,
-        internal.uploads.volunteerProofs.cleanupStagedVolunteerProof,
-        { proofUploadId },
-      );
-      return { proofUploadId };
-    } catch (error) {
-      await deleteRejectedUpload(ctx, args.storageId);
-      throw error;
-    }
+  handler: async (ctx, args): Promise<{ proofUploadId: Id<"volunteerProofUploads"> }> => {
+    const proofUploadId = await finalizeStagedImage(ctx, args, {
+      purpose: "VOLUNTEER_PROOF",
+      validate: (metadata) => validateVolunteerProofMetadata(metadata),
+      findExisting: async (uploaderId) => {
+        const submitted = await ctx.db.query("clubVolunteerLogs")
+          .withIndex("by_proofStorageId", q => q.eq("proofStorageId", args.storageId)).first();
+        if (submitted) throw new ConvexError("Proof image has already been submitted");
+        const existing = await ctx.db.query("volunteerProofUploads")
+          .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId)).unique();
+        if (!existing) return null;
+        if (existing.uploaderId !== uploaderId) throw new ConvexError("Proof image not found");
+        return existing._id;
+      },
+      insert: (row) => ctx.db.insert("volunteerProofUploads", row),
+      scheduleCleanup: (proofUploadId) =>
+        ctx.scheduler.runAfter(
+          STAGED_IMAGE_TTL_MS,
+          internal.uploads.volunteerProofs.cleanupStagedVolunteerProof,
+          { proofUploadId },
+        ),
+    });
+    return { proofUploadId };
   },
 });
 
@@ -522,7 +456,7 @@ export const discardChatAttachment = mutation({
     const staged = await ctx.db.get(args.attachmentUploadId);
     if (!staged) return null;
     assertStagedChatAttachmentOwner(staged, user._id);
-    await deleteRejectedUpload(ctx, staged.storageId);
+    await deleteStorageQuietly(ctx, staged.storageId);
     await ctx.db.delete(staged._id);
     return null;
   },
@@ -564,13 +498,13 @@ export const finalizeClubImageMutation = internalMutation({
       validated = validateClubImageMetadata(metadata, args.mimeType);
       await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: validated.size });
     } catch (error) {
-      await deleteRejectedUpload(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw error;
     }
 
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) {
-      await deleteRejectedUpload(ctx, args.storageId);
+      await deleteStorageQuietly(ctx, args.storageId);
       throw new ConvexError("Upload failed");
     }
     const club = await ctx.db.get(args.clubId);
@@ -579,7 +513,7 @@ export const finalizeClubImageMutation = internalMutation({
     await ctx.db.patch(club._id, args.kind === "logo"
       ? { logoUrl: url, logoStorageId: args.storageId, updatedAt: Date.now() }
       : { bannerUrl: url, bannerStorageId: args.storageId, updatedAt: Date.now() });
-    if (previousStorageId && previousStorageId !== args.storageId) await deleteRejectedUpload(ctx, previousStorageId);
+    if (previousStorageId && previousStorageId !== args.storageId) await deleteStorageQuietly(ctx, previousStorageId);
 
     return {
       url,
@@ -613,7 +547,7 @@ export const clearClubImage = mutation({
     await ctx.db.patch(club._id, args.kind === "logo"
       ? { logoUrl: undefined, logoStorageId: undefined, updatedAt: Date.now() }
       : { bannerUrl: undefined, bannerStorageId: undefined, updatedAt: Date.now() });
-    if (storageId) await deleteRejectedUpload(ctx, storageId);
+    if (storageId) await deleteStorageQuietly(ctx, storageId);
     return null;
   },
 });

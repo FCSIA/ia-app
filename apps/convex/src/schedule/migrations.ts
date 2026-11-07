@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalQuery } from "../_generated/server";
-import { inferLegacyLunchPeriod } from "./dayResolver";
+import { inferLegacyLunchPeriod } from "../../../shared/school-time";
 
 const migrations = new Migrations<DataModel>(components.migrations);
 

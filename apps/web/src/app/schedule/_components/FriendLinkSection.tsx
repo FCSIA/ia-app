@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleFriendJoinHref } from "~/apps/shared/routes";
 import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
@@ -56,7 +57,7 @@ export function FriendLinkSection() {
     try {
       const result = await createLink({ mode: shareMode });
       setCreatedUrl(
-        `${window.location.origin}/schedule/friends/join/${result.token}`,
+        `${window.location.origin}${scheduleFriendJoinHref(result.token)}`,
       );
     } catch (error) {
       toast({

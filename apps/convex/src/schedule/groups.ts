@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
@@ -6,7 +7,6 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import {
   getFriendshipBetween,
-  isStudentUser,
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
@@ -19,6 +19,7 @@ import {
   type GroupComparisonEntry,
   withLunchComparisonEntry,
 } from "./groupComparison";
+import { listEligibleFriendsOf } from "./_friends";
 import { canAddAcceptedFriendToGroup, isScheduleGroupOwner } from "./groupPolicy";
 
 const MAX_GROUPS = 20;
@@ -78,32 +79,6 @@ export async function getOwnedGroupOrNull(
   return group && isScheduleGroupOwner(group.ownerId, ownerId) ? group : null;
 }
 
-async function acceptedFriendIds(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-) {
-  const [outgoing, incoming] = await Promise.all([
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
-        q.eq("requesterId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(100),
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
-        q.eq("addresseeId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(100),
-  ]);
-  return Array.from(
-    new Set([
-      ...outgoing.map((row) => row.addresseeId),
-      ...incoming.map((row) => row.requesterId),
-    ]),
-  );
-}
-
 async function toGroupSummary(
   ctx: QueryCtx,
   group: Doc<"studentScheduleGroups">,
@@ -142,17 +117,7 @@ export const listEligibleFriends = query({
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
-    const friendIds = await acceptedFriendIds(ctx, user._id);
-    const friends = [];
-    for (const friendId of friendIds) {
-      const friend = await ctx.db.get(friendId);
-      if (friend?.isActive && isStudentUser(friend)) friends.push(serializeUser(friend));
-    }
-    return friends.sort(
-      (left, right) =>
-        left.lastName.localeCompare(right.lastName) ||
-        left.firstName.localeCompare(right.firstName),
-    );
+    return await listEligibleFriendsOf(ctx, user);
   },
 });
 
@@ -198,7 +163,7 @@ export const get = query({
       const friendship = await getFriendshipBetween(ctx, user._id, member._id);
       const friendshipActive = friendship?.status === "ACCEPTED";
       const schedule =
-        friendshipActive && member.isActive && isStudentUser(member)
+        friendshipActive && member.isActive && isStudent(member)
           ? await serializeScheduleForUser(ctx, member._id)
           : null;
       const visibility = studentVisibility(schedule);
@@ -281,7 +246,7 @@ export const addMember = mutation({
     requireStudentUser(user);
     const group = await requireOwnedGroup(ctx, args.groupId, user._id);
     const friend = await ctx.db.get(args.friendId);
-    if (!friend?.isActive || !isStudentUser(friend)) throw new ConvexError("Student not found.");
+    if (!friend?.isActive || !isStudent(friend)) throw new ConvexError("Student not found.");
     const friendship = await getFriendshipBetween(ctx, user._id, friend._id);
     if (
       !canAddAcceptedFriendToGroup({

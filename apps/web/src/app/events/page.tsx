@@ -1,7 +1,8 @@
 'use client';
+import { MAX_EVENT_DESCRIPTION_CHARACTERS, MAX_EVENT_TITLE_CHARACTERS } from '~/apps/shared/limits';
 
+import { EVENT_CANCEL_ANY_WEB_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { AppShell } from '@/components/layout/AppShell';
-import { hasRole } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Plus, MapPin, Check, X, AlertCircle, Search, Calendar } from 'lucide-react';
@@ -12,22 +13,31 @@ import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimeField } from '@/components/forms/date-time-field';
+import type { FunctionReturnType } from 'convex/server';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { eventStatusClass, eventStatusLabel } from './_status';
 import { useEventsPage } from './use-events-page';
+import { eventHref } from '~/apps/shared/routes';
 
 
-function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
-  const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const isAuthor = event.authorId === user?.id || event.authorId === user?._id;
+type EventRecord =
+  | FunctionReturnType<typeof api.events.events.list>[number]
+  | FunctionReturnType<typeof api.events.approvals.listPendingForSponsor>[number];
 
-  const statusStyle = event.status === 'PUBLISHED'
-    ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'
-    : event.status === 'PENDING_APPROVAL'
-    ? 'bg-amber-500/15 text-amber-500 border-amber-500/30 hover:bg-amber-500/25'
-    : event.status === 'CANCELLED'
-    ? 'bg-red-500/15 text-red-500 border-red-500/30 hover:bg-red-500/25'
-    : 'bg-muted text-muted-foreground';
+function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: {
+  event: EventRecord;
+  onApprove: (eventId: Id<'events'>) => void;
+  onReject: (eventId: Id<'events'>) => void;
+  onCancel: (eventId: Id<'events'>) => void;
+  user: AppUser | null;
+  hydrated: boolean;
+}) {
+  const isAdmin = hasAnyRole(user, EVENT_CANCEL_ANY_WEB_ROLES);
+  const isAuthor = event.authorId === user?._id;
 
   const clubStyle = event.club
     ? 'text-blue-500 border-blue-500/30 bg-blue-500/10'
@@ -43,14 +53,14 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-2.5">
-                <Badge variant="solid" size="sm" className={cn(statusStyle)}>
-                  {event.status.replace(/_/g, ' ')}
+                <Badge variant="solid" size="sm" className={cn(eventStatusClass(event.status))}>
+                  {eventStatusLabel(event.status)}
                 </Badge>
                 <Badge variant="solid" size="sm" className={cn(clubStyle)}>
                   {event.club?.name || 'General'}
                 </Badge>
               </div>
-              <Link href={`/events/${event._id}`} className="block">
+              <Link href={eventHref(event._id)} className="block">
                 <h3 className="font-semibold text-foreground leading-snug hover:text-primary transition-colors group">
                   {event.title}
                 </h3>
@@ -145,7 +155,7 @@ export default function EventsPage() {
                     placeholder="Event title"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    maxLength={160}
+                    maxLength={MAX_EVENT_TITLE_CHARACTERS}
                     required
                     className="border-border/60 focus:border-primary focus:ring-primary/20"
                   />
@@ -153,7 +163,7 @@ export default function EventsPage() {
                     placeholder="Description"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    maxLength={2000}
+                    maxLength={MAX_EVENT_DESCRIPTION_CHARACTERS}
                     rows={3}
                     className="border-border/60 focus:border-primary focus:ring-primary/20"
                   />

@@ -3,13 +3,11 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
 import type { ConvexReactClient } from "@/lib/convex-react";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { api } from "~/apps/convex/src/_generated/api";
-import {
-  isChannelNotificationCovered,
-  isInboxNotificationCovered,
-} from "./push-notification-metadata";
+import { isCoveredByAcknowledgedDelivery, isCoveredByChannelReceipt } from "~/apps/shared/notifications";
 
-const TOKEN_STORAGE_KEY = "ia_expo_push_token";
+const TOKEN_STORAGE_KEY = STORAGE_KEYS.expoPushToken;
 const EXPO_GO_PUSH_MESSAGE =
   "Native push requires a development build on Expo SDK 53+; Expo Go can still test the rest of the app.";
 const PUSH_NOT_CONFIGURED_MESSAGE =
@@ -127,7 +125,7 @@ export async function dismissPresentedNotificationsThrough(cutoff: number) {
     presented.flatMap((notification) => {
       // Legacy pushes do not include a delivery boundary. Leave them in the
       // tray instead of accidentally dismissing a newer alert.
-      return isInboxNotificationCovered(
+      return isCoveredByAcknowledgedDelivery(
         notification.request.content.data,
         cutoff,
       )
@@ -151,7 +149,7 @@ export async function dismissPresentedChannelNotificationsThrough({
   const presented = await Notifications.getPresentedNotificationsAsync();
   await Promise.allSettled(
     presented.flatMap((notification) =>
-      isChannelNotificationCovered(
+      isCoveredByChannelReceipt(
         notification.request.content.data,
         channelId,
         throughCreatedAt,

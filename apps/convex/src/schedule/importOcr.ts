@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { deleteStorageQuietly } from "../../lib/storage";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { requireStudentUser } from "./_lib";
 import { claimUploadIntent } from "../uploads/uploadIntents";
@@ -175,7 +176,7 @@ export const discardImage = internalMutation({
       intent.purpose !== "SCHEDULE_OCR"
     )
       throw new ConvexError("Unauthorized");
-    await ctx.storage.delete(args.storageId).catch(() => {});
+    await deleteStorageQuietly(ctx, args.storageId);
     await ctx.db.delete(args.uploadIntentId);
     return null;
   },

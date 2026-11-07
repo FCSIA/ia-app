@@ -10,7 +10,6 @@ import {
   canEditUserRoles,
   getAssignableRoleOptions,
 } from '../../_lib/user-roles';
-import { getUserRoles } from '../../_lib/admin-utils';
 import type { AdminUserRecord } from '../../_lib/types';
 
 type UserPermissionsPopoverProps = {
@@ -29,7 +28,7 @@ export function UserPermissionsPopover({
   onAssignRoles,
   onSetDeveloper,
 }: UserPermissionsPopoverProps) {
-  const roles = getUserRoles(user);
+  const roles = user.roles ?? [];
   const roleSet = new Set(roles);
   const canEdit = canEditUserRoles(user, isSuperAdmin);
   const roleOptions = getAssignableRoleOptions(isSuperAdmin);

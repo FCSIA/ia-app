@@ -20,11 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import type { RosterCsvPreview } from '../_lib/roster-csv';
-import type {
-  StudentBulkUpdateResult,
-  StudentImportResult,
-} from '../_lib/types';
+import { useAdminScheduleImport } from '../_hooks/use-admin-schedule-import';
 import { AdminPanel } from './admin-ui';
 import {
   RosterCsvHelp,
@@ -33,49 +29,29 @@ import {
   RosterUpdateResult,
 } from './roster-csv-review';
 
-export function AdminScheduleTab({
-  studentCsvInputKey,
-  onStudentCsvFileChange,
-  canImport,
-  isImporting,
-  onImport,
-  isExporting,
-  canExport,
-  onExport,
-  lastStudentImport,
-  onExportGeneratedPasswords,
-  isUpdating,
-  onBulkUpdate,
-  lastStudentUpdate,
-  fileName,
-  isReading,
-  fileError,
-  clearFile,
-  preview,
-  mode,
-  onModeChange,
-}: {
-  studentCsvInputKey: number;
-  onStudentCsvFileChange: (file: File | null) => void;
-  canImport: boolean;
-  isImporting: boolean;
-  onImport: () => void;
-  isExporting: boolean;
-  canExport: boolean;
-  onExport: () => void;
-  lastStudentImport: StudentImportResult | null;
-  onExportGeneratedPasswords: () => void;
-  isUpdating: boolean;
-  onBulkUpdate: () => void;
-  lastStudentUpdate: StudentBulkUpdateResult | null;
-  fileName?: string;
-  isReading: boolean;
-  fileError?: string;
-  clearFile: () => void;
-  preview: RosterCsvPreview<unknown> | null;
-  mode: 'import' | 'update';
-  onModeChange: (mode: 'import' | 'update') => void;
-}) {
+export function AdminScheduleTab() {
+  const {
+    studentCsvInputKey,
+    setStudentCsvFile,
+    canImport,
+    isImporting,
+    onImport,
+    isExporting,
+    canExport,
+    onExport,
+    lastStudentImport,
+    onExportGeneratedPasswords,
+    isUpdating,
+    onBulkUpdate,
+    lastStudentUpdate,
+    fileName,
+    isReading,
+    fileError,
+    clearFile,
+    preview,
+    mode,
+    setMode,
+  } = useAdminScheduleImport();
   const busy = isImporting || isUpdating;
   const updating = mode === 'update';
   const count = preview?.rows.length ?? 0;
@@ -106,7 +82,7 @@ export function AdminScheduleTab({
             value={mode}
             disabled={busy}
             onValueChange={(value) =>
-              onModeChange(value as 'import' | 'update')
+              setMode(value as 'import' | 'update')
             }
           >
             <SelectTrigger
@@ -126,7 +102,7 @@ export function AdminScheduleTab({
             key={studentCsvInputKey}
             accept=".csv,text/csv"
             label={fileName ? 'Replace CSV' : 'Choose CSV'}
-            onFileSelect={onStudentCsvFileChange}
+            onFileSelect={setStudentCsvFile}
             disabled={busy}
             loading={isReading}
           />

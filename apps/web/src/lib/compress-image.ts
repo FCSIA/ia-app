@@ -1,9 +1,14 @@
+import {
+  AVATAR_COMPRESSION_TARGET_BYTES,
+  BACKGROUND_COMPRESSION_TARGET_BYTES,
+} from '~/apps/shared/limits';
+
 /** Client-side compression to keep per-user storage within the 3k-user budget. */
 export type ImageCompressPreset = 'avatar' | 'background';
 
 const PRESETS = {
-  avatar: { maxDimension: 512, maxBytes: 90 * 1024 },
-  background: { maxWidth: 1440, maxBytes: 220 * 1024 },
+  avatar: { maxDimension: 512, maxBytes: AVATAR_COMPRESSION_TARGET_BYTES },
+  background: { maxWidth: 1440, maxBytes: BACKGROUND_COMPRESSION_TARGET_BYTES },
 } as const;
 
 function loadImage(file: File): Promise<HTMLImageElement> {

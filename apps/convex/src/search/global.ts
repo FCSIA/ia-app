@@ -1,8 +1,15 @@
+import { clubSummary, userSummary } from "../summaries";
+import { isAdmin } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import {
+  clubChannelVisibilityValidator,
+  type ClubChannelVisibility,
+} from "../validators";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getChannelViewerContext } from "../clubs/access";
+import { getChannelAccessForChannels } from "../clubs/channelAccess";
 
 const MAX_PEOPLE_RESULTS = 12;
 const MAX_CHANNEL_RESULTS = 18;
@@ -22,11 +29,7 @@ const channelResultValidator = v.object({
   _id: v.id("clubChannels"),
   name: v.string(),
   description: v.union(v.string(), v.null()),
-  visibility: v.union(
-    v.literal("PUBLIC"),
-    v.literal("PRIVATE"),
-    v.literal("MEMBER_READONLY"),
-  ),
+  visibility: clubChannelVisibilityValidator,
   club: v.object({
     _id: v.id("clubs"),
     name: v.string(),
@@ -42,7 +45,7 @@ async function getSearchableClubs(
   ctx: QueryCtx,
   user: Doc<"users">,
 ) {
-  if (user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN")) {
+  if (isAdmin(user)) {
     return await ctx.db
       .query("clubs")
       .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))
@@ -94,19 +97,15 @@ export const palette = query({
       .filter((person) => person.isActive && person._id !== user._id && (!user.isStudent || (person.isStudent && person.gradeLevel === user.gradeLevel)))
       .slice(0, MAX_PEOPLE_RESULTS)
       .map((person) => ({
-        _id: person._id,
-        firstName: person.firstName,
-        lastName: person.lastName,
-        preferredName: person.preferredName,
+        ...userSummary(person, "isDeveloper"),
         avatarUrl: person.avatarUrl ?? null,
-        isDeveloper: person.isDeveloper,
       }));
 
     const channels: Array<{
       _id: Id<"clubChannels">;
       name: string;
       description: string | null;
-      visibility: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
+      visibility: ClubChannelVisibility;
       club: { _id: Id<"clubs">; name: string };
     }> = [];
 
@@ -119,33 +118,28 @@ export const palette = query({
         .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
         .take(MAX_CHANNELS_PER_CLUB);
 
-      for (const channel of channelRows) {
+      const matchingChannels = channelRows.filter((channel) =>
+        matchesSearch(
+          `${channel.name} ${channel.description ?? ""} ${club.name}`,
+          search,
+        ),
+      );
+      const accessByChannelId = await getChannelAccessForChannels(
+        ctx,
+        matchingChannels,
+        context,
+        user._id,
+      );
+
+      for (const channel of matchingChannels) {
         if (channels.length >= MAX_CHANNEL_RESULTS) break;
-        if (
-          !matchesSearch(
-            `${channel.name} ${channel.description ?? ""} ${club.name}`,
-            search,
-          )
-        ) {
-          continue;
-        }
-
-        if (channel.visibility === "PRIVATE" && !context.canSeePrivateChannels) {
-          const membership = await ctx.db
-            .query("clubChannelMemberships")
-            .withIndex("by_channelId_and_userId", (q) =>
-              q.eq("channelId", channel._id).eq("userId", user._id),
-            )
-            .unique();
-          if (!membership) continue;
-        }
-
+        if (!accessByChannelId.get(channel._id)?.canView) continue;
         channels.push({
           _id: channel._id,
           name: channel.name,
           description: channel.description ?? null,
           visibility: channel.visibility,
-          club: { _id: club._id, name: club.name },
+          club: clubSummary(club),
         });
       }
     }

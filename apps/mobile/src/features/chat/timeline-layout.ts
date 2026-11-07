@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { MOBILE_MESSAGE_GROUP_WINDOW_MS } from "~/apps/shared/chat/protocol";
 import type { ChatMessage } from "./types";
 
 export type TimelineRow =
@@ -10,8 +11,6 @@ export type TimelineRow =
       message: ChatMessage;
       groupedWithPrevious: boolean;
     };
-
-const MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
 
 export function buildTimelineRows(
   messages: ChatMessage[],
@@ -86,7 +85,7 @@ export function shouldGroupMessages(
   }
 
   const elapsed = currentDate.getTime() - previousDate.getTime();
-  return elapsed >= 0 && elapsed <= MESSAGE_GROUP_WINDOW_MS;
+  return elapsed >= 0 && elapsed <= MOBILE_MESSAGE_GROUP_WINDOW_MS;
 }
 
 export function formatDateLabel(date: Date, now = new Date()) {

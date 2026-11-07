@@ -1,3 +1,4 @@
+import { clubSummary, userSummary } from "../summaries";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createDocLoader, type DocLoader } from "../../lib/docLoader";
@@ -31,13 +32,8 @@ function storageUrl(ctx: QueryCtx, scope: SerializeScope, storageId: Id<"_storag
 function serializeAuthor(author: Doc<"users"> | null) {
   return author
     ? {
-        _id: author._id,
-        firstName: author.firstName,
-        lastName: author.lastName,
-        preferredName: author.preferredName,
+        ...userSummary(author, "roles", "isDeveloper"),
         avatarUrl: author.avatarUrl ?? null,
-        roles: author.roles,
-        isDeveloper: author.isDeveloper,
       }
     : null;
 }
@@ -99,7 +95,7 @@ export async function serializeAnnouncement(
     isPinned: !!pin,
     isPromoted,
     author: serializeAuthor(author),
-    club: club ? { _id: club._id, name: club.name } : null,
+    club: club ? clubSummary(club) : null,
     commentCount,
     images: (
       await Promise.all(

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { pathwayValidator } from "../validators";
@@ -71,14 +71,6 @@ export const list = query({
   },
 });
 
-export const coursePageValidator = v.object({
-  page: v.array(courseSummaryValidator),
-  isDone: v.boolean(),
-  continueCursor: v.string(),
-  pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
-  splitCursor: v.optional(v.union(v.string(), v.null())),
-});
-
 export const listPage = query({
   args: {
     q: v.optional(v.string()),
@@ -87,7 +79,7 @@ export const listPage = query({
     gradeLevel: v.optional(v.number()),
     paginationOpts: paginationOptsValidator,
   },
-  returns: coursePageValidator,
+  returns: paginationResultValidator(courseSummaryValidator),
   handler: async (ctx, args) => {
     await getCurrentAppUser(ctx);
     const search = args.q?.trim();

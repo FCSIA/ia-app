@@ -1,20 +1,10 @@
 'use client';
 
+import { COURSE_TERM_LABELS, PATHWAY_LABELS } from '~/apps/shared/labels';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { CourseSummary } from './types';
 
-function formatPathway(pathway?: CourseSummary['pathway']) {
-  if (!pathway) return null;
-  if (pathway === 'HEALTH_SCIENCE') return 'Health Science';
-  if (pathway === 'INFORMATION_TECHNOLOGY') return 'Information Technology';
-  return 'Engineering';
-}
-
-function formatTerm(term?: string | null) {
-  if (!term) return null;
-  return term === 'SEMESTER' ? 'Semester' : term === 'YEAR' ? 'Year' : term;
-}
 
 export function formatCourseNumbers(course: Pick<CourseSummary, 'courseNumbers'>) {
   return course.courseNumbers.filter(Boolean).join(' · ');
@@ -28,8 +18,8 @@ export function CourseMeta({
   className?: string;
 }) {
   const courseNumbers = formatCourseNumbers(course);
-  const pathwayLabel = formatPathway(course.pathway);
-  const termLabel = formatTerm(course.term);
+  const pathwayLabel = course.pathway ? PATHWAY_LABELS[course.pathway] : null;
+  const termLabel = course.term ? COURSE_TERM_LABELS[course.term] : null;
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>

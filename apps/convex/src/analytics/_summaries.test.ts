@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { Id } from "../_generated/dataModel";
-import { dayKeysBetween, schoolDayBounds, schoolDayKey, shiftDay } from "./_days";
+import { dayKeysBetween, shiftDay } from "./_days";
 import {
   addDeliveries,
   addMessages,
@@ -16,28 +16,7 @@ const minute = 60_000;
 const hour = 60 * minute;
 const day = 24 * hour;
 
-describe("school days", () => {
-  test("start at New York midnight in daylight and standard time", () => {
-    expect(new Date(schoolDayBounds("2026-10-02").start).toISOString()).toBe("2026-10-02T04:00:00.000Z");
-    expect(new Date(schoolDayBounds("2026-12-01").start).toISOString()).toBe("2026-12-01T05:00:00.000Z");
-  });
-
-  test("are 23 and 25 hours long on the clock-change days", () => {
-    const spring = schoolDayBounds("2026-03-08");
-    const fall = schoolDayBounds("2026-11-01");
-
-    expect((spring.end - spring.start) / hour).toBe(23);
-    expect((fall.end - fall.start) / hour).toBe(25);
-  });
-
-  test("round-trip between instants and day keys", () => {
-    const { start, end } = schoolDayBounds("2026-11-01");
-
-    expect(schoolDayKey(start)).toBe("2026-11-01");
-    expect(schoolDayKey(end - 1)).toBe("2026-11-01");
-    expect(schoolDayKey(end)).toBe("2026-11-02");
-  });
-
+describe("day keys", () => {
   test("shift across months and list inclusive ranges", () => {
     expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
     expect(shiftDay("2026-03-01", -1)).toBe("2026-02-28");

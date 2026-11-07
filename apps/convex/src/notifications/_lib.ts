@@ -1,3 +1,4 @@
+import { preferenceScopeKey } from "../../../shared/notifications";
 import { v } from "convex/values";
 import { preferenceIsOn } from "./deliveryPreference";
 import type { QueryCtx } from "../_generated/server";
@@ -5,53 +6,12 @@ import type { Doc, Id } from "../_generated/dataModel";
 import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
+  notificationSubjectValidatorWith,
 } from "../validators";
 
-export const notificationSubjectValidator = v.union(
-  v.object({
-    kind: v.literal("announcement"),
-    announcementId: v.id("announcements"),
-    clubId: v.union(v.id("clubs"), v.null()),
-  }),
-  v.object({
-    kind: v.literal("event"),
-    eventId: v.id("events"),
-    clubId: v.union(v.id("clubs"), v.null()),
-  }),
-  v.object({
-    kind: v.literal("club"),
-    clubId: v.id("clubs"),
-  }),
-  v.object({
-    kind: v.literal("clubChannel"),
-    clubId: v.id("clubs"),
-    channelId: v.id("clubChannels"),
-  }),
-  v.object({
-    kind: v.literal("clubMessage"),
-    clubId: v.id("clubs"),
-    channelId: v.id("clubChannels"),
-    messageId: v.id("clubChannelMessages"),
-  }),
-  v.object({
-    kind: v.literal("flexFriday"),
-    flexFridayId: v.id("flexFridays"),
-  }),
-  v.object({
-    kind: v.literal("moderationReport"),
-    reportId: v.id("moderationReports"),
-  }),
-  v.object({
-    kind: v.literal("friendRequest"),
-    friendshipId: v.id("studentScheduleFriends"),
-  }),
-  v.object({
-    kind: v.literal("friendSchedule"),
-    friendUserId: v.id("users"),
-  }),
-  v.object({
-    kind: v.literal("system"),
-  }),
+/** Clients always receive `clubId`, as null where the stored subject leaves it out. */
+export const notificationSubjectValidator = notificationSubjectValidatorWith(
+  v.union(v.id("clubs"), v.null()),
 );
 
 export const notificationValidator = v.object({
@@ -88,11 +48,7 @@ export function scopeKey(opts?: {
   eventId?: string | null;
 }) {
   if (opts?.scopeKey?.trim()) return opts.scopeKey.trim();
-  if (opts?.channelId) return `channel:${opts.channelId}`;
-  if (opts?.announcementId) return `announcement:${opts.announcementId}`;
-  if (opts?.eventId) return `event:${opts.eventId}`;
-  if (opts?.clubId) return `club:${opts.clubId}`;
-  return "global";
+  return preferenceScopeKey(opts ?? {});
 }
 
 // Older feedback deliveries used the moderation category. Read their linked

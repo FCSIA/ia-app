@@ -2,27 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { readStorage, writeStorage } from '@/lib/browser-storage';
 import { LOGIN_IMAGES } from './login-images';
 
 /** One pinned image per browser tab; a new tab rolls again. */
 const STORAGE_KEY = 'ia-login-visual';
 
 function readStoredSrc(): string | null {
-  try {
-    const stored = window.sessionStorage.getItem(STORAGE_KEY);
-    if (stored && LOGIN_IMAGES.some((image) => image.src === stored)) return stored;
-  } catch {
-    // Storage unavailable (private mode, etc.): fall through to a fresh pick.
-  }
-  return null;
-}
-
-function storeSrc(src: string) {
-  try {
-    window.sessionStorage.setItem(STORAGE_KEY, src);
-  } catch {
-    // Non-fatal; the pin just won't survive a reload.
-  }
+  const stored = readStorage(STORAGE_KEY, 'session');
+  return stored && LOGIN_IMAGES.some((image) => image.src === stored) ? stored : null;
 }
 
 export function LoginVisual() {
@@ -38,7 +26,7 @@ export function LoginVisual() {
       return;
     }
     const pick = LOGIN_IMAGES[Math.floor(Math.random() * LOGIN_IMAGES.length)] ?? LOGIN_IMAGES[0];
-    storeSrc(pick.src);
+    writeStorage(STORAGE_KEY, pick.src, 'session');
     setSrc(pick.src);
   }, []);
 

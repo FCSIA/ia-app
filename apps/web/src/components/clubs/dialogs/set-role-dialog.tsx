@@ -20,7 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
-import { fullName, type ClubDirectoryEntry } from '@/components/clubs/types';
+import type { ClubDirectoryEntry } from '@/components/clubs/types';
+import { displayName } from '~/apps/shared/user-name';
 import { useToast } from '@/hooks/use-toast';
 
 type RoleEditor =
@@ -112,7 +113,7 @@ function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
             type="button"
             size="icon-sm"
             variant="ghost"
-            aria-label={`Change ${fullName(person)}'s club role`}
+            aria-label={`Change ${displayName(person)}'s club role`}
           >
             <Settings className="size-4" />
           </Button>
@@ -120,11 +121,11 @@ function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
         <PopoverContent
           align="end"
           className="w-[min(20rem,calc(100vw-2rem))] p-2"
-          aria-label={`Club role for ${fullName(person)}`}
+          aria-label={`Club role for ${displayName(person)}`}
         >
           <div className="px-2 pb-2 pt-1">
             <p className="text-sm font-semibold text-foreground">Choose role</p>
-            <p className="truncate text-xs text-muted-foreground">{fullName(person)}</p>
+            <p className="truncate text-xs text-muted-foreground">{displayName(person)}</p>
           </div>
           <div className="relative">
             <RadioGroup value={value} onValueChange={(nextValue) => void assign(nextValue)} className="w-full gap-0.5">

@@ -1,12 +1,13 @@
 "use client";
 
+import { isStudent } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useQuery } from "@/lib/convex-react";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { parseTimeToMinutes } from "@/components/schedule/schedule-utils";
-import { schoolDateKey } from "@/lib/school-date";
+import { schoolDateKey } from "~/apps/shared/school-time";
+import { findCurrentAndNext } from "@/components/schedule/schedule-utils";
 
 export type ClassLock = { label: string; endTime: string; joke: string };
 
@@ -68,15 +69,13 @@ export function useClassLock(): ClassLock | null {
   const hasClass = (entry: (typeof day.blocks)[number]["entry"]) => !!entry && (!!entry.courseId || !!entry.className.trim());
   // A saved schedule with no classes in it tells us nothing about free periods.
   const knowsFreePeriods = day.blocks.some(block => hasClass(block.entry));
-  const block = day.blocks.find(block =>
-    block.kind === "PERIOD" &&
-    minutes >= parseTimeToMinutes(block.startTime) &&
-    minutes < parseTimeToMinutes(block.endTime) &&
-    (!knowsFreePeriods || hasClass(block.entry)),
-  );
+  const block = findCurrentAndNext(
+    day.blocks.filter(block => block.kind === "PERIOD" && (!knowsFreePeriods || hasClass(block.entry))),
+    minutes,
+  ).current;
   if (!block) return null;
 
-  const staff = !hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
+  const staff = !isStudent(user);
   return {
     label: block.entry?.className.trim() || block.displayLabel,
     endTime: block.endTime,

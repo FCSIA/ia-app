@@ -3,27 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History } from 'lucide-react';
 import { format } from 'date-fns';
-import { auditPersonName, type SearchableAuditEvent } from '~/apps/shared/audit';
+import { auditActionLabel, auditPersonName, type SearchableAuditEvent } from '~/apps/shared/audit';
 
 interface Props {
   auditEvents: SearchableAuditEvent[];
   isLoading: boolean;
 }
 
-const AUDIT_ACTION_LABELS: Record<string, string> = {
-  FLEX_FRIDAY_CREATED: 'Friday Scheduled',
-  FLEX_SESSION_CREATED: 'Session Added',
-  FLEX_SESSION_UPDATED: 'Session Updated',
-  FLEX_SESSION_DELETED: 'Session Deleted',
-  FLEX_WORKSHOP_CREATED: 'Workshop Added',
-  FLEX_WORKSHOP_UPDATED: 'Workshop Updated',
-  FLEX_WORKSHOP_DELETED: 'Workshop Deleted',
-  FLEX_REGISTRATION_CREATED: 'Student Registered',
-  FLEX_REGISTRATION_REMOVED: 'Registration Removed',
-  FLEX_ASSIGNMENT_CREATED: 'Student Assigned',
-};
-
-const auditActionClass = (action: string) => {
+const auditActionClass = (action: string): 'emerald' | 'blue' | 'rose' | 'gray' => {
   if (action.endsWith('_CREATED') || action.endsWith('_SCHEDULED')) return 'emerald';
   if (action.endsWith('_UPDATED')) return 'blue';
   if (action.endsWith('_DELETED') || action.endsWith('_REMOVED')) return 'rose';
@@ -48,8 +35,8 @@ export function AuditView({ auditEvents, isLoading }: Props) {
             {auditEvents.map((event) => (
               <div key={event.id} className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <Badge variant="solid" color={auditActionClass(event.action) as any} className="text-[10px] uppercase">
-                    {AUDIT_ACTION_LABELS[event.action] || event.action.replace(/_/g, ' ')}
+                  <Badge variant="solid" color={auditActionClass(event.action)} className="text-[10px] uppercase">
+                    {auditActionLabel(event.action)}
                   </Badge>
                   <div>
                     <p className="text-sm font-medium">{auditPersonName(event)}</p>

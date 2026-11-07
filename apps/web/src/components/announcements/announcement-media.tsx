@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { FileInput } from '@/components/ui/file-input';
 import { Input } from '@/components/ui/input';
 import { AnimatedGif } from '@/components/media/animated-gif';
+import {
+  MAX_ANNOUNCEMENT_EMBEDS,
+  MAX_ANNOUNCEMENT_IMAGES,
+  MAX_ANNOUNCEMENT_IMAGE_BYTES,
+  STAGED_IMAGE_MIME_TYPES,
+} from '~/apps/shared/limits';
 
 const ImageViewer = dynamic(
   () =>
@@ -16,18 +22,10 @@ const ImageViewer = dynamic(
   { ssr: false },
 );
 
-export const MAX_ANNOUNCEMENT_IMAGES = 3;
-export const MAX_ANNOUNCEMENT_EMBEDS = 3;
-export const MAX_ANNOUNCEMENT_IMAGE_BYTES = 5 * 1024 * 1024;
-export const ANNOUNCEMENT_IMAGE_ACCEPT =
+const ANNOUNCEMENT_IMAGE_ACCEPT =
   'image/png,image/jpeg,image/gif,image/webp';
 
-const acceptedImageTypes = new Set([
-  'image/gif',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-]);
+const acceptedImageTypes = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 type AnnouncementMediaInputProps = {
   images: File[];

@@ -1,9 +1,10 @@
+import { INLINE_MARKDOWN_IMAGE_SOURCE, MENTION_MARKDOWN_LINK } from "../../../shared/chat/protocol";
+
 const MARKDOWN_LINK = /!?\[([^\]]*)\]\((?:\\.|[^)])*\)/g;
 const MARKDOWN_AUTOLINK = /<((?:https?:\/\/)[^>]+)>/g;
 const FENCED_CODE = /```[^\n]*\n([\s\S]*?)```/g;
 const INLINE_CODE = /`([^`\n]+)`/g;
-const INLINE_MARKDOWN_IMAGE = /!\[[^\]]*\]\s*(?:\([^)]*\)|\[[^\]]*\])|<img\b/i;
-const PORTABLE_MENTION_LINK = /\[[^\]]*\]\(user:\/\/([A-Za-z0-9_-]+)\)/g;
+const INLINE_MARKDOWN_IMAGE = new RegExp(`${INLINE_MARKDOWN_IMAGE_SOURCE}|<img\\b`, "i");
 
 export function hasInlineMarkdownImage(markdown: string) {
   return INLINE_MARKDOWN_IMAGE.test(markdown);
@@ -44,13 +45,13 @@ export function portableMentionTokens(body: string, bodyMarkdown?: string) {
   // `@Alex Johnson`) while the link target carries the stable unique id. Do
   // not reinterpret the visible name as a second legacy mention token.
   const bareMentionSource = bodyMarkdown
-    ? bodyMarkdown.replace(PORTABLE_MENTION_LINK, "")
+    ? bodyMarkdown.replace(MENTION_MARKDOWN_LINK, "")
     : body;
   const bareTokens = bareMentionSource
     .match(/@[A-Za-z0-9_-]+/g)
     ?.map((token) => token.slice(1)) ?? [];
   const linkedTokens = Array.from(
-    bodyMarkdown?.matchAll(PORTABLE_MENTION_LINK) ?? [],
+    bodyMarkdown?.matchAll(MENTION_MARKDOWN_LINK) ?? [],
     (match) => match[1],
   );
   return Array.from(new Set([...linkedTokens, ...bareTokens]));

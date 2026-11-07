@@ -1,16 +1,16 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import { MAX_VOLUNTEER_PROOF_BYTES, STAGED_IMAGE_MIME_TYPES } from "../../../shared/limits";
+import { deleteStorageQuietly } from "../../lib/storage";
 import { normalizeStoredFileMime } from "./fileSignatures";
 
-export const STAGED_VOLUNTEER_PROOF_TTL_MS = 60 * 60 * 1000;
-const MAX_PROOF_BYTES = 5 * 1024 * 1024;
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 export function validateVolunteerProofMetadata(metadata: { contentType?: string; size: number }, fallbackMimeType?: string) {
   const mimeType = normalizeStoredFileMime(metadata.contentType ?? fallbackMimeType ?? "application/octet-stream");
   if (!IMAGE_TYPES.has(mimeType)) throw new ConvexError("Proof must be a PNG, JPEG, GIF, or WebP image");
-  if (!Number.isFinite(metadata.size) || metadata.size < 1 || metadata.size > MAX_PROOF_BYTES) {
+  if (!Number.isFinite(metadata.size) || metadata.size < 1 || metadata.size > MAX_VOLUNTEER_PROOF_BYTES) {
     throw new ConvexError("Proof image must be 5 MB or smaller");
   }
   return { mimeType, size: metadata.size };
@@ -46,7 +46,7 @@ export const cleanupStagedVolunteerProof = internalMutation({
     if (!proof) return null;
     const submitted = await ctx.db.query("clubVolunteerLogs")
       .withIndex("by_proofStorageId", q => q.eq("proofStorageId", proof.storageId)).first();
-    if (!submitted) await ctx.storage.delete(proof.storageId).catch(() => {});
+    if (!submitted) await deleteStorageQuietly(ctx, proof.storageId);
     await ctx.db.delete(proof._id);
     return null;
   },

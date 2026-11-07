@@ -5,9 +5,10 @@ import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
-import type { AdminTabId } from './use-admin-tab';
+import { filterBySearchQuery } from '@/lib/search';
+import { nameSearchValues } from '~/apps/shared/user-name';
 
-export function useAdminModeration(activeTab: AdminTabId) {
+export function useAdminModeration() {
   const { toast } = useToast();
 
   const [adding, setAdding] = useState(false);
@@ -17,39 +18,25 @@ export function useAdminModeration(activeTab: AdminTabId) {
   const [moderationSearch, setModerationSearch] = useState('');
   const deferredModerationSearch = useDeferredValue(moderationSearch);
 
-  const keywordResult = useQuery(
-    api.moderation.keywords.list,
-    activeTab === 'moderation' ? {} : 'skip',
-  );
+  const keywordResult = useQuery(api.moderation.keywords.list, {});
   const keywords = keywordResult ?? [];
-  const reportResult = useQuery(
-    api.moderation.reports.list,
-    activeTab === 'moderation' ? {} : 'skip',
-  );
+  const reportResult = useQuery(api.moderation.reports.list, {});
   const reports = useMemo(() => reportResult ?? [], [reportResult]);
 
   const addKeyword = useMutation(api.moderation.keywords.add);
   const removeKeyword = useMutation(api.moderation.keywords.remove);
   const updateReport = useMutation(api.moderation.reports.update);
 
-  const filteredReports = useMemo(() => {
-    const query = deferredModerationSearch.trim().toLowerCase();
-    if (!query) return reports;
-    return reports.filter((r) => {
-      const searchable = [
-        r.reason,
-        r.contentType,
-        r.submitter?.firstName,
-        r.submitter?.lastName,
-        r.submitter?.preferredName,
-        r.status,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-  }, [reports, deferredModerationSearch]);
+  const filteredReports = useMemo(
+    () =>
+      filterBySearchQuery(reports, deferredModerationSearch, (report) => [
+        report.reason,
+        report.contentType,
+        ...nameSearchValues(report.submitter),
+        report.status,
+      ]),
+    [reports, deferredModerationSearch],
+  );
 
   const addKeywordMutation = {
     mutate: (kw: string) => {

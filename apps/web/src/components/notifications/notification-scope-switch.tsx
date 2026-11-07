@@ -1,5 +1,7 @@
 'use client';
 
+import { GLOBAL_SCOPE_KEY, preferenceScopeKey } from '~/apps/shared/notifications';
+
 import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useMutation, useQuery } from '@/lib/convex-react';
@@ -45,23 +47,14 @@ export function NotificationScopeSwitch({
   const [pending, setPending] = useState(false);
   const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
   const resolvedScopeKey =
-    scopeKey ??
-    (channelId
-      ? `channel:${channelId}`
-      : announcementId
-        ? `announcement:${announcementId}`
-        : eventId
-          ? `event:${eventId}`
-          : clubId
-            ? `club:${clubId}`
-            : 'global');
+    scopeKey ?? preferenceScopeKey({ channelId, announcementId, eventId, clubId });
 
   const preferences = useQuery(api.notifications.preferences.list);
 
   const preference = preferences?.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
   ) ?? preferences?.find(
-    (pref) => pref.category === category && pref.scopeKey === 'global',
+    (pref) => pref.category === category && pref.scopeKey === GLOBAL_SCOPE_KEY,
   );
   const locked = lockedProp || preference?.locked === true;
   const storedEnabled = locked

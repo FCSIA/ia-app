@@ -1,7 +1,7 @@
 import type { FunctionArgs } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
+import { normalizeCsvHeader } from '@/lib/csv';
 import {
-  normalizeRosterHeader,
   reviewRosterCsv,
   rosterCell,
   validRosterRows,
@@ -10,7 +10,7 @@ import {
 export type StudentImportRow = FunctionArgs<
   typeof api.users.admin.importStudents
 >['rows'][number];
-export type StudentBulkUpdateRow = FunctionArgs<
+type StudentBulkUpdateRow = FunctionArgs<
   typeof api.users.admin.updateStudents
 >['rows'][number];
 const idAliases = ['student id', 'unique id', 'id'];
@@ -29,7 +29,7 @@ function pathway(value: string | undefined, column: string, issues: string[]) {
     business: 'INFORMATION_TECHNOLOGY',
     arts: 'HEALTH_SCIENCE',
   };
-  const parsed = map[normalizeRosterHeader(value)];
+  const parsed = map[normalizeCsvHeader(value)];
   if (!parsed)
     issues.push(`${column} must be IT, Health Science, or Engineering.`);
   return parsed;
@@ -101,7 +101,7 @@ export function previewStudentBulkUpdateCsv(text: string) {
     (raw, issues) => {
       const row: StudentBulkUpdateRow = { uniqueId: studentId(raw, issues) };
       const included = (aliases: string[]) =>
-        aliases.some((alias) => normalizeRosterHeader(alias) in raw);
+        aliases.some((alias) => normalizeCsvHeader(alias) in raw);
       if (included(gradeAliases))
         row.gradeLevel =
           grade(rosterCell(raw, ...gradeAliases), issues) ?? null;
@@ -119,7 +119,7 @@ export function previewStudentBulkUpdateCsv(text: string) {
     },
     (headers) =>
       [...gradeAliases, ...majorAliases, ...minorAliases].some((alias) =>
-        headers.includes(normalizeRosterHeader(alias)),
+        headers.includes(normalizeCsvHeader(alias)),
       )
         ? undefined
         : 'CSV must include grade_level, major_pathway, or minor_pathway.',

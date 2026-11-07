@@ -3,15 +3,11 @@
 import { format } from 'date-fns';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
+import { clockMinutes } from '~/apps/shared/school-time';
 import { calendarDate } from './calendar-date';
 import { CalendarEventRow, type CalendarSource } from './calendar-event-row';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/empty';
-
-const minutes = (value: string) => {
-  const [hour, minute] = value.split(':').map(Number);
-  return hour * 60 + minute;
-};
 
 /** Schedule context uses ReUI's supported background slot, behind event chips. */
 export function CalendarSchoolDayBands({
@@ -28,8 +24,8 @@ export function CalendarSchoolDayBands({
   return (
     <>
       {schedule?.blocks.map((block) => {
-        const start = Math.max(boundsStartMin, minutes(block.startTime));
-        const end = Math.min(boundsEndMin, minutes(block.endTime));
+        const start = Math.max(boundsStartMin, clockMinutes(block.startTime));
+        const end = Math.min(boundsEndMin, clockMinutes(block.endTime));
         return end > start ? (
           <div
             key={`${block.startTime}-${block.endTime}-${block.displayLabel}`}

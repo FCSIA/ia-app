@@ -1,12 +1,13 @@
 'use client';
 
+import { hasAnyRole, STUDENT_ROLES } from '~/apps/shared/roles';
 import { useEffect, useState } from 'react';
 import { Check, Trash, UserPlus } from 'lucide-react';
 import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useMutation, useQuery } from '@/lib/convex-react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -77,8 +78,7 @@ export function EditCalendarEntryDialog({
   const [selected, setSelected] = useState<Id<'users'>[]>([]);
   const { toast } = useToast();
   const user = useCurrentUser();
-  const isStudent =
-    !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
   const update = useMutation(api.events.calendar.update);
   const remove = useMutation(api.events.calendar.remove);
   const invite = useMutation(api.events.calendar.inviteFriends);

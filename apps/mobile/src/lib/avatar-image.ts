@@ -1,3 +1,4 @@
+import { AVATAR_COMPRESSION_TARGET_BYTES } from "~/apps/shared/limits";
 import { File } from "expo-file-system";
 import {
   ImageManipulator,
@@ -7,7 +8,6 @@ import {
 } from "expo-image-manipulator";
 
 const AVATAR_MAX_DIMENSION = 512;
-const AVATAR_TARGET_BYTES = 90 * 1024;
 const JPEG_QUALITIES = [0.88, 0.8, 0.72, 0.64, 0.56, 0.48] as const;
 
 export type PreparedAvatarImage = {
@@ -63,7 +63,7 @@ export async function prepareAvatarImage(sourceUri: string): Promise<PreparedAva
         throw new AvatarPreparationError("The compressed photo couldn't be read. Try a different image.");
       }
 
-      if (size <= AVATAR_TARGET_BYTES) {
+      if (size <= AVATAR_COMPRESSION_TARGET_BYTES) {
         return {
           file,
           mimeType: "image/jpeg",

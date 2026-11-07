@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Constants from "expo-constants";
-import { AppState } from "react-native";
+import { useAppActive } from "@/lib/use-app-active";
 import * as ScreenCapture from "expo-screen-capture";
 import { useConvex, useConvexAuth, useQuery } from "@/lib/convex-react";
 import { openAppHref } from "@/lib/deep-links";
@@ -22,8 +22,7 @@ export function AppLifecycle() {
   const [pendingNotificationHref, setPendingNotificationHref] = useState<
     string | null
   >(null);
-  const appState = useRef(AppState.currentState);
-  const [isActive, setIsActive] = useState(appState.current === "active");
+  const isActive = useAppActive();
 
   useEffect(
     () =>
@@ -32,14 +31,6 @@ export function AppLifecycle() {
       }),
     [],
   );
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      appState.current = nextState;
-      setIsActive(nextState === "active");
-    });
-    return () => subscription.remove();
-  }, []);
 
   useEffect(() => {
     if (!pendingNotificationHref || isLoading || !isAuthenticated) return;

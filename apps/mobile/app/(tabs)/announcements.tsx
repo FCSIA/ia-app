@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { RefreshControl, View } from "react-native";
+import { usePullToRefresh } from "@/lib/use-pull-to-refresh";
+import { View } from "react-native";
 import { Search, X } from "lucide-react-native";
 import { usePaginatedQuery } from "@/lib/convex-react";
 import { AppHeader } from "@/components/app-header";
@@ -19,7 +20,7 @@ import { useAnnouncementFeedClock } from "@/features/announcements/use-announcem
 export default function AnnouncementsScreen() {
   const [filter, setFilter] = useState<AnnouncementFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
+  const refreshControl = usePullToRefresh();
   const now = useAnnouncementFeedClock(3_600_000);
   const { results: announcements, status, loadMore } = usePaginatedQuery(api.announcements.feed.listPage, { bookmarkedOnly: filter === "saved" || undefined, unreadOnly: filter === "unread" || undefined, now }, { initialNumItems: 30 });
   const filtered = useMemo(
@@ -38,16 +39,7 @@ export default function AnnouncementsScreen() {
   return (
     <Screen
       header={<AppHeader title="Feed" />}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          tintColor={color("primary")}
-          onRefresh={() => {
-            setRefreshing(true);
-            setTimeout(() => setRefreshing(false), 550);
-          }}
-        />
-      }
+      refreshControl={refreshControl}
     >
       <View
         style={{

@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { BookOpen, ChevronRight, QrCode, Shield, Sparkles, type LucideIcon } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
@@ -36,7 +36,6 @@ export default function DiscoverScreen() {
   return (
     <Screen
       header={<AppHeader title="Discover" />}
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}
     >
       {showAdmin ? (
         <DestinationGroup
@@ -64,7 +63,7 @@ function DestinationGroup({
   destinations: ReadonlyArray<{
     title: string;
     detail: string;
-    href: string;
+    href: Href;
     icon: LucideIcon;
   }>;
 }) {
@@ -84,7 +83,7 @@ function DestinationGroup({
       >
         {items.map((destination, index) => (
           <DestinationRow
-            key={destination.href}
+            key={destination.title}
             {...destination}
             showDivider={index < items.length - 1}
           />
@@ -103,7 +102,7 @@ function DestinationRow({
 }: {
   title: string;
   detail: string;
-  href: string;
+  href: Href;
   icon: LucideIcon;
   showDivider: boolean;
 }) {
@@ -112,7 +111,7 @@ function DestinationRow({
   return (
     <PressableScale
       accessibilityRole="button"
-      onPress={() => router.push(href as never)}
+      onPress={() => router.push(href)}
       style={{ minHeight: 76, paddingHorizontal: spacing.md }}
     >
       <View

@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -97,9 +98,7 @@ export default function ClubPeopleScreen() {
                         .catch((error) =>
                           Alert.alert(
                             "Could not add student",
-                            error instanceof Error
-                              ? error.message
-                              : "Try again.",
+                            errorMessage(error),
                           ),
                         )
                     }
@@ -121,9 +120,7 @@ export default function ClubPeopleScreen() {
                         .catch((error) =>
                           Alert.alert(
                             "Invite failed",
-                            error instanceof Error
-                              ? error.message
-                              : "Try again.",
+                            errorMessage(error),
                           ),
                         )
                     }
@@ -178,9 +175,7 @@ export default function ClubPeopleScreen() {
                         .catch((error) =>
                           Alert.alert(
                             "Join code failed",
-                            error instanceof Error
-                              ? error.message
-                              : "Try again.",
+                            errorMessage(error),
                           ),
                         )
                     }
@@ -269,9 +264,7 @@ export default function ClubPeopleScreen() {
                               .catch((error) =>
                                 Alert.alert(
                                   "Could not approve",
-                                  error instanceof Error
-                                    ? error.message
-                                    : "Try again.",
+                                  errorMessage(error),
                                 ),
                               );
                           }}
@@ -289,9 +282,7 @@ export default function ClubPeopleScreen() {
                             }).catch((error) =>
                               Alert.alert(
                                 "Could not decline",
-                                error instanceof Error
-                                  ? error.message
-                                  : "Try again.",
+                                errorMessage(error),
                               ),
                             )
                           }
@@ -395,9 +386,7 @@ export default function ClubPeopleScreen() {
                                 }).catch((error) =>
                                   Alert.alert(
                                     "Role not updated",
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Try again.",
+                                    errorMessage(error),
                                   ),
                                 )
                               }
@@ -420,9 +409,7 @@ export default function ClubPeopleScreen() {
                                 }).catch((error) =>
                                   Alert.alert(
                                     "Role not updated",
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Try again.",
+                                    errorMessage(error),
                                   ),
                                 )
                               }
@@ -450,9 +437,7 @@ export default function ClubPeopleScreen() {
                                           .catch((error) =>
                                             Alert.alert(
                                               "Member not removed",
-                                              error instanceof Error
-                                                ? error.message
-                                                : "Try again.",
+                                              errorMessage(error),
                                             ),
                                           ),
                                     },

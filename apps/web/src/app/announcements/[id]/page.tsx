@@ -1,5 +1,6 @@
 'use client';
 
+import { isAdmin } from '~/apps/shared/roles';
 import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
@@ -20,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { MAX_ANNOUNCEMENT_COMMENT_CHARACTERS } from '~/apps/shared/limits';
 import { AnnouncementMedia } from '@/components/announcements/announcement-media';
 import { Card, CardContent, CardGroup, CardHeader } from '@/components/ui/card';
 import {
@@ -36,13 +38,11 @@ import { AnnouncementComment } from '@/components/announcements/announcement-com
 import {
   ChannelMessageComposer,
   type ChannelMessageComposerHandle,
-} from '@/components/clubs/channel-message-composer';
+} from '@/components/chat/channel-message-composer';
 import { ConvexError } from 'convex/values';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
-
-const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') return 'Active';
@@ -176,9 +176,7 @@ export default function AnnouncementDetailPage({
   const commentCount = announcement.comments?.length ?? 0;
   const canDeleteComment = (commentAuthorId: string) =>
     commentAuthorId === user?._id ||
-    !!user?.roles?.some((role: string) =>
-      ['ADMIN', 'SUPER_ADMIN'].includes(role),
-    );
+    isAdmin(user);
 
   return (
     <AppShell>

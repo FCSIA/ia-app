@@ -1,7 +1,11 @@
-export const MAX_CHAT_MARKDOWN_LENGTH = 12_000;
-export const MAX_CHAT_PLAIN_TEXT_LENGTH = 4_000;
+import {
+  INLINE_MARKDOWN_IMAGE_SOURCE,
+  MAX_CHANNEL_MESSAGE_BODY_CHARACTERS,
+  MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS,
+  MENTION_URL_PROTOCOL,
+} from "~/apps/shared/chat/protocol";
 
-const INLINE_MARKDOWN_IMAGE = /!\[([^\]]*)\]\s*(?:\([^)]*\)|\[[^\]]*\])/g;
+const INLINE_MARKDOWN_IMAGE = new RegExp(INLINE_MARKDOWN_IMAGE_SOURCE, "g");
 const HTML_IMAGE = /<img\b[^>]*>/gi;
 
 export function sanitizeChatMarkdown(markdown: string) {
@@ -14,7 +18,7 @@ export function classifyChatLink(url: string) {
     if (parsed.protocol === "http:" || parsed.protocol === "https:") {
       return { kind: "external" as const, url: parsed.toString() };
     }
-    if (parsed.protocol === "user:" && parsed.hostname) {
+    if (parsed.protocol === MENTION_URL_PROTOCOL && parsed.hostname) {
       return { kind: "mention" as const, identifier: parsed.hostname };
     }
   } catch {
@@ -34,11 +38,11 @@ export function normalizeExternalChatLink(value: string) {
 }
 
 export function chatMessageLengthError(plainText: string, markdown: string) {
-  if (plainText.length > MAX_CHAT_PLAIN_TEXT_LENGTH) {
-    return `Keep the message under ${MAX_CHAT_PLAIN_TEXT_LENGTH.toLocaleString()} characters.`;
+  if (plainText.length > MAX_CHANNEL_MESSAGE_BODY_CHARACTERS) {
+    return `Keep the message under ${MAX_CHANNEL_MESSAGE_BODY_CHARACTERS.toLocaleString()} characters.`;
   }
-  if (markdown.length > MAX_CHAT_MARKDOWN_LENGTH) {
-    return `Formatting makes this message too large. Keep it under ${MAX_CHAT_MARKDOWN_LENGTH.toLocaleString()} Markdown characters.`;
+  if (markdown.length > MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS) {
+    return `Formatting makes this message too large. Keep it under ${MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS.toLocaleString()} Markdown characters.`;
   }
   return null;
 }

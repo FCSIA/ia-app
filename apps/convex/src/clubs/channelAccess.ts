@@ -1,8 +1,9 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
-import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
-import { MAX_CLUB_UNITS } from "./hierarchyRules";
+import { MAX_CLUB_ROLES } from "./rolePermissions";
+import { hasElevatedChannelAccess, memberRoleId } from "./membership";
+import { MAX_CLUB_UNITS, assignmentCoversUnit } from "./hierarchyRules";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 type Channel = Doc<"clubChannels">;
@@ -29,7 +30,7 @@ type EffectivePolicy = {
  * Current channels use independent role and structure filters. Legacy rows
  * retain their closest safe meaning until they are saved through settings.
  */
-export function effectiveChannelPolicy(channel: Channel): EffectivePolicy {
+function effectiveChannelPolicy(channel: Channel): EffectivePolicy {
   if (channel.accessPolicyVersion === 2) {
     return {
       accessRoleIds: channel.accessRoleIds ?? [],
@@ -73,23 +74,6 @@ export function effectiveChannelPolicy(channel: Channel): EffectivePolicy {
         ? "CLUB_MANAGERS"
         : "AUDIENCE",
   };
-}
-
-/** An assignment at the target or any ancestor grants downward access. */
-function assignmentCoversUnit(
-  assignedUnitId: Id<"clubUnits">,
-  targetUnitId: Id<"clubUnits">,
-  parentByUnitId: Map<Id<"clubUnits">, Id<"clubUnits"> | null>,
-) {
-  let current: Id<"clubUnits"> | null = targetUnitId;
-  const visited = new Set<Id<"clubUnits">>();
-  while (current) {
-    if (current === assignedUnitId) return true;
-    if (visited.has(current)) return false;
-    visited.add(current);
-    current = parentByUnitId.get(current) ?? null;
-  }
-  return false;
 }
 
 function elevatedChannelAccess(
@@ -242,7 +226,7 @@ export async function getChannelAccessForChannels(
     }
 
     const explicit = explicitMembershipByChannelId.get(channel._id) ?? false;
-    const roleId = clubMembership?.roleId ?? clubMembership?.customRoleId;
+    const roleId = clubMembership && memberRoleId(clubMembership);
     const roleMatches =
       policy.accessRoleIds.length === 0 ||
       (!!roleId && policy.accessRoleIds.includes(roleId));
@@ -317,7 +301,7 @@ export async function getChannelAudienceUserIds(
     ctx.db
       .query("clubRoles")
       .withIndex("by_clubId_and_position", (q) => q.eq("clubId", channel.clubId))
-      .take(100),
+      .take(MAX_CLUB_ROLES),
     policy.accessUnitId
       ? ctx.db
           .query("clubUnits")
@@ -355,17 +339,9 @@ export async function getChannelAudienceUserIds(
   // so a large house does not hide its school-level leaders from @ suggestions.
   for (const sponsor of sponsors) addAudience(sponsor.userId);
   for (const member of clubMembers) {
-    const roleId = member.roleId ?? member.customRoleId;
+    const roleId = memberRoleId(member);
     const role = roleId ? roleById.get(roleId) : undefined;
-    const permissions = role?.permissions ?? NO_CLUB_PERMISSIONS;
-    const hasElevatedChannelAccess =
-      member.role === "LEADER" ||
-      member.role === "SPONSOR" ||
-      permissions.viewPrivateChannels ||
-      permissions.createChannels ||
-      permissions.editChannels ||
-      permissions.deleteChannels;
-    if (hasElevatedChannelAccess) addAudience(member.userId);
+    if (hasElevatedChannelAccess(member, role)) addAudience(member.userId);
   }
   for (const explicit of explicitRows) addAudience(explicit.userId);
 
@@ -374,7 +350,7 @@ export async function getChannelAudienceUserIds(
   }
 
   for (const member of clubMembers) {
-    const roleId = member.roleId ?? member.customRoleId;
+    const roleId = memberRoleId(member);
     const roleMatches =
       policy.accessRoleIds.length === 0 ||
       (!!roleId && policy.accessRoleIds.includes(roleId));

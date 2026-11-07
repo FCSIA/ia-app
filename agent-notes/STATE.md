@@ -2,6 +2,14 @@
 
 ## Active Focus
 
+- **Untangle refactor (2026-11-06)**: Branch `refactor/untangle` (worktree
+  `.worktrees/untangle`) restructures convex, web, mobile and `apps/shared`
+  so each domain rule has one owner; behaviour is unchanged apart from listed
+  bug fixes. Unfinished round-3 edits are on `refactor/untangle-round3-wip`
+  (does not typecheck). Before picking it up, read
+  `agent-notes/untangle/HANDOFF.md` for the remaining work, deploy checks and
+  owner decisions.
+
 - **Issue #176 account onboarding (2026-11-02)**: Worktree `.worktrees/issue-176`,
   branch `codex/student-onboarding`, owns the versioned account-setup lifecycle
   and web/native checklist. Its isolated local-anonymous backend uses 3318/3319;

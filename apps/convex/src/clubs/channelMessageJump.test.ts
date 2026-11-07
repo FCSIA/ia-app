@@ -1,18 +1,26 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
-import { findJumpTargetMessage } from "./channels";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 
-const modules = import.meta.glob("../**/*.*s");
+vi.mock("../../lib/currentUser", () => ({
+  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
+  },
+}));
+
+const modules = import.meta.glob("/src/**/*.*s");
 
 describe("inline reply jump lookup", () => {
   test("only resolves root messages the viewer may already read", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx) => {
+    const ids = await t.run(async (ctx) => {
       const now = 1;
       const makeUser = (uniqueId: string) =>
         ctx.db.insert("users", {
@@ -91,34 +99,35 @@ describe("inline reply jump lookup", () => {
       const rootId = await makeMessage(channelId, "root");
       const threadReplyId = await makeMessage(channelId, "thread reply", rootId);
       const otherChannelMessageId = await makeMessage(otherChannelId, "elsewhere");
-
-      const member = (await ctx.db.get(memberId))!;
-      const outsider = (await ctx.db.get(outsiderId))!;
-      const jump = async (
-        userId: Id<"users">,
-        lookupChannelId: Id<"clubChannels">,
-        messageId: Id<"clubChannelMessages">,
-      ) => {
-        const user = userId === memberId ? member : outsider;
-        const message = await findJumpTargetMessage(
-          ctx,
-          user,
-          clubId,
-          lookupChannelId,
-          messageId,
-        );
-        return message?.body ?? null;
-      };
-
       return {
-        member: await jump(memberId, channelId, rootId),
-        outsider: await jump(outsiderId, channelId, rootId),
-        crossChannel: await jump(memberId, channelId, otherChannelMessageId),
-        threadReply: await jump(memberId, channelId, threadReplyId),
+        memberId,
+        outsiderId,
+        clubId,
+        channelId,
+        rootId,
+        threadReplyId,
+        otherChannelMessageId,
       };
     });
 
-    expect(result).toEqual({
+    const jump = async (
+      userId: Id<"users">,
+      messageId: Id<"clubChannelMessages">,
+    ) =>
+      (
+        await t.withIdentity({ subject: userId }).query(api.clubs.channels.getMessage, {
+          clubId: ids.clubId,
+          channelId: ids.channelId,
+          messageId,
+        })
+      )?.body ?? null;
+
+    expect({
+      member: await jump(ids.memberId, ids.rootId),
+      outsider: await jump(ids.outsiderId, ids.rootId),
+      crossChannel: await jump(ids.memberId, ids.otherChannelMessageId),
+      threadReply: await jump(ids.memberId, ids.threadReplyId),
+    }).toEqual({
       member: "root",
       outsider: null,
       crossChannel: null,

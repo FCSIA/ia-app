@@ -1,43 +1,46 @@
 import { describe, expect, test } from "vitest";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
 
+const context = (value: Parameters<typeof buildChatMentionSuggestions>[0]) => value;
+
 describe("mobile club chat mention suggestions", () => {
   test("labels mentions with the preferred name and retains both names for search", () => {
-    const suggestions = buildChatMentionSuggestions({
+    const suggestions = buildChatMentionSuggestions(context({
       canMentionEveryone: false, tags: [], groups: [],
       members: [{ uniqueId: "STU001", firstName: "Matthew", lastName: "Kingsly", preferredName: "Matt" }],
-    });
+    }));
     expect(suggestions.at(-1)).toMatchObject({
       token: "STU001", label: "Matt", displayText: "@Matt", searchNames: ["Matthew Kingsly", "Matt"],
     });
   });
   test("includes supported groups, custom groups, and people from mention context", () => {
     expect(
-      buildChatMentionSuggestions({
+      buildChatMentionSuggestions(context({
         canMentionEveryone: true,
         tags: [{ slug: "build-team", name: "Build Team" }],
         groups: [
-          { token: "leader", label: "Leader", detail: "Role", kind: "role" },
+          { token: "leader", label: "Leader", detail: "Role" },
         ],
         members: [
           {
             uniqueId: "STU001",
             firstName: "Matthew",
             lastName: "Kingsly",
+            preferredName: undefined,
           },
         ],
-      }).map((suggestion) => suggestion.token),
+      })).map((suggestion) => suggestion.token),
     ).toEqual(["all", "sponsors", "leader", "build-team", "STU001"]);
   });
 
   test("keeps @all permission-gated and ignores reserved custom slugs", () => {
     expect(
-      buildChatMentionSuggestions({
+      buildChatMentionSuggestions(context({
         canMentionEveryone: false,
         tags: [{ slug: "leaders", name: "Duplicate leaders" }],
         groups: [],
         members: [],
-      }).map((suggestion) => suggestion.token),
+      })).map((suggestion) => suggestion.token),
     ).toEqual(["sponsors"]);
   });
 });

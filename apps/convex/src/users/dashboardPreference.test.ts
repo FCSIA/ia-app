@@ -5,21 +5,11 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("../../lib/currentUser")>();
-  return {
-    ...original,
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) throw new Error("Unauthenticated");
-      const user = await ctx.db.get(identity.subject as Id<"users">);
-      if (!user) throw new Error("Unauthenticated");
-      return user;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 const modules = import.meta.glob("/src/**/*.*s");
 
 async function fixture() {
@@ -27,22 +17,7 @@ async function fixture() {
   const ids = await t.run(async (ctx) =>
     Promise.all(
       ["A", "B"].map((name) =>
-        ctx.db.insert("users", {
-          uniqueId: name,
-          firstName: name,
-          lastName: "Test",
-          roles: ["STUDENT"],
-          isStudent: true,
-          isTeacherStaff: false,
-          isStudentAdmin: false,
-          isOtherRole: false,
-          isActive: true,
-          mustResetPassword: false,
-          dashboardLayout: [],
-          searchText: name,
-          createdAt: 1,
-          updatedAt: 1,
-        }),
+        insertUser(ctx, { uniqueId: name, firstName: name, lastName: "Test", roles: ["STUDENT"] }),
       ),
     ),
   );

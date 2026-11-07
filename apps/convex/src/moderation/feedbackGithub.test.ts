@@ -8,24 +8,11 @@ import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import { statusForGithubIssue } from "./feedbackGithub";
 import { canRetryGithubSync, GITHUB_SYNC_STALE_MS } from "../../../shared/feedback-sync";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../lib/currentUser")>();
-  return {
-    ...original,
-    getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-    },
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) throw new Error("Unauthenticated");
-      const user = await ctx.db.get(identity.subject as Id<"users">);
-      if (!user) throw new Error("Unauthenticated");
-      return user;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 // Keep issue-sync tests focused on sync; App JWT authentication has its own suite.
 vi.mock("./feedbackGithubToken", () => ({
@@ -43,22 +30,7 @@ afterEach(() => {
 
 async function fixture(contentType = "GENERAL") {
   const t = convexTest(schema, modules);
-  const userId = await t.run((ctx) => ctx.db.insert("users", {
-    uniqueId: "FEEDBACK-STUDENT",
-    firstName: "Test",
-    lastName: "Student",
-    roles: ["STUDENT"],
-    isStudent: true,
-    isTeacherStaff: false,
-    isStudentAdmin: false,
-    isOtherRole: false,
-    isActive: true,
-    mustResetPassword: false,
-    dashboardLayout: [],
-    searchText: "test student",
-    createdAt: 1,
-    updatedAt: 1,
-  }));
+  const userId = await t.run((ctx) => insertUser(ctx, { uniqueId: "FEEDBACK-STUDENT", firstName: "Test", lastName: "Student", roles: ["STUDENT"] }));
   const reportId = await t.run((ctx) => ctx.db.insert("moderationReports", {
     submitterId: userId,
     contentType,

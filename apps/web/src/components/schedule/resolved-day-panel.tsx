@@ -9,6 +9,7 @@ import { Elevated } from "@/lib/elevated";
 import { SurfaceProvider } from "@/lib/surface-context";
 import { cn } from "@/lib/utils";
 import { ScheduleDatePicker } from "./schedule-date-picker";
+import { lunchPeriodNumber } from "~/apps/shared/school-time";
 import { findScheduleEntry, formatScheduleTimeRange } from "./schedule-utils";
 import type {
   ResolvedSchoolDay,
@@ -37,8 +38,7 @@ export function ResolvedDayPanel({
   selectedDateKey,
   onDateChange,
 }: ResolvedDayPanelProps) {
-  const lunchNumber =
-    lunchPeriod === "PERIOD_4" ? 4 : lunchPeriod === "PERIOD_5" ? 5 : null;
+  const lunchNumber = lunchPeriod ? lunchPeriodNumber(lunchPeriod) : null;
 
   return (
     <Elevated offset={1} className="overflow-hidden rounded-xl">

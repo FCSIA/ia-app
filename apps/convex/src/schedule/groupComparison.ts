@@ -1,3 +1,4 @@
+import { lunchPeriodNumber } from "../../../shared/school-time";
 import type { ScheduleLunchPeriod, ScheduleWeekday } from "../validators";
 
 export type GroupComparisonEntry<TCourseId extends string = string> = {
@@ -58,7 +59,7 @@ export function withLunchComparisonEntry<TCourseId extends string>(
     ...entries,
     {
       kind: "LUNCH",
-      periodNumber: lunchPeriod === "PERIOD_4" ? 4 : 5,
+      periodNumber: lunchPeriodNumber(lunchPeriod),
       courseId: null,
       className: "Lunch",
     },

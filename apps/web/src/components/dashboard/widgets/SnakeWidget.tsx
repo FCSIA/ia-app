@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrentUser } from "@/lib/auth";
 import { spring } from "@/lib/springs";
-import { formatSchoolTime } from "@/lib/time-format";
+import { formatClockTime } from "~/apps/shared/school-time";
 import { cn } from "@/lib/utils";
 import styles from "./snake-widget.module.css";
 import { SnakeBody } from "./SnakeBody";
@@ -381,7 +381,7 @@ function ClassLockNotice({ lock, gamePaused }: { lock: ClassLock; gamePaused: bo
         <EmptyDescription>{lock.joke}</EmptyDescription>
       </EmptyHeader>
       <p className="text-xs text-muted-foreground tabular-nums">
-        Snake opens at {formatSchoolTime(lock.endTime, user?.use24HourTime ?? false)}
+        Snake opens at {formatClockTime(lock.endTime, user?.use24HourTime ?? false)}
         {gamePaused ? " · Your game is paused" : ""}
       </p>
     </Empty>

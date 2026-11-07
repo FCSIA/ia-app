@@ -1,3 +1,10 @@
+import {
+  channelScopeKey,
+  clubScopeKey,
+  GLOBAL_SCOPE_KEY,
+  NOTIFICATION_CATEGORY_DETAILS,
+} from "../../../shared/notifications";
+import { isStaff } from "../../../shared/roles";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalQuery, type MutationCtx } from "../_generated/server";
@@ -5,33 +12,13 @@ import { v } from "convex/values";
 import {
   notificationCategoryValidator,
   type NotificationCategory,
+  type NotificationSubject,
 } from "../validators";
 import {
   preferenceAllowsPush,
   preferenceIsOn,
   resolveNotificationPreference,
 } from "./deliveryPreference";
-
-export type NotificationSubject =
-  | {
-      kind: "announcement";
-      announcementId: Id<"announcements">;
-      clubId?: Id<"clubs">;
-    }
-  | { kind: "event"; eventId: Id<"events">; clubId?: Id<"clubs"> }
-  | { kind: "club"; clubId: Id<"clubs"> }
-  | { kind: "clubChannel"; clubId: Id<"clubs">; channelId: Id<"clubChannels"> }
-  | {
-      kind: "clubMessage";
-      clubId: Id<"clubs">;
-      channelId: Id<"clubChannels">;
-      messageId: Id<"clubChannelMessages">;
-    }
-  | { kind: "flexFriday"; flexFridayId: Id<"flexFridays"> }
-  | { kind: "moderationReport"; reportId: Id<"moderationReports"> }
-  | { kind: "friendRequest"; friendshipId: Id<"studentScheduleFriends"> }
-  | { kind: "friendSchedule"; friendUserId: Id<"users"> }
-  | { kind: "system" };
 
 type DeliveryInput = {
   userId: Id<"users">;
@@ -53,16 +40,16 @@ export async function deliverNotification(
   input: DeliveryInput,
 ) {
   const scope = preferenceScope(input.subject);
-  const clubScopeKey =
+  const clubKey =
     "clubId" in input.subject && input.subject.clubId
-      ? `club:${input.subject.clubId}`
+      ? clubScopeKey(input.subject.clubId)
       : undefined;
   const decision = await deliveryDecision(
     ctx,
     input.userId,
     input.category,
     scope.scopeKey,
-    clubScopeKey,
+    clubKey,
   );
   if (!decision.create) {
     return;
@@ -181,18 +168,18 @@ export async function deliverMany(
 
 export function preferenceScope(subject: NotificationSubject) {
   if (subject.kind === "clubMessage" || subject.kind === "clubChannel") {
-    return { scopeKey: `channel:${subject.channelId}` };
+    return { scopeKey: channelScopeKey(subject.channelId) };
   }
   if (subject.kind === "club") {
-    return { scopeKey: `club:${subject.clubId}` };
+    return { scopeKey: clubScopeKey(subject.clubId) };
   }
   if (
     (subject.kind === "announcement" || subject.kind === "event") &&
     subject.clubId
   ) {
-    return { scopeKey: `club:${subject.clubId}` };
+    return { scopeKey: clubScopeKey(subject.clubId) };
   }
-  return { scopeKey: "global" };
+  return { scopeKey: GLOBAL_SCOPE_KEY };
 }
 
 async function deliveryDecision(
@@ -234,7 +221,7 @@ export function preferenceDeliveryDecision(
       push: preferenceAllowsPush(preference),
     };
   }
-  return { create: category !== "CLUB_CHANNEL_MESSAGE", push: false };
+  return { create: NOTIFICATION_CATEGORY_DETAILS[category].defaultEnabled, push: false };
 }
 
 export async function activeUsers(ctx: MutationCtx) {
@@ -245,12 +232,7 @@ export async function activeUsers(ctx: MutationCtx) {
 }
 
 export async function activeAdmins(ctx: MutationCtx) {
-  return (await activeUsers(ctx)).filter((user) =>
-    user.roles.some(
-      (role) =>
-        role === "ADMIN" || role === "SUPER_ADMIN" || role === "SUPPORT_STAFF",
-    ),
-  );
+  return (await activeUsers(ctx)).filter((user) => isStaff(user));
 }
 
 export async function activeStudents(ctx: MutationCtx) {

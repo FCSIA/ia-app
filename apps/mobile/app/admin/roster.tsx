@@ -1,7 +1,8 @@
+import { isSuperAdmin } from "~/apps/shared/roles";
 import { Redirect } from "expo-router";
 import { AdminRouteGuard } from "@/components/admin-route-guard";
 import { RosterScreen } from "@/features/admin/roster-screen";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 
 export default function AdminRosterRoute() {
   return (
@@ -15,7 +16,7 @@ function SuperAdminRoster() {
   const user = useLiveCurrentUser();
 
   if (!user) return null;
-  if (!hasRole(user, "SUPER_ADMIN")) return <Redirect href="../" />;
+  if (!isSuperAdmin(user)) return <Redirect href="../" />;
 
   return <RosterScreen />;
 }

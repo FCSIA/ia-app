@@ -2,7 +2,7 @@
 
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import type { UserProfilePerson } from '@/components/clubs/user-profile-dialog';
+import type { UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { PersonTrigger } from '@/components/users/person-trigger';
 import { Button } from '@/components/ui/button';
 import { DeveloperBadge } from '@/components/ui/developer-badge';

@@ -1,8 +1,7 @@
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { resolveAppHref } from "./deep-link-route";
 
-export { normalizeHref, resolveAppHref } from "./deep-link-route";
-
 export function openAppHref(href?: string | null) {
-  router.push(resolveAppHref(href) as never);
+  // The destination is chosen at runtime from a notification or link, so the typed-route check cannot see it.
+  router.push(resolveAppHref(href) as Href);
 }

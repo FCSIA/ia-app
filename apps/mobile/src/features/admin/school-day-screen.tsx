@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { useMutation, useQuery } from "@/lib/convex-react";
@@ -20,16 +21,16 @@ import {
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import {
+  clockMinutes,
+  currentSchoolWeekday,
+  formatClockTime,
+  SCHOOL_WEEKDAYS,
+  SCHOOL_WEEKDAY_LABELS,
+  type SchoolWeekday,
+} from "~/apps/shared/school-time";
 
-const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
-const weekdayLabels: Record<Weekday, string> = {
-  MONDAY: "Monday",
-  TUESDAY: "Tuesday",
-  WEDNESDAY: "Wednesday",
-  THURSDAY: "Thursday",
-  FRIDAY: "Friday",
-};
-const weekdayShortLabels: Record<Weekday, string> = {
+const weekdayShortLabels: Record<SchoolWeekday, string> = {
   MONDAY: "Mon",
   TUESDAY: "Tue",
   WEDNESDAY: "Wed",
@@ -42,7 +43,6 @@ const blockKinds = [
   { label: "Custom", value: "CUSTOM" },
 ] as const;
 
-type Weekday = (typeof weekdays)[number];
 type BlockKind = (typeof blockKinds)[number]["value"];
 type ScheduleDashboard = FunctionReturnType<typeof api.schedule.dashboard.get>;
 type SchoolDayBlock = ScheduleDashboard["blocks"][number];
@@ -59,7 +59,7 @@ export function SchoolDayScreen() {
   const createBlock = useMutation(api.schedule.blocks.createBlock);
   const updateBlock = useMutation(api.schedule.blocks.updateBlock);
   const deleteBlock = useMutation(api.schedule.blocks.deleteBlock);
-  const [weekday, setWeekday] = useState<Weekday>(currentWeekday);
+  const [weekday, setWeekday] = useState<SchoolWeekday>(currentSchoolWeekday);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<SchoolDayBlock | null>(null);
   const [form, setForm] = useState<BlockForm>(() => defaultForm([]));
@@ -73,7 +73,7 @@ export function SchoolDayScreen() {
     [data?.blocks, weekday],
   );
 
-  function selectWeekday(nextWeekday: Weekday) {
+  function selectWeekday(nextWeekday: SchoolWeekday) {
     if (pendingKey) return;
     setWeekday(nextWeekday);
     setSheetOpen(false);
@@ -139,7 +139,7 @@ export function SchoolDayScreen() {
     } catch (error) {
       showToast({
         title: editingBlock ? "Block wasn't updated" : "Block wasn't added",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -151,7 +151,7 @@ export function SchoolDayScreen() {
     if (pendingKey) return;
     Alert.alert(
       `Delete ${block.label}?`,
-      `${weekdayLabels[block.weekday]} schedules will no longer include this block.`,
+      `${SCHOOL_WEEKDAY_LABELS[block.weekday]} schedules will no longer include this block.`,
       [
         { text: "Keep block", style: "cancel" },
         {
@@ -173,7 +173,7 @@ export function SchoolDayScreen() {
     } catch (error) {
       showToast({
         title: "Block wasn't deleted",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -186,14 +186,14 @@ export function SchoolDayScreen() {
   return (
     <Screen title="School day">
       <ChipGroup
-        values={weekdays}
+        values={SCHOOL_WEEKDAYS}
         selected={[weekday]}
         labels={weekdayShortLabels}
         onToggle={selectWeekday}
       />
 
       <Section
-        title={weekdayLabels[weekday]}
+        title={SCHOOL_WEEKDAY_LABELS[weekday]}
         action={
           <Button
             title="Add block"
@@ -217,7 +217,7 @@ export function SchoolDayScreen() {
         ) : (
           <Empty
             icon={Clock3}
-            title={`No ${weekdayLabels[weekday]} blocks`}
+            title={`No ${SCHOOL_WEEKDAY_LABELS[weekday]} blocks`}
             body="Add the first block for this day."
           />
         )}
@@ -349,7 +349,7 @@ function BlockList({
               {block.label}
             </Txt>
             <Txt variant="caption" tone="muted" numberOfLines={1}>
-              {formatClock(block.startTime)}–{formatClock(block.endTime)} · {block.durationMinutes} min
+              {formatClockTime(block.startTime)}–{formatClockTime(block.endTime)} · {block.durationMinutes} min
             </Txt>
           </View>
           <IconButton
@@ -397,19 +397,12 @@ function validateForm(form: BlockForm) {
   return null;
 }
 
-function currentWeekday(): Weekday {
-  const index = new Date().getDay() - 1;
-  return weekdays[index] ?? "MONDAY";
-}
-
 function isTime(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value.trim());
 }
 
 function timeToMinutes(value: string) {
-  if (!isTime(value)) return Number.NaN;
-  const [hour, minute] = value.split(":").map(Number);
-  return hour * 60 + minute;
+  return isTime(value) ? clockMinutes(value) : Number.NaN;
 }
 
 function durationMinutes(startTime: string, endTime: string) {
@@ -422,10 +415,4 @@ function addMinutes(value: string, minutes: number) {
   const hour = Math.floor(total / 60);
   const minute = total % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-function formatClock(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  const suffix = hour >= 12 ? "PM" : "AM";
-  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${suffix}`;
 }

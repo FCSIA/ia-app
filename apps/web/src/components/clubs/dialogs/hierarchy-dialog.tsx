@@ -1,5 +1,8 @@
 'use client';
 
+import { clubJoinHref } from '~/apps/shared/routes';
+import { useOrigin } from '@/hooks/use-origin';
+import { flattenUnits } from '@/lib/club-units';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@/lib/convex-react';
@@ -26,9 +29,7 @@ import {
 } from 'lucide-react';
 import type {
   ClubDetail,
-  ClubHierarchy,
   ClubUnit,
-  ClubUnitMember,
 } from '@/components/clubs/types';
 import { PeoplePicker } from '@/components/clubs/people-picker';
 import { Badge } from '@/components/ui/badge';
@@ -59,29 +60,6 @@ const joinPolicyOptions: Array<{ value: UnitJoinPolicy; label: string }> = [
   { value: 'OPEN', label: 'Any club member can join' },
   { value: 'CODE', label: 'Join code or QR required' },
 ];
-
-type FlatUnit = { unit: ClubUnit; depth: number };
-
-function flattenUnits(units: ClubUnit[]) {
-  const children = new Map<string | null, ClubUnit[]>();
-  for (const unit of units) {
-    const key = unit.parentUnitId ?? null;
-    children.set(key, [...(children.get(key) ?? []), unit]);
-  }
-  for (const siblings of children.values()) {
-    siblings.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
-  }
-
-  const rows: FlatUnit[] = [];
-  const visit = (parentId: string | null, depth: number) => {
-    for (const unit of children.get(parentId) ?? []) {
-      rows.push({ unit, depth });
-      visit(unit._id, depth + 1);
-    }
-  };
-  visit(null, 0);
-  return rows;
-}
 
 function mutationError(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong';
@@ -209,7 +187,7 @@ export function ClubStructureActions({
 }
 
 export function ClubStructureEditor({ club }: { club: ClubDetail }) {
-  const hierarchy = useQuery(api.clubs.hierarchy.list, { clubId: club._id }) as ClubHierarchy | undefined;
+  const hierarchy = useQuery(api.clubs.hierarchy.list, { clubId: club._id });
   const [selectedId, setSelectedId] = useState<Id<'clubUnits'> | null>(null);
   const [createParentId, setCreateParentId] = useState<Id<'clubUnits'> | null | undefined>();
   const flatUnits = useMemo(() => flattenUnits(hierarchy?.units ?? []), [hierarchy?.units]);
@@ -543,7 +521,7 @@ function MemberManager({ club, unit }: { club: ClubDetail; unit: ClubUnit }) {
   const members = useQuery(api.clubs.hierarchy.listMembers, {
     clubId: club._id,
     unitId: unit._id,
-  }) as ClubUnitMember[] | undefined;
+  });
   const setMember = useMutation(api.clubs.hierarchy.setMember);
   const removeMember = useMutation(api.clubs.hierarchy.removeMember);
   const people = useMemo(
@@ -588,10 +566,9 @@ function MemberManager({ club, unit }: { club: ClubDetail; unit: ClubUnit }) {
 function JoinCodePanel({ clubId, unit }: { clubId: Id<'clubs'>; unit: ClubUnit }) {
   const { toast } = useToast();
   const generateJoinCode = useMutation(api.clubs.hierarchy.generateJoinCode);
-  const [origin, setOrigin] = useState('');
-  useEffect(() => setOrigin(window.location.origin), []);
+  const origin = useOrigin();
   const joinUrl = origin && unit.joinCode
-    ? `${origin}/clubs/${clubId}?unitId=${unit._id}&unitCode=${unit.joinCode}`
+    ? `${origin}${clubJoinHref(clubId, { unitId: unit._id, unitCode: unit.joinCode })}`
     : '';
   return (
     <section className="space-y-3 border-t pt-5">

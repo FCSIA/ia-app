@@ -1,14 +1,12 @@
-import type { Doc } from '~/apps/convex/src/_generated/dataModel';
+import type { FunctionReturnType } from 'convex/server';
+import type { api } from '~/apps/convex/src/_generated/api';
+import type { Pathway } from '~/apps/shared/labels';
 
-export type FlexFridayDoc = Doc<'flexFridays'>;
-export type FlexSessionDoc = Doc<'flexSessions'>;
-
-export type FlexWorkshopDoc = Omit<Doc<'flexWorkshops'>, 'sessionIds'> & { 
-  _count?: { registrations: number };
-  linkedSessions?: { _id: any; title: string; startTime: string; endTime: string }[];
-};
-
-export type SessionType = 'STUDENT_CHOICE' | 'TEACHER_ASSIGNED';
+export type FlexFriday = FunctionReturnType<typeof api.flexFriday.fridays.list>[number];
+export type FlexSession = FunctionReturnType<typeof api.flexFriday.sessions.listByFriday>[number];
+export type FlexWorkshop = FunctionReturnType<typeof api.flexFriday.workshops.listBySession>[number];
+export type SessionType = FlexSession['sessionType'];
+export type FridayType = FlexFriday['type'];
 
 export interface SessionForm {
   title: string;
@@ -25,23 +23,15 @@ export interface WorkshopForm {
   capacity: string;
   sessionIds: string[];
   targetGrades: number[];
-  targetMajorPathways: string[];
-  targetMinorPathways: string[];
+  targetMajorPathways: Pathway[];
+  targetMinorPathways: Pathway[];
 }
 
 export interface FridayForm {
   date: string;
-  type: 'ALL_STUDENT' | 'GRADE_SPECIFIC' | 'PATHWAY_SPECIFIC' | 'TEACHER_PD';
+  type: FridayType;
   gradeLevel: string;
-  pathway: string;
+  pathway: Pathway;
   notes: string;
   isSchoolDay: boolean;
 }
-
-export const PATHWAY_OPTIONS = [
-  { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
-  { value: 'HEALTH_SCIENCE', label: 'Health Science' },
-  { value: 'ENGINEERING', label: 'Engineering' },
-];
-
-export const GRADE_OPTIONS = [9, 10, 11, 12];

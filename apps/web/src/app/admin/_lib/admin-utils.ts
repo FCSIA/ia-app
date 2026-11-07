@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import type { AdminUserRecord, AdminUserRoleGroup } from './types';
+import type { AdminUserRoleGroup } from './types';
 
 export const AUDIT_FETCH_LIMIT = 50;
 
@@ -26,20 +26,12 @@ export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; e
   },
 };
 
-export function getUserRoles(user: AdminUserRecord) {
-  return user.roles ?? [];
-}
-
 export function formatRoleLabel(role: string) {
   return role.replace(/_/g, ' ');
 }
 
 export function formatPathwayLabel(pathway?: string | null) {
   return pathway ? pathway.replace(/_/g, ' ') : '—';
-}
-
-export function schoolYearLabel(startYear: number) {
-  return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
 }
 
 export function formatDateTime(value?: string | number | null) {

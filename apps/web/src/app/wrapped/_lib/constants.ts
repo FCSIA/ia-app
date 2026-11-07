@@ -1,3 +1,4 @@
+import { PATHWAY_LABELS } from '~/apps/shared/labels';
 import {
   Heart,
   Stethoscope,
@@ -20,18 +21,18 @@ export const PATHWAY_THEME: Record<
     gradient: 'from-emerald-500 via-green-600 to-teal-700',
     icon: Stethoscope,
     scatter: [Heart, Stethoscope, Beaker, Sparkles],
-    label: 'Health Science',
+    label: PATHWAY_LABELS.HEALTH_SCIENCE,
   },
   INFORMATION_TECHNOLOGY: {
     gradient: 'from-sky-500 via-blue-600 to-indigo-700',
     icon: Laptop,
     scatter: [Laptop, Cpu, Hash, Zap],
-    label: 'Information Technology',
+    label: PATHWAY_LABELS.INFORMATION_TECHNOLOGY,
   },
   ENGINEERING: {
     gradient: 'from-amber-500 via-yellow-500 to-orange-600',
     icon: Wrench,
     scatter: [Wrench, Cpu, Sparkles, Flame],
-    label: 'Engineering',
+    label: PATHWAY_LABELS.ENGINEERING,
   },
 };

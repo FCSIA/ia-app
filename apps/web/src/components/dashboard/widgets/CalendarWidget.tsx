@@ -8,6 +8,7 @@ import { Empty, EmptyDescription } from '@/components/ui/empty';
 import { CalendarEventRow } from '@/components/calendar/calendar-event-row';
 import { api } from '~/apps/convex/src/_generated/api';
 import { calendarDate } from '@/components/calendar/calendar-date';
+import { calendarWidgetHref } from '@/components/calendar/calendar-links';
 
 export function CalendarWidget() {
   const [today, setToday] = useState(() => startOfDay(calendarDate()));
@@ -69,14 +70,7 @@ export function CalendarWidget() {
                       ) === date,
                   )
                   .map((entry) => {
-                    const href =
-                      'eventId' in entry && entry.eventId
-                        ? `/events/${entry.eventId}`
-                        : 'flexFridayId' in entry && entry.flexFridayId
-                          ? '/flex-friday'
-                          : 'url' in entry && entry.url
-                            ? entry.url
-                            : `/calendar?date=${date}`;
+                    const href = calendarWidgetHref(entry, date);
                     return (
                       <Card
                         key={entry._id}

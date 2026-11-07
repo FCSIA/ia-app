@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import type { AdminTabId } from '../_hooks/use-admin-tab';
+import type { AdminTabId } from '../_lib/admin-sections';
 
 const TAB_PANEL_BASE = 'min-h-0 min-w-0 flex-1';
 

@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
-import { toClubUserRef } from "./serialize";
+import { loadTagMemberRefs } from "./serialize";
 
 export const list = query({
   args: { clubId: v.id("clubs") },
@@ -20,22 +20,10 @@ export const list = query({
       .collect();
 
     return Promise.all(
-      tags.map(async (tag) => {
-        const tagMembers = await ctx.db
-          .query("clubTagMembers")
-          .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
-          .collect();
-        const members = await Promise.all(
-          tagMembers.map(async (tm) => {
-            const u = await ctx.db.get(tm.userId);
-            return u ? { user: toClubUserRef(u) } : null;
-          }),
-        );
-        return {
-          ...tag,
-          members: members.filter((m): m is NonNullable<typeof m> => !!m),
-        };
-      }),
+      tags.map(async (tag) => ({
+        ...tag,
+        members: await loadTagMemberRefs(ctx, tag._id),
+      })),
     );
   },
 });

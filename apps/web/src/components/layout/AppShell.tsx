@@ -10,7 +10,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { startLogout, useCurrentUser } from "@/lib/auth";
-import { useAppFrameActions } from "@/components/layout/app-frame-context";
+import { useAppFrameActions, useCommandHint } from "@/components/layout/app-frame-context";
 import type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
 import {
   AppShellHeader,
@@ -23,7 +23,6 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
-export type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
 
 export function AppShell({
   children,
@@ -33,8 +32,7 @@ export function AppShell({
   mainClassName,
   pageTransitionClassName,
   channelSearch,
-  scheduleTab,
-  scheduleSection,
+  activeHref,
   pageNavigation,
   onMobileSwipeRight,
   mobileNavigationSwipeOptions,
@@ -48,8 +46,7 @@ export function AppShell({
   mainClassName?: string;
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
-  scheduleTab?: string;
-  scheduleSection?: string;
+  activeHref?: string;
   pageNavigation?: AppPageNavigation;
   onMobileSwipeRight?: () => void;
   mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
@@ -61,7 +58,7 @@ export function AppShell({
   const navigationLoading = useNavigationLoadingOptional();
   const { register, unregister, openGlobalSearch } = useAppFrameActions();
   const owner = useRef(Symbol("AppShell"));
-  const [commandHint, setCommandHint] = useState(false);
+  const commandHint = useCommandHint();
   const [searchScope, setSearchScope] = useState<SearchScope>("everything");
   const onProgress = mobileNavigationSwipeOptions?.onProgress;
   const onCancel = mobileNavigationSwipeOptions?.onCancel;
@@ -72,23 +69,19 @@ export function AppShell({
   useLayoutEffect(() => {
     register(owner.current, {
       pathname,
-      scheduleTab,
-      scheduleSection,
+      activeHref,
       pageNavigation,
       viewportMode,
       onMobileSwipeRight,
       mobileNavigationSwipeOptions:
         onProgress || onCancel ? { onProgress, onCancel } : undefined,
     });
-  }, [register, pathname, scheduleTab, scheduleSection, pageNavigation, viewportMode, onMobileSwipeRight, onProgress, onCancel]);
+  }, [register, pathname, activeHref, pageNavigation, viewportMode, onMobileSwipeRight, onProgress, onCancel]);
   useLayoutEffect(() => {
     const token = owner.current;
     return () => unregister(token);
   }, [unregister]);
 
-  useEffect(() => {
-    setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
-  }, []);
   useEffect(() => setSearchScope("everything"), [pathname]);
 
   const toggleSearchScope = () => {

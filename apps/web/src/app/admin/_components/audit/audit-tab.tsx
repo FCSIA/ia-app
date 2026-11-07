@@ -26,7 +26,7 @@ function auditCountLabel(audit: ReturnType<typeof useAdminAudit>) {
 }
 
 export function AuditTab() {
-  const audit = useAdminAudit('audit');
+  const audit = useAdminAudit();
   const total = audit.auditCounts?.total;
   const liveCount = auditCountLabel(audit);
   // A refresh keeps the previous rows on screen, so it keeps their count too.

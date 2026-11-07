@@ -1,3 +1,6 @@
+import { MAX_EVENT_DESCRIPTION_CHARACTERS, MAX_EVENT_TITLE_CHARACTERS } from "~/apps/shared/limits";
+import { errorMessage } from "@/lib/errors";
+import { EVENT_GENERAL_CREATOR_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@/lib/convex-react";
 import { Button, ChipGroup, Sheet, TextField, Txt, useToast } from "@/components/ui";
@@ -17,9 +20,7 @@ export function CreateEventSheet({ open, onClose, defaultClubId }: CreateEventSh
   const createEvent = useMutation(api.events.events.create);
   const { showToast } = useToast();
 
-  const canCreateGeneral = !!user?.roles?.some((role) =>
-    ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
-  );
+  const canCreateGeneral = hasAnyRole(user, EVENT_GENERAL_CREATOR_ROLES);
 
   const availableClubs = useMemo(
     () =>
@@ -88,7 +89,7 @@ export function CreateEventSheet({ open, onClose, defaultClubId }: CreateEventSh
     } catch (error) {
       showToast({
         title: "Event not submitted",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -102,13 +103,13 @@ export function CreateEventSheet({ open, onClose, defaultClubId }: CreateEventSh
         value={form.title}
         onChangeText={(title) => setForm((current) => ({ ...current, title }))}
         placeholder="Title"
-        maxLength={160}
+        maxLength={MAX_EVENT_TITLE_CHARACTERS}
       />
       <TextField
         value={form.description}
         onChangeText={(description) => setForm((current) => ({ ...current, description }))}
         placeholder="Description (optional)"
-        maxLength={2000}
+        maxLength={MAX_EVENT_DESCRIPTION_CHARACTERS}
         multiline
       />
       <TextField

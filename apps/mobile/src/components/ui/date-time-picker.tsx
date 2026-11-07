@@ -77,7 +77,6 @@ export function DateTimePicker({
     );
   }
 
-  // Android
   return (
     <View>
       <Button

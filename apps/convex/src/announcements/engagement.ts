@@ -1,3 +1,4 @@
+import { isAdmin } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
@@ -164,9 +165,8 @@ export const archive = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
 
-    const isAdmin =
-      user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
-    if (ann.authorId !== user._id && !isAdmin) {
+    const viewerIsAdmin = isAdmin(user);
+    if (ann.authorId !== user._id && !viewerIsAdmin) {
       throw new ConvexError("Cannot archive this announcement");
     }
 

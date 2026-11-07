@@ -20,7 +20,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
-import { fullName, isSponsorEligible } from '@/components/clubs/types';
+import { isSponsorEligible } from '@/components/clubs/types';
+import { displayName } from '~/apps/shared/user-name';
 import { useToast } from '@/hooks/use-toast';
 
 type Props = {
@@ -66,7 +67,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
       }
     }
 
-    return options.sort((a, b) => fullName(a).localeCompare(fullName(b)));
+    return options.sort((a, b) => displayName(a).localeCompare(displayName(b)));
   }, [staffPage?.page]);
 
   const createClub = useMutation(api.clubs.management.create);
@@ -115,7 +116,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
                   <SelectGroup>
                     {sponsorOptions.map((person, index) => (
                       <SelectItem key={person._id} index={index} value={person._id}>
-                        {fullName(person)}
+                        {displayName(person)}
                       </SelectItem>
                     ))}
                   </SelectGroup>

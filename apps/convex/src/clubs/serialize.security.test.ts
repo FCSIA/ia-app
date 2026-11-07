@@ -25,14 +25,6 @@ describe("club payload serialization", () => {
   });
 
   test("never exposes club join codes in list summaries", async () => {
-    const collect = async () => [];
-    const ctx = {
-      db: {
-        query: () => ({
-          withIndex: () => ({ collect }),
-        }),
-      },
-    };
     const club = {
       _id: "club",
       _creationTime: 1,
@@ -44,7 +36,10 @@ describe("club payload serialization", () => {
       updatedAt: 1,
     } as unknown as Doc<"clubs">;
 
-    const summary = await clubSummaryWithCounts(ctx as never, club);
+    const summary = await clubSummaryWithCounts({} as never, club, null, {
+      members: 0,
+      channels: 0,
+    });
     expect(summary).not.toHaveProperty("joinCode");
   });
 });

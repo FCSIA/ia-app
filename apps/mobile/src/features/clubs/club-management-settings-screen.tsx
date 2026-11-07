@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { isAdmin } from "~/apps/shared/roles";
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
@@ -14,7 +16,7 @@ import {
   parseMemberLimit,
   type ClubJoinPolicy,
 } from "@/features/clubs/club-management-controls";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -36,7 +38,7 @@ export function ClubManagementSettingsScreen() {
           club.viewer?.canManageMembership ? (
             <ClubSettingsForm key={club._id} club={club} />
           ) : (
-            <Redirect href={`/clubs/${club._id}` as never} />
+            <Redirect href={`/clubs/${club._id}`} />
           )
         }
       </DataBoundary>
@@ -59,7 +61,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
   const [deactivating, setDeactivating] = useState(false);
   const { showToast } = useToast();
   const { color } = useTheme();
-  const canDeactivate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const canDeactivate = isAdmin(user);
   const parsedMemberLimit = memberLimit.trim() ? parseMemberLimit(memberLimit) : undefined;
   const limitIsValid = parsedMemberLimit !== null && !(club.memberLimit !== undefined && parsedMemberLimit === undefined);
   const nextName = name.trim();
@@ -89,7 +91,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
     } catch (error) {
       showToast({
         title: "Settings weren't saved",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -103,11 +105,11 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
     try {
       await deactivateClub({ clubId: club._id });
       showToast({ title: "Club deactivated", tone: "success" });
-      router.replace("/clubs" as never);
+      router.replace("/clubs");
     } catch (error) {
       showToast({
         title: "Club wasn't deactivated",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -180,7 +182,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel="Manage mention groups"
-          onPress={() => router.push(`/clubs/${club._id}/tags` as never)}
+          onPress={() => router.push(`/clubs/${club._id}/tags`)}
           style={{
             minHeight: 52,
             flexDirection: "row",

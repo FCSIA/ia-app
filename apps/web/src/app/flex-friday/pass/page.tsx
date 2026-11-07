@@ -6,7 +6,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
-import { getUser } from '@/lib/auth';
+import { useCurrentUser, type AppUser } from '@/lib/auth';
+import { useMounted } from '@/hooks/use-mounted';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
@@ -21,9 +22,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { workshopDetailHref } from '../_utils';
+import { formatTimeRange } from '../_utils';
+import { workshopDetailHref } from '@/lib/routes';
 
 type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
 type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
@@ -38,16 +40,8 @@ type FridayGroup = {
   passes: PassRecord[];
 };
 
-function formatTimeRange(start?: string | null, end?: string | null) {
-  const fmt = (t?: string | null) => {
-    if (!t) return '';
-    const [h, m] = t.split(':').map((x) => parseInt(x, 10));
-    const hour12 = ((h + 11) % 12) + 1;
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
-  };
-  if (!start && !end) return '';
-  return `${fmt(start)} – ${fmt(end)}`;
+function passTimeRange(start?: string | null, end?: string | null) {
+  return !start && !end ? '' : formatTimeRange(start, end);
 }
 
 function fridayForPass(pass: PassRecord) {
@@ -77,13 +71,8 @@ export default function FlexFridayPassPage() {
 }
 
 function FlexFridayPassContent() {
-  // `getUser()` reads localStorage → null on the server. Defer user-derived
-  // render output until after mount so SSR and the first client render match.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  const user = mounted ? getUser() : null;
+  const mounted = useMounted();
+  const user = useCurrentUser();
   const searchParams = useSearchParams();
   const requestedFridayId = searchParams?.get('fridayId') ?? null;
 
@@ -102,8 +91,8 @@ function FlexFridayPassContent() {
 
   const allPasses = useMemo<PassRecord[]>(
     () => [
-      ...(myRegs as any[]).map((r: any) => ({ ...r, kind: 'REGISTERED' as const })),
-      ...(myAssignments as any[]).map((a: any) => ({ ...a, kind: 'ASSIGNED' as const })),
+      ...myRegs.map((registration) => ({ ...registration, kind: 'REGISTERED' as const })),
+      ...myAssignments.map((assignment) => ({ ...assignment, kind: 'ASSIGNED' as const })),
     ],
     [myRegs, myAssignments],
   );
@@ -148,7 +137,6 @@ function FlexFridayPassContent() {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl">
-        {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <Link href="/flex-friday">
             <Button variant="ghost" size="sm" leadingIcon={ArrowLeft} className="h-8">
@@ -168,7 +156,6 @@ function FlexFridayPassContent() {
           </div>
         </div>
 
-        {/* Friday selector */}
         {fridayGroups.length > 1 ? (
           <div className="mb-5 flex flex-wrap gap-2">
             {fridayGroups.map((group) => {
@@ -196,7 +183,6 @@ function FlexFridayPassContent() {
           </div>
         ) : null}
 
-        {/* Body */}
         {isLoading ? (
           <Card>
             <CardContent className="h-48 animate-pulse p-0" />
@@ -230,7 +216,7 @@ function PassCard({
   isPast,
 }: {
   group: FridayGroup;
-  user: ReturnType<typeof getUser>;
+  user: AppUser | null;
   isPast: boolean;
 }) {
   // Sort workshops by earliest session start time
@@ -243,7 +229,6 @@ function PassCard({
   return (
     <Card className={cn('relative', isPast ? 'opacity-70' : '')}>
       <CardContent className="p-5">
-        {/* Header: Friday date + meta */}
         <div className="mb-4 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -266,7 +251,6 @@ function PassCard({
           </div>
         </div>
 
-        {/* Workshops list */}
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {sortedPasses.length} workshop{sortedPasses.length === 1 ? '' : 's'}
@@ -276,7 +260,6 @@ function PassCard({
           ))}
         </div>
 
-        {/* Footer: student identity */}
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs">
           <div className="text-muted-foreground">
             <span className="font-semibold text-foreground">
@@ -352,12 +335,12 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
         <div className="flex-shrink-0 text-right">
           <div className="flex items-center justify-end gap-1 text-sm font-semibold tabular-nums text-foreground">
             <Clock size={13} className="text-muted-foreground" />
-            {first ? formatTimeRange(first.startTime, first.endTime) : '—'}
+            {first ? passTimeRange(first.startTime, first.endTime) : '—'}
           </div>
           {linkedSessions.length > 1 ? (
             <div className="text-[10px] text-muted-foreground">
               through{' '}
-              {formatTimeRange(
+              {passTimeRange(
                 undefined,
                 linkedSessions[linkedSessions.length - 1].endTime,
               ).replace(/^ – /, '')}
@@ -375,7 +358,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
             >
               <span className="truncate">{session.title}</span>
               <span className="flex-shrink-0 tabular-nums">
-                {formatTimeRange(session.startTime, session.endTime)}
+                {passTimeRange(session.startTime, session.endTime)}
               </span>
             </div>
           ))}

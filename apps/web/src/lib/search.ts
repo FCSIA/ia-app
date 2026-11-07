@@ -1,10 +1,10 @@
-export type SearchValue = string | number | null | undefined
+type SearchValue = string | number | null | undefined
 
-export function normalizeSearchQuery(query: string) {
+function normalizeSearchQuery(query: string) {
   return query.trim().toLowerCase()
 }
 
-export function buildSearchText(values: readonly SearchValue[]) {
+function buildSearchText(values: readonly SearchValue[]) {
   return values
     .filter((value): value is string | number => value !== null && value !== undefined)
     .map((value) => String(value).trim())

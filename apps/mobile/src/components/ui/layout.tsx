@@ -1,10 +1,9 @@
-import { createContext, use } from "react";
 import {
   StyleSheet,
   View,
-  useWindowDimensions,
   type ViewProps,
 } from "react-native";
+import { joinClassNames } from "@/lib/class-names";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 
@@ -24,26 +23,10 @@ type InlineProps = ViewProps & {
   wrap?: "none" | "wrap";
 };
 
-type InsetProps = ViewProps & {
-  size?: LayoutSpacing;
-  axis?: "all" | "horizontal" | "vertical";
-};
-
 type DividerProps = Omit<ViewProps, "children"> & {
   orientation?: "horizontal" | "vertical";
   inset?: LayoutSpacing;
 };
-
-type AdaptiveSplitProps = ViewProps & {
-  breakpoint?: number;
-  gap?: LayoutSpacing;
-};
-
-type AdaptivePaneProps = ViewProps & {
-  priority?: "equal" | "primary" | "secondary";
-};
-
-const AdaptiveSplitContext = createContext(false);
 
 const gapClasses: Record<LayoutSpacing, string> = {
   none: "gap-0",
@@ -72,39 +55,6 @@ const distributionClasses: Record<InlineDistribution, string> = {
 const wrapClasses: Record<NonNullable<InlineProps["wrap"]>, string> = {
   none: "flex-nowrap",
   wrap: "flex-wrap",
-};
-
-const insetClasses: Record<
-  NonNullable<InsetProps["axis"]>,
-  Record<LayoutSpacing, string>
-> = {
-  all: {
-    none: "p-0",
-    xs: "p-1",
-    sm: "p-2",
-    md: "p-3",
-    lg: "p-4",
-    xl: "p-6",
-    "2xl": "p-8",
-  },
-  horizontal: {
-    none: "px-0",
-    xs: "px-1",
-    sm: "px-2",
-    md: "px-3",
-    lg: "px-4",
-    xl: "px-6",
-    "2xl": "px-8",
-  },
-  vertical: {
-    none: "py-0",
-    xs: "py-1",
-    sm: "py-2",
-    md: "py-3",
-    lg: "py-4",
-    xl: "py-6",
-    "2xl": "py-8",
-  },
 };
 
 const spacingValues: Record<LayoutSpacing, number> = {
@@ -154,20 +104,6 @@ export function Inline({
   );
 }
 
-export function Inset({
-  size = "md",
-  axis = "all",
-  className,
-  ...props
-}: InsetProps) {
-  return (
-    <View
-      className={joinClassNames(insetClasses[axis][size], className)}
-      {...props}
-    />
-  );
-}
-
 export function Divider({
   orientation = "horizontal",
   inset = "none",
@@ -194,55 +130,4 @@ export function Divider({
       {...props}
     />
   );
-}
-
-export function AdaptiveSplit({
-  breakpoint = 768,
-  gap = "lg",
-  style,
-  ...props
-}: AdaptiveSplitProps) {
-  const { width } = useWindowDimensions();
-  const split = width >= breakpoint;
-
-  return (
-    <AdaptiveSplitContext value={split}>
-      <View
-        className="w-full"
-        style={[
-          {
-            flexDirection: split ? "row" : "column",
-            alignItems: "flex-start",
-            gap: spacingValues[gap],
-          },
-          style,
-        ]}
-        {...props}
-      />
-    </AdaptiveSplitContext>
-  );
-}
-
-export function AdaptivePane({
-  priority = "equal",
-  style,
-  ...props
-}: AdaptivePaneProps) {
-  const split = use(AdaptiveSplitContext);
-  const flex =
-    priority === "primary" ? 1.35 : priority === "secondary" ? 0.8 : 1;
-
-  return (
-    <View
-      style={[
-        split ? { minWidth: 0, flex } : { width: "100%", alignSelf: "stretch" },
-        style,
-      ]}
-      {...props}
-    />
-  );
-}
-
-function joinClassNames(...names: Array<string | undefined>) {
-  return names.filter(Boolean).join(" ");
 }

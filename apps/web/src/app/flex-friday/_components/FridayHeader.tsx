@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { CreditsSummary } from './CreditsSummary';
-import type { FlexFridayDoc } from '../_types';
+import type { FlexFriday } from '../_types';
 
 interface Props {
-  fridays: FlexFridayDoc[];
-  selectedFriday: FlexFridayDoc | null;
-  onSelectFriday: (friday: FlexFridayDoc) => void;
+  fridays: FlexFriday[];
+  selectedFriday: FlexFriday | null;
+  onSelectFriday: (friday: FlexFriday) => void;
   onAddFriday: () => void;
   canManage: boolean;
   isStudent: boolean;

@@ -3,54 +3,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import type { MobileTabId } from "./app-shell-navigation";
+import { readStorage, writeStorage } from "@/lib/browser-storage";
+import { isScheduleFriendsTab, isUnderPath, MOBILE_TAB_ROUTES, type MobileTabId } from "@/lib/routes";
 
-const ROOT_BY_TAB: Record<MobileTabId, string> = {
-  announcements: "/announcements",
-  clubs: "/clubs",
-  schedule: "/schedule",
-  calendar: "/calendar",
-  events: "/events",
-  "flex-friday": "/flex-friday",
-  wrapped: "/wrapped",
-};
+type TabKey = MobileTabId | "dashboard";
 
-const DASHBOARD_KEY = "ia:mobile-last:dashboard";
+const ROOT_BY_TAB = Object.fromEntries(
+  MOBILE_TAB_ROUTES.map((route) => [route.id, route.path]),
+) as Record<MobileTabId, string>;
 
-export function tabIdForPathname(pathname: string): MobileTabId | "dashboard" | null {
-  if (pathname === "/") return "dashboard";
-  for (const [id, root] of Object.entries(ROOT_BY_TAB) as Array<[MobileTabId, string]>) {
-    if (pathname === root || pathname.startsWith(`${root}/`) || pathname.startsWith(`${root}?`)) return id;
-  }
-  return null;
-}
-
-function storageKey(tabId: MobileTabId) {
+function storageKey(tabId: TabKey) {
   return `ia:mobile-last:${tabId}`;
 }
 
-function isSocialSchedule(path: string) {
-  const [pathname, query] = path.split("?");
-  const tab = new URLSearchParams(query).get("tab");
-  return pathname.startsWith("/schedule/groups/") || tab === "friends" || tab === "groups";
+export function tabIdForPathname(pathname: string): TabKey | null {
+  if (pathname === "/") return "dashboard";
+  const route = MOBILE_TAB_ROUTES.find((candidate) => isUnderPath(pathname, candidate.path));
+  return route?.id ?? null;
 }
 
-export function readStored(tabId: MobileTabId | "dashboard"): string | null {
-  try {
-    const key = tabId === "dashboard" ? DASHBOARD_KEY : storageKey(tabId);
-    const raw = window.localStorage.getItem(key);
-    if (!raw || (tabId === "schedule" && isSocialSchedule(raw))) return null;
-    if (tabId === "dashboard") {
-      // Migrate saved Home destinations without treating every route as Home.
-      const home = raw.replace(/^\/(?:dashboard|home)(?=\?|$)/, "/");
-      return home === "/" || home.startsWith("/?") ? home : null;
-    }
-    const root = ROOT_BY_TAB[tabId];
-    if (raw !== root && !raw.startsWith(`${root}/`) && !raw.startsWith(`${root}?`) ) return null;
-    return raw;
-  } catch {
-    return null;
+function isSocialSchedule(path: string) {
+  const [, query] = path.split("?");
+  return isScheduleFriendsTab(new URLSearchParams(query).get("tab"));
+}
+
+export function readStored(tabId: TabKey): string | null {
+  const raw = readStorage(storageKey(tabId));
+  if (!raw || (tabId === "schedule" && isSocialSchedule(raw))) return null;
+  if (tabId === "dashboard") {
+    // Migrate saved Home destinations without treating every route as Home.
+    const home = raw.replace(/^\/(?:dashboard|home)(?=\?|$)/, "/");
+    return home === "/" || home.startsWith("/?") ? home : null;
   }
+  const root = ROOT_BY_TAB[tabId];
+  return raw === root || raw.startsWith(`${root}/`) || raw.startsWith(`${root}?`) ? raw : null;
 }
 
 export function useMobileTabMemory() {
@@ -62,36 +48,29 @@ export function useMobileTabMemory() {
     return qs ? `${base}?${qs}` : base;
   }, [pathname, searchParams]);
 
-  const [lastByTab, setLastByTab] = useState<Partial<Record<MobileTabId | "dashboard", string>>>({});
+  const [lastByTab, setLastByTab] = useState<Partial<Record<TabKey, string>>>({});
 
-  // Hydrate from localStorage on mount
   useEffect(() => {
-    const next: Partial<Record<MobileTabId | "dashboard", string>> = {};
-    for (const tabId of Object.keys(ROOT_BY_TAB) as MobileTabId[]) {
+    const next: Partial<Record<TabKey, string>> = {};
+    for (const tabId of ["dashboard", ...MOBILE_TAB_ROUTES.map((route) => route.id)] as TabKey[]) {
       const stored = readStored(tabId);
       if (stored) next[tabId] = stored;
     }
-    const dash = readStored("dashboard");
-    if (dash) next["dashboard"] = dash;
     setLastByTab(next);
   }, []);
 
-  // Persist current location as last for its tab
   useEffect(() => {
     if (!pathname) return;
     const tabId = tabIdForPathname(pathname);
     if (!tabId || (tabId === "schedule" && isSocialSchedule(fullPath))) return;
-    const key = tabId === "dashboard" ? DASHBOARD_KEY : storageKey(tabId as MobileTabId);
-    try {
-      window.localStorage.setItem(key, fullPath);
-    } catch {}
+    writeStorage(storageKey(tabId), fullPath);
     setLastByTab((prev) => (prev[tabId] === fullPath ? prev : { ...prev, [tabId]: fullPath }));
   }, [pathname, fullPath]);
 
   const getHref = (tabId: MobileTabId | undefined, fallbackHref: string) => {
-    if (fallbackHref === "/") return (lastByTab["dashboard"] as string | undefined) ?? fallbackHref;
+    if (fallbackHref === "/") return lastByTab.dashboard ?? fallbackHref;
     if (!tabId) return fallbackHref;
-    return (lastByTab[tabId] as string | undefined) ?? fallbackHref;
+    return lastByTab[tabId] ?? fallbackHref;
   };
 
   return { lastByTab, getHref };

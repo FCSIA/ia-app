@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { useAction, useMutation, useQuery } from "@/lib/convex-react";
@@ -75,7 +76,7 @@ export function RosterScreen() {
     } catch (error) {
       showToast({
         title: "Could not open CSV",
-        body: error instanceof Error ? error.message : "Choose the file again.",
+        body: errorMessage(error, "Choose the file again."),
         tone: "warning",
       });
     } finally {
@@ -131,7 +132,7 @@ export function RosterScreen() {
     } catch (error) {
       showToast({
         title: "Import failed",
-        body: error instanceof Error ? error.message : "No accounts were imported. Try again.",
+        body: errorMessage(error, "No accounts were imported. Try again."),
         tone: "warning",
       });
     } finally {
@@ -152,7 +153,7 @@ export function RosterScreen() {
     } catch (error) {
       showToast({
         title: "Export failed",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -169,7 +170,7 @@ export function RosterScreen() {
     } catch (error) {
       showToast({
         title: "Could not share credentials",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

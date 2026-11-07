@@ -1,5 +1,6 @@
 "use client";
 
+import { isAdmin, isSuperAdmin } from "~/apps/shared/roles";
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@/lib/convex-react";
@@ -22,7 +23,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchInput } from "@/components/ui/search";
 import { Skeleton } from "@/components/ui/skeleton";
-import { hasRole, isSuperAdmin, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { filterBySearchQuery } from "@/lib/search";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
@@ -42,7 +43,7 @@ export default function DiscoverClubsPage() {
   const deferredSearch = useDeferredValue(search);
   const [createOpen, setCreateOpen] = useState(false);
   const hasAdministrativeClubAccess = isSuperAdmin(user);
-  const canCreate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const canCreate = isAdmin(user);
 
   const allClubsData = useQuery(api.clubs.management.getAll);
   const allClubs = allClubsData ?? [];

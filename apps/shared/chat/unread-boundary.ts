@@ -1,3 +1,5 @@
+import { isOptimisticId } from "./protocol";
+
 type TimelineMessage = {
   _id: string;
   createdAt: number | string;
@@ -44,7 +46,7 @@ export function firstUnreadChannelMessageId(
       return (
         !message.isDeleted &&
         !(viewerId && (message.authorId ?? message.author?._id) === viewerId) &&
-        !message._id.startsWith('optimistic:') &&
+        !isOptimisticId(message._id) &&
         createdAt > boundary.lastReadAt &&
         createdAt <= boundary.latestMessageAt
       );

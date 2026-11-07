@@ -1,8 +1,9 @@
 import { ConvexError } from "convex/values";
 import { portableMentionTokens } from "./channelMarkdown";
 
-export const MAX_CHANNEL_MENTION_TOKENS = 20;
+const MAX_CHANNEL_MENTION_TOKENS = 20;
 export const MAX_CHANNEL_MENTION_RECIPIENTS = 50;
+export const MENTION_GROUP_TOO_LARGE_MESSAGE = `Mention groups can include at most ${MAX_CHANNEL_MENTION_RECIPIENTS} people`;
 
 /**
  * Group mentions use a compact token so `School Leads`, `school-leads`, and
@@ -23,7 +24,7 @@ export function boundedPortableMentionTokens(body: string, bodyMarkdown?: string
   }
   const deduplicated = Array.from(byNormalizedToken.values());
   if (deduplicated.length > MAX_CHANNEL_MENTION_TOKENS) {
-    throw new ConvexError("A message can include at most 20 mentions");
+    throw new ConvexError(`A message can include at most ${MAX_CHANNEL_MENTION_TOKENS} mentions`);
   }
   return deduplicated;
 }
@@ -47,7 +48,7 @@ export function addBoundedMentionRecipients<T>(
   for (const recipient of additions) {
     recipients.add(recipient);
     if (recipients.size > MAX_CHANNEL_MENTION_RECIPIENTS) {
-      throw new ConvexError("Mention groups can include at most 50 people");
+      throw new ConvexError(MENTION_GROUP_TOO_LARGE_MESSAGE);
     }
   }
 }

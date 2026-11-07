@@ -1,4 +1,7 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
+import { lunchPeriodNumber } from "../../../shared/school-time";
+import { acceptedFriendIds } from "./_friends";
 import { internalMutation } from "../_generated/server";
 import {
   BASE_BLOCKS,
@@ -10,7 +13,6 @@ import {
   stableLunchPeriod,
 } from "../../seed-data/schedule";
 import {
-  isStudentUser,
   scheduleSeedResultValidator,
   deleteSeedBatch,
   getFriendshipBetween,
@@ -60,7 +62,7 @@ export const seedFromStaticData = internalMutation({
       .filter(
         (user) =>
           user.isActive &&
-          isStudentUser(user) &&
+          isStudent(user) &&
           user.gradeLevel &&
           user.major &&
           user.minor,
@@ -107,7 +109,7 @@ export const seedFromStaticData = internalMutation({
       const scheduleCourses = buildScheduleCourses(student, courseMap);
       if (scheduleCourses.length === 0) continue;
       const lunchPeriod = stableLunchPeriod(student.uniqueId);
-      const lunchNumber = lunchPeriod === "PERIOD_4" ? 4 : 5;
+      const lunchNumber = lunchPeriodNumber(lunchPeriod);
       const instructionalPeriods = [1, 2, 3, 4, 5, 6, 7, 8].filter(
         (periodNumber) => periodNumber !== lunchNumber,
       );
@@ -183,26 +185,7 @@ export const seedFromStaticData = internalMutation({
             createdAt: now,
             updatedAt: now,
           });
-          const [outgoing, incoming] = await Promise.all([
-            ctx.db
-              .query("studentScheduleFriends")
-              .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
-                q.eq("requesterId", owner._id).eq("status", "ACCEPTED"),
-              )
-              .take(4),
-            ctx.db
-              .query("studentScheduleFriends")
-              .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
-                q.eq("addresseeId", owner._id).eq("status", "ACCEPTED"),
-              )
-              .take(4),
-          ]);
-          const friendIds = Array.from(
-            new Set([
-              ...outgoing.map((friendship) => friendship.addresseeId),
-              ...incoming.map((friendship) => friendship.requesterId),
-            ]),
-          ).slice(0, 4);
+          const friendIds = (await acceptedFriendIds(ctx, owner._id, 4)).slice(0, 4);
           for (const friendId of friendIds) {
             await ctx.db.insert("studentScheduleGroupMembers", {
               groupId,

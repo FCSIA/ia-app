@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalizeMobileTabLayout,
-  type MobileTabId,
-} from "./mobile-tab-layout";
+import { normalizeMobileTabLayout } from "./mobile-tab-layout";
+import type { MobileTabId } from "@/lib/routes";
 
 const available: MobileTabId[] = [
   "announcements",

@@ -38,7 +38,6 @@ import {
 } from "./chat-markdown";
 import { mentionInsertion, type ChatMentionSuggestion } from "./mention-format";
 
-export type { ChatMentionSuggestion } from "./mention-format";
 
 type ComposerPanel = "tools" | "formatting" | null;
 

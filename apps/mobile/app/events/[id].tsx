@@ -1,3 +1,6 @@
+import { errorMessage } from "@/lib/errors";
+import { sentenceCaseEnum } from "~/apps/shared/labels";
+import { EVENT_CANCEL_ANY_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -24,7 +27,7 @@ export default function EventDetailScreen() {
   const [isReporting, setIsReporting] = useState(false);
   const { showToast } = useToast();
   const { color } = useTheme();
-  const canAdminCancel = !!user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role));
+  const canAdminCancel = hasAnyRole(user, EVENT_CANCEL_ANY_ROLES);
 
   async function handleCancel(eventId: any) {
     setIsCancelling(true);
@@ -34,7 +37,7 @@ export default function EventDetailScreen() {
     } catch (error) {
       showToast({
         title: "Couldn’t cancel event",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setIsCancelling(false);
@@ -56,7 +59,7 @@ export default function EventDetailScreen() {
     } catch (error) {
       showToast({
         title: "Report not sent",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
       });
     } finally {
       setIsReporting(false);
@@ -82,7 +85,7 @@ export default function EventDetailScreen() {
                   </Txt>
                   {item.status !== "PUBLISHED" ? (
                     <Badge
-                      label={sentenceCase(item.status ?? "Event")}
+                      label={sentenceCaseEnum(item.status ?? "Event")}
                       color={item.status === "CANCELLED" ? "red" : "amber"}
                     />
                   ) : null}
@@ -98,7 +101,7 @@ export default function EventDetailScreen() {
 
               <Section title="Details">
                 <View>
-                  <DetailRow label="Type" value={item.type ? sentenceCase(item.type) : null} />
+                  <DetailRow label="Type" value={item.type ? sentenceCaseEnum(item.type) : null} />
                   <DetailRow label="Organizer" value={organizer} last />
                 </View>
               </Section>
@@ -201,7 +204,3 @@ function DetailRow({
   );
 }
 
-function sentenceCase(value: string) {
-  const text = value.toLowerCase().replaceAll("_", " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}

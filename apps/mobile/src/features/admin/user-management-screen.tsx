@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { displayName } from '~/apps/shared/user-name';
 import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
@@ -19,10 +20,18 @@ import {
   Txt,
   useToast,
 } from "@/components/ui";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
-import type { AppRole } from "~/apps/convex/lib/roles";
+import {
+  APP_ROLES,
+  type AppRole,
+  canGrantRole,
+  canManageUser,
+  canResetUserPassword,
+  isSuperAdmin,
+  ROLE_LABELS,
+} from "~/apps/shared/roles";
 import { api } from "~/apps/convex/src/_generated/api";
 
 type AdminUser = FunctionReturnType<typeof api.users.admin.list>["page"][number];
@@ -35,28 +44,6 @@ const ROLE_GROUPS = [
   { label: "Student admin", value: "student-admin" },
   { label: "Other", value: "other" },
 ] as const satisfies readonly { label: string; value: RoleGroup }[];
-
-const ROLES = [
-  "STUDENT",
-  "STUDENT_LEADER",
-  "STUDENT_ADMIN",
-  "TEACHER",
-  "SPONSOR",
-  "SUPPORT_STAFF",
-  "ADMIN",
-  "SUPER_ADMIN",
-] as const satisfies readonly AppRole[];
-
-const ROLE_LABELS: Record<AppRole, string> = {
-  STUDENT: "Student",
-  STUDENT_LEADER: "Student leader",
-  STUDENT_ADMIN: "Student admin",
-  TEACHER: "Teacher",
-  SPONSOR: "Sponsor",
-  SUPPORT_STAFF: "Support staff",
-  ADMIN: "Admin",
-  SUPER_ADMIN: "Super admin",
-};
 
 export function UserManagementScreen() {
   const actor = useLiveCurrentUser();
@@ -85,20 +72,11 @@ export function UserManagementScreen() {
   const assignRoles = useMutation(api.users.admin.assignRoles);
   const resetPassword = useMutation(api.users.admin.resetPassword);
 
-  const actorIsAdmin = !!actor && hasRole(actor, "ADMIN", "SUPER_ADMIN");
-  const actorIsSuperAdmin = !!actor && hasRole(actor, "SUPER_ADMIN");
-  const targetIsPrivileged = selectedUser?.roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN") ?? false;
-  const targetIsStudent = selectedUser?.roles.some((role) =>
-    role === "STUDENT" || role === "STUDENT_LEADER" || role === "STUDENT_ADMIN",
-  ) ?? false;
   const isSelf = selectedUser?._id === actor?._id;
-  const canManageSelected = !!selectedUser && actorIsAdmin && (!targetIsPrivileged || actorIsSuperAdmin);
-  const canResetSelected = !!selectedUser && (
-    canManageSelected || (!!actor && hasRole(actor, "SUPPORT_STAFF") && targetIsStudent)
-  );
-  const availableRoles = actorIsSuperAdmin
-    ? ROLES
-    : ROLES.filter((role) => role !== "ADMIN" && role !== "SUPER_ADMIN");
+  const canManageSelected = !!selectedUser && canManageUser(actor, selectedUser);
+  const canResetSelected = !!selectedUser && canResetUserPassword(actor, selectedUser);
+  const actorIsSuperAdmin = isSuperAdmin(actor);
+  const availableRoles = APP_ROLES.filter((role) => canGrantRole(actorIsSuperAdmin, role));
 
   function openUser(user: AdminUser) {
     setSelectedUser(user);
@@ -121,7 +99,7 @@ export function UserManagementScreen() {
     } catch (error) {
       showToast({
         title: `${label} failed`,
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
       return false;
@@ -180,7 +158,7 @@ export function UserManagementScreen() {
     } catch (error) {
       showToast({
         title: "Password reset failed",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

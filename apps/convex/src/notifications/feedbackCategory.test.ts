@@ -9,36 +9,18 @@ import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import { resolveNotificationPreference } from "./deliveryPreference";
 import { preferenceDeliveryDecision } from "./delivery";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../lib/currentUser")>();
-  const getUser = async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  };
-  return {
-    ...original,
-    getMaybeCurrentAppUser: getUser,
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const user = await getUser(ctx);
-      if (!user) throw new Error("Unauthenticated");
-      return user;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
 async function fixture() {
   const t = convexTest(schema, modules);
   rateLimiter.register(t);
-  const userId = await t.run((ctx) => ctx.db.insert("users", {
-    uniqueId: "FEEDBACK-CATEGORY", firstName: "Test", lastName: "Reviewer",
-    roles: ["SUPER_ADMIN"], isStudent: false, isTeacherStaff: true,
-    isStudentAdmin: false, isOtherRole: false, isActive: true,
-    mustResetPassword: false, dashboardLayout: [], searchText: "test reviewer",
-    createdAt: 1, updatedAt: 1,
-  }));
+  const userId = await t.run((ctx) => insertUser(ctx, { uniqueId: "FEEDBACK-CATEGORY", firstName: "Test", lastName: "Reviewer", roles: ["SUPER_ADMIN"] }));
   return { t, userId, viewer: t.withIdentity({ subject: userId }) };
 }
 

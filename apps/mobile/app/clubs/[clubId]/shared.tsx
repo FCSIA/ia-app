@@ -16,11 +16,8 @@ import {
   Txt,
 } from "@/components/ui";
 import { AttachmentViewer } from "@/features/chat/attachment-viewer";
-import {
-  formatAttachmentSize,
-  isImageAttachment,
-  type ChatAttachment,
-} from "@/features/chat/types";
+import { formatAttachmentSize, isImageAttachment } from "~/apps/shared/chat/attachments";
+import type { ChatAttachment } from "@/features/chat/types";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";

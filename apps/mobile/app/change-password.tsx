@@ -1,9 +1,11 @@
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { router } from "expo-router";
 import { useMutation } from "@/lib/convex-react";
 import { FormScreen } from "@/components/screen";
 import { Button, Field, TextField, Txt } from "@/components/ui";
 import { api } from "~/apps/convex/src/_generated/api";
+import { MIN_PASSWORD_LENGTH } from "~/apps/shared/limits";
 
 export default function ForcedPasswordChangeScreen() {
   const changePassword = useMutation(api.users.auth.changePassword);
@@ -15,8 +17,8 @@ export default function ForcedPasswordChangeScreen() {
 
   async function submit() {
     setError(null);
-    if (newPassword.length < 6) {
-      setError("New password must be at least 6 characters.");
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -27,9 +29,9 @@ export default function ForcedPasswordChangeScreen() {
     setPending(true);
     try {
       await changePassword({ currentPassword, newPassword });
-      router.replace("/dashboard" as never);
+      router.replace("/dashboard");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Password change failed.");
+      setError(errorMessage(cause, "Password change failed."));
     } finally {
       setPending(false);
     }
@@ -59,7 +61,7 @@ export default function ForcedPasswordChangeScreen() {
           autoComplete="new-password"
           accessibilityLabel="New password"
         />
-        <Field.Description>Use at least 6 characters.</Field.Description>
+        <Field.Description>{`Use at least ${MIN_PASSWORD_LENGTH} characters.`}</Field.Description>
       </Field.Root>
       <Field.Root>
         <Field.Label required>Confirm new password</Field.Label>

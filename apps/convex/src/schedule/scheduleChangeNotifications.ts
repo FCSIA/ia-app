@@ -1,4 +1,6 @@
+import { scheduleFriendHref } from "../../../shared/routes";
 import { greetingName } from '../../../shared/user-name';
+import { isStudent } from "../../../shared/roles";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -6,7 +8,7 @@ import type { MutationCtx } from "../_generated/server";
 import { internalMutation } from "../_generated/server";
 import { deliverNotification } from "../notifications/delivery";
 import type { ScheduleLunchPeriod, ScheduleWeekday } from "../validators";
-import { getScheduleForUser, isStudentUser } from "./_lib";
+import { getScheduleForUser } from "./_lib";
 
 export type MaterialScheduleEntry = {
   weekday: ScheduleWeekday;
@@ -103,7 +105,7 @@ export const fanout = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
-    if (!user?.isActive || !isStudentUser(user)) return null;
+    if (!user?.isActive || !isStudent(user)) return null;
     const schedule = await getScheduleForUser(ctx, user._id);
     if (!schedule?.isPublic || schedule.updatedAt !== args.scheduleUpdatedAt) return null;
 
@@ -129,13 +131,13 @@ export const fanout = internalMutation({
     );
     for (const friendId of friendIds) {
       const friend = await ctx.db.get(friendId);
-      if (!friend?.isActive || !isStudentUser(friend)) continue;
+      if (!friend?.isActive || !isStudent(friend)) continue;
       await deliverNotification(ctx, {
         userId: friendId,
         category: "FRIEND_SCHEDULE_CHANGE",
         title: `${greetingName(user)} updated their schedule`,
         body: "A friend updated their shared schedule.",
-        href: `/schedule?tab=friends&friend=${user._id}`,
+        href: scheduleFriendHref(user._id),
         subject: { kind: "friendSchedule", friendUserId: user._id },
       });
     }

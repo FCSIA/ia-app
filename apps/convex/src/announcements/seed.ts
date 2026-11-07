@@ -444,7 +444,6 @@ export const run = internalMutation({
     let preferencesSeeded = 0;
     const allUsers = await ctx.db.query("users").take(5000);
 
-    // Get general channel of robotics club
     let roboticsGeneralId: string | undefined;
     if (roboticsClub) {
       const chan = await ctx.db
@@ -481,7 +480,6 @@ export const run = internalMutation({
         { category: "CLUB_CHANNEL_MENTION", scopeKey: "global" },
       ];
 
-      // Check if user is in robotics club
       let isInRobotics = roboticsMemberIds.has(u._id);
 
       if (isInRobotics && roboticsClub) {

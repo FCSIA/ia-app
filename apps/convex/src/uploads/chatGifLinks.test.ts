@@ -7,18 +7,11 @@ import schema from "../schema";
 import type { QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { fetchTenorGifPage } from "./files";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db.get(identity.subject as Id<"users">);
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 vi.mock("../rateLimits", () => {
   const allow = { limit: async () => ({ ok: true }) };
@@ -34,12 +27,7 @@ async function fixture() {
   const [first, second] = await t.run(async (ctx) =>
     Promise.all(
       ["GIF-ONE", "GIF-TWO"].map((uniqueId) =>
-        ctx.db.insert("users", {
-          uniqueId, firstName: uniqueId, lastName: "Test", roles: ["STUDENT"],
-          isStudent: true, isTeacherStaff: false, isStudentAdmin: false, isOtherRole: false,
-          isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: uniqueId,
-          createdAt: 1, updatedAt: 1,
-        }),
+        insertUser(ctx, { uniqueId, firstName: uniqueId, lastName: "Test", roles: ["STUDENT"] }),
       ),
     ),
   );

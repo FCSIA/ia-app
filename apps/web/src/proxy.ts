@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isAuthenticated } from '@/lib/auth-server';
-import { fetchAuthQuery } from '@/lib/auth-server';
+import { fetchAuthQuery, isAuthenticated } from '@/lib/auth-server';
+import { isProtectedPathname } from '@/lib/routes';
 import { api } from '~/apps/convex/src/_generated/api';
 
+// The matcher below repeats this host as an escaped regex; Next needs it static.
 const LEGACY_WEB_HOSTNAME = 'ia-app-alpha.vercel.app';
 // `/_meta` is the deploy marker; it must answer even when the backend is down.
 const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup', '/_meta']);
@@ -17,11 +18,6 @@ function requestHostname(request: NextRequest) {
   return host.split(',')[0]?.trim().replace(/:\d+$/, '').toLowerCase();
 }
 
-/**
- * Next.js 16 Proxy (formerly Middleware)
- * Handles server-side routing logic like authentication redirects.
- * Runs on the Node.js runtime by default.
- */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -48,29 +44,8 @@ export async function proxy(request: NextRequest) {
     : null;
   const mustResetPassword = currentUser?.mustResetPassword === true;
 
-  // 1. Redirect unauthenticated users from protected routes to login
-  const protectedRoutes = [
-    '/admin',
-    '/announcements',
-    '/clubs',
-    '/courses',
-    '/schedule',
-    '/events',
-    '/calendar',
-    '/flex-friday',
-    '/wrapped',
-    '/notifications',
-    '/profile',
-    '/change-password',
-    '/report',
-  ];
-  const isProtectedRoute = pathname === '/' ||
-    protectedRoutes.some((route) => pathname.startsWith(route));
-
-  if (isProtectedRoute && !isAuth) {
+  if (isProtectedPathname(pathname) && !isAuth) {
     const loginUrl = new URL('/login', request.url);
-    // Optionally preserve the original destination to redirect back after login
-    // loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -87,7 +62,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // 2. Redirect authenticated users away from the login page
   if (pathname === '/login' && isAuth) {
     return NextResponse.redirect(
       new URL(mustResetPassword ? '/change-password' : '/', request.url),
@@ -112,17 +86,6 @@ export const config = {
         },
       ],
     },
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - icons (PWA icons)
-     * - manifest.json (PWA manifest)
-     * - schedule-ocr-assets (generated, public OCR runtime)
-     * - sw.js (Service worker)
-     */
     {
       source: '/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json|schedule-ocr-assets|sw.js).*)',
       // Router prefetches do not need a second server-side redirect decision.

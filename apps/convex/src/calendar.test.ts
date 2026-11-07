@@ -9,20 +9,11 @@ import { api } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { serializeExternalCalendarEntry } from "./events/calendar";
 import schema from "./schema";
+import { insertUser } from "../test/fixtures";
 
-vi.mock("../lib/currentUser", async (original) => ({
-  ...(await original<typeof import("../lib/currentUser")>()),
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const user = identity ? await ctx.db.get(identity.subject as Id<"users">) : null;
-    if (!user) throw new ConvexError("Unauthenticated");
-    return user;
-  },
-}));
+vi.mock("../lib/currentUser", async (original) =>
+  (await import("../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -86,11 +77,7 @@ describe("external calendar serialization", () => {
 async function calendarFixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
-    const user = (uniqueId: string) => ctx.db.insert("users", {
-      uniqueId, firstName: uniqueId, lastName: "Student", roles: ["STUDENT"],
-      isStudent: true, isTeacherStaff: false, isStudentAdmin: false, isOtherRole: false,
-      isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: uniqueId, createdAt: 0, updatedAt: 0,
-    });
+    const user = (uniqueId: string) => insertUser(ctx, { uniqueId, firstName: uniqueId, lastName: "Student", roles: ["STUDENT"], createdAt: 0, updatedAt: 0 });
     const owner = await user("owner");
     const friend = await user("friend");
     const stranger = await user("stranger");

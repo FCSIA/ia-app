@@ -1,7 +1,8 @@
-export const MAX_CHAT_ATTACHMENTS = 5;
-export const MAX_CHAT_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+import {
+  MAX_CHAT_ATTACHMENT_BYTES,
+  MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS,
+} from "~/apps/shared/chat/attachments";
 
-const MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS = 160;
 const BLOCKED_CHAT_ATTACHMENT_TYPES = new Set([
   "application/javascript",
   "image/svg+xml",
@@ -30,13 +31,13 @@ export function validatePickedChatAttachment(
     return "This file has an invalid name.";
   }
   if (Array.from(fileName).length > MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS) {
-    return "Keep file names under 160 characters.";
+    return `Keep file names under ${MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS} characters.`;
   }
   if (!Number.isFinite(attachment.size) || attachment.size < 0) {
     return "The file size could not be read.";
   }
   if (attachment.size > MAX_CHAT_ATTACHMENT_BYTES) {
-    return "Choose a file smaller than 10 MB.";
+    return `Choose a file smaller than ${MAX_CHAT_ATTACHMENT_BYTES / (1024 * 1024)} MB.`;
   }
 
   const mimeType = normalizedMimeType(attachment.mimeType);

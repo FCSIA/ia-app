@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -44,7 +45,7 @@ export default function ClubTagsScreen() {
                   onPress={() =>
                     createTag({ clubId: clubId as any, name: name.trim(), memberIds: [] })
                       .then(() => setName(""))
-                      .catch((error) => Alert.alert("Group not created", error instanceof Error ? error.message : "Try again."))
+                      .catch((error) => Alert.alert("Group not created", errorMessage(error)))
                   }
                 />
               </View>

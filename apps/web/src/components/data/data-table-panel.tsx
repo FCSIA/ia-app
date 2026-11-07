@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-export type DataTableDensity = 'compact' | 'comfortable';
+type DataTableDensity = 'compact' | 'comfortable';
 
 export function dataTableClasses(density: DataTableDensity = 'comfortable') {
   const isCompact = density === 'compact';

@@ -4,8 +4,6 @@ import { PressableScale } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii } from "@/lib/tokens";
 
-export { announcementAudience } from "./model";
-
 export function AnnouncementIconAction({
   icon: Icon,
   label,

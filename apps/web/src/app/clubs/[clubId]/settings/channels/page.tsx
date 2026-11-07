@@ -16,7 +16,9 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useClubId } from "../../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
-import type { ClubDetail } from "@/components/clubs/types";
+import type { ClubDetail, ClubUnit } from "@/components/clubs/types";
+import { sortSiblings } from "@/lib/club-units";
+import { useClubDetail } from "@/components/clubs/use-club-detail";
 import { Button } from "@/components/ui/button";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import {
@@ -84,14 +86,8 @@ function audienceLabel(
   return "Everyone in the club";
 }
 
+type Unit = Pick<ClubUnit, "_id" | "parentUnitId" | "name" | "kind" | "position">;
 type Channel = NonNullable<ClubDetail>["channels"][number];
-type Unit = {
-  _id: Id<"clubUnits">;
-  parentUnitId: Id<"clubUnits"> | null;
-  name: string;
-  kind: string | null;
-  position: number;
-};
 
 function sortChannels(channels: Channel[]) {
   return [...channels].sort(
@@ -99,12 +95,6 @@ function sortChannels(channels: Channel[]) {
       (a.position ?? Number.MAX_SAFE_INTEGER) -
         (b.position ?? Number.MAX_SAFE_INTEGER) ||
       a.createdAt - b.createdAt,
-  );
-}
-
-function sortUnits(units: Unit[]) {
-  return [...units].sort(
-    (a, b) => a.position - b.position || a.name.localeCompare(b.name),
   );
 }
 
@@ -119,7 +109,7 @@ function ChannelPlacementEditor({
   units: Unit[];
   roles: NonNullable<ClubDetail>["roles"];
 }) {
-  const rootUnits = sortUnits(units.filter((unit) => !unit.parentUnitId));
+  const rootUnits = sortSiblings(units.filter((unit) => !unit.parentUnitId));
 
   return (
     <Elevated offset={1} className="rounded-xl">
@@ -173,7 +163,7 @@ function UnitPlacementTree({
   units: Unit[];
   roles: NonNullable<ClubDetail>["roles"];
 }) {
-  const children = sortUnits(
+  const children = sortSiblings(
     units.filter((candidate) => candidate.parentUnitId === unit._id),
   );
   const groupKey = channels
@@ -234,7 +224,7 @@ function ChannelPlacementGroup({
   const reorderChannels = useMutation(api.clubs.channels.reorderChannels);
   const moveChannel = useMutation(api.clubs.channels.moveChannel);
   const { toast } = useToast();
-  const childUnits = sortUnits(
+  const childUnits = sortSiblings(
     units.filter(
       (unit) => (unit.parentUnitId ?? null) === (ownerUnit?._id ?? null),
     ),
@@ -372,8 +362,7 @@ export default function ClubChannelSettingsPage() {
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
   });
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    ClubDetail | undefined;
+  const club = useClubDetail(clubId);
   const [createOpen, setCreateOpen] = useState(false);
   const { toast } = useToast();
   const setAutoCreate = useMutation(

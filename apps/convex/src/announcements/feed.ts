@@ -1,3 +1,5 @@
+import { announcementHref } from "../../../shared/routes";
+import { isAdmin } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -9,6 +11,8 @@ import {
   MAX_ANNOUNCEMENT_BODY_CHARACTERS,
   MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS,
   MAX_ANNOUNCEMENT_TITLE_CHARACTERS,
+} from "../../../shared/limits";
+import {
   normalizeBoundedText,
   normalizeAnnouncementEmbedUrls,
   normalizeOptionalBoundedText,
@@ -385,8 +389,7 @@ export const create = mutation({
       throw new ConvexError("You do not have permission to create announcement drafts");
     }
 
-    const isAdmin =
-      user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
+    const viewerIsAdmin = isAdmin(user);
 
     let status: "ACTIVE" | "PENDING_APPROVAL" = "ACTIVE";
     if (args.clubId) {
@@ -397,14 +400,14 @@ export const create = mutation({
           q.eq("clubId", clubId).eq("userId", user._id),
         )
         .first();
-      if (!isSponsor && !isAdmin) {
+      if (!isSponsor && !viewerIsAdmin) {
         status = "PENDING_APPROVAL";
       }
     }
 
     const now = Date.now();
     const promotedUntil =
-      args.promoted && isAdmin
+      args.promoted && viewerIsAdmin
         ? now + 30 * 24 * 60 * 60 * 1000
         : undefined;
 
@@ -455,7 +458,7 @@ export const create = mutation({
           category: ann.clubId ? "CLUB_ANNOUNCEMENT" : "SCHOOL_ANNOUNCEMENT",
           title: ann.title,
           body: ann.body,
-          href: `/announcements/${ann._id}`,
+          href: announcementHref(ann._id),
           subject: {
             kind: "announcement",
             announcementId: ann._id,
@@ -493,7 +496,7 @@ export const approve = mutation({
         category: activeAnn.clubId ? "CLUB_ANNOUNCEMENT" : "SCHOOL_ANNOUNCEMENT",
         title: activeAnn.title,
         body: activeAnn.body,
-        href: `/announcements/${activeAnn._id}`,
+        href: announcementHref(activeAnn._id),
         subject: {
           kind: "announcement",
           announcementId: activeAnn._id,

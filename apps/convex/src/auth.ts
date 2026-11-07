@@ -7,6 +7,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { env } from "./_generated/server";
+import { MIN_PASSWORD_LENGTH } from "../../shared/limits";
 import authConfig from "./auth.config";
 import { createLoginRateLimitPlugin } from "./auth/loginRateLimitPlugin";
 import authSchema from "./betterAuth/schema";
@@ -197,7 +198,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       enabled: true,
       disableSignUp: true,
       requireEmailVerification: false,
-      minPasswordLength: 6,
+      minPasswordLength: MIN_PASSWORD_LENGTH,
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async () => {

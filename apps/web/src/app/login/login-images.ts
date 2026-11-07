@@ -1,4 +1,4 @@
-export interface LoginImage {
+interface LoginImage {
   src: string;
   /** Decorative only; the login visual section is aria-hidden. */
   alt: string;

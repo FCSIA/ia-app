@@ -6,18 +6,11 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import type { QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db.get(identity.subject as Id<"users">);
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -43,22 +36,7 @@ function iphoneReport(overrides: Record<string, unknown> = {}) {
 async function fixture() {
   const t = convexTest(schema, modules);
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", {
-      uniqueId: "PUSH-DEVICE",
-      firstName: "Push",
-      lastName: "Device",
-      roles: ["STUDENT"],
-      isStudent: true,
-      isTeacherStaff: false,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: "Push Device",
-      createdAt: 1,
-      updatedAt: 1,
-    }),
+    insertUser(ctx, { uniqueId: "PUSH-DEVICE", firstName: "Push", lastName: "Device", roles: ["STUDENT"] }),
   );
   const user = t.withIdentity({ subject: userId });
   const subscriptions = () =>
