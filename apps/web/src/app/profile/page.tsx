@@ -25,6 +25,8 @@ import {
 } from './_components/ProfileSections';
 import type { PasswordForm } from './_components/ProfileSections';
 import { PROFILE_SECTIONS, type ProfileSection } from './_components/profile-sections';
+import { QuestTracker } from './_components/QuestTracker';
+import { BugRewards } from './_components/BugRewards';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
@@ -167,6 +169,7 @@ function ProfilePageContent() {
             <ModerationAlertsSection alerts={moderationAlerts} />
           ) : null}
           {visibleSection === 'whats-new' ? <WhatsNewSection /> : null}
+          {visibleSection === 'account' ? <><QuestTracker /><BugRewards user={user} /></> : null}
         </div>
       </div>
     </AppShell>

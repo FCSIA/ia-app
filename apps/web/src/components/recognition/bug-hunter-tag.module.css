@@ -1,0 +1,17 @@
+.multicolor {
+  background-image: linear-gradient(110deg, color-mix(in srgb, hsl(var(--primary)) 25%, hsl(var(--background))), color-mix(in srgb, hsl(var(--accent)) 45%, hsl(var(--background))) 48%, color-mix(in srgb, hsl(var(--secondary)) 45%, hsl(var(--background))));
+}
+
+.animated {
+  background-size: 220% 100%;
+  animation: bug-tag-shift 5s ease-in-out infinite alternate;
+}
+
+@keyframes bug-tag-shift {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated { animation: none; }
+}

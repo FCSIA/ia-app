@@ -150,6 +150,7 @@ import {
   AttachmentTrigger,
 } from '@/components/ui/attachment';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
 import {
@@ -565,6 +566,7 @@ function PinnedMessagesButton({
                           {fullName(message.author)}
                         </span>
                         <DeveloperBadge user={message.author} size={13} />
+                        <BugHunterTag user={message.author} />
                         <span className="shrink-0 text-[11px] text-muted-foreground">
                           {formatMessageTime(message.createdAt)}
                         </span>
@@ -749,6 +751,7 @@ function MessageAuthorPreview({
       >
         <span className="truncate">{name}</span>
         <DeveloperBadge user={author} size={13} />
+        <BugHunterTag user={author} />
       </button>
     ) : (
       <button

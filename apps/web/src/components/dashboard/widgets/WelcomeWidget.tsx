@@ -16,6 +16,8 @@ import { schoolDateKey } from "@/lib/school-date";
 import { calendarDate } from "@/components/calendar/calendar-date";
 import { cn } from "@/lib/utils";
 import { workshopDetailHref } from "@/app/flex-friday/_utils";
+import { useFoundersQuest } from "@/hooks/use-founders-quest";
+import { FlightOfFive } from "@/components/quest/FlightOfFive";
 
 type Day = FunctionReturnType<typeof api.schedule.dashboard.getDay>;
 type Flex = NonNullable<
@@ -42,6 +44,7 @@ type Item = {
 export function WelcomeWidget() {
   const [now, setNow] = useState(() => calendarDate());
   const user = useCurrentUser();
+  const { progress: questProgress } = useFoundersQuest();
   const use24HourTime = user?.use24HourTime ?? false;
   const isStudent =
     !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
@@ -92,6 +95,7 @@ export function WelcomeWidget() {
           Add your classes to see what&apos;s next
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
+        {questProgress?.keys.includes('jade') ? <FlightOfFive available={!questProgress.keys.includes('crystal')} /> : null}
       </Strip>
     );
   }
@@ -111,6 +115,12 @@ export function WelcomeWidget() {
           hosting={!isStudent}
           fmt={fmt}
         />
+        {isStudent && questProgress?.keys.includes('jade') ? (
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Flight of the Five</span>
+            <FlightOfFive available={!questProgress.keys.includes('crystal')} />
+          </div>
+        ) : null}
       </Strip>
     );
   }
@@ -122,7 +132,11 @@ export function WelcomeWidget() {
     ? timeline(tomorrow, [], true).find((item) => !item.workshop)
     : undefined;
   const workshops = timeline(null, tomorrowWorkshops, false);
-  if (!firstClass && workshops.length === 0) return null;
+  if (!firstClass && workshops.length === 0) {
+    return isStudent && questProgress?.keys.includes('jade')
+      ? <Strip><FlightOfFive available={!questProgress.keys.includes('crystal')} /></Strip>
+      : null;
+  }
   const tomorrowSpecial = specialName(tomorrow);
   const tomorrowLabel = tomorrowSpecial
     ? `Tomorrow: ${tomorrowSpecial}`
@@ -130,6 +144,7 @@ export function WelcomeWidget() {
 
   return (
     <Strip label={tomorrowLabel}>
+      {isStudent && questProgress?.keys.includes('jade') ? <FlightOfFive available={!questProgress.keys.includes('crystal')} /> : null}
       {firstClass ? (
         <Line
           prefix={tomorrowLabel ? "First class" : "Tomorrow"}

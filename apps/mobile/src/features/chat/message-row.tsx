@@ -26,6 +26,7 @@ import {
 } from "lucide-react-native";
 import { Avatar, PressableScale, Txt } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/ui/bug-hunter-tag";
 import { useTheme } from "@/lib/theme";
 import { tapLight, tapMedium } from "@/lib/haptics";
 import { radii, spacing } from "@/lib/tokens";
@@ -298,6 +299,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                       {authorName}
                     </Txt>
                     <DeveloperBadge user={message.author} />
+                    <BugHunterTag user={message.author} compact />
                     <Txt
                       variant="caption"
                       tone="muted"

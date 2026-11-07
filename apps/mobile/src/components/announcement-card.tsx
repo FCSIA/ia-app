@@ -5,6 +5,7 @@ import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "luc
 import { useMutation } from "@/lib/convex-react";
 import { PressableScale, Txt, useToast } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/ui/bug-hunter-tag";
 import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
 import { announcementUnreadColors } from "@/features/announcements/unread-colors";
 import { relativeTime } from "@/lib/format";
@@ -119,6 +120,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
               {authorName || "Innovation Academy"}
             </Txt>
             <DeveloperBadge user={announcement.author} size={12} />
+            <BugHunterTag user={announcement.author} compact />
             <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>·</Txt>
             <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>
               {relativeTime(announcement.createdAt)}

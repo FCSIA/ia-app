@@ -46,6 +46,9 @@ export const auditEntityKey = (type: string) => type.replace(/[_\s]/g, '').toLow
 /** Known stored spellings share one semantic filter without rewriting history. */
 export const AUDIT_ENTITY_TYPES = ['User', 'authAccount', 'Club', 'ClubChannel', 'ClubChannelMessage', 'ClubWhiteboard', 'ClubUnit', 'ClubPeopleGroup', 'ClubJoinRequest', 'Announcement', 'Comment', 'Report', 'KeywordRule', 'StudentSchedule', 'StudentScheduleGroup', 'StudentFriendShareLink', 'SchoolDayBlock', 'SchoolDayTemplate', 'SchoolDayDateOverride', 'SchoolScheduleSettings', 'FlexFriday', 'FlexSession', 'FlexWorkshop', 'FlexRegistration', 'FlexAssignment', 'FlexAttendance', 'Event', 'user', 'club', 'studentSchedule', 'studentScheduleGroup', 'studentFriendShareLink', 'schoolDayBlock', 'schoolDayTemplate', 'schoolDayDateOverride', 'schoolScheduleSettings', 'FLEX_FRIDAY', 'FLEX_SESSION', 'FLEX_WORKSHOP', 'FLEX_REGISTRATION', 'FLEX_ASSIGNMENT', 'FLEX_ATTENDANCE', 'EVENT'] as const;
 export const AUDIT_ACTIONS: Record<string, { label: string; category: AuditCategory; destructive?: boolean }> = {
+  "BUG_REPORT_APPROVED": { label: "Approved bug report", category: "moderation" },
+  "BUG_REPORT_CLASSIFIED": { label: "Classified bug report", category: "moderation" },
+  "BUG_REPORT_APPROVAL_REVOKED": { label: "Revoked bug report credit", category: "moderation", destructive: true },
   "ADMINISTRATOR_CSV_IMPORT": { label: "Imported administrators from CSV", category: "people-access" },
   "ANNOUNCEMENT_APPROVED": { label: "Approved announcement", category: "announcements" },
   "ANNOUNCEMENT_ARCHIVED": { label: "Archived announcement", category: "announcements" },

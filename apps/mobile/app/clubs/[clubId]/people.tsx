@@ -8,6 +8,7 @@ import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, IconButton, TextField, Txt } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/ui/bug-hunter-tag";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -351,6 +352,7 @@ export default function ClubPeopleScreen() {
                               {name}
                             </Txt>
                             <DeveloperBadge user={person} />
+                            <BugHunterTag user={person} compact />
                           </View>
                           <Txt variant="caption" tone="muted" numberOfLines={1}>
                             {role}

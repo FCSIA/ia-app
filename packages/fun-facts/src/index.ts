@@ -122,6 +122,24 @@ export const PHOENIX_LOADING_FACTS: readonly LoadingFact[] = [
     category: "phoenix",
     visual: "phoenix",
   },
+  {
+    id: "phoenix-ia-exchange",
+    text: "From the eXchange Baypods to the engineering wind tunnel, IA was built for makers and explorers.",
+    category: "phoenix",
+    visual: "phoenix",
+  },
+  {
+    id: "phoenix-ia-app-builders",
+    text: "Built at Innovation Academy: student developers help maintain the IA App, and students can share ideas through feedback.",
+    category: "phoenix",
+    visual: "phoenix",
+  },
+  {
+    id: "phoenix-developer-badge",
+    text: "Look for the little wrench beside a name: it marks a student developer of the IA App.",
+    category: "phoenix",
+    visual: "phoenix",
+  },
 ] as const;
 
 /** Avoid showing the same fact again too soon in one session. */
