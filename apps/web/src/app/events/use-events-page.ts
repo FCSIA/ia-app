@@ -1,4 +1,4 @@
-import { isStaff } from '~/apps/shared/roles';
+import { EVENT_GENERAL_CREATOR_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -17,7 +17,7 @@ export function useEventsPage() {
   const deferredSearch = useDeferredValue(search);
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const [createPending, setCreatePending] = useState(false);
-  const canCreateGeneral = isStaff(user);
+  const canCreateGeneral = hasAnyRole(user, EVENT_GENERAL_CREATOR_ROLES);
 
   const events = useQuery(api.events.events.list, user ? {} : 'skip');
   const isLoading = events === undefined;

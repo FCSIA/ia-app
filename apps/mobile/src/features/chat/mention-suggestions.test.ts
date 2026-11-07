@@ -1,8 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
-import type { ClubMentionContext } from "./types";
 
-const context = (value: object) => value as ClubMentionContext;
+const context = (value: Parameters<typeof buildChatMentionSuggestions>[0]) => value;
 
 describe("mobile club chat mention suggestions", () => {
   test("labels mentions with the preferred name and retains both names for search", () => {
@@ -20,13 +19,14 @@ describe("mobile club chat mention suggestions", () => {
         canMentionEveryone: true,
         tags: [{ slug: "build-team", name: "Build Team" }],
         groups: [
-          { token: "leader", label: "Leader", detail: "Role", kind: "role" },
+          { token: "leader", label: "Leader", detail: "Role" },
         ],
         members: [
           {
             uniqueId: "STU001",
             firstName: "Matthew",
             lastName: "Kingsly",
+            preferredName: undefined,
           },
         ],
       })).map((suggestion) => suggestion.token),

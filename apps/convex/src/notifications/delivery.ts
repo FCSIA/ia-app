@@ -40,16 +40,16 @@ export async function deliverNotification(
   input: DeliveryInput,
 ) {
   const scope = preferenceScope(input.subject);
-  const clubScopeKey =
+  const clubKey =
     "clubId" in input.subject && input.subject.clubId
-      ? `club:${input.subject.clubId}`
+      ? clubScopeKey(input.subject.clubId)
       : undefined;
   const decision = await deliveryDecision(
     ctx,
     input.userId,
     input.category,
     scope.scopeKey,
-    clubScopeKey,
+    clubKey,
   );
   if (!decision.create) {
     return;

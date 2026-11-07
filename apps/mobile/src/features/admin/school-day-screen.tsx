@@ -21,15 +21,15 @@ import {
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
-import { SCHOOL_WEEKDAYS, type SchoolWeekday } from "~/apps/shared/school-time";
+import {
+  clockMinutes,
+  currentSchoolWeekday,
+  formatClockTime,
+  SCHOOL_WEEKDAYS,
+  SCHOOL_WEEKDAY_LABELS,
+  type SchoolWeekday,
+} from "~/apps/shared/school-time";
 
-const weekdayLabels: Record<SchoolWeekday, string> = {
-  MONDAY: "Monday",
-  TUESDAY: "Tuesday",
-  WEDNESDAY: "Wednesday",
-  THURSDAY: "Thursday",
-  FRIDAY: "Friday",
-};
 const weekdayShortLabels: Record<SchoolWeekday, string> = {
   MONDAY: "Mon",
   TUESDAY: "Tue",
@@ -59,7 +59,7 @@ export function SchoolDayScreen() {
   const createBlock = useMutation(api.schedule.blocks.createBlock);
   const updateBlock = useMutation(api.schedule.blocks.updateBlock);
   const deleteBlock = useMutation(api.schedule.blocks.deleteBlock);
-  const [weekday, setWeekday] = useState<SchoolWeekday>(currentWeekday);
+  const [weekday, setWeekday] = useState<SchoolWeekday>(currentSchoolWeekday);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<SchoolDayBlock | null>(null);
   const [form, setForm] = useState<BlockForm>(() => defaultForm([]));
@@ -151,7 +151,7 @@ export function SchoolDayScreen() {
     if (pendingKey) return;
     Alert.alert(
       `Delete ${block.label}?`,
-      `${weekdayLabels[block.weekday]} schedules will no longer include this block.`,
+      `${SCHOOL_WEEKDAY_LABELS[block.weekday]} schedules will no longer include this block.`,
       [
         { text: "Keep block", style: "cancel" },
         {
@@ -193,7 +193,7 @@ export function SchoolDayScreen() {
       />
 
       <Section
-        title={weekdayLabels[weekday]}
+        title={SCHOOL_WEEKDAY_LABELS[weekday]}
         action={
           <Button
             title="Add block"
@@ -217,7 +217,7 @@ export function SchoolDayScreen() {
         ) : (
           <Empty
             icon={Clock3}
-            title={`No ${weekdayLabels[weekday]} blocks`}
+            title={`No ${SCHOOL_WEEKDAY_LABELS[weekday]} blocks`}
             body="Add the first block for this day."
           />
         )}
@@ -349,7 +349,7 @@ function BlockList({
               {block.label}
             </Txt>
             <Txt variant="caption" tone="muted" numberOfLines={1}>
-              {formatClock(block.startTime)}–{formatClock(block.endTime)} · {block.durationMinutes} min
+              {formatClockTime(block.startTime)}–{formatClockTime(block.endTime)} · {block.durationMinutes} min
             </Txt>
           </View>
           <IconButton
@@ -397,19 +397,12 @@ function validateForm(form: BlockForm) {
   return null;
 }
 
-function currentWeekday(): SchoolWeekday {
-  const index = new Date().getDay() - 1;
-  return SCHOOL_WEEKDAYS[index] ?? "MONDAY";
-}
-
 function isTime(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value.trim());
 }
 
 function timeToMinutes(value: string) {
-  if (!isTime(value)) return Number.NaN;
-  const [hour, minute] = value.split(":").map(Number);
-  return hour * 60 + minute;
+  return isTime(value) ? clockMinutes(value) : Number.NaN;
 }
 
 function durationMinutes(startTime: string, endTime: string) {
@@ -422,10 +415,4 @@ function addMinutes(value: string, minutes: number) {
   const hour = Math.floor(total / 60);
   const minute = total % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-function formatClock(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  const suffix = hour >= 12 ? "PM" : "AM";
-  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${suffix}`;
 }

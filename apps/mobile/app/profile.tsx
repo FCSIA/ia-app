@@ -178,7 +178,7 @@ export default function ProfileScreen() {
           label="New password"
           value={passwordForm.newPassword}
           onChangeText={(newPassword) => setPasswordForm((current) => ({ ...current, newPassword }))}
-          hint="At least 6 characters"
+          hint={`At least ${MIN_PASSWORD_LENGTH} characters`}
         />
         <PasswordField
           label="Confirm password"

@@ -12,6 +12,11 @@ export const MAX_ANNOUNCEMENT_EMBEDS = 3;
 
 export const MIN_PASSWORD_LENGTH = 6;
 
+export const MAX_CLUB_ROLE_NAME_LENGTH = 64;
+
+export const MAX_EVENT_TITLE_CHARACTERS = 160;
+export const MAX_EVENT_DESCRIPTION_CHARACTERS = 2_000;
+
 /** Images staged for announcements, feedback reports and volunteer proof. */
 export const STAGED_IMAGE_MIME_TYPES = [
   "image/gif",
@@ -20,6 +25,14 @@ export const STAGED_IMAGE_MIME_TYPES = [
   "image/webp",
 ] as const;
 export const MAX_STAGED_IMAGE_BYTES = 5 * 1024 * 1024;
+/** The same list as a sentence fragment. */
+export const STAGED_IMAGE_TYPES_LABEL = "PNG, JPEG, GIF, or WebP";
+/** The same list as an `<input accept>` value. */
+export const STAGED_IMAGE_ACCEPT = STAGED_IMAGE_MIME_TYPES.join(",");
+
+export function isStagedImageType(mimeType: string) {
+  return (STAGED_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType);
+}
 
 export const MAX_ANNOUNCEMENT_IMAGES = 3;
 export const MAX_ANNOUNCEMENT_IMAGE_BYTES = MAX_STAGED_IMAGE_BYTES;

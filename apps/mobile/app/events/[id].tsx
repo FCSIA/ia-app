@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/errors";
 import { sentenceCaseEnum } from "~/apps/shared/labels";
-import { isStaff } from "~/apps/shared/roles";
+import { EVENT_CANCEL_ANY_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -27,7 +27,7 @@ export default function EventDetailScreen() {
   const [isReporting, setIsReporting] = useState(false);
   const { showToast } = useToast();
   const { color } = useTheme();
-  const canAdminCancel = isStaff(user);
+  const canAdminCancel = hasAnyRole(user, EVENT_CANCEL_ANY_ROLES);
 
   async function handleCancel(eventId: any) {
     setIsCancelling(true);

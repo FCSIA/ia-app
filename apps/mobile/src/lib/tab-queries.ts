@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { api } from "~/apps/convex/src/_generated/api";
 import { calendarQueryRange } from "~/apps/shared/calendar-date";
 import { isStudent, isSuperAdmin } from "~/apps/shared/roles";
-import { DAY_MS, floorToResolution } from "../features/announcements/use-announcement-feed-clock";
 import {
   CALENDAR_SOURCES,
   monthRange,
@@ -12,6 +11,7 @@ import {
 } from "./calendar-window";
 import type { KeepAliveEntry } from "./convex-react";
 import { getAppPersona } from "./persona";
+import { DAY_MS, floorToResolution } from "./time-window";
 
 /**
  * The queries each tab subscribes to, declared once. Screens read them from

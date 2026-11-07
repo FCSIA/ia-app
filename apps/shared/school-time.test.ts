@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  currentSchoolWeekday,
   formatClockTime,
   inferLegacyLunchPeriod,
   schoolDateKey,
@@ -50,6 +51,16 @@ describe("school days", () => {
     expect(weekdayForDateKey("2026-11-02")).toBe("MONDAY");
     expect(weekdayForDateKey("2026-11-06")).toBe("FRIDAY");
     expect(weekdayForDateKey("2026-11-07")).toBeNull();
+  });
+
+  test("treat an unparseable key as no school day (convex validates keys first)", () => {
+    expect(weekdayForDateKey("garbage")).toBeNull();
+  });
+
+  test("follow the device's weekday, Monday over the weekend", () => {
+    expect(currentSchoolWeekday(new Date(2026, 10, 4))).toBe("WEDNESDAY");
+    expect(currentSchoolWeekday(new Date(2026, 10, 7))).toBe("MONDAY");
+    expect(currentSchoolWeekday(new Date(2026, 10, 8))).toBe("MONDAY");
   });
 });
 

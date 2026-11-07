@@ -1,6 +1,7 @@
 'use client';
+import { MAX_EVENT_DESCRIPTION_CHARACTERS, MAX_EVENT_TITLE_CHARACTERS } from '~/apps/shared/limits';
 
-import { ADMIN_ROLES, hasAnyRole } from '~/apps/shared/roles';
+import { EVENT_CANCEL_ANY_WEB_ROLES, hasAnyRole } from '~/apps/shared/roles';
 import { AppShell } from '@/components/layout/AppShell';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -20,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { eventStatusClass, eventStatusLabel } from './_status';
 import { useEventsPage } from './use-events-page';
+import { eventHref } from '~/apps/shared/routes';
 
 
 type EventRecord =
@@ -34,7 +36,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: {
   user: AppUser | null;
   hydrated: boolean;
 }) {
-  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
+  const isAdmin = hasAnyRole(user, EVENT_CANCEL_ANY_WEB_ROLES);
   const isAuthor = event.authorId === user?._id;
 
   const clubStyle = event.club
@@ -58,7 +60,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: {
                   {event.club?.name || 'General'}
                 </Badge>
               </div>
-              <Link href={`/events/${event._id}`} className="block">
+              <Link href={eventHref(event._id)} className="block">
                 <h3 className="font-semibold text-foreground leading-snug hover:text-primary transition-colors group">
                   {event.title}
                 </h3>
@@ -153,7 +155,7 @@ export default function EventsPage() {
                     placeholder="Event title"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    maxLength={160}
+                    maxLength={MAX_EVENT_TITLE_CHARACTERS}
                     required
                     className="border-border/60 focus:border-primary focus:ring-primary/20"
                   />
@@ -161,7 +163,7 @@ export default function EventsPage() {
                     placeholder="Description"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    maxLength={2000}
+                    maxLength={MAX_EVENT_DESCRIPTION_CHARACTERS}
                     rows={3}
                     className="border-border/60 focus:border-primary focus:ring-primary/20"
                   />

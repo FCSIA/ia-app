@@ -1,4 +1,4 @@
-import { channelMuteScopeKey, GLOBAL_SCOPE_KEY } from "../../../shared/notifications";
+import { channelMuteScopeKey, channelScopeKey, GLOBAL_SCOPE_KEY } from "../../../shared/notifications";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
@@ -146,7 +146,7 @@ export const resetChannel = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const key = `channel:${args.channelId}`;
+    const key = channelScopeKey(args.channelId);
     const categories = [
       "CLUB_CHANNEL_MESSAGE",
       "CLUB_CHANNEL_MENTION",

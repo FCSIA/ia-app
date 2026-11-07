@@ -1,3 +1,4 @@
+import { MAX_EVENT_DESCRIPTION_CHARACTERS, MAX_EVENT_TITLE_CHARACTERS } from '~/apps/shared/limits';
 import { errorMessage } from "@/lib/errors";
 import { calendarEntryDays } from '~/apps/shared/calendar-date';
 import { displayName } from '~/apps/shared/user-name';
@@ -356,7 +357,7 @@ export function MonthView() {
           value={form.title}
           onChangeText={(title) => setForm((current) => ({ ...current, title }))}
           placeholder="Title"
-          maxLength={160}
+          maxLength={MAX_EVENT_TITLE_CHARACTERS}
         />
         <DateTimePicker
           value={startAt}
@@ -375,7 +376,7 @@ export function MonthView() {
             setForm((current) => ({ ...current, description }))
           }
           placeholder="Notes (optional)"
-          maxLength={2000}
+          maxLength={MAX_EVENT_DESCRIPTION_CHARACTERS}
           multiline
         />
         <Button title="Add" onPress={submit} />

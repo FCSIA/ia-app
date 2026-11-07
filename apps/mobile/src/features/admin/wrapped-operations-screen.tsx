@@ -66,7 +66,7 @@ export function WrappedOperationsScreen() {
   function confirmRefresh() {
     Alert.alert(
       "Refresh the first 40 snapshots?",
-      `This rebuilds up to 40 existing snapshots for ${schoolYearLabel(schoolYear)}. It does not continue to later students on repeated runs.`,
+      `This rebuilds up to 40 existing snapshots for ${schoolYearEnDashLabel(schoolYear)}. It does not continue to later students on repeated runs.`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Refresh", style: "destructive", onPress: () => void runGeneration("refresh") },
@@ -141,7 +141,7 @@ function YearPicker({
       />
       <View style={{ flex: 1, alignItems: "center", gap: 2 }}>
         <Txt variant="overline" tone="muted">School year</Txt>
-        <Txt variant="section">{schoolYearLabel(year)}</Txt>
+        <Txt variant="section">{schoolYearEnDashLabel(year)}</Txt>
       </View>
       <IconButton
         icon={ChevronRight}
@@ -182,7 +182,7 @@ function ReadinessSummary({ status }: { status: SnapshotStatus }) {
         }}
       >
         <View style={{ flex: 1, gap: 2 }}>
-          <Txt variant="label">{schoolYearLabel(status.schoolYear)}</Txt>
+          <Txt variant="label">{schoolYearEnDashLabel(status.schoolYear)}</Txt>
           <Txt variant="caption" tone="muted">
             {complete ? "Every eligible student has a current snapshot." : "Generation work remains."}
           </Txt>
@@ -213,7 +213,7 @@ function ReadinessSummary({ status }: { status: SnapshotStatus }) {
   );
 }
 
-function schoolYearLabel(startYear: number) {
+function schoolYearEnDashLabel(startYear: number) {
   return `${startYear}–${String(startYear + 1).slice(-2)}`;
 }
 

@@ -75,7 +75,7 @@ export const MENTION_MARKDOWN_LINK = /\[[^\]]*\]\(user:\/\/([A-Za-z0-9_-]+)\)/g;
 export const INLINE_MARKDOWN_IMAGE_SOURCE = String.raw`!\[([^\]]*)\]\s*(?:\([^)]*\)|\[[^\]]*\])`;
 
 /** Client-only rows wait under this id prefix until the server returns a real id. */
-export const OPTIMISTIC_ID_PREFIX = "optimistic:";
+const OPTIMISTIC_ID_PREFIX = "optimistic:";
 
 export function optimisticMessageId(clientGeneratedId: string) {
   return `${OPTIMISTIC_ID_PREFIX}${clientGeneratedId}`;
@@ -87,15 +87,3 @@ export function isOptimisticId(id: string) {
 
 export const CHANNEL_VISIBILITIES = ["PUBLIC", "PRIVATE", "MEMBER_READONLY"] as const;
 export type ChannelVisibility = (typeof CHANNEL_VISIBILITIES)[number];
-
-export const CHANNEL_VISIBILITY_LABELS: Record<ChannelVisibility, string> = {
-  PUBLIC: "Public",
-  PRIVATE: "Private",
-  MEMBER_READONLY: "Read only",
-};
-
-export const CHANNEL_VISIBILITY_DESCRIPTIONS: Record<ChannelVisibility, string> = {
-  PUBLIC: "Every club member can read and post here.",
-  PRIVATE: "Only selected members, sponsors, and admins can read and post.",
-  MEMBER_READONLY: "All members can read, but only leaders, sponsors, and admins can post.",
-};

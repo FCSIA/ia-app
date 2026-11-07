@@ -27,6 +27,8 @@ import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { PreferredNameSettings } from './PreferredNameSettings';
 import { PROFILE_SECTIONS, type ProfileSection } from './profile-sections';
 import { MIN_PASSWORD_LENGTH } from '~/apps/shared/limits';
+import { pathwayLabel, titleCaseEnum } from '~/apps/shared/labels';
+import { SCHEDULE_OWNER_ROLES, hasAnyRole } from '~/apps/shared/roles';
 
 const cardClass = cn(
   'border border-border bg-card pb-0',
@@ -36,7 +38,7 @@ const cardClass = cn(
 const passwordFormSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required.'),
-    newPassword: z.string().min(MIN_PASSWORD_LENGTH, 'Your new password must be at least 6 characters long.'),
+    newPassword: z.string().min(MIN_PASSWORD_LENGTH, `Your new password must be at least ${MIN_PASSWORD_LENGTH} characters long.`),
     confirm: z.string().min(1, 'Confirm your new password.'),
   })
   .refine((form) => form.newPassword === form.confirm, {
@@ -51,14 +53,6 @@ type ModerationAlert = {
   title: string;
   body: string;
 };
-
-function friendlyRole(role: string) {
-  return role
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
 
 function InfoRow({
   label,
@@ -131,7 +125,7 @@ export function ProfileSidebar({
             ) : null}
             {user?.roles?.length ? (
               <CardDescription className="mt-2 text-sm leading-5 text-muted-foreground">
-                {user.roles.map(friendlyRole).join(' · ')}
+                {user.roles.map(titleCaseEnum).join(' · ')}
               </CardDescription>
             ) : null}
           </div>
@@ -192,11 +186,11 @@ export function AccountSettingsSection({
   user,
 }: AccountSettingsSectionProps) {
   const rows = [
-    ...(user?.roles?.includes('STUDENT')
+    ...(hasAnyRole(user, SCHEDULE_OWNER_ROLES)
       ? [
           { label: 'Grade', value: user?.gradeLevel || '—' },
-          { label: 'Major Pathway', value: user?.major ? friendlyRole(user.major) : '—' },
-          { label: 'Minor Pathway', value: user?.minor ? friendlyRole(user.minor) : '—' },
+          { label: 'Major Pathway', value: user?.major ? pathwayLabel(user.major) ?? titleCaseEnum(user.major) : '—' },
+          { label: 'Minor Pathway', value: user?.minor ? pathwayLabel(user.minor) ?? titleCaseEnum(user.minor) : '—' },
         ]
       : []),
   ];
@@ -277,7 +271,7 @@ export function AccountSettingsSection({
                   onChange={(event) =>
                     setForm((current) => ({ ...current, newPassword: event.target.value }))
                   }
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   required
                 />
               </Field>
@@ -290,7 +284,7 @@ export function AccountSettingsSection({
                   onChange={(event) =>
                     setForm((current) => ({ ...current, confirm: event.target.value }))
                   }
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   required
                 />
               </Field>
