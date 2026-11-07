@@ -5,27 +5,13 @@ import { describe, expect, test } from "vitest";
 import { internal } from "../_generated/api";
 import { generateSecureJoinCode } from "./invitations";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
 const modules = import.meta.glob("/src/**/*.*s");
 
 async function seedStudent(t: ReturnType<typeof convexTest>, uniqueId: string) {
   return t.run((ctx) =>
-    ctx.db.insert("users", {
-      uniqueId,
-      firstName: "Test",
-      lastName: uniqueId,
-      roles: ["STUDENT"],
-      isStudent: true,
-      isTeacherStaff: false,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: `test ${uniqueId}`,
-      createdAt: 1,
-      updatedAt: 1,
-    }),
+    insertUser(ctx, { uniqueId, firstName: "Test", lastName: uniqueId }),
   );
 }
 

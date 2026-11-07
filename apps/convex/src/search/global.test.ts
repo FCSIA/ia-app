@@ -4,17 +4,13 @@ import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
 import { NO_CLUB_PERMISSIONS } from "../clubs/rolePermissions";
 import schema from "../schema";
 import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 

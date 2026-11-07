@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
-import { deleteStorageQuietly } from "../../lib/storage";
+import { deleteStorageQuietly, getStoredMetadata } from "../../lib/storage";
 import { STAGED_IMAGE_MIME_TYPES } from "../../../shared/limits";
 import { normalizeStoredFileMime } from "./fileSignatures";
 import { claimUploadIntent } from "./uploadIntents";
@@ -13,6 +13,8 @@ import { recordUploadUsage } from "./quota";
 export const STAGED_IMAGE_TTL_MS = 60 * 60 * 1000;
 
 const STAGED_IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
+
+export const formatMegabytes = (bytes: number) => `${bytes / (1024 * 1024)} MB`;
 
 type StorageMetadataInput = { contentType?: string; size: number };
 type ValidatedImage = { mimeType: string; size: number };
@@ -30,7 +32,7 @@ export function validateStagedImageMetadata(
     throw new ConvexError("Image size is invalid");
   }
   if (metadata.size > maxBytes) {
-    throw new ConvexError("Each image must be 5 MB or smaller");
+    throw new ConvexError(`Each image must be ${formatMegabytes(maxBytes)} or smaller`);
   }
   if (!STAGED_IMAGE_TYPES.has(mimeType)) {
     throw new ConvexError("Only PNG, JPEG, GIF, and WebP images are allowed");
@@ -87,7 +89,6 @@ export async function consumeStagedImages<StagedId extends string>(
   }
 }
 
-/** Removes a staged image that was never attached, along with its file. */
 export async function discardStagedImage<StagedId extends string>(
   ctx: MutationCtx,
   stagedId: StagedId,
@@ -124,8 +125,7 @@ export async function finalizeStagedImage<StagedId extends string>(
   const existing = await kind.findExisting?.(user._id);
   if (existing) return existing;
   try {
-    const metadata = await ctx.db.system.get("_storage", args.storageId);
-    if (!metadata) throw new ConvexError("Upload not found");
+    const metadata = await getStoredMetadata(ctx, args.storageId);
     const validated = kind.validate(metadata);
     await recordUploadUsage(ctx, {
       uploaderId: user._id,

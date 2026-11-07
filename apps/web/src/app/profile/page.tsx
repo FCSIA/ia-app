@@ -27,6 +27,7 @@ import {
 } from './_components/ProfileSections';
 import type { PasswordForm } from './_components/ProfileSections';
 import { PROFILE_SECTIONS, type ProfileSection } from './_components/profile-sections';
+import { PROFILE_HREF } from '~/apps/shared/routes';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
@@ -51,7 +52,7 @@ function ProfilePageContent() {
     const query = params.toString();
     // Next's native history integration updates useSearchParams immediately
     // without a server navigation for a local settings-panel change.
-    window.history.replaceState(null, '', query ? `/profile?${query}` : '/profile');
+    window.history.replaceState(null, '', query ? `${PROFILE_HREF}?${query}` : PROFILE_HREF);
   }
   const user = useCurrentUser();
   const { toast } = useToast();
@@ -59,7 +60,7 @@ function ProfilePageContent() {
   const mounted = useMounted();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const showSchedule = hasAnyRole(user, SCHEDULE_ROLES);
-  const navigationOptions = getMobileTabEditorItems({ pathname: '/profile', showAdmin: false, showSchedule, showWrapped: wrappedAvailability().open });
+  const navigationOptions = getMobileTabEditorItems({ pathname: PROFILE_HREF, showAdmin: false, showSchedule, showWrapped: wrappedAvailability().open });
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);

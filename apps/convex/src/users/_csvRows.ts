@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { normalizeUniqueId } from "./_lib";
 
-const MAX_CSV_ROWS = 200;
+export const MAX_CSV_ROWS = 200;
 const CSV_ROW_BATCH_SIZE = 5;
 
 /** The result of one row: anything with a `kind`, where "skipped" may carry the reason. */

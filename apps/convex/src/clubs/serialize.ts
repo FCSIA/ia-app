@@ -64,7 +64,7 @@ export async function loadTagMemberRefs(ctx: QueryCtx, tagId: Id<"clubTags">) {
   return members.filter((member): member is NonNullable<typeof member> => !!member);
 }
 
-/** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
+/** A club member as club screens show them: `userSummary` plus uniqueId, roles, avatar and developer flag. */
 export function toClubUserRef(user: Doc<"users">) {
   return {
     _id: user._id,

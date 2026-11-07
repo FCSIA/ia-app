@@ -1,6 +1,6 @@
 'use client';
 
-import { scheduleFriendHref } from '~/apps/shared/routes';
+import { SCHEDULE_FRIENDS_HREF, SCHEDULE_FRIEND_REQUESTS_HREF, scheduleFriendHref } from '~/apps/shared/routes';
 import { displayName, greetingName } from '~/apps/shared/user-name';
 
 import { use, useState } from 'react';
@@ -63,7 +63,7 @@ export default function FriendLinkRedemptionPage({
                 It may have expired or been revoked.
               </p>
               <Button asChild variant="secondary" className="mt-5 w-full">
-                <Link href="/schedule?tab=friends">Open friend schedules</Link>
+                <Link href={SCHEDULE_FRIENDS_HREF}>Open friend schedules</Link>
               </Button>
             </div>
           ) : preview.state === 'SELF' ? (
@@ -74,7 +74,7 @@ export default function FriendLinkRedemptionPage({
               <h1 className="text-lg font-semibold">This is your link</h1>
               <p className="mt-1 text-sm text-muted-foreground">Share it with another student.</p>
               <Button asChild variant="secondary" className="mt-5 w-full">
-                <Link href="/schedule?tab=friends">Back to friend schedules</Link>
+                <Link href={SCHEDULE_FRIENDS_HREF}>Back to friend schedules</Link>
               </Button>
             </div>
           ) : result ? (
@@ -98,7 +98,7 @@ export default function FriendLinkRedemptionPage({
                 <Link
                   href={
                     result.status === 'PENDING'
-                      ? '/schedule?tab=friends&section=requests'
+                      ? SCHEDULE_FRIEND_REQUESTS_HREF
                       : scheduleFriendHref(result.owner._id)
                   }
                 >
@@ -146,7 +146,7 @@ export default function FriendLinkRedemptionPage({
                       : 'Send friend request'}
                 </Button>
                 <Button asChild variant="ghost" className="w-full">
-                  <Link href="/schedule?tab=friends">Cancel</Link>
+                  <Link href={SCHEDULE_FRIENDS_HREF}>Cancel</Link>
                 </Button>
               </div>
             </div>

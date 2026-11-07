@@ -30,7 +30,7 @@ export default function ForcedPasswordChangePage() {
     setError(null);
 
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError('New password must be at least 6 characters.');
+      setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -85,7 +85,7 @@ export default function ForcedPasswordChangePage() {
               minLength={MIN_PASSWORD_LENGTH}
               required
             />
-            <FieldDescription>Use at least 6 characters.</FieldDescription>
+            <FieldDescription>{`Use at least ${MIN_PASSWORD_LENGTH} characters.`}</FieldDescription>
           </Field>
           <Field data-invalid={!!error}>
             <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>

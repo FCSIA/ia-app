@@ -13,7 +13,7 @@ import {
   normalizeOptionalEventDescription,
 } from "./contentValidation";
 
-function isAdmin(user: Doc<"users">) {
+function canManageEvents(user: Doc<"users">) {
   return hasAnyRole(user, EVENT_MANAGER_ROLES);
 }
 
@@ -22,7 +22,7 @@ export const list = query({
   returns: v.array(serializedEventValidator),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const admin = isAdmin(user);
+    const admin = canManageEvents(user);
 
     let events = args.clubId
       ? admin
@@ -72,7 +72,7 @@ export const get = query({
     const event = await ctx.db.get(args.eventId);
     if (!event) return null;
 
-    const admin = isAdmin(user);
+    const admin = canManageEvents(user);
     if (
       event.status !== "PUBLISHED" &&
       !admin &&
@@ -99,7 +99,7 @@ export const create = mutation({
     const title = normalizeEventTitle(args.title);
     const description = normalizeOptionalEventDescription(args.description);
     const user = await getCurrentAppUser(ctx);
-    const admin = isAdmin(user);
+    const admin = canManageEvents(user);
     const canCreateGeneral = admin;
 
     if (!args.clubId && !canCreateGeneral) {
@@ -194,7 +194,7 @@ export const cancel = mutation({
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
 
-    const admin = isAdmin(user);
+    const admin = canManageEvents(user);
     if (event.authorId !== user._id && !admin) {
       throw new Error("Cannot cancel this event");
     }

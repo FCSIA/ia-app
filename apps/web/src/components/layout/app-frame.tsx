@@ -4,6 +4,7 @@ import {
   hasAnyRole,
   isAdmin,
   isStaff,
+  SCHEDULE_OWNER_ROLES,
   SCHEDULE_ROLES,
 } from "~/apps/shared/roles";
 import {
@@ -20,7 +21,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { useCurrentUser } from "@/lib/auth";
 import { wrappedAvailability } from "~/apps/shared/wrapped-window";
 import { GlobalCommandPalette } from "@/components/layout/GlobalCommandPalette";
-import { CommandMenuDialogRoot } from "@/components/ui/command-menu";
+import { CommandMenuDialogRoot, useIsMac } from "@/components/ui/command-menu";
 import {
   AppShellDesktopNavigation,
   AppShellMobileNavigation,
@@ -28,7 +29,6 @@ import {
 } from "@/components/layout/app-shell-navigation";
 import {
   AppFrameActionsProvider,
-  useCommandHint,
   type AppFrameRouteConfig,
 } from "@/components/layout/app-frame-context";
 import { useMobileNavigationSwipe } from "@/components/layout/use-mobile-navigation-swipe";
@@ -64,7 +64,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
-  const commandHint = useCommandHint();
+  const commandHint = useIsMac();
   const appRootRef = useRef<HTMLDivElement>(null);
   const mobileTabBarRef = useRef<HTMLElement>(null);
   const safePathname = pathname ?? "/";
@@ -212,7 +212,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
     unreadBadge,
     showAdmin,
     showSchedule,
-    showFriends: hasAnyRole(user, ["STUDENT"]),
+    showFriends: hasAnyRole(user, SCHEDULE_OWNER_ROLES),
     showDayPlans: isAdmin(user),
     activeHref: routeConfig?.activeHref,
     pageNavigation: routeConfig?.pageNavigation,

@@ -45,6 +45,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { FLEX_FRIDAY_HREF } from '~/apps/shared/routes';
 
 function registrationErrorMessage(error: unknown) {
   if (error instanceof ConvexError && typeof error.data === 'string') {
@@ -134,7 +135,7 @@ export function WorkshopDetailUnavailable({
         <EmptyContent>
           {onRetry ? <Button onClick={onRetry}>Try again</Button> : null}
           <Button asChild variant={failed ? 'tertiary' : 'primary'}>
-            <Link href="/flex-friday">Back to Flex Friday</Link>
+            <Link href={FLEX_FRIDAY_HREF}>Back to Flex Friday</Link>
           </Button>
         </EmptyContent>
       </Empty>

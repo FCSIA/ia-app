@@ -1,4 +1,5 @@
 import { clubChannelHref } from "../../../shared/routes";
+import { userSummary } from "../summaries";
 import { ConvexError, v, type Infer } from "convex/values";
 import {
   paginationOptsValidator,
@@ -18,7 +19,7 @@ import {
 } from "../../lib/currentUser";
 import { schema } from "../schema";
 import { presence } from "../presence/_status";
-import { requireChannelMemberGate, getReadableChannel, resolveChannel } from "./channelGate";
+import { requireChannelManager, requireChannelMemberGate, getReadableChannel, resolveChannel } from "./channelGate";
 import {
   MAX_CLUB_UNITS,
   childUnitIdsByParent,
@@ -1063,6 +1064,7 @@ async function replyNotificationRecipient(
   if (!targetAuthor?.isActive) return null;
   const gate = await resolveChannel(ctx, targetAuthor, input.channel._id, {
     requireActiveClub: false,
+    channel: input.channel,
   });
   if (gate.status !== "resolved" || !gate.context.canAccessWorkspace) {
     return null;
@@ -1722,13 +1724,9 @@ export const getMentionContext = query({
           const member = await ctx.db.get(userId);
           if (!member) return null;
           return {
-            _id: member._id,
+            ...userSummary(member, "uniqueId"),
             avatarUrl: member.avatarUrl ?? null,
             clubRole: (await loadClubRole(ctx, channel.clubId, userId))?.name ?? null,
-            uniqueId: member.uniqueId,
-            firstName: member.firstName,
-            lastName: member.lastName,
-            preferredName: member.preferredName,
           };
         }),
       )
@@ -2027,12 +2025,13 @@ export const update = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const channel = await ctx.db.get(args.channelId);
-    if (!channel) throw new ConvexError("Channel not found");
-    const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.permissions.editChannels)
-      throw new ConvexError("You do not have permission to edit channels");
-
+    const { channel, context } = await requireChannelManager(
+      ctx,
+      user,
+      args.channelId,
+      "editChannels",
+      "You do not have permission to edit channels",
+    );
     const accessRoleIds = [
       ...new Set(args.accessRoleIds ?? channel.accessRoleIds ?? []),
     ];
@@ -2174,12 +2173,13 @@ export const moveChannel = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const channel = await ctx.db.get(args.channelId);
-    if (!channel) throw new ConvexError("Channel not found");
-    const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.permissions.editChannels) {
-      throw new ConvexError("You do not have permission to move channels");
-    }
+    const { channel, context } = await requireChannelManager(
+      ctx,
+      user,
+      args.channelId,
+      "editChannels",
+      "You do not have permission to move channels",
+    );
 
     const ownerUnitId = args.ownerUnitId ?? undefined;
     if (ownerUnitId) {
@@ -2214,11 +2214,13 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const channel = await ctx.db.get(args.channelId);
-    if (!channel) throw new ConvexError("Channel not found");
-    const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.permissions.deleteChannels)
-      throw new ConvexError("You do not have permission to delete channels");
+    const { channel, context } = await requireChannelManager(
+      ctx,
+      user,
+      args.channelId,
+      "deleteChannels",
+      "You do not have permission to delete channels",
+    );
     await adjustClubCounts(ctx, channel.clubId, { channels: -1 });
     await ctx.db.delete(args.channelId);
     await ctx.scheduler.runAfter(

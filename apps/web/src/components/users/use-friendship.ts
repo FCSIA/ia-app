@@ -19,28 +19,29 @@ export function friendshipLabel(status?: FriendshipStatus) {
   return null;
 }
 
-/**
- * Friendship status for the people on screen, and one in-flight "Add friend"
- * request at a time. `enabled` gates both the lookup and sending.
- */
-export function useFriendship({
+/** Friendship status for the people on screen. */
+export function useFriendStatuses({
   targetIds,
   enabled,
 }: {
   targetIds: Id<'users'>[];
   enabled: boolean;
 }) {
-  const { toast } = useToast();
-  const [pendingId, setPendingId] = useState<Id<'users'> | null>(null);
-  const sendRequest = useMutation(api.schedule.friends.sendRequest);
   const statuses = useQuery(
     api.schedule.friends.getStatuses,
     enabled && targetIds.length > 0 ? { userIds: targetIds } : 'skip',
   );
-  const statusByUserId = useMemo(
+  return useMemo(
     () => new Map(statuses?.map(({ userId, status }) => [userId, status])),
     [statuses],
   );
+}
+
+/** Sends "Add friend" requests, one in flight at a time. `enabled` gates sending. */
+export function useSendFriendRequest(enabled: boolean) {
+  const { toast } = useToast();
+  const [pendingId, setPendingId] = useState<Id<'users'> | null>(null);
+  const sendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const send = async (friendId: Id<'users'>) => {
     if (!enabled || pendingId) return;
@@ -58,5 +59,5 @@ export function useFriendship({
     }
   };
 
-  return { statusByUserId, pendingId, send, reset: () => setPendingId(null) };
+  return { pendingId, send };
 }

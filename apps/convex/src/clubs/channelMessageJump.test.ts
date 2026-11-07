@@ -4,16 +4,13 @@ import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -22,23 +19,7 @@ describe("inline reply jump lookup", () => {
     const t = convexTest(schema, modules);
     const ids = await t.run(async (ctx) => {
       const now = 1;
-      const makeUser = (uniqueId: string) =>
-        ctx.db.insert("users", {
-          uniqueId,
-          firstName: uniqueId,
-          lastName: "User",
-          roles: ["STUDENT"],
-          isStudent: true,
-          isTeacherStaff: false,
-          isStudentAdmin: false,
-          isOtherRole: false,
-          isActive: true,
-          mustResetPassword: false,
-          dashboardLayout: [],
-          searchText: `${uniqueId} User`,
-          createdAt: now,
-          updatedAt: now,
-        });
+      const makeUser = (uniqueId: string) => insertUser(ctx, { uniqueId, lastName: "User" });
       const memberId = await makeUser("MEMBER");
       const outsiderId = await makeUser("OUTSIDER");
 

@@ -18,6 +18,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { clubChannelSettingsHref } from '~/apps/shared/routes';
 
 type Props = {
   clubId: Id<'clubs'>;
@@ -44,7 +45,7 @@ export function ChannelDialog({ clubId, open, onOpenChange }: Props) {
       onOpenChange(false);
       setName('');
       setDescription('');
-      router.push(`/clubs/${clubId}/settings/channels/${channelId}`);
+      router.push(clubChannelSettingsHref(clubId, channelId));
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : 'Could not create channel',

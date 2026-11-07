@@ -1,9 +1,9 @@
 import {
   ADMIN_ROLES,
-  type AppRole,
   CLUB_CREATION_ROLES,
   isSuperAdmin,
 } from "../../../shared/roles";
+import { userSummary } from "../summaries";
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -34,10 +34,6 @@ import {
   requireClubRole,
   toClubRoleSummary,
 } from "./rolePermissions";
-
-export function canPermanentlyDeleteClub(roles: readonly AppRole[]) {
-  return isSuperAdmin(roles);
-}
 
 export const getAll = query({
   args: {},
@@ -229,7 +225,7 @@ export const deletePermanently = mutation({
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const user = await getCurrentAppUser(ctx);
-    if (!canPermanentlyDeleteClub(user.roles)) {
+    if (!isSuperAdmin(user)) {
       throw new ConvexError("Only superadmins can permanently delete clubs");
     }
 
@@ -842,13 +838,7 @@ export const listMyInvites = query({
             name: club.name,
             description: club.description ?? null,
           },
-          sender: {
-            _id: sender._id,
-            firstName: sender.firstName,
-            lastName: sender.lastName,
-            preferredName: sender.preferredName,
-            isDeveloper: sender.isDeveloper,
-          },
+          sender: userSummary(sender, "isDeveloper"),
         };
       }),
     ).then((rows) => rows.filter((r): r is NonNullable<typeof r> => !!r));

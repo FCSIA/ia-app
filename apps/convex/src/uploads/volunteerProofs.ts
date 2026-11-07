@@ -4,14 +4,20 @@ import { internalMutation, type MutationCtx } from "../_generated/server";
 import { MAX_VOLUNTEER_PROOF_BYTES, STAGED_IMAGE_MIME_TYPES } from "../../../shared/limits";
 import { deleteStorageQuietly } from "../../lib/storage";
 import { normalizeStoredFileMime } from "./fileSignatures";
+import { formatMegabytes } from "./_stagedImage";
 
 const IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
+/**
+ * Not `validateStagedImageMetadata`: proofs check the type before the size,
+ * reject empty files, fall back to the type staged earlier, and use their own
+ * messages, and `consumeVolunteerProof` also refuses a proof already submitted.
+ */
 export function validateVolunteerProofMetadata(metadata: { contentType?: string; size: number }, fallbackMimeType?: string) {
   const mimeType = normalizeStoredFileMime(metadata.contentType ?? fallbackMimeType ?? "application/octet-stream");
   if (!IMAGE_TYPES.has(mimeType)) throw new ConvexError("Proof must be a PNG, JPEG, GIF, or WebP image");
   if (!Number.isFinite(metadata.size) || metadata.size < 1 || metadata.size > MAX_VOLUNTEER_PROOF_BYTES) {
-    throw new ConvexError("Proof image must be 5 MB or smaller");
+    throw new ConvexError(`Proof image must be ${formatMegabytes(MAX_VOLUNTEER_PROOF_BYTES)} or smaller`);
   }
   return { mimeType, size: metadata.size };
 }

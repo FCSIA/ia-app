@@ -3,6 +3,7 @@ import type { WithoutSystemFields } from "convex/server";
 import { internalMutation } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { type NotificationCategory } from "../validators";
+import { channelScopeKey, clubScopeKey } from "../../../shared/notifications";
 import { isLocalDemoSeedEnabled } from "../seed";
 
 const CLEANUP_BATCH_SIZE = 200;
@@ -486,14 +487,14 @@ export const run = internalMutation({
         basePrefs.push({
           category: "CLUB_ANNOUNCEMENT",
           clubId: roboticsClub._id,
-          scopeKey: `club:${roboticsClub._id}`,
+          scopeKey: clubScopeKey(roboticsClub._id),
         });
         if (roboticsGeneralId) {
           basePrefs.push({
             category: "CLUB_CHANNEL_MENTION",
             clubId: roboticsClub._id,
             channelId: roboticsGeneralId,
-            scopeKey: `channel:${roboticsGeneralId}`,
+            scopeKey: channelScopeKey(roboticsGeneralId),
           });
         }
       }

@@ -29,4 +29,14 @@ describe('mobile Home route memory', () => {
     expect(readStored('clubs')).toBe('/clubs/club/channels/channel?thread=reply');
     expect(readStored('dashboard')).toBeNull();
   });
+
+  it.each([
+    ['/schedule?tab=friends', null],
+    ['/schedule?tab=groups', null],
+    ['/schedule?tab=admin&section=dates', '/schedule?tab=admin&section=dates'],
+    ['/schedule', '/schedule'],
+  ])('keeps the Friends view out of the Schedule tab memory: %s', (stored, expected) => {
+    vi.stubGlobal('localStorage', { getItem: () => stored });
+    expect(readStored('schedule')).toBe(expected);
+  });
 });

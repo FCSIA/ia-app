@@ -48,6 +48,7 @@ import {
 } from "@/components/reui/sortable";
 import { useToast } from "@/hooks/use-toast";
 import { Elevated } from "@/lib/elevated";
+import { clubChannelSettingsHref, clubSettingsHref } from '~/apps/shared/routes';
 
 function audienceLabel(
   channel: NonNullable<ClubDetail>["channels"][number],
@@ -344,7 +345,7 @@ function ChannelPlacementGroup({
                   size="icon-compact"
                   aria-label={`Settings for ${channel.name}`}
                 >
-                  <Link href={`/clubs/${clubId}/settings/channels/${channel._id}`}>
+                  <Link href={clubChannelSettingsHref(clubId, channel._id)}>
                     <Settings />
                   </Link>
                 </Button>
@@ -395,7 +396,7 @@ export default function ClubChannelSettingsPage() {
       actions={
         <>
           <Button asChild size="sm" variant="tertiary">
-            <Link href={`/clubs/${clubId}/settings`}>Back</Link>
+            <Link href={clubSettingsHref(clubId)}>Back</Link>
           </Button>
           <Button
             size="sm"

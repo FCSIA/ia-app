@@ -10,7 +10,6 @@ import {
   Bell,
   CalendarRange,
   ClipboardList,
-  CalendarDays,
   Home,
   MessageSquareText,
   Menu,
@@ -18,8 +17,6 @@ import {
   Settings,
   Shield,
   Presentation,
-  LayoutTemplate,
-  School,
   Search,
   Star,
   Ticket,
@@ -69,9 +66,11 @@ import {
   type MobileTabId,
   type NavSection,
 } from "@/lib/routes";
+import { DAY_PLAN_SECTIONS, dayPlanHref } from "@/components/schedule/schedule-utils";
 import { SCHEDULE_FRIENDS_HREF } from "~/apps/shared/routes";
 
 type NavItem = {
+  id: NavRouteId | "friends";
   href: string;
   label: string;
   icon: LucideIcon;
@@ -106,6 +105,7 @@ const ROUTE_ICONS: Record<NavRouteId, LucideIcon> = {
 
 function navItems(section: NavSection): NavItem[] {
   return navRoutes(section).map((route) => ({
+    id: route.id,
     href: route.path,
     label: route.label,
     icon: ROUTE_ICONS[route.id],
@@ -116,16 +116,10 @@ function navItems(section: NavSection): NavItem[] {
 const primaryNav = navItems("primary");
 const socialNav: NavItem[] = [
   ...navItems("social"),
-  { href: SCHEDULE_FRIENDS_HREF, label: "Friends", icon: UsersRound },
+  { id: "friends", href: SCHEDULE_FRIENDS_HREF, label: "Friends", icon: UsersRound },
 ];
 const accountNav = navItems("account");
 const adminNav = navItems("admin");
-
-const dayPlanNav: Array<NavItem> = [
-  { href: "/schedule?tab=admin&section=dates", label: "Calendar dates", icon: CalendarDays },
-  { href: "/schedule?tab=admin&section=templates", label: "Templates", icon: LayoutTemplate },
-  { href: "/schedule?tab=admin&section=config", label: "School config", icon: School },
-];
 
 type AppShellNavigationProps = {
   pathname: string;
@@ -147,14 +141,14 @@ function getNavigationItems({
   showFriends,
 }: AppShellNavigationProps) {
   return [...primaryNav, ...getSocialItems({ showFriends })].filter((item) => {
-    if (item.href === "/schedule" && !showSchedule) return false;
-    if (item.href === "/wrapped" && !showWrapped) return false;
+    if (item.id === "schedule" && !showSchedule) return false;
+    if (item.id === "wrapped" && !showWrapped) return false;
     return true;
   });
 }
 
 function getSocialItems({ showFriends }: Pick<AppShellNavigationProps, "showFriends">) {
-  return socialNav.filter((item) => item.href === "/clubs" || showFriends);
+  return socialNav.filter((item) => item.id === "clubs" || showFriends);
 }
 
 function isActive(pathname: string, href: string, activeHref?: string) {
@@ -247,10 +241,11 @@ function DesktopSubNavigationLink({ item }: { item: AppPageNavigation["items"][n
 
 function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] {
   return [
-    ...(props.showDayPlans && props.pageNavigation?.parentHref !== "/schedule" ? [{
-      parentHref: "/schedule",
+    ...(props.showDayPlans && props.pageNavigation?.parentHref !== routePath("schedule") ? [{
+      parentHref: routePath("schedule"),
       label: "Day plans",
-      items: dayPlanNav.map(({ href, label }) => ({ href, label, isActive: false })),
+      // Only shown on other pages, so no section is the current one.
+      items: DAY_PLAN_SECTIONS.map((section) => ({ href: dayPlanHref(section.id), label: section.label, isActive: false })),
     }] : []),
     ...(props.pageNavigation ? [props.pageNavigation] : []),
   ];
@@ -272,7 +267,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
   return (
     <Sidebar variant="inset" role="navigation" aria-label="Primary navigation" className="z-40">
       <SidebarHeader>
-        <Link href="/" aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
+        <Link href={routePath("home")} aria-label="IA App home" className="flex min-h-8 min-w-0 items-center gap-2 px-2">
           <IaOrbitMark alt="" width={16} height={16} className="size-4 shrink-0" />
           <span className="truncate text-sm font-semibold">IA App</span>
         </Link>
@@ -316,7 +311,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
                 key={item.href}
                 item={item}
                 active={isActive(props.pathname, item.href, props.activeHref)}
-                badge={item.href === "/notifications" ? props.unreadBadge : undefined}
+                badge={item.id === "notifications" ? props.unreadBadge : undefined}
                 subNavigation={getSubNavigation(item.href)}
               />
             ))}
@@ -375,7 +370,7 @@ function AppShellMobileNavigation({
                   onNavigate={() => onOpenChange(false)}
                   active={isActive(props.pathname, item.href, props.activeHref)}
                   badge={
-                    item.href === "/notifications"
+                    item.id === "notifications"
                       ? props.unreadBadge
                       : undefined
                   }
@@ -407,7 +402,7 @@ function AppShellMobileNavigation({
                   onNavigate={() => onOpenChange(false)}
                   active={isActive(props.pathname, item.href, props.activeHref)}
                   badge={
-                    item.href === "/notifications"
+                    item.id === "notifications"
                       ? props.unreadBadge
                       : undefined
                   }
@@ -470,10 +465,10 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   );
 
   return [
-    { href: routePath("home"), label: "Home", icon: Home },
+    { id: "home", href: routePath("home"), label: "Home", icon: Home },
     ...selectedIds.map((id) => {
       const item = availableById.get(id)!;
-      return item.href === "/announcements" ? { ...item, label: "Feed" } : item;
+      return item.id === "announcements" ? { ...item, label: "Feed" } : item;
     }),
     { href: "#more", label: "More", icon: Menu },
   ];

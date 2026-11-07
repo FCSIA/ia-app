@@ -24,8 +24,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { formatTimeRange } from '../_utils';
-import { workshopDetailHref } from '@/lib/routes';
+import { formatClockRange } from '~/apps/shared/school-time';
+import { FLEX_FRIDAY_HREF, workshopDetailHref } from '~/apps/shared/routes';
 
 type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
 type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
@@ -39,10 +39,6 @@ type FridayGroup = {
   type?: string;
   passes: PassRecord[];
 };
-
-function passTimeRange(start?: string | null, end?: string | null) {
-  return !start && !end ? '' : formatTimeRange(start, end);
-}
 
 function fridayForPass(pass: PassRecord) {
   const links = pass.workshop?.sessions ?? [];
@@ -138,7 +134,7 @@ function FlexFridayPassContent() {
     <AppShell>
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 flex items-center gap-3">
-          <Link href="/flex-friday">
+          <Link href={FLEX_FRIDAY_HREF}>
             <Button variant="ghost" size="sm" leadingIcon={ArrowLeft} className="h-8">
               Back
             </Button>
@@ -195,7 +191,7 @@ function FlexFridayPassContent() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Register for a Flex Friday workshop to see your pass here.
               </p>
-              <Link href="/flex-friday" className="mt-4 inline-block">
+              <Link href={FLEX_FRIDAY_HREF} className="mt-4 inline-block">
                 <Button size="sm" className="mt-4">
                   Browse Workshops
                 </Button>
@@ -335,12 +331,12 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
         <div className="flex-shrink-0 text-right">
           <div className="flex items-center justify-end gap-1 text-sm font-semibold tabular-nums text-foreground">
             <Clock size={13} className="text-muted-foreground" />
-            {first ? passTimeRange(first.startTime, first.endTime) : '—'}
+            {first ? formatClockRange(first.startTime, first.endTime) : '—'}
           </div>
           {linkedSessions.length > 1 ? (
             <div className="text-[10px] text-muted-foreground">
               through{' '}
-              {passTimeRange(
+              {formatClockRange(
                 undefined,
                 linkedSessions[linkedSessions.length - 1].endTime,
               ).replace(/^ – /, '')}
@@ -358,7 +354,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
             >
               <span className="truncate">{session.title}</span>
               <span className="flex-shrink-0 tabular-nums">
-                {passTimeRange(session.startTime, session.endTime)}
+                {formatClockRange(session.startTime, session.endTime)}
               </span>
             </div>
           ))}

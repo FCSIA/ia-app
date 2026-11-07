@@ -232,13 +232,20 @@ export function assertInitialPasswordAllowed(
   uniqueId: string,
 ) {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new ConvexError("Password must be at least 6 characters.");
+    throw new ConvexError(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+    );
   }
   if (password.toUpperCase() === uniqueId.toUpperCase()) {
     throw new ConvexError("Password cannot match the user's unique ID.");
   }
 }
 
+/**
+ * The ladder behind "cannot act on an equal or greater account". Distinct
+ * from `canManageUser` in shared/roles, which answers "may this actor manage
+ * this kind of account" without ranking (a super admin may not act on another).
+ */
 export function privilegeTierForRoles(roles: readonly string[]) {
   if (roles.includes("SUPER_ADMIN")) return 4;
   if (roles.includes("ADMIN")) return 3;

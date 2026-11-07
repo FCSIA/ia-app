@@ -5,7 +5,6 @@ import { serializeUser } from "./_lib";
 
 const MAX_ACCEPTED_FRIENDSHIPS = 100;
 
-/** The users on the other end of `userId`'s accepted friendships, each once. */
 export async function acceptedFriendIds(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
@@ -33,7 +32,6 @@ export async function acceptedFriendIds(
   );
 }
 
-/** Active student friends of `user`, sorted by last then first name. */
 export async function listEligibleFriendsOf(
   ctx: QueryCtx | MutationCtx,
   user: Pick<Doc<"users">, "_id">,

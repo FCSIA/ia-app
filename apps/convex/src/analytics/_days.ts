@@ -1,6 +1,5 @@
 import { normalizeDateKey } from "../schedule/dayResolver";
 
-/** Analytics days are school days on the school's own clock (SCHOOL_TIME_ZONE). */
 export const maxAnalyticsRangeDays = 180;
 
 /** Monday = 0 through Sunday = 6, for a calendar day key. */

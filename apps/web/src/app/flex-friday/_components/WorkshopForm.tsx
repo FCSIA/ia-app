@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { FlexSession, WorkshopForm as WorkshopFormType } from '../_types';
 import type { RunFlexAction } from '../_hooks/useFlexActions';
-import { formatTimeRange, toggleInArray } from '../_utils';
+import { toggleInArray } from '../_utils';
+import { formatClockRange } from '~/apps/shared/school-time';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
 
@@ -135,7 +136,7 @@ export function WorkshopForm({
                       <div className="min-w-0">
                         <p className="font-medium text-sm leading-tight">{s.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatTimeRange(s.startTime, s.endTime)}
+                          {formatClockRange(s.startTime, s.endTime)}
                         </p>
                       </div>
                     </label>

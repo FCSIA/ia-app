@@ -2,6 +2,7 @@ import { errorMessage } from "@/lib/errors";
 import { sentenceCaseEnum } from "~/apps/shared/labels";
 import {
   SCHOOL_WEEKDAYS,
+  currentSchoolWeekday,
   lunchPeriodNumber,
   type SchoolLunchPeriod,
   type SchoolWeekday,
@@ -32,14 +33,13 @@ import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { calendarQueries } from "@/lib/tab-queries";
 
 const fallbackPeriods = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 const lunchPeriodOptions = [
   { value: "PERIOD_4", label: "Period 4" },
   { value: "PERIOD_5", label: "Period 5" },
 ] as const;
-
-import { calendarQueries } from "@/lib/tab-queries";
 
 export function MyWeekView() {
   const scheduleQuery = calendarQueries.mySchedule();
@@ -57,7 +57,7 @@ export function MyWeekView() {
   const [isPublic, setIsPublic] = useState(true);
   const [lunchPeriod, setLunchPeriod] = useState<SchoolLunchPeriod | null>(null);
   const [draftEntries, setDraftEntries] = useState<any[]>([]);
-  const [selectedDay, setSelectedDay] = useState<SchoolWeekday>(initialWeekday);
+  const [selectedDay, setSelectedDay] = useState<SchoolWeekday>(currentSchoolWeekday);
   const [selectedPeriod, setSelectedPeriod] = useState(1);
   const [courseSearch, setCourseSearch] = useState("");
   const [friendSearch, setFriendSearch] = useState("");
@@ -791,17 +791,12 @@ function LunchPeriodPicker({
 }
 
 
-function initialWeekday(): SchoolWeekday {
-  const day = new Date().getDay();
-  return SCHOOL_WEEKDAYS[day - 1] ?? "MONDAY";
-}
-
 function formatSchoolTime(startTime: string, endTime: string) {
   if (!startTime || !endTime) return "—";
-  return `${formatClock(startTime)}–${formatClock(endTime)}`;
+  return `${formatClockShort(startTime)}–${formatClockShort(endTime)}`;
 }
 
-function formatClock(value: string) {
+function formatClockShort(value: string) {
   const [hours, minutes] = value.split(":");
   const hour = Number(hours);
   if (!Number.isFinite(hour)) return value;

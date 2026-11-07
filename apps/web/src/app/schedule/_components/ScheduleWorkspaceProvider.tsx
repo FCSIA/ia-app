@@ -1,6 +1,6 @@
 "use client";
 
-import { hasAnyRole, isAdmin } from "~/apps/shared/roles";
+import { SCHEDULE_OWNER_ROLES, hasAnyRole, isAdmin } from "~/apps/shared/roles";
 import {
   createContext,
   use,
@@ -57,7 +57,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   const { toast } = useToast();
   const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
-  const canEditOwnSchedule = hasAnyRole(user, ["STUDENT"]);
+  const canEditOwnSchedule = hasAnyRole(user, SCHEDULE_OWNER_ROLES);
   const canManageBlocks = isAdmin(user);
   const requestedTab = searchParams?.get("tab") ?? null;
   const requestedSection = searchParams?.get("section") ?? null;

@@ -5,17 +5,13 @@ import { describe, expect, test, vi } from "vitest";
 import aggregateTest from "@convex-dev/aggregate/test";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 
-vi.mock("../../lib/currentUser", () => ({
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db.get(identity.subject as Id<"users">);
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -23,23 +19,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   aggregateTest.register(t, "volunteerHours");
   const ids = await t.run(async (ctx) => {
-    const makeUser = (name: string) =>
-      ctx.db.insert("users", {
-        uniqueId: name,
-        firstName: name,
-        lastName: "Test",
-        roles: ["STUDENT"],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: name,
-        createdAt: 1,
-        updatedAt: 1,
-      });
+    const makeUser = (name: string) => insertUser(ctx, { uniqueId: name });
     const studentId = await makeUser("Student");
     const reviewerId = await makeUser("Reviewer");
     const outsiderId = await makeUser("Outsider");

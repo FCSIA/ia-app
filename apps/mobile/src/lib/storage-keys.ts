@@ -1,4 +1,3 @@
-/** Every AsyncStorage / SecureStore key the app owns. */
 export const STORAGE_KEYS = {
   user: "ia_user",
   theme: "ia_theme",

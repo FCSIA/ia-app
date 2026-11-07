@@ -237,7 +237,7 @@ function assertAcademicDate(
   if (!start || !end) {
     throw new ConvexError("Set up the academic year before assigning dates.");
   }
-  if (dateKey < start || dateKey > end || !weekdayForDateKey(dateKey)) {
+  if (dateKey < start || dateKey > end || !weekdayForDateKey(normalizeDateKey(dateKey))) {
     throw new ConvexError("Choose a weekday inside the configured academic year.");
   }
 }

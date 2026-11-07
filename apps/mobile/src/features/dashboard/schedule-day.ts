@@ -1,26 +1,17 @@
 import type { FunctionReturnType } from "convex/server";
 import { format } from "date-fns";
 import { api } from "~/apps/convex/src/_generated/api";
-import { clockMinutes, formatClockTime } from "~/apps/shared/school-time";
+import { clockMinutes, currentSchoolWeekday, formatClockTime, SCHOOL_WEEKDAY_LABELS } from "~/apps/shared/school-time";
 
 export type ScheduleDay = FunctionReturnType<typeof api.schedule.dashboard.getDay>;
 export type ScheduleBlock = ScheduleDay["blocks"][number];
 
 export type SchoolDayLabel = { value: string; label: string; isToday: boolean };
 
-const WEEKDAYS = [
-  { value: "MONDAY", label: "Monday" },
-  { value: "TUESDAY", label: "Tuesday" },
-  { value: "WEDNESDAY", label: "Wednesday" },
-  { value: "THURSDAY", label: "Thursday" },
-  { value: "FRIDAY", label: "Friday" },
-] as const;
-
-/** Today on weekdays, Monday over the weekend. */
 export function getDashboardSchoolDay(): SchoolDayLabel {
+  const value = currentSchoolWeekday();
   const today = new Date().getDay();
-  if (today >= 1 && today <= 5) return { ...WEEKDAYS[today - 1], isToday: true };
-  return { ...WEEKDAYS[0], isToday: false };
+  return { value, label: SCHOOL_WEEKDAY_LABELS[value], isToday: today >= 1 && today <= 5 };
 }
 
 /** The blocks to show: a custom "Lunch" block is dropped once the canonical lunch exists. */

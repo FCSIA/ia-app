@@ -105,7 +105,7 @@ export function HomeEmpty({ text }: { text: string }) {
   );
 }
 
-export function HomeSkeleton(_props: { count?: number }) {
+export function HomeSkeleton() {
   return (
     <View style={{ paddingVertical: 48, alignItems: "center", justifyContent: "center" }}>
       <IaLoadingMark size="sm" />
@@ -124,7 +124,7 @@ export function AnnouncementsWidget({ cards }: { cards: AnnouncementCards | unde
       action={<SectionLink label="Open feed" onPress={() => router.push("/announcements")} />}
     >
       {cards === undefined ? (
-        <HomeSkeleton count={3} />
+        <HomeSkeleton />
       ) : (
         <HomeSurface>
           {cards.length ? cards.slice(0, 3).map((item, index) => (
@@ -159,7 +159,7 @@ export function ComingUpWidget({ entries }: { entries: UpcomingEntries | undefin
       action={<SectionLink label="Open calendar" onPress={() => router.push("/calendar")} />}
     >
       {entries === undefined ? (
-        <HomeSkeleton count={3} />
+        <HomeSkeleton />
       ) : (
         <HomeSurface>
           {entries.length ? entries.slice(0, 4).map((entry, index) => (

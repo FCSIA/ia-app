@@ -25,7 +25,6 @@ export function deriveChannelVisibility(input: {
     : ("PUBLIC" as const);
 }
 
-/** Whiteboards are on for a channel unless its managers have turned them off. */
 export function channelWhiteboardsEnabled(channel: { whiteboardsEnabled?: boolean }) {
   return channel.whiteboardsEnabled !== false;
 }

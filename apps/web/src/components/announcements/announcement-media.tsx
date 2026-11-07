@@ -11,7 +11,8 @@ import {
   MAX_ANNOUNCEMENT_EMBEDS,
   MAX_ANNOUNCEMENT_IMAGES,
   MAX_ANNOUNCEMENT_IMAGE_BYTES,
-  STAGED_IMAGE_MIME_TYPES,
+  STAGED_IMAGE_ACCEPT,
+  isStagedImageType,
 } from '~/apps/shared/limits';
 
 const ImageViewer = dynamic(
@@ -21,11 +22,6 @@ const ImageViewer = dynamic(
     ),
   { ssr: false },
 );
-
-const ANNOUNCEMENT_IMAGE_ACCEPT =
-  'image/png,image/jpeg,image/gif,image/webp';
-
-const acceptedImageTypes = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 type AnnouncementMediaInputProps = {
   images: File[];
@@ -50,11 +46,11 @@ export function AnnouncementMediaInput({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <FileInput
-          accept={ANNOUNCEMENT_IMAGE_ACCEPT}
+          accept={STAGED_IMAGE_ACCEPT}
           label="Add image"
           disabled={disabled || images.length >= MAX_ANNOUNCEMENT_IMAGES}
           onFileSelect={(file) => {
-            if (!acceptedImageTypes.has(file.type)) {
+            if (!isStagedImageType(file.type)) {
               onError('Choose a PNG, JPEG, GIF, or WebP image');
               return;
             }

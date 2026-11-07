@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 import type { ClubContext } from "./access";
 import {
   getChannelAccess,
@@ -38,22 +39,7 @@ describe("channel role and structure filters", () => {
     const t = convexTest(schema, modules);
     const result = await t.run(async (ctx) => {
       const now = 1;
-      const creatorId = await ctx.db.insert("users", {
-        uniqueId: "CREATOR",
-        firstName: "Channel",
-        lastName: "Creator",
-        roles: ["STUDENT"],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: "Channel Creator CREATOR",
-        createdAt: now,
-        updatedAt: now,
-      });
+      const creatorId = await insertUser(ctx, { uniqueId: "CREATOR", firstName: "Channel", lastName: "Creator" });
       const clubId = await ctx.db.insert("clubs", {
         name: "Filter Club",
         joinPolicy: "OPEN",
@@ -124,22 +110,7 @@ describe("channel role and structure filters", () => {
       ] as const;
       const userIds = new Map<string, Id<"users">>();
       for (const [uniqueId, unitId, roleId] of assignments) {
-        const userId = await ctx.db.insert("users", {
-          uniqueId,
-          firstName: uniqueId,
-          lastName: "User",
-          roles: ["STUDENT"],
-          isStudent: true,
-          isTeacherStaff: false,
-          isStudentAdmin: false,
-          isOtherRole: false,
-          isActive: true,
-          mustResetPassword: false,
-          dashboardLayout: [],
-          searchText: `${uniqueId} User`,
-          createdAt: now,
-          updatedAt: now,
-        });
+        const userId = await insertUser(ctx, { uniqueId, lastName: "User" });
         userIds.set(uniqueId, userId);
         await ctx.db.insert("clubMembers", {
           clubId,

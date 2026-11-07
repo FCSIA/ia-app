@@ -18,7 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { contentRateLimiter } from "../rateLimits";
@@ -1171,10 +1171,7 @@ export const getAuditSnapshot = query({
   args: { boardId: v.id("clubWhiteboards"), atSeq: v.number() },
   returns: v.union(snapshotValidator, v.null()),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (!viewer || !requireAnyRoleSafe(viewer, STAFF_ROLES)) {
-      return null;
-    }
+    if (!(await viewerWithRoles(ctx, STAFF_ROLES))) return null;
     return await getWhiteboardSnapshot(ctx, args.boardId, args.atSeq);
   },
 });

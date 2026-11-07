@@ -1,21 +1,21 @@
 import { describe, expect, test } from "vitest";
 import {
-  DEFAULT_DASHBOARD_WIDGETS,
-  moveDashboardWidget,
-  normalizeDashboardLayout,
-  resolveDashboardLayout,
-} from "./dashboard-layout";
+  DEFAULT_HOME_WIDGETS,
+  moveHomeWidget,
+  normalizeHomeLayout,
+  resolveHomeLayout,
+} from "./home-layout";
 
 describe("dashboard layout", () => {
   test("migrates legacy ids and removes unsupported duplicates", () => {
     expect(
-      normalizeDashboardLayout(["events", "calendar", "unknown", "clubs"]),
+      normalizeHomeLayout(["events", "calendar", "unknown", "clubs"]),
     ).toEqual(["calendar", "clubs"]);
   });
 
   test("moves a widget without mutating the saved layout", () => {
     const layout = ["schedule", "calendar", "clubs"] as const;
-    expect(moveDashboardWidget(layout, 2, 1)).toEqual([
+    expect(moveHomeWidget(layout, 2, 1)).toEqual([
       "schedule",
       "clubs",
       "calendar",
@@ -24,9 +24,9 @@ describe("dashboard layout", () => {
   });
 
   test("restores the default layout when no supported widgets remain", () => {
-    expect(resolveDashboardLayout()).toEqual(DEFAULT_DASHBOARD_WIDGETS);
-    expect(resolveDashboardLayout(["unknown", "constructor"])).toEqual(
-      DEFAULT_DASHBOARD_WIDGETS,
+    expect(resolveHomeLayout()).toEqual(DEFAULT_HOME_WIDGETS);
+    expect(resolveHomeLayout(["unknown", "constructor"])).toEqual(
+      DEFAULT_HOME_WIDGETS,
     );
   });
 });

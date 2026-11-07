@@ -72,7 +72,3 @@ export async function viewerWithRoles(
   const user = await getMaybeCurrentAppUser(ctx);
   return user && hasAnyRole(user.roles, allowed) ? user : null;
 }
-
-export function requireAnyRoleSafe(user: Doc<"users">, allowed: readonly AppRole[]): boolean {
-  return hasAnyRole(user.roles, allowed);
-}

@@ -10,7 +10,9 @@ describe('admin sections', () => {
   it('shows each role the sections it may use', () => {
     expect(ids(staff)).toEqual(['users', 'moderation', 'audit']);
     expect(ids(admin)).toEqual(['users', 'moderation', 'wrapped', 'audit']);
-    expect(ids(superAdmin)).toHaveLength(8);
+    expect(ids(superAdmin)).toEqual([
+      'users', 'schedule', 'administrator-roster', 'moderation', 'feedback', 'wrapped', 'analytics', 'audit',
+    ]);
   });
 
   it('falls back to Users for sections the viewer cannot see', () => {

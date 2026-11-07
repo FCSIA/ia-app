@@ -16,7 +16,6 @@ import { useQueryKeepAlive } from "@/lib/convex-react";
 import type { AppUser } from "@/lib/auth";
 import { prewarmEntries, type PrewarmTab } from "@/lib/tab-queries";
 
-/** Returns a handler to call with a tab name when the user shows intent to go there. */
 export function usePrewarmTab(user: AppUser | null | undefined) {
   const cache = useQueryKeepAlive();
 

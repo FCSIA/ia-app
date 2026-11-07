@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { formatTimeRange } from '../_utils';
+import { formatClockRange } from '~/apps/shared/school-time';
 import type { FlexSession } from '../_types';
 import { Card, CardAction, CardGroup } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
@@ -79,7 +79,7 @@ export function SessionPanel({
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {formatTimeRange(s.startTime, s.endTime)}
+                      {formatClockRange(s.startTime, s.endTime)}
                     </p>
                   </div>
 

@@ -1,24 +1,16 @@
 import { userSummary } from "../summaries";
-import { isStudent } from "../../../shared/roles";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { flexAttendanceStatusValidator } from "../validators";
-import { canManageFlexAttendance } from "./permissions";
+import { canManageFlexAttendance, isActiveFlexStudent } from "./permissions";
 
 function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string, actorId?: string) {
   const isGlobalAttendanceManager = canManageFlexAttendance(user.roles);
   const isWorkshopTeacher = workshopTeacherId && actorId && workshopTeacherId === actorId;
   return isGlobalAttendanceManager || isWorkshopTeacher;
-}
-
-function isActiveStudent(user: { isActive: boolean; isStudent: boolean; roles: string[] }) {
-  return (
-    user.isActive &&
-    (user.isStudent || isStudent(user))
-  );
 }
 
 export const getRoster = query({
@@ -104,7 +96,7 @@ export const markAttendance = mutation({
     }
 
     const student = await ctx.db.get(args.studentId);
-    if (!student || !isActiveStudent(student)) {
+    if (!student || !isActiveFlexStudent(student)) {
       throw new ConvexError("Student not found");
     }
 

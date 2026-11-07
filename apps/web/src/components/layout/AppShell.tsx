@@ -10,7 +10,8 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { startLogout, useCurrentUser } from "@/lib/auth";
-import { useAppFrameActions, useCommandHint } from "@/components/layout/app-frame-context";
+import { useAppFrameActions } from "@/components/layout/app-frame-context";
+import { useIsMac } from "@/components/ui/command-menu";
 import type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
 import {
   AppShellHeader,
@@ -21,6 +22,7 @@ import type { MobileNavigationSwipeOptions } from "@/components/layout/use-mobil
 import { useNavigationLoadingOptional } from "@/components/layout/navigation-loading-provider";
 import { PageTransition } from "@/components/layout/page-transition";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PROFILE_HREF } from "~/apps/shared/routes";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 
@@ -58,7 +60,7 @@ export function AppShell({
   const navigationLoading = useNavigationLoadingOptional();
   const { register, unregister, openGlobalSearch } = useAppFrameActions();
   const owner = useRef(Symbol("AppShell"));
-  const commandHint = useCommandHint();
+  const commandHint = useIsMac();
   const [searchScope, setSearchScope] = useState<SearchScope>("everything");
   const onProgress = mobileNavigationSwipeOptions?.onProgress;
   const onCancel = mobileNavigationSwipeOptions?.onCancel;
@@ -108,8 +110,8 @@ export function AppShell({
           onOpenGlobalSearch={openGlobalSearch}
           onToggleSearchScope={toggleSearchScope}
           onOpenProfile={() => {
-            navigationLoading?.startNavigation("/profile");
-            router.push("/profile");
+            navigationLoading?.startNavigation(PROFILE_HREF);
+            router.push(PROFILE_HREF);
           }}
           onLogout={startLogout}
         />

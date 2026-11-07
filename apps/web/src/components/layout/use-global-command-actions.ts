@@ -1,4 +1,4 @@
-import { hasAnyRole, isStudent } from '~/apps/shared/roles';
+import { SCHEDULE_OWNER_ROLES, hasAnyRole, isStudent } from '~/apps/shared/roles';
 import { displayName, nameSearchValues } from '~/apps/shared/user-name';
 import { useMemo } from 'react';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -23,7 +23,7 @@ import { type AppUser } from '@/lib/auth';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { calendarDate, calendarInputDate } from '@/components/calendar/calendar-date';
 import { formatClockTime, schoolDateKey } from '~/apps/shared/school-time';
-import { workshopDetailHref } from '@/lib/routes';
+import { SCHEDULE_FRIENDS_HREF, announcementHref, clubChannelHref, eventHref, workshopDetailHref } from '~/apps/shared/routes';
 import {
   commandWhen,
   canSuggestFridayBrowse,
@@ -115,7 +115,7 @@ export function useGlobalCommandActions({
           announcement.club?.name ||
           announcement.targetType?.replace(/_/g, ' ') ||
           'Announcement',
-        href: `/announcements/${announcement._id}`,
+        href: announcementHref(announcement._id),
         Icon: Megaphone,
         badge: announcement.isRead ? undefined : 'Unread',
         suggestion: announcement.isRead || announcement.status !== 'ACTIVE' ? undefined : {
@@ -132,7 +132,7 @@ export function useGlobalCommandActions({
       id: `event-${event._id}`,
       label: event.title,
       detail: [commandWhen(event.startAt, now, user?.use24HourTime), event.location, event.club?.name].filter(Boolean).join(' · '),
-      href: `/events/${event._id}`,
+      href: eventHref(event._id),
       Icon: Ticket,
       suggestion: event.status === 'PUBLISHED' && !event.isInactive ? {
         kind: 'event', startAt: event.startAt, endAt: event.endAt,
@@ -267,7 +267,7 @@ export function useGlobalCommandActions({
       id: `schedule-friend-${friend.id}`,
       label: displayName(friend.user),
       detail: 'Schedule friend',
-      href: '/schedule?tab=friends',
+      href: SCHEDULE_FRIENDS_HREF,
       Icon: Users,
       keywords: ['schedule friend', friend.user.uniqueId, ...nameSearchValues(friend.user)],
     }));
@@ -276,8 +276,8 @@ export function useGlobalCommandActions({
       id: `person-${person._id}`,
       label: displayName(person),
       detail: 'IA community member',
-      href: hasAnyRole(user, ['STUDENT'])
-        ? `/schedule?tab=friends&search=${encodeURIComponent(displayName(person))}`
+      href: hasAnyRole(user, SCHEDULE_OWNER_ROLES)
+        ? `${SCHEDULE_FRIENDS_HREF}&search=${encodeURIComponent(displayName(person))}`
         : `/admin?search=${encodeURIComponent(displayName(person))}`,
       Icon: UserRound,
       keywords: ['person', 'people', ...nameSearchValues(person)],
@@ -287,7 +287,7 @@ export function useGlobalCommandActions({
       id: `channel-${channel._id}`,
       label: `${channel.name}`,
       detail: channel.club.name,
-      href: `/clubs/${channel.club._id}/channels/${channel._id}`,
+      href: clubChannelHref(channel.club._id, channel._id),
       Icon: Hash,
       keywords: ['channel', 'club channel', channel.club.name, channel.description ?? ''],
     }));

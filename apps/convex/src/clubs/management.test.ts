@@ -1,28 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { AppRole } from "../../../shared/roles";
 import type { Id } from "../_generated/dataModel";
-import {
-  canPermanentlyDeleteClub,
-  roleRemovalChannelAccessUpdate,
-} from "./management";
-
-describe("permanent club deletion authorization", () => {
-  test("allows superadmins", () => {
-    expect(canPermanentlyDeleteClub(["SUPER_ADMIN"])).toBe(true);
-  });
-
-  test.each<AppRole>([
-    "ADMIN",
-    "SUPPORT_STAFF",
-    "TEACHER",
-    "SPONSOR",
-    "STUDENT_ADMIN",
-    "STUDENT_LEADER",
-    "STUDENT",
-  ])("does not allow %s", (role) => {
-    expect(canPermanentlyDeleteClub([role])).toBe(false);
-  });
-});
+import { roleRemovalChannelAccessUpdate } from "./management";
 
 describe("role removal channel access updates", () => {
   const removedRoleId = "role-removed" as Id<"clubRoles">;

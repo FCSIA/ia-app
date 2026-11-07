@@ -18,7 +18,7 @@ export function readCsv(text: string): CsvRecord[] {
   let closedQuote = false;
   let line = 1;
   let recordLine = 1;
-  const source = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const source = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const finish = () => {
     cells.push(cell.trim());
     if (cells.some(Boolean)) result.push({ line: recordLine, cells });

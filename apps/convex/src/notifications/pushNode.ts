@@ -7,7 +7,7 @@ import { v, type Infer } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import type { ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { publicVapidKey, webPushTargetValidator } from "./_pushTransport";
+import { publicVapidKey, webPushTargetValidator } from "./_pushShapes";
 
 function formatVapidSubject() {
   const raw =

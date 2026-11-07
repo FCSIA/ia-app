@@ -1,15 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from '@/lib/convex-react';
-import { api } from '~/apps/convex/src/_generated/api';
 import { FRIDAY_PROTOTYPE_ENABLED } from '@/lib/friday-prototype';
 import { routePath } from '@/lib/routes';
 import { CalendarDays, History } from 'lucide-react';
 import { FridayPrototype } from '@/features/friday-prototype/friday-workspace';
 import { AppShell } from '@/components/layout/AppShell';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
 import { useFlexFriday } from './_hooks/useFlexFriday';
@@ -40,16 +37,8 @@ export default function FlexFridayPage() {
 }
 
 function FlexFridayWorkspace() {
-  const { toast } = useToast();
-
   const flex = useFlexFriday();
   const actions = useFlexActions();
-  const deleteSession = useMutation(api.flexFriday.sessions.remove);
-  const deleteWorkshop = useMutation(api.flexFriday.workshops.remove);
-  const register = useMutation(api.flexFriday.registration.register);
-  const unregister = useMutation(api.flexFriday.registration.unregister);
-  const markAttendance = useMutation(api.flexFriday.attendance.markAttendance);
-  const clearAttendance = useMutation(api.flexFriday.attendance.clearAttendance);
 
   const [fridayFormOpen, setFridayFormOpen] = useState(false);
 
@@ -89,10 +78,7 @@ function FlexFridayWorkspace() {
         `Delete session "${s.title}"? This will fail if workshops are attached.`,
       )
     ) {
-      void actions.runAction('session-delete', async () => {
-        await deleteSession({ sessionId: s._id });
-        toast({ title: 'Session deleted' });
-      });
+      void actions.deleteSession(s._id);
     }
   };
 
@@ -128,29 +114,8 @@ function FlexFridayWorkspace() {
 
   const handleDeleteWorkshop = (w: FlexWorkshop) => {
     if (confirm(`Delete workshop "${w.title}"?`)) {
-      void actions.runAction('workshop-delete', async () => {
-        await deleteWorkshop({ workshopId: w._id });
-        toast({ title: 'Workshop deleted' });
-      });
+      void actions.deleteWorkshop(w._id);
     }
-  };
-
-  const handleRegister = (workshopId: string) => {
-    void actions.runAction('register', async () => {
-      await register({
-        workshopId: workshopId as Id<'flexWorkshops'>,
-      });
-      toast({ title: 'Registered successfully' });
-    });
-  };
-
-  const handleUnregister = (workshopId: string) => {
-    void actions.runAction('unregister', async () => {
-      await unregister({
-        workshopId: workshopId as Id<'flexWorkshops'>,
-      });
-      toast({ title: 'Registration removed' });
-    });
   };
 
   return (
@@ -234,8 +199,8 @@ function FlexFridayWorkspace() {
                 onAddWorkshop={openNewWorkshopForm}
                 onEditWorkshop={openEditWorkshopForm}
                 onDeleteWorkshop={handleDeleteWorkshop}
-                onRegister={handleRegister}
-                onUnregister={handleUnregister}
+                onRegister={(id) => void actions.register(id as Id<'flexWorkshops'>)}
+                onUnregister={(id) => void actions.unregister(id as Id<'flexWorkshops'>)}
                 onAttendance={(id) =>
                   flex.setAttendanceWorkshopId((current) =>
                     current === id ? null : (id as Id<'flexWorkshops'>),
@@ -255,23 +220,11 @@ function FlexFridayWorkspace() {
                   <AttendancePanel
                     roster={flex.rosterData}
                     isLoading={flex.rosterLoading}
-                    error={null}
                     onMark={(studentId, status) =>
-                      void actions.runAction('attendance-mark', () =>
-                        markAttendance({
-                          workshopId: flex.attendanceWorkshopId!,
-                          studentId,
-                          status,
-                        }),
-                      )
+                      void actions.markAttendance(flex.attendanceWorkshopId!, studentId, status)
                     }
                     onClear={(studentId) =>
-                      void actions.runAction('attendance-clear', () =>
-                        clearAttendance({
-                          workshopId: flex.attendanceWorkshopId!,
-                          studentId,
-                        }),
-                      )
+                      void actions.clearAttendance(flex.attendanceWorkshopId!, studentId)
                     }
                     isMarking={actions.actionPending != null}
                   />

@@ -5,6 +5,7 @@ import { Panel } from '@/components/layout/page-frame';
 import { CardGroup } from '@/components/ui/card';
 import { ClubListRow } from '@/components/clubs/club-list-row';
 import { Empty, EmptyDescription } from '@/components/ui/empty';
+import { CLUBS_DISCOVER_HREF, CLUBS_HREF } from "~/apps/shared/routes";
 export function MyClubsWidget() {
   const data = useQuery(api.clubs.management.getMyClubs, {
     includeActivity: true,
@@ -12,7 +13,7 @@ export function MyClubsWidget() {
   return (
     <Panel
       title="My clubs"
-      href="/clubs"
+      href={CLUBS_HREF}
       count={data?.clubs.length}
       loading={!data}
       flush
@@ -38,7 +39,7 @@ export function MyClubsWidget() {
         <Empty size="inline">
           <EmptyDescription>
             You haven&apos;t joined any clubs.{' '}
-            <a href="/clubs/discover">Browse clubs</a>
+            <a href={CLUBS_DISCOVER_HREF}>Browse clubs</a>
           </EmptyDescription>
         </Empty>
       )}

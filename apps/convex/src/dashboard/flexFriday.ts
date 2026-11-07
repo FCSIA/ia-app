@@ -1,8 +1,8 @@
-import { isStudent } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
+import { isFlexStudent } from "../flexFriday/permissions";
 
 /** Start from the next Friday, so a dashboard never hydrates registration history. */
 export const snapshot = query({
@@ -30,7 +30,7 @@ export const snapshot = query({
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const student = user.isStudent || isStudent(user);
+    const student = isFlexStudent(user);
     const friday = await ctx.db
       .query("flexFridays")
       .withIndex("by_date", (q) => q.gte("date", args.from))

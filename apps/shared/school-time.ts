@@ -10,6 +10,19 @@ export const SCHOOL_WEEKDAYS = [
 ] as const;
 export type SchoolWeekday = (typeof SCHOOL_WEEKDAYS)[number];
 
+export const SCHOOL_WEEKDAY_LABELS: Record<SchoolWeekday, string> = {
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+};
+
+/** The weekday on the device's own clock; Monday over the weekend. */
+export function currentSchoolWeekday(date: Date = new Date()): SchoolWeekday {
+  return SCHOOL_WEEKDAYS[date.getDay() - 1] ?? "MONDAY";
+}
+
 export const SCHOOL_LUNCH_PERIODS = ["PERIOD_4", "PERIOD_5"] as const;
 export type SchoolLunchPeriod = (typeof SCHOOL_LUNCH_PERIODS)[number];
 export const DEFAULT_LUNCH_PERIOD: SchoolLunchPeriod = "PERIOD_5";
@@ -44,7 +57,6 @@ const schoolDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
 });
 
-/** The school calendar day (YYYY-MM-DD) at an instant. */
 export function schoolDateKey(now: Date | number = new Date()) {
   const parts = schoolDateFormatter.formatToParts(now);
   const byType = new Map(parts.map((part) => [part.type, part.value]));
@@ -57,7 +69,6 @@ const schoolHourFormatter = new Intl.DateTimeFormat("en-US", {
   hourCycle: "h23",
 });
 
-/** The hour (0-23) on the school clock at an instant. */
 export function schoolHour(ms: number) {
   return Number(schoolHourFormatter.format(new Date(ms))) % 24;
 }
@@ -90,18 +101,15 @@ function dateKeyParts(dateKey: string) {
   return { year, month, day };
 }
 
-/** The school calendar date at an instant, as numbers (month 1-12). */
 export function schoolDateParts(timestamp: number) {
   return dateKeyParts(schoolDateKey(timestamp));
 }
 
-/** The instants a school day (YYYY-MM-DD) starts and ends. */
 export function schoolDayBounds(dateKey: string) {
   const day = dateKeyParts(dateKey);
   return { start: schoolTimestamp(day), end: schoolTimestamp({ ...day, day: day.day + 1 }) };
 }
 
-/** The school day an instant falls in. */
 export function schoolDaySpan(timestamp: number) {
   const { start, end } = schoolDayBounds(schoolDateKey(timestamp));
   return { startAt: start, endAt: end };
@@ -117,7 +125,7 @@ const WEEKDAY_BY_UTC_DAY: Array<SchoolWeekday | null> = [
   null,
 ];
 
-/** The school weekday of a valid YYYY-MM-DD key; null on weekends. */
+/** The school weekday of a YYYY-MM-DD key; null on weekends. Callers validate the key first (convex: `normalizeDateKey`). */
 export function weekdayForDateKey(dateKey: string): SchoolWeekday | null {
   return WEEKDAY_BY_UTC_DAY[new Date(`${dateKey}T12:00:00.000Z`).getUTCDay()] ?? null;
 }
@@ -136,12 +144,10 @@ export function schoolYearRange(startYear: number) {
   return { start, end };
 }
 
-/** "2025-26". */
 export function schoolYearLabel(startYear: number) {
   return `${startYear}-${String((startYear + 1) % 100).padStart(2, "0")}`;
 }
 
-/** Minutes since midnight for an "HH:MM" time. */
 export function clockMinutes(value: string) {
   const [hours, minutes] = value.split(":").map((segment) => Number.parseInt(segment, 10));
   return hours * 60 + minutes;
@@ -154,4 +160,10 @@ export function formatClockTime(value: string, use24HourTime = false) {
   if (use24HourTime) return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   const suffix = hours >= 12 ? "PM" : "AM";
   return `${((hours + 11) % 12) + 1}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+/** "13:05" to "14:00" as "1:05 PM – 2:00 PM"; empty when both ends are missing. Always a 12-hour clock. */
+export function formatClockRange(start?: string | null, end?: string | null) {
+  if (!start && !end) return "";
+  return `${start ? formatClockTime(start) : ""} – ${end ? formatClockTime(end) : ""}`;
 }

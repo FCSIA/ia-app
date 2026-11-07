@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { isMobilePwaDisplay } from '@/lib/pwa';
+import { clubHref, clubNavigationHref } from '~/apps/shared/routes';
 
 /**
  * Returns the appropriate first club screen for the current display context.
@@ -32,7 +33,7 @@ export function useClubEntryHref() {
 
   return useCallback(
     (clubId: string) =>
-      isMobilePwa ? `/clubs/${clubId}/navigation` : `/clubs/${clubId}`,
+      isMobilePwa ? clubNavigationHref(clubId) : clubHref(clubId),
     [isMobilePwa],
   );
 }

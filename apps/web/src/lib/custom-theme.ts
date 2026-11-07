@@ -1,11 +1,21 @@
+import type { ThemeProviderProps } from 'next-themes';
 import { readStorage } from '@/lib/browser-storage';
 import {
+  THEME_NAMES,
   blackOrWhiteOn,
   contrastRatio as contrastRatioOf,
   hexToHslToken,
   normalizeHex,
   parseHex,
 } from '~/packages/design-tokens/src/color';
+
+/** The theme provider's settings, shared by the app router and pages router roots. */
+export const THEME_PROVIDER_PROPS: Pick<ThemeProviderProps, 'attribute' | 'defaultTheme' | 'enableSystem' | 'themes'> = {
+  attribute: 'class',
+  defaultTheme: 'dark',
+  enableSystem: true,
+  themes: [...THEME_NAMES, 'system'],
+};
 
 export const CUSTOM_COLORS_STORAGE_KEY = 'ia_custom_colors';
 

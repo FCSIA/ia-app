@@ -29,7 +29,6 @@ import { useQueryKeepAlive, type KeepAliveEntry } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { ALL_CALENDAR_SOURCES, calendarListArgs, defaultCalendarRange } from '@/lib/calendar-range';
-import type { AppRoutePath } from '@/lib/routes';
 import { schoolDateKey } from '~/apps/shared/school-time';
 
 /**
@@ -40,7 +39,7 @@ import { schoolDateKey } from '~/apps/shared/school-time';
  * queries are paginated have no entry, because every paginated hook adds its
  * own id to the arguments and so can never share a subscription.
  */
-const QUERIES_BY_ROUTE: Partial<Record<AppRoutePath, (user: AppUser) => KeepAliveEntry[]>> = {
+const QUERIES_BY_ROUTE: Partial<Record<string, (user: AppUser) => KeepAliveEntry[]>> = {
   '/clubs': (user) =>
     isSuperAdmin(user)
       ? [{ query: api.clubs.management.getAll }]
@@ -91,7 +90,7 @@ export function usePrewarmRoute() {
     (href: string) => {
       if (!cache || !user) return;
       const pathname = href.split(/[?#]/)[0] ?? href;
-      const entries = QUERIES_BY_ROUTE[pathname as AppRoutePath]?.(user) ?? [];
+      const entries = QUERIES_BY_ROUTE[pathname]?.(user) ?? [];
       if (entries.length > 0) cache.prewarm(entries);
     },
     [cache, user],

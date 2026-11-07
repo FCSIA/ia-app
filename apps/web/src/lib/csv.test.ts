@@ -4,7 +4,7 @@ import { parseInviteCsv } from './parse-invite-csv';
 
 describe('readCsv', () => {
   it('reads quoted commas, escaped quotes, a BOM and CRLF', () => {
-    expect(readCsv('﻿name,note\r\n"Doe, Jane","say ""hi"""\r\n')).toEqual([
+    expect(readCsv('\uFEFFname,note\r\n"Doe, Jane","say ""hi"""\r\n')).toEqual([
       { line: 1, cells: ['name', 'note'] },
       { line: 2, cells: ['Doe, Jane', 'say "hi"'] },
     ]);

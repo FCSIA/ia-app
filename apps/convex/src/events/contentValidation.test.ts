@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   MAX_EVENT_DESCRIPTION_CHARACTERS,
   MAX_EVENT_TITLE_CHARACTERS,
+} from "../../../shared/limits";
+import {
   normalizeEventTitle,
   normalizeOptionalEventDescription,
 } from "./contentValidation";

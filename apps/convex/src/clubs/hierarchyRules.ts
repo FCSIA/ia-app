@@ -4,7 +4,6 @@ export const MAX_CLUB_UNIT_NAME_LENGTH = 80;
 export const MAX_CLUB_UNIT_KIND_LENGTH = 40;
 export const MAX_CLUB_UNIT_DESCRIPTION_LENGTH = 280;
 
-/** Trims and collapses internal whitespace; the form every user-typed name is stored in. */
 export function normalizeLabel(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
@@ -46,7 +45,6 @@ export function assertHierarchyDepth(depth: number) {
   }
 }
 
-/** Direct children of every unit that has a parent. */
 export function childUnitIdsByParent<T extends string>(
   units: ReadonlyArray<{ _id: T; parentUnitId?: T | null }>,
 ) {

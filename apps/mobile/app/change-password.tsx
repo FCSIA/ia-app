@@ -18,7 +18,7 @@ export default function ForcedPasswordChangeScreen() {
   async function submit() {
     setError(null);
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError("New password must be at least 6 characters.");
+      setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -61,7 +61,7 @@ export default function ForcedPasswordChangeScreen() {
           autoComplete="new-password"
           accessibilityLabel="New password"
         />
-        <Field.Description>Use at least 6 characters.</Field.Description>
+        <Field.Description>{`Use at least ${MIN_PASSWORD_LENGTH} characters.`}</Field.Description>
       </Field.Root>
       <Field.Root>
         <Field.Label required>Confirm new password</Field.Label>

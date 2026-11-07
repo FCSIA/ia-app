@@ -19,6 +19,7 @@ import {
   ADMIN_ROLES,
   STAFF_ROLES,
   SUPER_ADMIN_ROLES,
+  canGrantRole,
   isPrivilegedAccount,
   isStudent,
   isSuperAdmin,
@@ -58,7 +59,12 @@ import {
   userRoleGroupValidator,
   writeUserNames,
 } from "./_lib";
-import { assertCsvRowCount, recordAuditBestEffort, runCsvRows } from "./_csvRows";
+import {
+  MAX_CSV_ROWS,
+  assertCsvRowCount,
+  recordAuditBestEffort,
+  runCsvRows,
+} from "./_csvRows";
 
 const studentImportRowValidator = v.object({
   uniqueId: v.string(),
@@ -245,7 +251,7 @@ export const createUser = mutation({
     requireAnyRole(actor, ADMIN_ROLES);
 
     const requestedRoles: AppRole[] = args.roles?.length ? args.roles : ["STUDENT"];
-    if (isPrivilegedAccount(requestedRoles) && !isSuperAdmin(actor)) {
+    if (!requestedRoles.every((role) => canGrantRole(isSuperAdmin(actor), role))) {
       throw new ConvexError("Only super admins can create admin accounts.");
     }
 
@@ -486,7 +492,7 @@ export const importStudents = action({
     );
     assertCsvRowCount(args.rows.length, {
       none: "Import at least one student.",
-      tooMany: "Import at most 200 students at a time.",
+      tooMany: `Import at most ${MAX_CSV_ROWS} students at a time.`,
     });
 
     const results: UserImportResult = {
@@ -527,7 +533,7 @@ export const updateStudents = action({
     );
     assertCsvRowCount(args.rows.length, {
       none: "Import at least one student update.",
-      tooMany: "Update at most 200 students at a time.",
+      tooMany: `Update at most ${MAX_CSV_ROWS} students at a time.`,
     });
 
     const results: StudentBulkUpdateResult = { updated: 0, skipped: 0, errors: [] };
@@ -654,7 +660,7 @@ export const importAdministrators = action({
     );
     assertCsvRowCount(args.rows.length, {
       none: "Import at least one administrator.",
-      tooMany: "Import at most 200 administrators at a time.",
+      tooMany: `Import at most ${MAX_CSV_ROWS} administrators at a time.`,
     });
 
     const results: UserImportResult = {
@@ -969,7 +975,7 @@ export const assignRoles = mutation({
       throw new ConvexError("User must have at least one role.");
     }
 
-    if (isPrivilegedAccount(nextRoles) && !isSuperAdmin(actor)) {
+    if (!nextRoles.every((role) => canGrantRole(isSuperAdmin(actor), role))) {
       throw new ConvexError("Only super admins can assign admin roles.");
     }
     if (

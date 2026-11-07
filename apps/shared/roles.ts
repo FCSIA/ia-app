@@ -1,7 +1,8 @@
 /**
- * Account roles and the role sets each policy uses. The server enforces these
- * sets; clients use the same ones to decide what to show. Sets that look alike
- * but answer different questions keep separate names.
+ * Account roles and the role sets each policy uses. The server enforces most of
+ * these sets; clients use the same ones to decide what to show. Sets marked
+ * "client only" have no server check. Sets that look alike but answer different
+ * questions keep separate names.
  */
 export const APP_ROLES = [
   "STUDENT",
@@ -33,7 +34,6 @@ function isRoleList(subject: NonNullable<RoleSubject>): subject is readonly stri
   return Array.isArray(subject);
 }
 
-/** True when the roles (or the user's roles) include any role in `allowed`. */
 export function hasAnyRole(subject: RoleSubject, allowed: RoleSet): boolean {
   const allowedRoles: readonly string[] = allowed;
   return rolesOf(subject).some((role) => allowedRoles.includes(role));
@@ -60,7 +60,7 @@ export const CLUB_CREATION_ROLES = [
   "SUPPORT_STAFF",
   "TEACHER",
 ] as const satisfies RoleSet;
-/** Roles that may sponsor a club when one is created. */
+/** Client only: roles offered as sponsor when a club is created. */
 export const CLUB_SPONSOR_ELIGIBLE_ROLES = [
   "TEACHER",
   "SUPPORT_STAFF",
@@ -76,7 +76,7 @@ export const ANNOUNCEMENT_AUTHOR_ROLES = [
 ] as const satisfies RoleSet;
 /** Read every announcement regardless of targeting, and review pending ones. */
 export const ANNOUNCEMENT_REVIEWER_ROLES = ["ADMIN", "SUPER_ADMIN", "TEACHER"] as const satisfies RoleSet;
-/** Who sees content-moderation alerts and the profile moderation section. */
+/** Client only: who sees content-moderation alerts and the profile moderation section. */
 export const MODERATION_ALERT_ROLES = [
   "ADMIN",
   "SUPER_ADMIN",
@@ -99,6 +99,16 @@ export const EVENT_MANAGER_ROLES = [
   "STUDENT_ADMIN",
 ] as const satisfies RoleSet;
 
+/**
+ * Client only: who sees the "create general event" button. Narrower than
+ * EVENT_MANAGER_ROLES, which also lets student admins (kept as is; deferred).
+ */
+export const EVENT_GENERAL_CREATOR_ROLES = STAFF_ROLES;
+/** Client only, mobile: who sees "cancel" on any event. */
+export const EVENT_CANCEL_ANY_ROLES = STAFF_ROLES;
+/** Client only, web: who sees "cancel" on any event; mobile uses EVENT_CANCEL_ANY_ROLES. */
+export const EVENT_CANCEL_ANY_WEB_ROLES = ADMIN_ROLES;
+
 export const FLEX_FRIDAY_CREATOR_ROLES = ["ADMIN", "SUPER_ADMIN", "STUDENT_ADMIN"] as const satisfies RoleSet;
 /** Create sessions and assign students to workshops. */
 export const FLEX_SESSION_CREATOR_ROLES = [
@@ -117,7 +127,7 @@ export const FLEX_ATTENDANCE_MANAGER_ROLES = [
   "STUDENT_ADMIN",
 ] as const satisfies RoleSet;
 /**
- * Who sees attendance tools: the attendance managers plus teachers, whom the
+ * Client only: who sees attendance tools: the attendance managers plus teachers, whom the
  * server limits to their own workshops.
  */
 export const FLEX_ATTENDANCE_ROLES = [
@@ -125,10 +135,14 @@ export const FLEX_ATTENDANCE_ROLES = [
   ...FLEX_ATTENDANCE_MANAGER_ROLES,
 ] as const satisfies RoleSet;
 
-/** Who has a schedule page: students and the admins who manage bell schedules. */
+/** Client only: who has a schedule page: students and the admins who manage bell schedules. */
 export const SCHEDULE_ROLES = ["STUDENT", "ADMIN", "SUPER_ADMIN"] as const satisfies RoleSet;
+/** Client only: who keeps a personal schedule and uses Friends. */
+export const SCHEDULE_OWNER_ROLES = ["STUDENT"] as const satisfies RoleSet;
+/** Client only: who the command palette loads schedule results for. Wider than SCHEDULE_ROLES (student leaders and student admins); deferred. */
+export const SCHEDULE_PALETTE_ROLES = [...STUDENT_ROLES, ...ADMIN_ROLES] as const satisfies RoleSet;
 
-/** Roles that approve other people's work keep the dashboard queue visible when empty. */
+/** Client only: roles that approve other people's work keep the dashboard queue visible when empty. */
 export const DASHBOARD_REVIEWER_ROLES = [
   "SPONSOR",
   "TEACHER",
@@ -149,7 +163,6 @@ export function isStaff(subject: RoleSubject): boolean {
   return hasAnyRole(subject, STAFF_ROLES);
 }
 
-/** Student in the broad sense (STUDENT_ROLES, student admins included). */
 export function isStudent(subject: RoleSubject): boolean {
   return hasAnyRole(subject, STUDENT_ROLES);
 }

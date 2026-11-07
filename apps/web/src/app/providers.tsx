@@ -1,6 +1,5 @@
 'use client';
 
-import { THEME_NAMES } from '~/packages/design-tokens/src/color';
 import { Suspense, useEffect, useState } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
 import { useConvexAuth, useQuery } from '@/lib/convex-react';
@@ -10,6 +9,7 @@ import { authClient } from '@/lib/auth-client';
 import { convex } from '@/lib/convex';
 import {
   CUSTOM_COLORS_STORAGE_KEY,
+  THEME_PROVIDER_PROPS,
   applyCustomColors,
   loadCustomColors,
 } from '@/lib/custom-theme';
@@ -140,12 +140,7 @@ export function Providers({ children, defaultSidebarOpen = true }: { children: R
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ConvexQueryCacheProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          themes={[...THEME_NAMES, 'system']}
-        >
+        <ThemeProvider {...THEME_PROVIDER_PROPS}>
           <ThemeFavicon />
           <ThemeChrome />
           <CustomThemeBootstrap />

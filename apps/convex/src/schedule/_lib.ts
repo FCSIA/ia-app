@@ -11,7 +11,7 @@ import {
 import { courseSummaryValidator, toCourseSummary } from "../courses/_lib";
 import { isAdmin, isStudent } from "../../../shared/roles";
 import { deliverNotification as deliverNotificationRow } from "../notifications/delivery";
-import { SCHOOL_WEEKDAYS, resolveLunchPeriod } from "../../../shared/school-time";
+import { SCHOOL_WEEKDAYS, resolveLunchPeriod, schoolYearStart } from "../../../shared/school-time";
 import {
   findLunchCourseConflict,
   normalizeDayBlocks,
@@ -631,9 +631,7 @@ export async function seedRegularDayTemplate(
     .query("schoolScheduleSettings")
     .withIndex("by_key", (q) => q.eq("key", "default"))
     .unique();
-  const currentDate = new Date(now);
-  const currentYear = currentDate.getFullYear();
-  const academicStartYear = currentDate.getMonth() >= 7 ? currentYear : currentYear - 1;
+  const academicStartYear = schoolYearStart(new Date(now));
   const academicYearStartDateKey = `${academicStartYear}-08-01`;
   const academicYearEndDateKey = `${academicStartYear + 1}-06-30`;
   if (!settings) {

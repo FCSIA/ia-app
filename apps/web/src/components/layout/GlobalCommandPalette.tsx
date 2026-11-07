@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  SCHEDULE_PALETTE_ROLES,
+  hasAnyRole,
   isAdmin,
   isStaff,
   isStudent,
@@ -150,7 +152,7 @@ function GlobalCommandPaletteContent({
     api.schedule.dashboard.get,
     shouldLoad &&
       !!user &&
-      (isStudent(user) || isAdmin(user))
+      hasAnyRole(user, SCHEDULE_PALETTE_ROLES)
       ? { dateKey: schoolDateKey(new Date(now)) }
       : 'skip',
   );

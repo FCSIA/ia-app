@@ -3,7 +3,7 @@ import { action, internalMutation, mutation, type ActionCtx, type MutationCtx } 
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser } from "../../lib/currentUser";
-import { deleteStorageQuietly } from "../../lib/storage";
+import { deleteStorageQuietly, getStoredMetadata } from "../../lib/storage";
 import { getClubContext, type ClubContext } from "../clubs/access";
 import { assertSafeStoredFile } from "./fileSignatures";
 import { chatGifRateLimiter, uploadRateLimiter } from "../rateLimits";
@@ -217,12 +217,6 @@ export function assertCanManageClubImage(
   }
 }
 
-async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) {
-  const metadata = await ctx.db.system.get("_storage", storageId);
-  if (!metadata) throw new ConvexError("Upload not found");
-  return metadata;
-}
-
 export const generateUploadUrl = mutation({
   args: { purpose: uploadPurposeValidator },
   returns: v.object({
@@ -289,7 +283,7 @@ export const finalizeChatAttachmentMutation = internalMutation({
     let fileName: string;
     let validated: ReturnType<typeof validateChatAttachmentMetadata>;
     try {
-      const metadata = await getUploadedMetadata(ctx, args.storageId);
+      const metadata = await getStoredMetadata(ctx, args.storageId);
       fileName = normalizeChatAttachmentFileName(args.fileName);
       validated = validateChatAttachmentMetadata(metadata);
       await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: validated.size });
@@ -491,7 +485,7 @@ export const finalizeClubImageMutation = internalMutation({
       purpose: "CLUB_IMAGE",
     });
 
-    const metadata = await getUploadedMetadata(ctx, args.storageId);
+    const metadata = await getStoredMetadata(ctx, args.storageId);
 
     let validated: ReturnType<typeof validateClubImageMetadata>;
     try {

@@ -1,4 +1,5 @@
 import { clubHref, clubPeopleRequestsHref } from "../../../shared/routes";
+import { userSummary } from "../summaries";
 import { logAuditEvent } from "../audit/_lib";
 import { displayName } from '../../../shared/user-name';
 import { v } from "convex/values";
@@ -149,13 +150,7 @@ export const searchInviteCandidates = query({
         .first();
       if (existingMember) continue;
 
-      results.push({
-        _id: candidate._id,
-        uniqueId: candidate.uniqueId,
-        firstName: candidate.firstName,
-        lastName: candidate.lastName,
-        preferredName: candidate.preferredName,
-      });
+      results.push(userSummary(candidate, "uniqueId"));
       if (results.length >= limit) break;
     }
 

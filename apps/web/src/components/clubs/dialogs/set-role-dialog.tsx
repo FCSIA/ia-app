@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import type { ClubDirectoryEntry } from '@/components/clubs/types';
 import { displayName } from '~/apps/shared/user-name';
 import { useToast } from '@/hooks/use-toast';
+import { clubSettingsHref } from '~/apps/shared/routes';
 
 type RoleEditor =
   | { mode: 'create' }
@@ -175,7 +176,7 @@ function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
             leadingIcon={SlidersHorizontal}
             onClick={() => setOpen(false)}
           >
-            <Link href={`/clubs/${clubId}/settings`}>Manage permissions</Link>
+            <Link href={clubSettingsHref(clubId)}>Manage permissions</Link>
           </Button>
         </PopoverContent>
       </Popover>

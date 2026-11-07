@@ -1,4 +1,6 @@
 import { format } from 'date-fns';
+import { pathwayLabel } from '~/apps/shared/labels';
+import { ROLE_LABELS, type AppRole } from '~/apps/shared/roles';
 import type { AdminUserRoleGroup } from './types';
 
 export const AUDIT_FETCH_LIMIT = 50;
@@ -26,12 +28,13 @@ export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; e
   },
 };
 
+/** Admin tables show enum labels in capitals. */
 export function formatRoleLabel(role: string) {
-  return role.replace(/_/g, ' ');
+  return (ROLE_LABELS[role as AppRole] ?? role.replace(/_/g, ' ')).toUpperCase();
 }
 
 export function formatPathwayLabel(pathway?: string | null) {
-  return pathway ? pathway.replace(/_/g, ' ') : '—';
+  return pathway ? (pathwayLabel(pathway) ?? pathway.replace(/_/g, ' ')).toUpperCase() : '—';
 }
 
 export function formatDateTime(value?: string | number | null) {

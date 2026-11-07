@@ -1,6 +1,6 @@
 'use client';
 
-import { clubJoinHref } from '~/apps/shared/routes';
+import { CLUBS_HREF, clubJoinHref, clubSettingsHref } from '~/apps/shared/routes';
 import { useOrigin } from '@/hooks/use-origin';
 import { flattenUnits } from '@/lib/club-units';
 import { useEffect, useMemo, useState } from 'react';
@@ -86,7 +86,7 @@ export function ClubStructureActions({
     try {
       await deleteClub({ clubId: club._id, confirmationName });
       toast({ title: `${club.name} is being deleted` });
-      router.replace('/clubs');
+      router.replace(CLUBS_HREF);
     } catch (error) {
       toast({ title: mutationError(error), variant: 'destructive' });
       setDeleting(false);
@@ -109,7 +109,7 @@ export function ClubStructureActions({
               size="sm"
               variant="tertiary"
               leadingIcon={GitBranch}
-              onClick={() => router.push(`/clubs/${club._id}/settings/structure`)}
+              onClick={() => router.push(clubSettingsHref(club._id, 'structure'))}
             >
               Manage structure
             </Button>

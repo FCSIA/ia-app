@@ -1,6 +1,6 @@
 "use client";
 
-import { parseClubJoinLink } from "~/apps/shared/routes";
+import { clubPeopleHref, parseClubJoinLink } from '~/apps/shared/routes';
 import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import {
   useDeferredValue,
@@ -802,7 +802,7 @@ export default function ClubOverviewPage() {
         <section aria-label="People" className="xl:hidden">
           {roster}
           <Button asChild variant="ghost" size="sm" className="mt-1">
-            <Link href={`/clubs/${clubId}/people`}>All people</Link>
+            <Link href={clubPeopleHref(clubId)}>All people</Link>
           </Button>
         </section>
       </div>

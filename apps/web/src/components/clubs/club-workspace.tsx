@@ -1,7 +1,7 @@
 "use client";
 
 import { isSuperAdmin } from "~/apps/shared/roles";
-import { clubChannelHref, matchClubChannelPath } from "~/apps/shared/routes";
+import { CLUBS_HREF, clubChannelHref, clubChannelSettingsHref, clubHref, clubNavigationHref, clubPeopleHref, clubSettingsHref, clubVolunteeringHref, matchClubChannelPath } from "~/apps/shared/routes";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -318,8 +318,8 @@ export function ClubWorkspace({
   const showClubPicker = !isSuperAdmin(user);
 
   const activeChannelId = matchClubChannelPath(pathname)?.channelId;
-  const clubRootPath = `/clubs/${clubId}`;
-  const navigationPath = `${clubRootPath}/navigation`;
+  const clubRootPath = clubHref(clubId);
+  const navigationPath = clubNavigationHref(clubId);
   const isNavigationPage = pathname === navigationPath;
 
   const nav: Array<{
@@ -329,32 +329,32 @@ export function ClubWorkspace({
     match: (p: string) => boolean;
   }> = [
     {
-      href: `/clubs/${clubId}`,
+      href: clubRootPath,
       label: "Overview",
       icon: Home,
-      match: (p) => p === `/clubs/${clubId}`,
+      match: (p) => p === clubRootPath,
     },
     {
-      href: `/clubs/${clubId}/people`,
+      href: clubPeopleHref(clubId),
       label: "People",
       icon: Users2,
-      match: (p) => p.startsWith(`/clubs/${clubId}/people`),
+      match: (p) => p.startsWith(clubPeopleHref(clubId)),
     },
     ...(navigation?.club.volunteerTrackingEnabled && (navigation.viewer.isMember || navigation.viewer.canReviewVolunteerHours) ? [{
-      href: `/clubs/${clubId}/volunteering`,
+      href: clubVolunteeringHref(clubId),
       label: "Volunteering",
       icon: HeartHandshake,
-      match: (p: string) => p.startsWith(`/clubs/${clubId}/volunteering`),
+      match: (p: string) => p.startsWith(clubVolunteeringHref(clubId)),
     }] : []),
     ...(navigation?.viewer.canManageRoles ||
     navigation?.viewer.canManageClubStructure ||
     navigation?.viewer.canManageClubSettings
       ? [
           {
-            href: `/clubs/${clubId}/settings`,
+            href: clubSettingsHref(clubId),
             label: "Settings",
             icon: Settings,
-            match: (p: string) => p.startsWith(`/clubs/${clubId}/settings`),
+            match: (p: string) => p.startsWith(clubSettingsHref(clubId)),
           },
         ]
       : []),
@@ -371,7 +371,7 @@ export function ClubWorkspace({
           className="hidden md:inline-flex"
           aria-label="Back to clubs"
         >
-          <Link href="/clubs">
+          <Link href={CLUBS_HREF}>
             <ArrowLeft />
           </Link>
         </Button>
@@ -384,7 +384,7 @@ export function ClubWorkspace({
             className="md:hidden"
             aria-label="Back to clubs"
           >
-            <Link href="/clubs">
+            <Link href={CLUBS_HREF}>
               <ArrowLeft />
             </Link>
           </Button>
@@ -822,9 +822,9 @@ type ClubNavigationPanelProps = {
  * page (overview and people), so those don't repeat as rows here.
  */
 function MobileClubNavigation(props: ClubNavigationPanelProps) {
-  const clubRoot = `/clubs/${props.clubId}`;
+  const clubRoot = clubHref(props.clubId);
   const nav = props.nav.filter(
-    (item) => item.href !== clubRoot && item.href !== `${clubRoot}/people`,
+    (item) => item.href !== clubRoot && item.href !== clubPeopleHref(props.clubId),
   );
   return (
     <div
@@ -912,7 +912,7 @@ function ClubRail({
         </div>
       </ScrollArea>
       <Link
-        href="/clubs"
+        href={CLUBS_HREF}
         onClick={onNavigate}
         aria-label="Browse clubs"
         className="mt-2 flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -1048,7 +1048,7 @@ function ClubNavigationPanel({
       footer={!hideBrowseClubs ? (
         <SidebarMenu>
           <WorkspaceSidebarItem
-            href="/clubs"
+            href={CLUBS_HREF}
             onClick={onNavigate}
             icon={Compass}
             label="Browse clubs"
@@ -1544,7 +1544,7 @@ function ChannelActionsTrigger({
           aria-label="Channel settings"
         >
           <Link
-            href={`/clubs/${clubId}/settings/channels/${channel._id}`}
+            href={clubChannelSettingsHref(clubId, channel._id)}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >

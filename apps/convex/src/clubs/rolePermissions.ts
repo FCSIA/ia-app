@@ -122,7 +122,6 @@ export function toClubRoleSummary(role: Doc<"clubRoles">) {
   };
 }
 
-/** The club's roles, in display order, capped at `MAX_CLUB_ROLES`. */
 export async function listClubRoles(ctx: ClubDbCtx, clubId: Id<"clubs">) {
   return await ctx.db
     .query("clubRoles")

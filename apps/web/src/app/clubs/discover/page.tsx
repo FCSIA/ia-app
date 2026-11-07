@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/lib/auth";
 import { filterBySearchQuery } from "@/lib/search";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { CLUBS_HREF } from '~/apps/shared/routes';
 
 const DISCOVERY_SKELETON_IDS = [
   "discovery-skeleton-1",
@@ -73,7 +74,7 @@ export default function DiscoverClubsPage() {
   const headerSlot = (
     <div className="flex min-w-0 items-center gap-2">
       <Button asChild type="button" variant="ghost" size="icon-sm">
-        <Link href="/clubs" aria-label="Back to your clubs">
+        <Link href={CLUBS_HREF} aria-label="Back to your clubs">
           <ArrowLeft />
         </Link>
       </Button>

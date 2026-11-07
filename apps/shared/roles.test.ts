@@ -1,7 +1,18 @@
 import { describe, expect, test } from "vitest";
 import {
+  ANNOUNCEMENT_AUTHOR_ROLES,
+  ANNOUNCEMENT_REVIEWER_ROLES,
+  EVENT_CANCEL_ANY_ROLES,
+  EVENT_CANCEL_ANY_WEB_ROLES,
+  EVENT_GENERAL_CREATOR_ROLES,
+  EVENT_MANAGER_ROLES,
+  FLEX_ATTENDANCE_MANAGER_ROLES,
+  FLEX_ATTENDANCE_ROLES,
+  FLEX_MANAGER_ROLES,
+  FLEX_SESSION_CREATOR_ROLES,
+  MODERATION_ALERT_ROLES,
+  MODERATION_READER_ROLES,
   STUDENT_GROUP_ROLES,
-  STUDENT_ROLES,
   canGrantRole,
   canManageUser,
   canResetUserPassword,
@@ -14,7 +25,6 @@ describe("role sets", () => {
   test("student accounts include student admins; the stored student group does not", () => {
     expect(isStudent(["STUDENT_ADMIN"])).toBe(true);
     expect(hasAnyRole(["STUDENT_ADMIN"], STUDENT_GROUP_ROLES)).toBe(false);
-    expect(STUDENT_ROLES).toEqual([...STUDENT_GROUP_ROLES, "STUDENT_ADMIN"]);
   });
 
   test("accepts a user, a role list, or nothing", () => {
@@ -22,6 +32,25 @@ describe("role sets", () => {
     expect(isStaff(["TEACHER"])).toBe(false);
     expect(isStaff(null)).toBe(false);
     expect(isStaff({ roles: undefined })).toBe(false);
+  });
+});
+
+describe("sets that intentionally differ", () => {
+  test.each([
+    [EVENT_MANAGER_ROLES, "STUDENT_ADMIN", true],
+    [EVENT_GENERAL_CREATOR_ROLES, "STUDENT_ADMIN", false],
+    [EVENT_CANCEL_ANY_ROLES, "SUPPORT_STAFF", true],
+    [EVENT_CANCEL_ANY_WEB_ROLES, "SUPPORT_STAFF", false],
+    [ANNOUNCEMENT_AUTHOR_ROLES, "STUDENT_ADMIN", true],
+    [ANNOUNCEMENT_REVIEWER_ROLES, "STUDENT_ADMIN", false],
+    [MODERATION_READER_ROLES, "SUPPORT_STAFF", true],
+    [MODERATION_ALERT_ROLES, "SUPPORT_STAFF", false],
+    [FLEX_SESSION_CREATOR_ROLES, "STUDENT_ADMIN", true],
+    [FLEX_MANAGER_ROLES, "STUDENT_ADMIN", false],
+    [FLEX_ATTENDANCE_MANAGER_ROLES, "TEACHER", false],
+    [FLEX_ATTENDANCE_ROLES, "TEACHER", true],
+  ] as const)("%j includes %s: %s", (set, role, expected) => {
+    expect(hasAnyRole([role], set)).toBe(expected);
   });
 });
 

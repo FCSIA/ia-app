@@ -85,7 +85,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <CardHeader className="bg-muted/20 pb-6 border-b">
             <div className="flex items-center gap-2 mb-4">
               <Badge 
-                variant={event.status === 'PUBLISHED' ? 'solid' : 'solid'}
+                variant="solid"
                 className={event.status === 'PUBLISHED' ? 'bg-emerald-500/15 text-emerald-500' : ''}
               >
                 {eventStatusLabel(event.status)}

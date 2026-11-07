@@ -1,4 +1,5 @@
 'use client';
+import { MAX_EVENT_DESCRIPTION_CHARACTERS, MAX_EVENT_TITLE_CHARACTERS } from '~/apps/shared/limits';
 
 import { useId, type ReactNode } from 'react';
 import {
@@ -132,7 +133,7 @@ export function ReminderForm({
           value={values.title}
           onChange={(e) => set('title', e.target.value)}
           placeholder="Assignment due, study session…"
-          maxLength={160}
+          maxLength={MAX_EVENT_TITLE_CHARACTERS}
           required
           disabled={disabled}
         />
@@ -199,7 +200,7 @@ export function ReminderForm({
         <Textarea
           id={`${id}-description`}
           value={values.description}
-          maxLength={2000}
+          maxLength={MAX_EVENT_DESCRIPTION_CHARACTERS}
           onChange={(e) => set('description', e.target.value)}
           disabled={disabled}
         />

@@ -6,6 +6,7 @@ import { Panel } from "@/components/layout/page-frame";
 import { CardGroup } from "@/components/ui/card";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { useAnnouncementFeedClock } from "@/components/announcements/use-announcement-feed-clock";
+import { routePath } from "@/lib/routes";
 
 export function AnnouncementsWidget() {
   const now = useAnnouncementFeedClock();
@@ -16,7 +17,7 @@ export function AnnouncementsWidget() {
   return (
     <Panel
       title="Unread announcements"
-      href="/announcements"
+      href={routePath("announcements")}
       count={data?.total}
       countHasMore={data?.hasMore}
       loading={data === undefined}

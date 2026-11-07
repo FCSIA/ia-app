@@ -20,9 +20,9 @@ import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwners
 import {
   disablePushTarget,
   pushIsAllowed,
-  pushSendResultFields,
   recordPushSendResult,
 } from "./_pushTransport";
+import { pushSendResultFields } from "./_pushShapes";
 
 const nativeTokenPublicValidator = v.object({
   token: v.string(),

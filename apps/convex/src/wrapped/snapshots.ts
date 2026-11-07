@@ -18,6 +18,7 @@ import {
   schoolHour,
   schoolYearLabel,
   schoolYearRange,
+  schoolYearStart,
 } from "../../../shared/school-time";
 import { FLEX_CREDITS_REQUIRED_PER_YEAR, flexAttendancesInRange } from "../flexFriday/_credits";
 import { wrappedAvailability } from "../../../shared/wrapped-window";
@@ -32,10 +33,6 @@ const availabilityValidator = v.object({
 });
 
 const SNAPSHOT_BATCH_SIZE = 10;
-
-function currentSchoolYearStart(now: Date): number {
-  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-}
 
 async function buildSummaryForUser(
   ctx: QueryCtx | MutationCtx,
@@ -542,7 +539,7 @@ export const refreshCurrentSchoolYear = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
-      schoolYear: currentSchoolYearStart(new Date()),
+      schoolYear: schoolYearStart(new Date()),
       refresh: true,
     });
     return null;

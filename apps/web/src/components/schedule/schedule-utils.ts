@@ -1,4 +1,5 @@
-import { clockMinutes, formatClockTime } from '~/apps/shared/school-time';
+import { SCHEDULE_HREF } from '~/apps/shared/routes';
+import { clockMinutes } from '~/apps/shared/school-time';
 import {
   ScheduleWeekday,
   SchoolDayBlock,
@@ -21,9 +22,27 @@ export const WEEKDAYS: Array<{
   { value: "FRIDAY", shortLabel: "Fri", label: "Friday" },
 ];
 
-/** Schedule tables always use a 12-hour clock, whatever the viewer's setting. */
-export function formatScheduleTimeRange(start: string, end: string) {
-  return `${formatClockTime(start)} – ${formatClockTime(end)}`;
+export const DAY_PLAN_SECTIONS = [
+  { id: "dates", label: "Calendar dates" },
+  { id: "templates", label: "Templates" },
+  { id: "config", label: "School config" },
+] as const;
+
+export type DayPlanSectionId = (typeof DAY_PLAN_SECTIONS)[number]["id"];
+
+export function resolveDayPlanSection(requested: string | null | undefined): DayPlanSectionId {
+  return DAY_PLAN_SECTIONS.find((section) => section.id === requested)?.id ?? "dates";
+}
+
+/** The Schedule admin tab on one day-plan section; other query parameters are kept. */
+export function dayPlanHref(
+  section: DayPlanSectionId,
+  current?: { toString(): string } | null,
+) {
+  const params = new URLSearchParams(current?.toString());
+  params.set("tab", "admin");
+  params.set("section", section);
+  return `${SCHEDULE_HREF}?${params}`;
 }
 
 export function getWeekdayForDate(date: Date): ScheduleWeekday | null {

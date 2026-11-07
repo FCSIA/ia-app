@@ -3,11 +3,7 @@ import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { canAssignFlexStudents } from "./permissions";
-
-function isActiveStudent(user: { isActive: boolean; isStudent: boolean; roles: string[] }) {
-  return user.isActive && (user.isStudent || isStudent(user));
-}
+import { canAssignFlexStudents, isActiveFlexStudent } from "./permissions";
 
 export const getMyRegistrations = query({
   args: {},
@@ -242,7 +238,7 @@ export const assign = mutation({
     if (!workshop) throw new ConvexError("Workshop not found");
 
     const student = await ctx.db.get(args.studentId);
-    if (!student || !isActiveStudent(student)) {
+    if (!student || !isActiveFlexStudent(student)) {
       throw new ConvexError("Student not found");
     }
 

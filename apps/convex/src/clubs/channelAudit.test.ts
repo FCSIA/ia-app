@@ -4,21 +4,12 @@ import rateLimiter from "@convex-dev/rate-limiter/test";
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db.get(identity.subject as Id<"users">);
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -26,22 +17,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   rateLimiter.register(t);
   const ids = await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", {
-      uniqueId: "AUDIT",
-      firstName: "Audit",
-      lastName: "Test",
-      roles: ["STUDENT"],
-      isStudent: true,
-      isTeacherStaff: false,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: "audit",
-      createdAt: 1,
-      updatedAt: 1,
-    });
+    const userId = await insertUser(ctx, { uniqueId: "AUDIT", firstName: "Audit" });
     const clubId = await ctx.db.insert("clubs", {
       name: "Audit Club",
       joinPolicy: "OPEN",
@@ -107,8 +83,8 @@ describe("channel message audit metadata", () => {
       channelId,
       body: "React to me",
     });
-    await user.mutation(api.clubs.channels.toggleReaction, { messageId, emoji: "FIRE" });
-    await user.mutation(api.clubs.channels.toggleReaction, { messageId, emoji: "FIRE" });
+    await user.mutation(api.clubs.channels.toggleReaction, { messageId, emoji: "🔥" });
+    await user.mutation(api.clubs.channels.toggleReaction, { messageId, emoji: "🔥" });
 
     expect(await auditMeta(t, "CLUB_CHANNEL_MESSAGE_REACTION_ADDED")).toEqual([
       { clubId, channelId, emoji: "FIRE", removedReactionCount: 0 },

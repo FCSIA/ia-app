@@ -4,8 +4,17 @@ import type { ChatMentionSuggestion } from "./mention-format";
 
 const RESERVED_MENTION_TOKENS = new Set(["all", "leaders", "sponsors"]);
 
+type MentionSource = {
+  canMentionEveryone: ClubMentionContext["canMentionEveryone"];
+  tags: ReadonlyArray<Pick<ClubMentionContext["tags"][number], "slug" | "name">>;
+  groups: ReadonlyArray<Pick<ClubMentionContext["groups"][number], "token" | "label" | "detail">>;
+  members: ReadonlyArray<
+    Pick<ClubMentionContext["members"][number], "uniqueId" | "firstName" | "lastName" | "preferredName">
+  >;
+};
+
 export function buildChatMentionSuggestions(
-  context: ClubMentionContext | null | undefined,
+  context: MentionSource | null | undefined,
 ): ChatMentionSuggestion[] {
   if (!context) return [];
 

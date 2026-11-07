@@ -10,6 +10,7 @@ import { ClubStructureEditor } from '@/components/clubs/dialogs/hierarchy-dialog
 import { BulkStructureImportDialog } from '@/components/clubs/dialogs/bulk-structure-import-dialog';
 import { useClubDetail } from "@/components/clubs/use-club-detail";
 import { Button } from '@/components/ui/button';
+import { clubSettingsHref } from '~/apps/shared/routes';
 
 export default function ClubStructureSettingsPage() {
   const clubId = useClubId();
@@ -44,7 +45,7 @@ export default function ClubStructureSettingsPage() {
         <div className="flex items-center gap-2">
           <BulkStructureImportDialog clubId={clubId} />
           <Button asChild variant="tertiary" size="sm">
-            <Link href={`/clubs/${clubId}/settings`}>Back to settings</Link>
+            <Link href={clubSettingsHref(clubId)}>Back to settings</Link>
           </Button>
         </div>
       }

@@ -1,7 +1,8 @@
 import { ConvexError } from "convex/values";
-
-export const MAX_EVENT_TITLE_CHARACTERS = 160;
-export const MAX_EVENT_DESCRIPTION_CHARACTERS = 2_000;
+import {
+  MAX_EVENT_DESCRIPTION_CHARACTERS,
+  MAX_EVENT_TITLE_CHARACTERS,
+} from "../../../shared/limits";
 
 function characterCount(value: string) {
   return Array.from(value).length;

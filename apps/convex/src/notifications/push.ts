@@ -14,12 +14,14 @@ import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwners
 import { subscriptionsToRetire } from "./_subscriptionPruning";
 import {
   disablePushTarget,
-  publicVapidKey,
   pushIsAllowed,
-  pushSendResultFields,
   recordPushSendResult,
-  webPushTargetValidator,
 } from "./_pushTransport";
+import {
+  publicVapidKey,
+  pushSendResultFields,
+  webPushTargetValidator,
+} from "./_pushShapes";
 
 const subscriptionPageSize = 20;
 

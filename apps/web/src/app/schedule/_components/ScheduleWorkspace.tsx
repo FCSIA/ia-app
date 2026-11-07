@@ -7,6 +7,7 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { routePath } from "@/lib/routes";
+import { DAY_PLAN_SECTIONS, dayPlanHref, resolveDayPlanSection } from "@/components/schedule/schedule-utils";
 import { SCHEDULE_FRIENDS_HREF } from "~/apps/shared/routes";
 import { FriendsDayPanel } from "./FriendsDayPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
@@ -27,9 +28,12 @@ export function ScheduleWorkspace() {
     selectedTab,
     setIsPublic,
   } = useScheduleWorkspace();
-  const requestedSection = searchParams?.get("section");
-  const section = requestedSection === "templates" || requestedSection === "config" ? requestedSection : "dates";
-  const heading = selectedTab === "friends" ? "Friends" : selectedTab === "admin" ? ({ dates: "Calendar dates", templates: "Templates", config: "School config" }[section]) : "Schedule";
+  const section = resolveDayPlanSection(searchParams?.get("section"));
+  const heading = selectedTab === "friends"
+    ? "Friends"
+    : selectedTab === "admin"
+      ? DAY_PLAN_SECTIONS.find((item) => item.id === section)!.label
+      : "Schedule";
 
   if (isLoading) return <ScheduleWorkspaceSkeleton />;
 
@@ -37,18 +41,13 @@ export function ScheduleWorkspace() {
     <AppShell
       activeHref={selectedTab === "friends" ? SCHEDULE_FRIENDS_HREF : routePath("schedule")}
       pageNavigation={canManageBlocks ? {
-        parentHref: "/schedule",
+        parentHref: routePath("schedule"),
         label: "Day plans",
-        items: (["dates", "templates", "config"] as const).map((item) => {
-          const params = new URLSearchParams(searchParams?.toString());
-          params.set("tab", "admin");
-          params.set("section", item);
-          return {
-            href: `/schedule?${params}`,
-            label: { dates: "Calendar dates", templates: "Templates", config: "School config" }[item],
-            isActive: selectedTab === "admin" && section === item,
-          };
-        }),
+        items: DAY_PLAN_SECTIONS.map((item) => ({
+          href: dayPlanHref(item.id, searchParams),
+          label: item.label,
+          isActive: selectedTab === "admin" && section === item.id,
+        })),
       } : undefined}
       headerSlot={<h1 className="truncate text-lg font-semibold tracking-tight text-foreground">{heading}</h1>}
     >

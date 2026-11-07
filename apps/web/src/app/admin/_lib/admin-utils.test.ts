@@ -1,10 +1,15 @@
 import { describe, expect, test } from 'vitest';
-import { escapeCsvCell, formatPathwayLabel } from './admin-utils';
+import { escapeCsvCell, formatPathwayLabel, formatRoleLabel } from './admin-utils';
 
 describe('admin pathway labels', () => {
   test('renders stored pathway values and an absent minor clearly', () => {
     expect(formatPathwayLabel('INFORMATION_TECHNOLOGY')).toBe('INFORMATION TECHNOLOGY');
     expect(formatPathwayLabel(null)).toBe('—');
+  });
+
+  test('renders role labels from the shared names', () => {
+    expect(formatRoleLabel('STUDENT_ADMIN')).toBe('STUDENT ADMIN');
+    expect(formatRoleLabel('SUPER_ADMIN')).toBe('SUPER ADMIN');
   });
 });
 

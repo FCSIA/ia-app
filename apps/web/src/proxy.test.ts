@@ -5,6 +5,7 @@ import {
   unstable_getResponseFromNextConfig,
 } from 'next/experimental/testing/server';
 import nextConfig from '../next.config';
+import { APP_ROUTES, PUBLIC_ROUTES } from '@/lib/routes';
 import { config, proxy } from './proxy';
 
 const auth = vi.hoisted(() => ({
@@ -45,6 +46,27 @@ describe('dashboard root routing', () => {
     );
     if (destination === null) expect(response.headers.get('x-middleware-next')).toBe('1');
     if (!signedIn) expect(auth.fetchAuthQuery).not.toHaveBeenCalled();
+  });
+
+  it.each(APP_ROUTES.map((route) => route.path))('sends a signed-out visitor from %s to login', async (path) => {
+    const response = await proxy(new NextRequest(`https://app.example${path}`));
+    expect(response.headers.get('location')).toBe('https://app.example/login');
+  });
+
+  it('sends a signed-out visitor from a path nobody listed to login', async () => {
+    const response = await proxy(new NextRequest('https://app.example/some-new-page'));
+    expect(response.headers.get('location')).toBe('https://app.example/login');
+  });
+
+  it.each(PUBLIC_ROUTES.map((route) => route.path))('lets a signed-out visitor open %s', async (path) => {
+    const response = await proxy(new NextRequest(`https://app.example${path}`));
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  it('marks the notice pages noindex before any auth work', async () => {
+    const response = await proxy(new NextRequest('https://app.example/pwa-setup'));
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+    expect(auth.isAuthenticated).not.toHaveBeenCalled();
   });
 
   it('matches the root auth boundary without matching prefetches or static assets', () => {

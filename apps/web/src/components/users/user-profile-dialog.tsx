@@ -4,7 +4,6 @@ import { isAdmin, isStudent } from '~/apps/shared/roles';
 import { useId, useRef, useState, type ComponentProps, type ReactElement } from 'react';
 import { ArrowLeft, Copy, UserPlus } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +15,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { ClubMark } from '@/components/media/club-mark';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import { formatClubRole } from '@/components/clubs/types';
-import { friendshipLabel, type FriendshipStatus } from '@/components/users/use-friendship';
+import { friendshipLabel, useSendFriendRequest } from '@/components/users/use-friendship';
 import type { ClubPerson } from '@/components/clubs/types';
 import { cn } from '@/lib/utils';
 import { displayName, regularName } from '~/apps/shared/user-name';
@@ -36,10 +35,6 @@ type UserProfileContentProps = {
   unitNames?: string[];
   kind?: string | null;
   isCurrentUser?: boolean;
-  canSendFriendRequest?: boolean;
-  friendshipStatus?: FriendshipStatus;
-  friendRequestPending?: boolean;
-  onSendFriendRequest?: (userId: Id<'users'>) => void;
   variant?: 'preview' | 'dialog';
   onNavigate?: () => void;
   /** Opens another person's profile, e.g. from the mutual friends list. */
@@ -53,15 +48,13 @@ export function UserProfileContent({
   unitNames,
   kind,
   isCurrentUser = false,
-  canSendFriendRequest = false,
-  friendshipStatus,
-  friendRequestPending = false,
-  onSendFriendRequest,
   variant = 'dialog',
   onNavigate,
   onOpenPerson,
 }: UserProfileContentProps) {
   const headingId = useId();
+  const viewer = useCurrentUser();
+  const friendRequest = useSendFriendRequest(isStudent(viewer));
   const clubEntryHref = useClubEntryHref();
   const profileContext = useQuery(
     api.schedule.friends.getProfileContext,
@@ -83,9 +76,9 @@ export function UserProfileContent({
       : 'skip',
   );
   const personIsStudent = isStudent(person);
-  const resolvedFriendshipStatus = profileContext?.friendshipStatus ?? friendshipStatus;
+  const friendshipStatus = profileContext?.friendshipStatus;
   const canOfferFriendRequest =
-    canSendFriendRequest && !isCurrentUser && personIsStudent && resolvedFriendshipStatus === 'NONE' && !!onSendFriendRequest;
+    isStudent(viewer) && !isCurrentUser && personIsStudent && friendshipStatus === 'NONE';
   const primaryRole =
     kind === 'SPONSOR'
       ? 'Sponsor'
@@ -93,7 +86,7 @@ export function UserProfileContent({
   const roleLabels = [primaryRole, ...(person.roles ?? []).map((role) => formatClubRole(role) ?? role)]
     .filter((label, index, labels): label is string => !!label && labels.indexOf(label) === index)
     .slice(0, 3);
-  const relationship = friendshipLabel(resolvedFriendshipStatus);
+  const relationship = friendshipLabel(friendshipStatus);
   const classes = profileContext?.classes ?? [];
   const visibleClasses = classes.slice(0, isPreview ? 4 : 8);
   const visibleClubs = (mutualClubs ?? []).slice(0, isPreview ? 3 : 12);
@@ -121,7 +114,7 @@ export function UserProfileContent({
           {roleLabels.length > 0 || relationship ? (
             <div className="mt-2 flex flex-wrap gap-1">
               {relationship ? (
-                <Badge variant="dot" color={resolvedFriendshipStatus === 'FRIENDS' ? 'green' : 'amber'} size="sm">
+                <Badge variant="dot" color={friendshipStatus === 'FRIENDS' ? 'green' : 'amber'} size="sm">
                   {relationship}
                 </Badge>
               ) : null}
@@ -142,9 +135,9 @@ export function UserProfileContent({
             variant="primary"
             size="sm"
             leadingIcon={UserPlus}
-            disabled={friendRequestPending}
-            loading={friendRequestPending}
-            onClick={() => onSendFriendRequest?.(person._id)}
+            disabled={friendRequest.pendingId === person._id}
+            loading={friendRequest.pendingId === person._id}
+            onClick={() => void friendRequest.send(person._id)}
           >
             Add friend
           </Button>
@@ -313,11 +306,7 @@ export function UserProfileDialog({ open, onOpenChange, trigger, onCloseAutoFocu
           // Each person gets fresh content state (expanded lists, queries).
           key={shownPerson._id}
           {...(opened
-            ? {
-                person: opened,
-                canSendFriendRequest: contentProps.canSendFriendRequest,
-                onSendFriendRequest: contentProps.onSendFriendRequest,
-              }
+            ? { person: opened }
             : contentProps)}
           active={open}
           variant="dialog"

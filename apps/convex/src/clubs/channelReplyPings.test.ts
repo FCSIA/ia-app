@@ -5,20 +5,12 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import type { QueryCtx } from "../_generated/server";
+import { insertUser } from "../../test/fixtures";
 import type { Id } from "../_generated/dataModel";
 
-vi.mock("../../lib/currentUser", () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    return ctx.db.get(identity.subject as Id<"users">);
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
@@ -31,23 +23,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   rateLimiter.register(t);
   const ids = await t.run(async (ctx) => {
-    const makeUser = (uniqueId: string) =>
-      ctx.db.insert("users", {
-        uniqueId,
-        firstName: uniqueId,
-        lastName: "Test",
-        roles: ["STUDENT"],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: uniqueId,
-        createdAt: 1,
-        updatedAt: 1,
-      });
+    const makeUser = (uniqueId: string) => insertUser(ctx, { uniqueId });
     const originalId = await makeUser("ORIGINAL");
     const replierId = await makeUser("REPLIER");
     const bystanderId = await makeUser("BYSTANDER");

@@ -28,6 +28,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { cn } from "@/lib/utils";
+import { CLUBS_DISCOVER_HREF } from '~/apps/shared/routes';
 
 const CLUB_SKELETON_IDS = [
   "club-skeleton-1",
@@ -231,7 +232,7 @@ function ClubsLandingWorkspace() {
               </EmptyHeader>
               <EmptyContent>
                 <Button asChild trailingIcon={ArrowRight}>
-                  <Link href="/clubs/discover">Discover clubs</Link>
+                  <Link href={CLUBS_DISCOVER_HREF}>Discover clubs</Link>
                 </Button>
               </EmptyContent>
             </Empty>
@@ -241,7 +242,7 @@ function ClubsLandingWorkspace() {
         {hasAdministrativeClubAccess || myClubs.length > 0 ? (
           <div className="flex justify-end">
             <Button asChild variant="tertiary" trailingIcon={ArrowRight}>
-              <Link href="/clubs/discover">
+              <Link href={CLUBS_DISCOVER_HREF}>
                 {hasAdministrativeClubAccess
                   ? "Search clubs"
                   : "Discover more clubs"}

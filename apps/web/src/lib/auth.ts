@@ -5,7 +5,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
 
-/** Keys that earlier versions cached the signed-in user under. */
+/** Keys earlier versions wrote at sign-in. */
 const RETIRED_AUTH_KEYS = ['ia_user:v1', 'ia_user', 'ia_token'];
 
 export function clearAuth() {

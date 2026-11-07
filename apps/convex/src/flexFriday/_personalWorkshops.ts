@@ -1,9 +1,9 @@
 import { userSummary } from "../summaries";
-import { isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { schema } from "../schema";
+import { isFlexStudent } from "./permissions";
 import { SCHOOL_TIME_ZONE, schoolDaySpan, schoolTimestamp } from "../../../shared/school-time";
 
 const MAX_WORKSHOP_SESSIONS = 128;
@@ -192,7 +192,7 @@ export async function getUpcomingPersonalWorkshops(
     throw new ConvexError("A finite current time and limit are required");
   }
   const limit = Math.max(1, Math.min(10, Math.floor(args.limit ?? 3)));
-  const student = user.isStudent || isStudent(user);
+  const student = isFlexStudent(user);
   const empty = {
     friday: null,
     student,

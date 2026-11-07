@@ -48,10 +48,3 @@ export function latestVisibleChatActivity(
   }
   return latest;
 }
-
-/** Latest visible post or reply, shared by the web and native read receipts. */
-export function latestChatActivityAt(
-  messages: readonly ChatActivityMessage[] | undefined,
-) {
-  return latestVisibleChatActivity(messages)?.occurredAt ?? 0;
-}

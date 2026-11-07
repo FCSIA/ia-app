@@ -9,6 +9,7 @@ import { CalendarEventRow } from '@/components/calendar/calendar-event-row';
 import { api } from '~/apps/convex/src/_generated/api';
 import { calendarDate } from '@/components/calendar/calendar-date';
 import { calendarWidgetHref } from '@/components/calendar/calendar-links';
+import { CALENDAR_HREF } from "~/apps/shared/routes";
 
 export function CalendarWidget() {
   const [today, setToday] = useState(() => startOfDay(calendarDate()));
@@ -46,7 +47,7 @@ export function CalendarWidget() {
     // The Canvas footer depends on `feeds`; wait for both so it can't pop in late.
     <Panel
       title="Coming up"
-      href="/calendar"
+      href={CALENDAR_HREF}
       loading={!data || feeds === undefined}
       loadingRows={2}
       flush

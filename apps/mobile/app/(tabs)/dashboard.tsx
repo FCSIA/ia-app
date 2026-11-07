@@ -24,11 +24,11 @@ import {
 } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import {
-  DEFAULT_DASHBOARD_WIDGETS,
-  dashboardLayoutsEqual,
-  resolveDashboardLayout,
-  type DashboardWidgetId,
-} from "@/features/dashboard/dashboard-layout";
+  DEFAULT_HOME_WIDGETS,
+  homeLayoutsEqual,
+  resolveHomeLayout,
+  type HomeWidgetId,
+} from "@/features/dashboard/home-layout";
 import {
   AnnouncementsWidget,
   ComingUpWidget,
@@ -50,7 +50,7 @@ import {
   type SchoolDayLabel,
 } from "@/features/dashboard/schedule-day";
 import { PeriodBadge } from "@/features/schedule/period-badge";
-import { useCurrentUser, type AppUser } from "@/lib/auth";
+import { useCurrentUser, useLiveCurrentUser, type AppUser } from "@/lib/auth";
 import { getAppPersona } from "@/lib/persona";
 import { useOfflineValue } from "@/lib/offline-cache";
 import {
@@ -67,7 +67,9 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { FunctionReturnType } from "convex/server";
 
 export default function DashboardScreen() {
-  const user = useCurrentUser();
+  const cachedUser = useCurrentUser();
+  const liveUser = useLiveCurrentUser();
+  const user = liveUser === undefined ? cachedUser : liveUser;
   const persona = getAppPersona(user);
 
   if (persona === "unknown") {
@@ -168,16 +170,16 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
   const registrations = useQuery(queries.registrations.query, queries.registrations.args);
   const schedule = useOfflineValue("dashboard-school-day", liveDay);
   const [funFact, setFunFact] = useState(pickNavigationLoadingFact);
-  const [layout, setLayout] = useState<DashboardWidgetId[]>([...DEFAULT_DASHBOARD_WIDGETS]);
+  const [layout, setLayout] = useState<HomeWidgetId[]>([...DEFAULT_HOME_WIDGETS]);
 
   useEffect(() => {
-    const resolved = resolveDashboardLayout(user.dashboardLayout);
+    const resolved = resolveHomeLayout(user.dashboardLayout);
     setLayout((current) =>
-      dashboardLayoutsEqual(current, resolved) ? current : resolved,
+      homeLayoutsEqual(current, resolved) ? current : resolved,
     );
   }, [user?.dashboardLayout]);
 
-  function renderWidget(id: DashboardWidgetId) {
+  function renderWidget(id: HomeWidgetId) {
     if (id === "schedule") {
       return (
         <Section
@@ -185,8 +187,10 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
           title={schedule.value || schoolDay.isToday ? "Today" : schoolDay.label}
           action={<SectionLink label="View week" onPress={() => router.push("/calendar")} />}
         >
-          {schedule.value === undefined || schedule.value === null ? (
-            <HomeSkeleton count={4} />
+          {schedule.value === undefined ? (
+            <HomeSkeleton />
+          ) : schedule.value === null ? (
+            <HomeSurface><HomeEmpty text="No schedule saved." /></HomeSurface>
           ) : (
             <ScheduleSummary day={schedule.value} />
           )}
@@ -239,7 +243,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
           action={<SectionLink label="Open clubs" onPress={() => router.push("/clubs")} />}
         >
           {memberships === undefined ? (
-            <HomeSkeleton count={2} />
+            <HomeSkeleton />
           ) : (
             <HomeSurface>
               {memberships.length ? memberships.map((club, index) => (

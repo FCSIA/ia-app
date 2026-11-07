@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Clock, X, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FlexAttendanceStatus } from '~/apps/convex/src/validators';
@@ -20,7 +19,6 @@ type RosterStudent = NonNullable<RosterResponse['registrations'][number]['studen
 interface Props {
   roster: RosterResponse | null | undefined;
   isLoading: boolean;
-  error: Error | null;
   onMark: (studentId: Id<'users'>, status: AttendanceStatus) => void;
   onClear: (studentId: Id<'users'>) => void;
   isMarking: boolean;
@@ -29,7 +27,6 @@ interface Props {
 export function AttendancePanel({
   roster,
   isLoading,
-  error,
   onMark,
   onClear,
   isMarking,
@@ -41,15 +38,6 @@ export function AttendancePanel({
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load the roster</AlertTitle>
-        <AlertDescription>{error.message}</AlertDescription>
-      </Alert>
     );
   }
 

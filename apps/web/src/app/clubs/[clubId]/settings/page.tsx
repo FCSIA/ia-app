@@ -66,6 +66,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentUser } from "@/lib/auth";
 import { Elevated } from "@/lib/elevated";
+import { clubSettingsHref } from '~/apps/shared/routes';
 
 type ClubRole = FunctionReturnType<
   typeof api.clubs.management.listRoles
@@ -548,7 +549,7 @@ export default function ClubSettingsPage() {
 
           {canManageChannels ? (
             <Link
-              href={`/clubs/${clubId}/settings/channels`}
+              href={clubSettingsHref(clubId, 'channels')}
               className={`flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4 transition-colors hover:bg-hover ${CARD_SURFACE_FOREGROUND}`}
             >
               <div>

@@ -883,7 +883,6 @@ export function DashboardLayout({
               : editToolbar
             : null}
 
-          {/* Static / Fixed widgets (cannot be moved or removed) */}
           {fixedIds.map((id) => {
             const widget = getWidget(id);
             if (!widget) return null;
@@ -925,7 +924,6 @@ export function DashboardLayout({
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="flex flex-col gap-4 sm:gap-6">
-                    {/* Full-width dynamic widgets */}
                     {fullIds.map((id) => {
                       const widget = getWidget(id);
                       if (!widget) return null;

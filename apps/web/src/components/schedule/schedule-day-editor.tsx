@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Lock } from "lucide-react";
-import { lunchPeriodNumber } from "~/apps/shared/school-time";
+import { formatClockRange, lunchPeriodNumber } from "~/apps/shared/school-time";
 
 import { CoursePicker } from "@/components/courses/course-picker";
 import type { CourseSummary } from "@/components/courses/types";
@@ -33,7 +33,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   findScheduleEntry,
-  formatScheduleTimeRange,
   getBlocksForDay,
   getCurrentScheduleStatus,
   getPeriodNumbersForDay,
@@ -133,7 +132,7 @@ export function ScheduleDayEditor({
                 <Lock className="size-3 text-muted-foreground" />
                 <span className="font-medium">{block.label}</span>
                 <span className="text-xs text-muted-foreground">
-                  {formatScheduleTimeRange(block.startTime, block.endTime)}
+                  {formatClockRange(block.startTime, block.endTime)}
                 </span>
                 {isCurrentCustom && (
                   <Badge
@@ -258,7 +257,7 @@ export function ScheduleDayEditor({
                     )}
                   >
                     {matchingBlock
-                      ? formatScheduleTimeRange(
+                      ? formatClockRange(
                           matchingBlock.startTime,
                           matchingBlock.endTime,
                         )

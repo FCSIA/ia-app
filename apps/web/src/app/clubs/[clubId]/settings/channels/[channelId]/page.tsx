@@ -50,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Elevated } from "@/lib/elevated";
+import { clubSettingsHref } from '~/apps/shared/routes';
 
 type PostingPolicy = "AUDIENCE" | "CLUB_MANAGERS";
 
@@ -95,7 +96,7 @@ export default function ChannelSettingsPage() {
       title={channel ? `#${channel.name}` : "Channel settings"}
       actions={
         <Button asChild variant="tertiary" size="sm">
-          <Link href={`/clubs/${clubId}/settings/channels`}>All channels</Link>
+          <Link href={clubSettingsHref(clubId, 'channels')}>All channels</Link>
         </Button>
       }
     >

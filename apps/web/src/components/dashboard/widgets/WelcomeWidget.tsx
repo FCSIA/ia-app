@@ -14,7 +14,7 @@ import type { FunctionReturnType } from "convex/server";
 import { clockMinutes, formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import { calendarDate } from "@/components/calendar/calendar-date";
 import { cn } from "@/lib/utils";
-import { workshopDetailHref } from "@/lib/routes";
+import { SCHEDULE_HREF, workshopDetailHref } from "~/apps/shared/routes";
 
 type Day = FunctionReturnType<typeof api.schedule.dashboard.getDay>;
 type Flex = NonNullable<
@@ -84,7 +84,7 @@ export function WelcomeWidget() {
     return (
       <Strip label={specialName(today)}>
         <Link
-          href="/schedule"
+          href={SCHEDULE_HREF}
           className="inline-flex min-h-8 w-fit items-center gap-1 rounded-sm text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-ring pointer-coarse:min-h-11"
         >
           Add your classes to see what&apos;s next

@@ -7,6 +7,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 
 // Real current-user guards, substituting only Better Auth's identity lookup.
@@ -46,23 +47,7 @@ const shape = (
 async function seed(ctx: MutationCtx) {
   const now = 1;
   const makeUser = (uniqueId: string, roles: string[] = ["STUDENT"]) =>
-    ctx.db.insert("users", {
-      authUserId: uniqueId,
-      uniqueId,
-      firstName: uniqueId,
-      lastName: "User",
-      roles: roles as never,
-      isStudent: roles.includes("STUDENT"),
-      isTeacherStaff: false,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: `${uniqueId} User`,
-      createdAt: now,
-      updatedAt: now,
-    });
+    insertUser(ctx, { authUserId: uniqueId, uniqueId, lastName: "User", roles: roles as never });
   const memberId = await makeUser("MEMBER");
   const otherMemberId = await makeUser("OTHER");
   await makeUser("OUTSIDER");

@@ -16,7 +16,7 @@ import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import { useCurrentUser } from "@/lib/auth";
 import { calendarDate } from "@/components/calendar/calendar-date";
-import { workshopDetailHref } from "@/lib/routes";
+import { FLEX_FRIDAY_HREF, workshopDetailHref } from "~/apps/shared/routes";
 
 export function FlexFridaySnapshotWidget() {
   const [from] = useState(() => startOfDay(calendarDate()).getTime());
@@ -25,7 +25,7 @@ export function FlexFridaySnapshotWidget() {
   return (
     <Panel
       title="Flex Friday"
-      href="/flex-friday"
+      href={FLEX_FRIDAY_HREF}
       loading={data === undefined}
       loadingRows={1}
       flush

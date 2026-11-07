@@ -9,6 +9,9 @@ export const REPORT_HREF = "/report";
 export const PROFILE_HREF = "/profile";
 export const CALENDAR_HREF = "/calendar";
 export const FLEX_FRIDAY_HREF = "/flex-friday";
+export const SCHEDULE_HREF = "/schedule";
+export const CLUBS_HREF = "/clubs";
+export const CLUBS_DISCOVER_HREF = "/clubs/discover";
 export const ADMIN_MODERATION_TAB_HREF = "/admin?tab=moderation";
 export const ADMIN_MODERATION_HREF = "/admin/moderation";
 
@@ -32,6 +35,26 @@ export function adminUserHref(userId: string) {
 
 export function clubHref(clubId: string) {
   return `/clubs/${clubId}`;
+}
+
+export function clubPeopleHref(clubId: string) {
+  return `${clubHref(clubId)}/people`;
+}
+
+export function clubVolunteeringHref(clubId: string) {
+  return `${clubHref(clubId)}/volunteering`;
+}
+
+export function clubNavigationHref(clubId: string) {
+  return `${clubHref(clubId)}/navigation`;
+}
+
+export function clubSettingsHref(clubId: string, section?: "channels" | "structure") {
+  return section ? `${clubHref(clubId)}/settings/${section}` : `${clubHref(clubId)}/settings`;
+}
+
+export function clubChannelSettingsHref(clubId: string, channelId: string) {
+  return `${clubSettingsHref(clubId, "channels")}/${channelId}`;
 }
 
 export function clubPeopleRequestsHref(clubId: string) {
@@ -97,7 +120,8 @@ export function parseClubJoinLink(search: SearchParamsLike) {
   };
 }
 
-export const SCHEDULE_FRIENDS_HREF = "/schedule?tab=friends";
+export const SCHEDULE_FRIENDS_HREF = `${SCHEDULE_HREF}?tab=friends`;
+export const SCHEDULE_FRIEND_REQUESTS_HREF = `${SCHEDULE_FRIENDS_HREF}&section=requests`;
 
 export function scheduleFriendHref(friendId: string) {
   return `${SCHEDULE_FRIENDS_HREF}&friend=${friendId}`;
@@ -105,6 +129,12 @@ export function scheduleFriendHref(friendId: string) {
 
 export function scheduleFriendJoinHref(token: string) {
   return `/schedule/friends/join/${token}`;
+}
+
+/** A workshop keeps one identity even when it spans several sessions. */
+export function workshopDetailHref(fridayId: string, workshopId: string, sessionId?: string) {
+  const path = `${FLEX_FRIDAY_HREF}/${encodeURIComponent(fridayId)}/workshop/${encodeURIComponent(workshopId)}`;
+  return sessionId ? `${path}?${new URLSearchParams({ session: sessionId })}` : path;
 }
 
 /** Pulls the ids out of an in-app path; each matcher returns null on a miss. */

@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 import { adjustClubCounts, recountClub } from "./counts";
 import { clubSummaryWithCounts } from "./serialize";
 
@@ -28,40 +29,10 @@ async function seed(t: ReturnType<typeof convexTest>, options: SeedOptions) {
       updatedAt: 0,
     });
 
-    const creatorId = await ctx.db.insert("users", {
-      uniqueId: "creator-1",
-      firstName: "Grace",
-      lastName: "Hopper",
-      roles: ["TEACHER"],
-      isStudent: false,
-      isTeacherStaff: true,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: "grace hopper",
-      createdAt: 0,
-      updatedAt: 0,
-    });
+    const creatorId = await insertUser(ctx, { uniqueId: "creator-1", firstName: "Grace", lastName: "Hopper", roles: ["TEACHER"] });
 
     for (let index = 0; index < options.members; index += 1) {
-      const userId = await ctx.db.insert("users", {
-        uniqueId: `member-${index}`,
-        firstName: "Member",
-        lastName: String(index),
-        roles: ["STUDENT"],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: `member ${index}`,
-        createdAt: 0,
-        updatedAt: 0,
-      });
+      const userId = await insertUser(ctx, { uniqueId: `member-${index}`, firstName: "Member", lastName: String(index) });
       await ctx.db.insert("clubMembers", { clubId, userId, joinedAt: index });
     }
 

@@ -7,10 +7,10 @@ export const pendingKey = {
   delete: (messageId: string) => `delete:${messageId}`,
 } as const;
 
-/** True while any action on the message is in flight. */
+/** Optimistic ids contain ":" themselves, so match by substring rather than splitting the key. */
 export function hasPendingAction(pending: ReadonlySet<string>, messageId: string) {
   for (const key of pending) {
-    if (key.split(":")[1] === messageId) return true;
+    if (key.includes(messageId)) return true;
   }
   return false;
 }

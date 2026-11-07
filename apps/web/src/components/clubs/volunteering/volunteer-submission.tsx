@@ -28,10 +28,13 @@ import {
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MAX_VOLUNTEER_PROOF_BYTES, STAGED_IMAGE_MIME_TYPES } from "~/apps/shared/limits";
+import {
+  MAX_VOLUNTEER_PROOF_BYTES,
+  STAGED_IMAGE_TYPES_LABEL,
+  isStagedImageType,
+} from "~/apps/shared/limits";
 import { VolunteerProof } from "./volunteer-ui";
 
-const IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 export function VolunteerSubmission({ clubId }: { clubId: Id<"clubs"> }) {
   const [open, setOpen] = useState(false);
@@ -68,11 +71,13 @@ export function VolunteerSubmission({ clubId }: { clubId: Id<"clubs"> }) {
 
   function selectProof(file: File) {
     if (
-      !IMAGE_TYPES.has(file.type) ||
+      !isStagedImageType(file.type) ||
       !file.size ||
       file.size > MAX_VOLUNTEER_PROOF_BYTES
     ) {
-      setError("Choose a PNG, JPEG, GIF, or WebP photo of 5 MB or less.");
+      setError(
+        `Choose a ${STAGED_IMAGE_TYPES_LABEL} photo of ${MAX_VOLUNTEER_PROOF_BYTES / 1024 / 1024} MB or less.`,
+      );
       return;
     }
     staged.current = null;

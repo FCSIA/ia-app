@@ -1,8 +1,8 @@
-import { THEME_NAMES } from "~/packages/design-tokens/src/color";
 import type { AppProps } from "next/app";
 import { Work_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "@/app/globals.css";
+import { THEME_PROVIDER_PROPS } from "@/lib/custom-theme";
 import { ThemeFavicon } from "@/components/ui/ia-orbit-mark";
 
 const workSans = Work_Sans({
@@ -12,12 +12,7 @@ const workSans = Work_Sans({
 
 export default function PagesApp({ Component, pageProps }: AppProps) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      themes={[...THEME_NAMES, "system"]}
-    >
+    <ThemeProvider {...THEME_PROVIDER_PROPS}>
       <ThemeFavicon />
       <div className={`${workSans.variable} font-sans`}>
         <Component {...pageProps} />

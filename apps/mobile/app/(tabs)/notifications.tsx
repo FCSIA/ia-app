@@ -16,8 +16,9 @@ import { dismissPresentedNotificationsThrough } from "@/lib/push";
 import { radii, spacing } from "@/lib/tokens";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
+import type { NotificationCategory } from "~/apps/shared/notifications";
 
-const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
+const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
   SCHOOL_ANNOUNCEMENT: "Announcement",
   CLUB_ANNOUNCEMENT: "Club announcement",
   CLUB_JOIN_REQUEST: "Club request",
@@ -197,6 +198,6 @@ function NotificationRow({ item, onPress }: { item: any; onPress: () => void }) 
   );
 }
 
-function notificationCategory(category: string) {
+function notificationCategory(category: NotificationCategory) {
   return NOTIFICATION_CATEGORY_LABELS[category] ?? "Notification";
 }

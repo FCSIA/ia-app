@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { getChannelViewerContext, type ClubContext } from "./access";
+import { getChannelViewerContext, getClubContext, type ClubContext } from "./access";
 import { getChannelAccess, type ChannelAccess } from "./channelAccess";
 
 type GateCtx = QueryCtx | MutationCtx;
@@ -28,9 +28,9 @@ export async function resolveChannel(
   ctx: GateCtx,
   user: Doc<"users">,
   channelId: Id<"clubChannels">,
-  options: { requireActiveClub: boolean; clubId?: Id<"clubs"> },
+  options: { requireActiveClub: boolean; clubId?: Id<"clubs">; channel?: Doc<"clubChannels"> },
 ): Promise<ChannelGate> {
-  const channel = await ctx.db.get(channelId);
+  const channel = options.channel ?? (await ctx.db.get(channelId));
   if (!channel || (options.clubId && channel.clubId !== options.clubId)) {
     return { status: "channel-not-found" };
   }
@@ -80,4 +80,22 @@ export async function requireChannelMemberGate(
     throw new ConvexError("Not a club member");
   }
   return gate;
+}
+
+/**
+ * Mutation access for channel settings: needs a club permission, not channel
+ * access. Throws "Channel not found" or `deniedMessage`.
+ */
+export async function requireChannelManager(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  channelId: Id<"clubChannels">,
+  permission: "editChannels" | "deleteChannels",
+  deniedMessage: string,
+) {
+  const channel = await ctx.db.get(channelId);
+  if (!channel) throw new ConvexError("Channel not found");
+  const context = await getClubContext(ctx, channel.clubId, user);
+  if (!context.permissions[permission]) throw new ConvexError(deniedMessage);
+  return { channel, context };
 }

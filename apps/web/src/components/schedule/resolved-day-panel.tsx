@@ -9,8 +9,8 @@ import { Elevated } from "@/lib/elevated";
 import { SurfaceProvider } from "@/lib/surface-context";
 import { cn } from "@/lib/utils";
 import { ScheduleDatePicker } from "./schedule-date-picker";
-import { lunchPeriodNumber } from "~/apps/shared/school-time";
-import { findScheduleEntry, formatScheduleTimeRange } from "./schedule-utils";
+import { formatClockRange, lunchPeriodNumber } from "~/apps/shared/school-time";
+import { findScheduleEntry } from "./schedule-utils";
 import type {
   ResolvedSchoolDay,
   ScheduleLunchPeriod,
@@ -131,7 +131,7 @@ export function ResolvedDayPanel({
                     {title}
                   </p>
                   <p className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
-                    {formatScheduleTimeRange(block.startTime, block.endTime)}
+                    {formatClockRange(block.startTime, block.endTime)}
                     {block.periodNumber !== null ? (
                       <>
                         {" · "}

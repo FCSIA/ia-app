@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { fetchAuthQuery, isAuthenticated } from '@/lib/auth-server';
-import { isProtectedPathname } from '@/lib/routes';
+import { PUBLIC_ROUTES, isProtectedPathname } from '@/lib/routes';
 import { api } from '~/apps/convex/src/_generated/api';
 
 // The matcher below repeats this host as an escaped regex; Next needs it static.
 const LEGACY_WEB_HOSTNAME = 'ia-app-alpha.vercel.app';
-// `/_meta` is the deploy marker; it must answer even when the backend is down.
-const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup', '/_meta']);
 
 function requestHostname(request: NextRequest) {
   const host =
@@ -29,12 +27,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/moved', request.url));
   }
 
-  if (PUBLIC_UTILITY_ROUTES.has(pathname)) {
+  const notice = PUBLIC_ROUTES.find((route) => 'robots' in route && route.path === pathname);
+  if (notice && 'robots' in notice) {
     const response = NextResponse.next();
-    response.headers.set(
-      'X-Robots-Tag',
-      pathname === '/pwa-setup' || pathname === '/_meta' ? 'noindex, nofollow' : 'noindex, follow',
-    );
+    response.headers.set('X-Robots-Tag', notice.robots);
     return response;
   }
 

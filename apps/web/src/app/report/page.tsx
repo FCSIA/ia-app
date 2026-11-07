@@ -25,11 +25,12 @@ import { cn } from '@/lib/utils';
 import {
   MAX_FEEDBACK_IMAGES,
   MAX_FEEDBACK_IMAGE_BYTES,
-  STAGED_IMAGE_MIME_TYPES,
+  STAGED_IMAGE_ACCEPT,
+  isStagedImageType,
 } from '~/apps/shared/limits';
+import { PROFILE_HREF } from '~/apps/shared/routes';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
-const ACCEPTED_IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 type SelectedImage = {
   file: File;
@@ -58,7 +59,7 @@ export default function ReportPage() {
   );
 
   function addImage(file: File) {
-    if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+    if (!isStagedImageType(file.type)) {
       toast({ title: 'Choose a PNG, JPEG, GIF, or WebP image', variant: 'destructive' });
       return;
     }
@@ -185,7 +186,7 @@ export default function ReportPage() {
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <FileInput
-              accept="image/png,image/jpeg,image/gif,image/webp"
+              accept={STAGED_IMAGE_ACCEPT}
               label={images.length ? `Attach image (${images.length}/${MAX_FEEDBACK_IMAGES})` : 'Attach image'}
               disabled={images.length >= MAX_FEEDBACK_IMAGES || isSubmitting}
               onFileSelect={addImage}
@@ -204,7 +205,7 @@ export default function ReportPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
               Version{' '}
-              <Link href="/profile?section=whats-new" className="underline underline-offset-4">
+              <Link href={`${PROFILE_HREF}?section=whats-new`} className="underline underline-offset-4">
                 {formatVersion(APP_VERSION, RELEASE_CHANNEL)}
               </Link>{' '}
               included

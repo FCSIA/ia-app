@@ -1,10 +1,7 @@
 import { getFunctionName } from "convex/server";
 import { describe, expect, test } from "vitest";
 import {
-  currentDashboardInputs,
-  operationalDashboardQueries,
   prewarmEntries,
-  studentDashboardQueries,
   type PrewarmTab,
 } from "./tab-queries";
 import { keepAliveKey } from "./convex-react";
@@ -20,14 +17,24 @@ const keys = (entries: Array<{ query: never; args?: unknown }>) =>
 const noon = new Date(2026, 10, 4, 12, 0);
 
 describe("tab prewarm", () => {
-  test("the dashboard warms exactly what each Home screen subscribes to", () => {
-    const inputs = currentDashboardInputs(noon);
-    expect(keys(prewarmEntries("dashboard", student, noon) as never)).toEqual(
-      keys(Object.values(studentDashboardQueries(inputs)) as never),
+  test("each persona's Home warms its own widgets' queries", () => {
+    const names = (user: { roles: string[] }) =>
+      prewarmEntries("dashboard", user, noon).map((entry) => getFunctionName(entry.query)).sort();
+    const shared = [
+      "announcements/feed:list",
+      "announcements/feed:listPinned",
+      "events/calendar:list",
+      "schedule/dashboard:getDay",
+    ];
+    expect(names(student)).toEqual(
+      [
+        ...shared,
+        "clubs/management:getMyClubs",
+        "flexFriday/credits:getMyCredits",
+        "flexFriday/registration:getMyRegistrations",
+      ].sort(),
     );
-    expect(keys(prewarmEntries("dashboard", teacher, noon) as never)).toEqual(
-      keys(Object.values(operationalDashboardQueries(inputs)) as never),
-    );
+    expect(names(teacher)).toEqual([...shared, "flexFriday/fridays:list"].sort());
   });
 
   test("the dashboard warms the pinned feed and the school day the screens read", () => {

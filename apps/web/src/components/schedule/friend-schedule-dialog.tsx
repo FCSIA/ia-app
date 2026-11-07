@@ -1,6 +1,6 @@
 "use client";
 
-import { lunchPeriodNumber } from '~/apps/shared/school-time';
+import { formatClockRange, lunchPeriodNumber } from '~/apps/shared/school-time';
 import { greetingName } from '~/apps/shared/user-name';
 
 import { useState } from "react";
@@ -19,7 +19,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   findScheduleEntry,
-  formatScheduleTimeRange,
   getBlocksForDay,
   getPeriodNumbersForDay,
   getCurrentScheduleStatus,
@@ -180,7 +179,7 @@ export function FriendScheduleDialog({
                       )}
                     >
                       {matchingBlock
-                        ? formatScheduleTimeRange(
+                        ? formatClockRange(
                             matchingBlock.startTime,
                             matchingBlock.endTime,
                           )
@@ -211,7 +210,7 @@ export function FriendScheduleDialog({
                       >
                         <span className="font-medium">{block.label}</span>
                         <span className="text-muted-foreground">
-                          {formatScheduleTimeRange(
+                          {formatClockRange(
                             block.startTime,
                             block.endTime,
                           )}

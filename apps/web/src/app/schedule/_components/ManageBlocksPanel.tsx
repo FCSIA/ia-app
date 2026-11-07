@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { usePathname, useSearchParams } from "next/navigation";
-import { clockMinutes, formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
+import { clockMinutes, formatClockRange, schoolDateKey } from "~/apps/shared/school-time";
 import {
   ArrowLeft,
   CalendarPlus,
@@ -131,7 +131,7 @@ function ReadOnlyPlanBlockTable({ blocks }: { blocks: PlanBlock[] }) {
             <TableRow key={planBlockValue(block)} index={index}>
               <TableCell className="font-medium text-foreground">{block.label}</TableCell>
               <TableCell className="whitespace-nowrap tabular-nums">
-                {formatClockTime(block.startTime)} – {formatClockTime(block.endTime)}
+                {formatClockRange(block.startTime, block.endTime)}
               </TableCell>
             </TableRow>
           ))}

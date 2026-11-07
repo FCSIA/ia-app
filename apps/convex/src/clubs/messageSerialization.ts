@@ -5,7 +5,6 @@ import { normalizeChatReaction } from "../../../shared/chat/protocol";
 
 export const REPLY_PREVIEW_CHARACTERS = 160;
 
-/** A finished paginated query with nothing in it, echoing the caller's cursor. */
 export function emptyPage(cursor: string | null) {
   return {
     page: [],

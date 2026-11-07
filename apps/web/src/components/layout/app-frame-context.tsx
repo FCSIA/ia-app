@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, use, type ReactNode } from "react";
 import type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
 import type { MobileNavigationSwipeOptions } from "@/components/layout/use-mobile-navigation-swipe";
 
@@ -43,12 +43,4 @@ export function useAppFrameActions() {
   const actions = use(AppFrameActionsContext);
   if (!actions) throw new Error("AppShell must be rendered inside AppFrame");
   return actions;
-}
-
-const subscribeNever = () => () => {};
-const detectMacLikePlatform = () => /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
-
-/** Whether the search shortcut is shown as ⌘K; false until the browser is known. */
-export function useCommandHint() {
-  return useSyncExternalStore(subscribeNever, detectMacLikePlatform, () => false);
 }
