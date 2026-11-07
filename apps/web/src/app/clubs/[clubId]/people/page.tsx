@@ -38,6 +38,7 @@ import {
   useMemberPresence,
 } from "@/components/presence/club-presence";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/recognition/bug-hunter-tag";
 import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
 import { PersonTrigger } from "@/components/users/person-trigger";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
@@ -1516,6 +1517,7 @@ function PersonRow({
               {fullName(person)}
             </CardTitle>
             <DeveloperBadge user={person} size={13} />
+            <BugHunterTag user={person} />
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
             {isCurrentUser ? <span>You</span> : null}

@@ -31,6 +31,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { useMutation } from '@/lib/convex-react';
+import { useToast } from '@/hooks/use-toast';
+import { api } from '~/apps/convex/src/_generated/api';
 import {
   Card,
   CardDescription,
@@ -106,6 +110,7 @@ type FeedbackResponseMutation = (args: {
 type RetryGithubIssueMutation = (
   reportId: Id<'moderationReports'>,
 ) => Promise<void>;
+type ApproveBugMutation = (reportId: Id<'moderationReports'>) => Promise<void>;
 
 const VIEWS = [
   { value: 'new', label: 'New', icon: Inbox, status: 'PENDING' },
@@ -124,6 +129,8 @@ export function FeedbackTab({
   reportMutation,
   responseMutation,
   retryGithubIssueMutation,
+  approveBugMutation,
+  canApproveBugs = false,
   isLoading,
   canUpdateFeedback = true,
 }: {
@@ -136,6 +143,8 @@ export function FeedbackTab({
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
   retryGithubIssueMutation: RetryGithubIssueMutation;
+  approveBugMutation: ApproveBugMutation;
+  canApproveBugs?: boolean;
   isLoading: boolean;
   canUpdateFeedback?: boolean;
 }) {
@@ -347,6 +356,8 @@ export function FeedbackTab({
         reportMutation={reportMutation}
         responseMutation={responseMutation}
         retryGithubIssueMutation={retryGithubIssueMutation}
+        approveBugMutation={approveBugMutation}
+        canApproveBugs={canApproveBugs}
         canUpdateFeedback={canUpdateFeedback}
       />
     </Tabs>
@@ -479,6 +490,8 @@ type FeedbackDetailProps = {
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
   retryGithubIssueMutation: RetryGithubIssueMutation;
+  approveBugMutation: ApproveBugMutation;
+  canApproveBugs: boolean;
   canUpdateFeedback: boolean;
 };
 
@@ -489,10 +502,17 @@ function FeedbackDetail({
   reportMutation,
   responseMutation,
   retryGithubIssueMutation,
+  approveBugMutation,
+  canApproveBugs,
   canUpdateFeedback,
 }: FeedbackDetailProps) {
   const [isSending, setIsSending] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const classifyBug = useMutation(api.moderation.bugRewards.setFeedbackKind);
+  const revokeBug = useMutation(api.moderation.bugRewards.revoke);
+  const { toast } = useToast();
   const [error, setError] = useState<string>();
   // When this detail opened; a sync that was already stale then can be retried.
   const [openedAt] = useState(() => Date.now());
@@ -554,6 +574,37 @@ function FeedbackDetail({
           <FeedbackStatusActions report={report} reportMutation={reportMutation} />
         ) : null}
       </div>
+      {canApproveBugs ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor={`feedback-kind-${report._id}`} className="text-sm">Feedback type</label>
+          <Select value={report.feedbackKind ?? 'OTHER'} disabled={isClassifying || Boolean(report.bugApprovedAt)} onValueChange={(value) => {
+            setIsClassifying(true);
+            void classifyBug({ reportId: report._id, feedbackKind: value as 'BUG' | 'OTHER' })
+              .catch((error: unknown) => toast({ title: error instanceof Error ? error.message : 'Could not change feedback type', variant: 'destructive' }))
+              .finally(() => setIsClassifying(false));
+          }}>
+            <SelectTrigger id={`feedback-kind-${report._id}`} placeholder="Feedback type" />
+            <SelectContent><SelectItem value="OTHER" index={0}>Idea or other</SelectItem><SelectItem value="BUG" index={1}>Bug report</SelectItem></SelectContent>
+          </Select>
+          {report.bugApprovedAt ? (
+            <Button type="button" size="sm" variant="secondary" disabled={isApproving} onClick={() => {
+              if (!window.confirm('Revoke this bug credit from the student?')) return;
+              setIsApproving(true);
+              void revokeBug({ reportId: report._id })
+                .then(() => toast({ title: 'Bug credit revoked' }))
+                .catch((error: unknown) => toast({ title: error instanceof Error ? error.message : 'Could not revoke credit', variant: 'destructive' }))
+                .finally(() => setIsApproving(false));
+            }}>Revoke credit</Button>
+          ) : null}
+        </div>
+      ) : null}
+      {canApproveBugs && report.feedbackKind === 'BUG' && !report.bugApprovedAt && report.status !== 'DISMISSED' ? (
+        <Button type="button" size="sm" variant="secondary" className="mt-3 self-start" disabled={isApproving || reportMutation.isPending} onClick={() => {
+          if (isApproving || !window.confirm('Confirm this report describes a real bug? This awards the student a Bug Hunter credit.')) return;
+          setIsApproving(true);
+          void approveBugMutation(report._id).finally(() => setIsApproving(false));
+        }}>{isApproving ? 'Approving…' : 'Approve confirmed bug'}</Button>
+      ) : null}
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex min-w-0 flex-col gap-5 py-5 [overflow-wrap:anywhere]">

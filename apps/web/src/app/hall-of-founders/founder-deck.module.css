@@ -1,0 +1,31 @@
+.exhibit {
+  --medal: color-mix(in srgb, hsl(var(--primary)) 40%, hsl(var(--card)));
+  --medal-edge: color-mix(in srgb, hsl(var(--primary)) 65%, hsl(var(--border)));
+  position: relative; isolation: isolate; overflow: hidden; padding: 2.5rem 1rem 2rem;
+  border: 1px solid var(--medal-edge); border-radius: 1.5rem;
+  background: radial-gradient(ellipse at 50% 35%, hsl(var(--primary) / .17), hsl(var(--card)) 58%, hsl(var(--background)));
+  color: hsl(var(--foreground));
+}
+.intro { position: relative; z-index: 6; text-align: center; }
+.intro h2 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 600; letter-spacing: -.025em; }
+.intro p { margin: .5rem auto 0; color: hsl(var(--muted-foreground)); font-size: .875rem; }
+.stage { --deck-step: 78px; position: relative; height: 410px; margin-top: 1.5rem; }
+.halo { position: absolute; inset: 8% 13%; border-radius: 50%; background: radial-gradient(ellipse, hsl(var(--primary) / .27), transparent 68%); filter: blur(38px); pointer-events: none; }
+.cardPosition { position: absolute; top: 50%; left: 50%; z-index: var(--deck-depth); width: min(57vw, 226px); transform: translate(-50%, -50%) translateX(calc(var(--deck-offset) * var(--deck-step))) rotate(calc(var(--deck-offset) * -4deg)) scale(.87); transition: transform .4s cubic-bezier(.2,.75,.2,1), filter .4s ease; filter: brightness(.68); }
+.cardPosition[data-featured='true'] { z-index: 5; transform: translate(-50%, -50%) scale(1.08); filter: brightness(1); }
+.founderCard { min-height: 354px; padding: 5px; border: 1px solid var(--medal-edge); border-radius: 17px; background: linear-gradient(125deg, var(--medal-edge), var(--medal) 29%, hsl(var(--primary)) 63%, var(--medal)); box-shadow: 0 15px 30px hsl(var(--foreground) / .15), 0 0 0 1px hsl(var(--border)); color: hsl(var(--foreground)); }
+.cardInner { position: relative; display: flex; flex: 1; min-height: 342px; flex-direction: column; overflow: hidden; border: 1px solid var(--medal-edge); border-radius: 11px; background: linear-gradient(155deg, hsl(var(--card)), var(--medal) 70%, hsl(var(--card))); }
+.cardInner::before { position: absolute; inset: 6px; border: 1px solid hsl(var(--primary) / .35); border-radius: 7px; content: ''; pointer-events: none; }
+.cardTop { display: flex; justify-content: center; padding: 13px 0 0; color: hsl(var(--primary)); }
+.portrait { display: grid; flex: 1; min-height: 120px; place-items: center; padding: .65rem 1rem; }
+.portrait span { display: grid; width: 108px; height: 108px; place-items: center; border: 2px solid var(--medal-edge); border-radius: 50%; background: radial-gradient(circle at 40% 30%, hsl(var(--card)), var(--medal) 85%); box-shadow: inset 0 0 0 4px hsl(var(--primary) / .18), 0 5px 16px hsl(var(--foreground) / .14); font-size: 2.3rem; font-weight: 600; letter-spacing: -.06em; }
+.cardIdentity { display: flex; min-height: 174px; flex-direction: column; align-items: center; gap: 3px; padding: 12px 11px 13px; border-top: 1px solid var(--medal-edge); background: color-mix(in srgb, hsl(var(--card)) 85%, hsl(var(--primary))); text-align: center; }
+.cardIdentity strong { font-size: 1.1rem; line-height: 1.16; }
+.classYear { color: hsl(var(--primary)); font-size: .72rem; font-weight: 700; }
+.commitSubject { display: block; width: 100%; margin-top: 7px; padding-top: 7px; border-top: 1px solid hsl(var(--primary) / .4); font-size: .7rem; font-weight: 550; line-height: 1.28; overflow-wrap: anywhere; }
+.deckControls { position: relative; z-index: 6; display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.deckControls p { min-width: 13rem; margin: 0; color: hsl(var(--muted-foreground)); font-size: .825rem; text-align: center; }
+.deckControls strong { color: hsl(var(--foreground)); }
+@media (min-width: 640px) { .stage { --deck-step: 132px; height: 430px; } .cardPosition { width: 236px; } }
+@media (min-width: 960px) { .stage { --deck-step: 166px; height: 450px; } .cardPosition { width: 248px; } .founderCard { min-height: 372px; } .cardInner { min-height: 360px; } }
+@media (prefers-reduced-motion: reduce) { .cardPosition { transition: none; } }

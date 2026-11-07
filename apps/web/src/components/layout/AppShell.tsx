@@ -21,6 +21,9 @@ import type { MobileNavigationSwipeOptions } from "@/components/layout/use-mobil
 import { useNavigationLoadingOptional } from "@/components/layout/navigation-loading-provider";
 import { PageTransition } from "@/components/layout/page-transition";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { createPhoenixEasterEggMatcher, isPhoenixEasterEggKey } from "@/lib/phoenix-easter-egg";
+import { useFoundersQuest, useRecordBonusEgg } from "@/hooks/use-founders-quest";
+import { QUEST_KEY_DISPLAY_MS, visibleQuestKeyCount } from "@/lib/founders-quest";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 export type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
@@ -58,6 +61,9 @@ export function AppShell({
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const user = useCurrentUser();
+  const { progress: questProgress } = useFoundersQuest();
+  const recordBonusEgg = useRecordBonusEgg();
+  const [questClock, setQuestClock] = useState(() => Date.now());
   const navigationLoading = useNavigationLoadingOptional();
   const { register, unregister, openGlobalSearch } = useAppFrameActions();
   const owner = useRef(Symbol("AppShell"));
@@ -91,6 +97,25 @@ export function AppShell({
   }, []);
   useEffect(() => setSearchScope("everything"), [pathname]);
 
+  useEffect(() => {
+    if (questProgress?.completedAt == null) return;
+    const remaining = questProgress.completedAt + QUEST_KEY_DISPLAY_MS - Date.now();
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setQuestClock(Date.now()), remaining);
+    return () => window.clearTimeout(timer);
+  }, [questProgress?.completedAt, questClock]);
+
+  useEffect(() => {
+    if (!user?.roles.some((role) => role === 'STUDENT' || role === 'STUDENT_LEADER')) return;
+    const matchPhoenix = createPhoenixEasterEggMatcher();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isPhoenixEasterEggKey(event)) { matchPhoenix('', Date.now()); return; }
+      if (matchPhoenix(event.key, Date.now())) void recordBonusEgg('phoenix');
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [recordBonusEgg, user]);
+
   const toggleSearchScope = () => {
     channelSearch?.onValueChange("");
     setSearchScope((current) => current === "everything" ? "channel" : "everything");
@@ -112,6 +137,7 @@ export function AppShell({
           searchScope={searchScope}
           commandHint={commandHint}
           user={user}
+          questKeysFound={questProgress ? visibleQuestKeyCount(questProgress, questClock) : 0}
           onOpenGlobalSearch={openGlobalSearch}
           onToggleSearchScope={toggleSearchScope}
           onOpenProfile={() => {

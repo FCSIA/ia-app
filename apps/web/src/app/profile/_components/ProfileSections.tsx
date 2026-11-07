@@ -1,18 +1,24 @@
 'use client';
 
-import { type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { displayName as profileName, regularName } from '~/apps/shared/user-name';
 import {
   Lock,
   LogOut,
+  KeyRound,
 } from 'lucide-react';
 import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevlogList } from '@/components/devlog/devlog-list';
 import { AppVersionStamp } from '@/components/devlog/devlog-version';
+import { appVersionLabel } from '@/components/devlog/devlog-version-label';
+import { useFoundersQuest, useRecordQuestKey } from '@/hooks/use-founders-quest';
+import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
+import { useCurrentUser } from '@/lib/auth';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
@@ -124,6 +130,7 @@ export function ProfileSidebar({
                 {displayName}
               </CardTitle>
               <DeveloperBadge user={user} size={16} />
+              <BugHunterTag user={user} />
             </div>
             {realName && realName !== displayName ? (
               <p className="mt-1 break-words text-sm text-muted-foreground">{realName}</p>
@@ -396,14 +403,61 @@ export function AppearanceSection({
 }
 
 export function WhatsNewSection() {
+  const user = useCurrentUser();
+  const { progress } = useFoundersQuest();
+  const recordQuestKey = useRecordQuestKey();
+  const { toast } = useToast();
+  const tapMatcher = useRef<ReturnType<typeof createEasterEggTapMatcher> | null>(null);
+  const tapCount = useRef(0);
+  const lastTapAt = useRef(0);
+  const [seal, setSeal] = useState<'hidden' | 'revealed' | 'claimed'>('hidden');
+  const [savingSeal, setSavingSeal] = useState(false);
+  const eligible = user?.roles.some((role) => role === 'STUDENT' || role === 'STUDENT_LEADER');
+  const copperFound = progress?.keys.includes('copper') ?? false;
+  useEffect(() => {
+    if (seal === 'hidden') return;
+    const timer = window.setTimeout(() => setSeal('hidden'), seal === 'claimed' ? 5_000 : 15_000);
+    return () => window.clearTimeout(timer);
+  }, [seal]);
+  async function claimCopper() {
+    if (savingSeal || copperFound) return;
+    setSavingSeal(true);
+    try {
+      if (await recordQuestKey('copper')) {
+        setSeal('claimed');
+        toast({ title: 'Copper Key found: 1 of 3', description: 'Your next clue is on your profile.' });
+      }
+    } finally { setSavingSeal(false); }
+  }
   return (
     <section aria-label="What's new" className="flex min-w-0 flex-col gap-5">
       <DevlogList />
       <div className="border-t border-border/30 pt-4">
-        <AppVersionStamp />
+        {eligible && !copperFound ? (
+          <Button type="button" variant="ghost" size="sm" className="font-mono tracking-wide" aria-label={`App version ${appVersionLabel()}`} onClick={() => {
+            if (seal !== 'hidden') return;
+            const now = Date.now();
+            tapCount.current = now - lastTapAt.current > 1500 ? 1 : tapCount.current + 1;
+            lastTapAt.current = now;
+            if (tapCount.current === 2) toast({ title: '3 more…', duration: 1_600 });
+            tapMatcher.current ??= createEasterEggTapMatcher();
+            if (tapMatcher.current(now)) {
+              tapCount.current = 0;
+              setSeal('revealed');
+              toast({ title: 'A copper seal appeared', description: 'Open it while it is here.' });
+            }
+          }}>{appVersionLabel()}</Button>
+        ) : <AppVersionStamp />}
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
           Include this version when you report a problem so we know which build you were on.
         </p>
+        {eligible && !copperFound ? <p className="mt-1 text-xs text-muted-foreground">Every story leaves a mark in its version history.</p> : null}
+        {seal === 'revealed' && !copperFound ? (
+          <Button type="button" size="sm" variant="secondary" leadingIcon={KeyRound} className="mt-3" loading={savingSeal} onClick={() => void claimCopper()}>
+            Open the copper seal
+          </Button>
+        ) : null}
+        {seal === 'claimed' ? <p className="mt-3 text-sm text-primary" role="status">Copper Key saved. The seal is fading, but your key is yours.</p> : null}
       </div>
     </section>
   );

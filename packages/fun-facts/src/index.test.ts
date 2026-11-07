@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NAVIGATION_LOADING_MESSAGES,
   NO_SCHOOL_MESSAGES,
+  PHOENIX_LOADING_FACTS,
   SPOTLIGHT_LOADING_FACTS,
   SCHOOL_OVER_MESSAGES,
   createNavigationLoadingFactPicker,
@@ -30,6 +31,23 @@ describe("navigation loading facts", () => {
   it("selects Phoenix facts with app-owned visual metadata", () => {
     const pick = createNavigationLoadingFactPicker(sequenceRandom([0, 0]));
     expect(pick()).toMatchObject({ category: "phoenix", visual: "phoenix" });
+    expect(PHOENIX_LOADING_FACTS.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("includes IA campus and app lore without advertising unbuilt rewards", () => {
+    expect(
+      NAVIGATION_LOADING_MESSAGES.some((msg) => msg.includes("eXchange")),
+    ).toBe(true);
+    expect(
+      NAVIGATION_LOADING_MESSAGES.some((msg) => msg.includes("Share Feedback")),
+    ).toBe(true);
+    expect(NAVIGATION_LOADING_MESSAGES.join(" ")).not.toMatch(/Hall of Finders|hidden keys/);
+    expect(PHOENIX_LOADING_FACTS.map((fact) => fact.text).join(" ")).not.toMatch(
+      /Hall of Finders|hidden keys/,
+    );
+    NAVIGATION_LOADING_MESSAGES.forEach((msg) => {
+      expect(/[.!?"”)*]$/.test(msg)).toBe(true);
+    });
   });
 
   it("selects spotlight facts separately from Phoenix facts", () => {

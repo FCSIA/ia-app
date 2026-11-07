@@ -38,6 +38,8 @@ function serializeAuthor(author: Doc<"users"> | null) {
         avatarUrl: author.avatarUrl ?? null,
         roles: author.roles,
         isDeveloper: author.isDeveloper,
+        approvedBugCount: author.approvedBugCount,
+        bugTagColor: author.bugTagColor,
       }
     : null;
 }

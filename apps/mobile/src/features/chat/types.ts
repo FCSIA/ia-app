@@ -9,6 +9,8 @@ export type ChatUser = {
   preferredName?: string | null;
   avatarUrl?: string | null;
   isDeveloper?: boolean | null;
+  approvedBugCount?: number | null;
+  bugTagColor?: string | null;
 };
 
 export type ChatAttachment = {
