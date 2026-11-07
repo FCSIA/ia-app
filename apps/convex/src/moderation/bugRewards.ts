@@ -1,10 +1,8 @@
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { mutation, query } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
 import { canReviewFeedback } from "./feedbackAccess";
-import { displayName } from "../../../shared/user-name";
 
 const bugColorValidator = v.union(
   v.literal("amber"), v.literal("blue"), v.literal("emerald"),
@@ -20,31 +18,6 @@ export const myReward = query({
       approvedCount: user.approvedBugCount ?? 0,
       color: user.bugTagColor ?? null,
     };
-  },
-});
-
-export const hallOfFame = query({
-  args: { paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(v.object({
-    id: v.id("users"),
-    name: v.string(),
-    approvedCount: v.number(),
-    isYou: v.boolean(),
-  })),
-  handler: async (ctx, { paginationOpts }) => {
-    const viewer = await getCurrentAppUser(ctx);
-    const result = await ctx.db.query("users")
-      .withIndex("by_isActive_and_approvedBugCount", (q) =>
-        q.eq("isActive", true).gt("approvedBugCount", 0))
-      .order("desc")
-      .paginate(paginationOpts);
-    const page = result.page.map((user) => ({
-      id: user._id,
-      name: displayName(user),
-      approvedCount: user.approvedBugCount ?? 0,
-      isYou: user._id === viewer._id,
-    }));
-    return { ...result, page };
   },
 });
 

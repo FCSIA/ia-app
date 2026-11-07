@@ -1,12 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { Bug } from 'lucide-react';
 import { useMutation } from '@/lib/convex-react';
 import { useToast } from '@/hooks/use-toast';
 import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { AppUser } from '@/lib/auth';
@@ -59,9 +57,6 @@ export function BugRewards({ user }: { user: AppUser | null }) {
               {count >= 20 ? <p>Your multicolored tag is active; your chosen color is saved if the tag style changes later.</p> : null}
             </div>
           ) : null}
-          <Button asChild size="sm" variant="secondary" className="self-start">
-            <Link href="/hall-of-bug-hunters">Visit the Bug Hall of Fame</Link>
-          </Button>
         </div>
         </CardContent>
       </Card>

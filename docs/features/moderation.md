@@ -47,7 +47,6 @@ rules, and user-submitted reports.
 - `api.moderation.bugRewards.revoke`
 - `api.moderation.bugRewards.setFeedbackKind`
 - `api.moderation.bugRewards.myReward`
-- `api.moderation.bugRewards.hallOfFame`
 - `api.moderation.bugRewards.setColor`
 
 ## Data Model
@@ -149,10 +148,9 @@ increments the submitter's saved approved-bug count once, and writes an audit
 event. Dismissed reports cannot be approved. The saved count unlocks the regular
 tag at 1, a chosen color at 5, a multicolored tag at 20, and an animated tag at
 50; reduced-motion settings stop the animation. Profile shows earned milestones
-and the current tag. The signed-in Bug Hall of Fame lists active contributors
-with at least one approved report, ordered by count, and loads more names on
-demand. Milestones derive from the saved count rather than a second achievement
-table.
+and the current tag. The tag also appears beside the student's name in supported
+web and mobile views. Milestones derive from the saved count rather than a second
+achievement table.
 
 ## Preferred-name safety
 
