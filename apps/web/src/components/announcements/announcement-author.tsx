@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { displayName } from '~/apps/shared/user-name';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { cn } from '@/lib/utils';
 import { UserProfileDialog, type UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { useCurrentUser } from '@/lib/auth';
@@ -17,6 +18,8 @@ export type AnnouncementAuthorPerson = {
   avatarUrl?: string | null;
   roles?: UserProfilePerson['roles'];
   isDeveloper?: boolean | null;
+  approvedBugCount?: number | null;
+  bugTagColor?: string | null;
 };
 
 /** The same person entry point in the feed, article, and discussion. */
@@ -49,6 +52,7 @@ export function AnnouncementAuthor({
         <div className="flex min-w-0 items-center gap-1 text-foreground">
           <span className="truncate">{name}</span>
           <DeveloperBadge user={author} size={12} />
+          <BugHunterTag user={author} />
         </div>
         {children ? <div id={detailsId} className={cn('text-xs text-muted-foreground', person && detailsClassName)}>{children}</div> : null}
       </div>

@@ -9,6 +9,7 @@ import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, TextField, Txt, useToast } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/ui/bug-hunter-tag";
 import { announcementAudience } from "@/features/announcements/model";
 import { AnnouncementIconAction } from "@/features/announcements/ui";
 import { useAnnouncementActions } from "@/features/announcements/use-announcement-actions";
@@ -111,6 +112,7 @@ export default function AnnouncementDetailScreen() {
                       {authorName || "Innovation Academy"}
                     </Txt>
                     <DeveloperBadge user={announcement.author} size={12} />
+                    <BugHunterTag user={announcement.author} compact />
                     <Txt variant="caption" tone="muted">
                       {" "}· {relativeTime(announcement.createdAt)}
                     </Txt>
@@ -152,6 +154,7 @@ export default function AnnouncementDetailScreen() {
                                   {commentAuthor || "Community member"}
                                 </Txt>
                                 <DeveloperBadge user={row.author} size={12} />
+                                <BugHunterTag user={row.author} compact />
                                 <Txt variant="caption" tone="muted">{relativeTime(row.createdAt)}</Txt>
                               </View>
                               <Txt>{row.body}</Txt>

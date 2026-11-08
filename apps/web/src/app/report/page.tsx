@@ -10,6 +10,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { FileInput } from '@/components/ui/file-input';
 import { AnimatedGif } from '@/components/media/animated-gif';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +39,7 @@ type SelectedImage = {
 
 export default function ReportPage() {
   const [message, setMessage] = useState('');
+  const [feedbackKind, setFeedbackKind] = useState<'BUG' | 'OTHER'>('OTHER');
   const [images, setImages] = useState<SelectedImage[]>([]);
   const imagesRef = useRef<SelectedImage[]>([]);
   const imageUrls = useRef(new Set<string>());
@@ -116,6 +118,7 @@ export default function ReportPage() {
         contentType: 'GENERAL',
         contentId: 'report-page',
         reason: trimmedMessage,
+        feedbackKind,
         imageUploadIds,
         appVersion: formatVersion(APP_VERSION, RELEASE_CHANNEL),
         clientMetadata: collectFeedbackMetadata(),
@@ -142,6 +145,17 @@ export default function ReportPage() {
     <AppShell headerSlot={<h1 className="text-lg font-semibold tracking-tight text-foreground">Feedback</h1>}>
       <PageFrame className="max-w-2xl gap-8">
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="feedback-kind" className="text-sm font-medium text-foreground">Feedback type</label>
+            <Select value={feedbackKind} onValueChange={(value) => setFeedbackKind(value as 'BUG' | 'OTHER')}>
+              <SelectTrigger id="feedback-kind" placeholder="Choose feedback type" />
+              <SelectContent>
+                <SelectItem value="OTHER" index={0}>Idea or other feedback</SelectItem>
+                <SelectItem value="BUG" index={1}>Bug report</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Only bugs confirmed by a developer count toward Bug Hunter tags.</p>
+          </div>
           <div className="flex flex-col gap-3">
             <label htmlFor="feedback-message" className="text-sm font-semibold text-foreground">
               What would you like to change?

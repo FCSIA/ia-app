@@ -13,6 +13,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
@@ -94,6 +95,7 @@ export function PinnedMessagesButton({
                           {displayName(message.author)}
                         </span>
                         <DeveloperBadge user={message.author} size={13} />
+                        <BugHunterTag user={message.author} />
                         <span className="shrink-0 text-[11px] text-muted-foreground">
                           {formatMessageTime(message.createdAt)}
                         </span>

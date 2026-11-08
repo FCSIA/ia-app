@@ -12,6 +12,7 @@ import { Card, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { ClubMark } from '@/components/media/club-mark';
 import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
@@ -27,7 +28,7 @@ import { copyText } from '@/lib/share';
 export type UserProfilePerson = Pick<
   ClubPerson,
   '_id' | 'firstName' | 'lastName' | 'preferredName'
-> & Partial<Pick<ClubPerson, 'avatarUrl' | 'uniqueId' | 'roles'>> & { isDeveloper?: boolean | null };
+> & Partial<Pick<ClubPerson, 'avatarUrl' | 'uniqueId' | 'roles'>> & { isDeveloper?: boolean | null; approvedBugCount?: number | null; bugTagColor?: string | null };
 
 type UserProfileContentProps = {
   active: boolean;
@@ -113,6 +114,7 @@ export function UserProfileContent({
           <div id={headingId} className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-foreground">
             <span className="truncate">{name}</span>
             <DeveloperBadge user={person} size={15} />
+            <BugHunterTag user={person} />
           </div>
           {realName && realName !== name ? (
             <p className="mt-0.5 break-words text-xs text-muted-foreground">{realName}</p>

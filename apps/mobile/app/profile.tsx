@@ -17,6 +17,7 @@ import { Screen } from "@/components/screen";
 import { OnboardingEntry } from '@/features/onboarding/onboarding';
 import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/ui/bug-hunter-tag";
 import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -117,6 +118,7 @@ export default function ProfileScreen() {
               {fullName || "Innovation Academy"}
             </Txt>
             <DeveloperBadge user={user} size={16} />
+            <BugHunterTag user={user} />
           </View>
           {realName && realName !== fullName ? (
             <Txt variant="caption" tone="muted">{realName}</Txt>

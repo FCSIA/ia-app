@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "lucide-react-native";
 import { PressableScale, Txt } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
+import { BugHunterTag } from "@/components/ui/bug-hunter-tag";
 import { announcementAudience } from "@/features/announcements/model";
 import { AnnouncementIconAction } from "@/features/announcements/ui";
 import { useAnnouncementActions } from "@/features/announcements/use-announcement-actions";
@@ -92,6 +93,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
               {authorName || "Innovation Academy"}
             </Txt>
             <DeveloperBadge user={announcement.author} size={12} />
+            <BugHunterTag user={announcement.author} compact />
             <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>·</Txt>
             <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>
               {relativeTime(announcement.createdAt)}

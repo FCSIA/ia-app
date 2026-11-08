@@ -6,6 +6,8 @@ type AnnouncementAuthor = {
   lastName?: string | null;
   preferredName?: string | null;
   isDeveloper?: boolean | null;
+  approvedBugCount?: number | null;
+  bugTagColor?: string | null;
 };
 
 type AnnouncementClub = {

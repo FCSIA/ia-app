@@ -555,7 +555,7 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The inventor of the “zipper,” Gideon Sundback, was a Swedish-American engineer.',
   'The “knapsack” originally referred to a donkey’s load carrier.',
   'The first “computer virus” was called “Creeper,” created in 1971 as an experiment.',
-  'The inventor of the “Velcro,” George',
+  'The inventor of Velcro, George de Mestral, was inspired by burrs stuck to his dog’s fur after a walk in the Alps.',
   'Earth and the Moon are both satellites — Earth orbits the Sun, while the Moon orbits Earth.',
   'Mercury is the only planet in our solar system without an atmosphere.',
   'GPS works partly because scientists correct for Einstein’s time-travel effects on satellite clocks.',
@@ -568,4 +568,13 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The deepest confirmed fish sighting was a snailfish filmed 8,336 meters below the ocean surface.',
   'Hellbenders breathe mostly through their wrinkly skin instead of using gills.',
   'Male hellbenders guard their eggs for months by fanning them with oxygenated water.',
+
+  // IA App lore and ways to contribute
+  'Student developers help build and maintain the IA App — check “What’s New” in your profile to see recent updates.',
+  'Spot a wrench icon beside someone’s name? That marks a developer who helped build or maintain the IA App.',
+  'Found a glitch or weird layout? Share Feedback lets you send details and screenshots to the app team.',
+  'The IA App’s “What’s New” section keeps a record of changes students can explore.',
+  'Have an idea for a club feature? Share Feedback is a place to suggest it.',
+  'A little Phoenix secret is hiding in the IA App. Try calling its name while exploring, away from a text box.',
+  'What’s New holds a record of IA App versions. Curious explorers might find a little more if they revisit one often enough.',
 ] as const;
