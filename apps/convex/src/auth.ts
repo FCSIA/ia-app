@@ -9,6 +9,10 @@ import type { DataModel } from "./_generated/dataModel";
 import { env } from "./_generated/server";
 import { MIN_PASSWORD_LENGTH } from "../../shared/limits";
 import authConfig from "./auth.config";
+import {
+  createCliDeviceAuthorization,
+  createCliDeviceCodeGuard,
+} from "./auth/cliDeviceAuthorization";
 import { createLoginRateLimitPlugin } from "./auth/loginRateLimitPlugin";
 import authSchema from "./betterAuth/schema";
 
@@ -232,6 +236,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
           user: userAc,
         },
       }),
+      createCliDeviceCodeGuard(),
+      createCliDeviceAuthorization(siteUrl),
       expo(),
       convex({ authConfig }),
     ],

@@ -28,6 +28,7 @@ import type * as audit__lib from "../audit/_lib.js";
 import type * as audit_events from "../audit/events.js";
 import type * as audit_migrations from "../audit/migrations.js";
 import type * as auth from "../auth.js";
+import type * as auth_cliDeviceAuthorization from "../auth/cliDeviceAuthorization.js";
 import type * as auth_loginRateLimitPlugin from "../auth/loginRateLimitPlugin.js";
 import type * as authLoginRateLimit from "../authLoginRateLimit.js";
 import type * as bootstrap from "../bootstrap.js";
@@ -195,6 +196,7 @@ declare const fullApi: ApiFromModules<{
   "audit/events": typeof audit_events;
   "audit/migrations": typeof audit_migrations;
   auth: typeof auth;
+  "auth/cliDeviceAuthorization": typeof auth_cliDeviceAuthorization;
   "auth/loginRateLimitPlugin": typeof auth_loginRateLimitPlugin;
   authLoginRateLimit: typeof authLoginRateLimit;
   bootstrap: typeof bootstrap;
