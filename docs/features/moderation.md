@@ -99,6 +99,16 @@ pending). New and in-review feedback both keep the issue open, so moving
 between them sends nothing to GitHub, and a reopen event leaves in-review
 feedback in review. The issue link is visible to feedback reviewers.
 
+Staff decisions that change the issue's state are mirrored onto it by one push
+at a time (`requestGithubIssuePush`), which ends on the latest decision. A
+decision made while a push is failing gets a fresh push. A cron restarts
+pushes whose run died, after their five-minute lease lapses. Webhook events
+are ordered only against GitHub's own `updated_at` times. A staff decision's
+Convex time is used only when its push failed, so the issue never showed it.
+An event stamped in the same whole second as the newest known issue state
+cannot be ordered, so the app fetches the issue and keeps the state GitHub
+shows.
+
 Both staff queues (Reports and Feedback) share one review anatomy from
 `apps/web/src/components/moderation/`: `ReportStatusBadge` colors review states
 like the rest of the app (waiting amber, in review blue, resolved emerald,

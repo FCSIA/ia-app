@@ -503,9 +503,10 @@ export const update = mutation({
       // reviewedAt records a decision; starting a review is not one.
       reviewedAt: args.status === "IN_REVIEW" ? undefined : now,
       // A staff decision is the latest word on the linked issue, so GitHub
-      // events describing an older issue state cannot overwrite it.
+      // events describing an older issue state cannot overwrite it. This is
+      // Convex's clock, so it stays apart from GitHub's issue timestamps.
       ...(githubIssueNumber !== undefined && issueStateChanged
-        ? { githubIssueStateUpdatedAt: now }
+        ? { githubIssueDecidedAt: now }
         : {}),
     });
     if (githubIssueNumber !== undefined && issueStateChanged) {

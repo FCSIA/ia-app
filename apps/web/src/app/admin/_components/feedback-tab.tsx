@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
   Archive,
@@ -17,7 +17,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
-import { canRetryGithubSync } from '~/apps/shared/feedback-sync';
+import { canRetryGithubSync, githubSyncStaleAt } from '~/apps/shared/feedback-sync';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   DataTableCount,
@@ -482,6 +482,20 @@ type FeedbackDetailProps = {
   canUpdateFeedback: boolean;
 };
 
+/** The current time, read again once `deadline` has passed. */
+function useClockPast(deadline: number | undefined) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (deadline === undefined || now >= deadline) return;
+    const timer = window.setTimeout(
+      () => setNow(Date.now()),
+      Math.max(0, deadline - Date.now()),
+    );
+    return () => window.clearTimeout(timer);
+  }, [deadline, now]);
+  return now;
+}
+
 function FeedbackDetail({
   report,
   body,
@@ -494,8 +508,9 @@ function FeedbackDetail({
   const [isSending, setIsSending] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState<string>();
-  // When this detail opened; a sync that was already stale then can be retried.
-  const [openedAt] = useState(() => Date.now());
+  // Re-renders when a queued sync goes stale, so Retry appears while the
+  // detail stays open.
+  const now = useClockPast(githubSyncStaleAt(report));
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -605,7 +620,7 @@ function FeedbackDetail({
                 Issue #{report.githubIssueNumber}
                 <ExternalLink className="size-3" aria-hidden />
               </a>
-            ) : report.githubIssueSyncState && canRetryGithubSync(report, openedAt) ? (
+            ) : report.githubIssueSyncState && canRetryGithubSync(report, now) ? (
               <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <TriangleAlert className="size-3.5 text-amber-500" aria-hidden />
                 {report.githubIssueSyncState === 'FAILED' ? 'Not on GitHub yet' : 'GitHub sync stalled'}

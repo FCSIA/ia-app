@@ -28,6 +28,14 @@ crons.interval(
   {},
 );
 
+// A push renews its lease every round, so one past the lease has died.
+crons.interval(
+  "restart stalled feedback issue pushes",
+  { minutes: 5 },
+  internal.moderation.feedbackGithub.restartStalledGithubIssuePushes,
+  {},
+);
+
 // 04:30 New York (EDT; 03:30 EST): after the school day ends, before anyone is in.
 crons.cron("roll up admin analytics", "30 8 * * *", internal.analytics.rollups.runDaily, {});
 
