@@ -54,6 +54,14 @@ event data. Club sponsors and club leaders can create club events; non-sponsor
 club events go through sponsor approval. Event creators and admins can cancel
 events.
 
+Approval asks each of the club's sponsors with an active account, and a club
+with none cannot create an event that needs approval. The event publishes once
+every request from a sponsor who can still act is approved. When a sponsor is
+deactivated or deleted, their open requests are dropped. Events that others
+already approved then publish. Events nobody approved go to the club's other
+active sponsors, or are cancelled (audited as `NO_ACTIVE_SPONSOR`) if there are
+none.
+
 ## Side Effects
 
 Publishing creates a linked `calendarEntries` row. Cancelling removes linked

@@ -5,7 +5,7 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEventDetail, serializeEvents, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 import { getClubContext } from "../clubs/access";
-import { clearPendingApprovals } from "./approvals";
+import { activeClubSponsorIds, clearPendingApprovals } from "./approvals";
 import {
   normalizeEventTitle,
   normalizeOptionalEventDescription,
@@ -126,17 +126,14 @@ export const create = mutation({
     const status =
       admin || isSponsor || !args.clubId ? "PUBLISHED" : "PENDING_APPROVAL";
 
-    // Only the club's sponsors can approve, so without one a pending event
-    // could never leave PENDING_APPROVAL.
+    // Only the club's active sponsors can approve, so without one a pending
+    // event could never leave PENDING_APPROVAL.
     const clubId = args.clubId;
-    const sponsors =
+    const sponsorIds =
       clubId && status === "PENDING_APPROVAL"
-        ? await ctx.db
-            .query("clubSponsors")
-            .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
-            .collect()
+        ? await activeClubSponsorIds(ctx, clubId)
         : [];
-    if (status === "PENDING_APPROVAL" && sponsors.length === 0) {
+    if (status === "PENDING_APPROVAL" && sponsorIds.length === 0) {
       throw new ConvexError(
         "This club has no sponsor to approve events yet. Ask a staff member to add one.",
       );
@@ -193,10 +190,10 @@ export const create = mutation({
       }
     }
 
-    for (const sponsor of sponsors) {
+    for (const sponsorId of sponsorIds) {
       await ctx.db.insert("eventApprovals", {
         eventId,
-        sponsorId: sponsor.userId,
+        sponsorId,
         status: "PENDING",
         createdAt: Date.now(),
       });

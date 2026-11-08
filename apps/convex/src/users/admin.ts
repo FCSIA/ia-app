@@ -10,6 +10,7 @@ import {
   query,
 } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
+import { settleSponsorApprovals } from "../events/approvals";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
@@ -1056,6 +1057,8 @@ export const deactivate = mutation({
       isActive: false,
       updatedAt: Date.now(),
     });
+    // A deactivated sponsor can no longer approve club events.
+    await settleSponsorApprovals(ctx, target._id);
 
     await logAuditEvent(ctx, {
       actorId: actor._id,
@@ -1127,6 +1130,7 @@ export const deleteUsers = mutation({
       if (onboarding) await ctx.db.delete(onboarding._id);
       await ctx.db.delete(target._id);
       await incrementUserCounts(ctx, target, -1);
+      await settleSponsorApprovals(ctx, target._id);
     }
 
     await logAuditEvent(ctx, {
