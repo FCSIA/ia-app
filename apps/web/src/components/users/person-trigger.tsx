@@ -32,7 +32,7 @@ export function PersonTrigger({ person, actions, usersHref, roleName, trigger }:
             <span className="truncate">{displayName(person)}</span>
           </Button>}
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 p-0" aria-label={`${displayName(person)}'s profile`}>
+        <PopoverContent align="start" className="w-80 max-w-[var(--radix-popover-content-available-width)] p-0" aria-label={`${displayName(person)}'s profile`}>
           <UserProfileContent active={previewOpen} isCurrentUser={isCurrentUser} person={person} roleName={roleName} variant="preview" />
           <div className="flex flex-wrap gap-1 border-t border-border/60 p-2">
             {actions}
