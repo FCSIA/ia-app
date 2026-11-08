@@ -28,4 +28,13 @@ describe("notification delivery preference", () => {
       preferenceDeliveryDecision("FRIEND_SCHEDULE_CHANGE", preference(true, "PUSH")),
     ).toEqual({ create: true, push: true });
   });
+
+  test("account security notices ignore every preference and always push", () => {
+    for (const row of [null, preference(false, "OFF"), preference(true, "IN_APP")]) {
+      expect(preferenceDeliveryDecision("ACCOUNT_SECURITY", row)).toEqual({
+        create: true,
+        push: true,
+      });
+    }
+  });
 });

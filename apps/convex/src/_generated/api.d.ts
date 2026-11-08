@@ -163,6 +163,7 @@ import type * as users__csvRows from "../users/_csvRows.js";
 import type * as users__lib from "../users/_lib.js";
 import type * as users_admin from "../users/admin.js";
 import type * as users_auth from "../users/auth.js";
+import type * as users_cliSessions from "../users/cliSessions.js";
 import type * as users_impersonation from "../users/impersonation.js";
 import type * as users_me from "../users/me.js";
 import type * as validators from "../validators.js";
@@ -331,6 +332,7 @@ declare const fullApi: ApiFromModules<{
   "users/_lib": typeof users__lib;
   "users/admin": typeof users_admin;
   "users/auth": typeof users_auth;
+  "users/cliSessions": typeof users_cliSessions;
   "users/impersonation": typeof users_impersonation;
   "users/me": typeof users_me;
   validators: typeof validators;

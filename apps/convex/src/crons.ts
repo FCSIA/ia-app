@@ -28,6 +28,14 @@ crons.interval(
   {},
 );
 
+// Device codes expire after 10 minutes; drop the ones nobody redeemed.
+crons.interval(
+  "sweep expired CLI sign-in codes",
+  { hours: 1 },
+  internal.users.cliSessions.sweepExpiredDeviceCodes,
+  {},
+);
+
 // A push renews its lease every round, so one past the lease has died.
 crons.interval(
   "restart stalled feedback issue pushes",

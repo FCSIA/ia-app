@@ -42,6 +42,7 @@ export const tables = {
     userAgent: v.optional(v.union(v.null(), v.string())),
     userId: v.string(),
     impersonatedBy: v.optional(v.union(v.null(), v.string())),
+    clientId: v.optional(v.union(v.null(), v.string())),
   })
     .index("expiresAt", ["expiresAt"])
     .index("expiresAt_userId", ["expiresAt","userId"])
@@ -84,7 +85,10 @@ export const tables = {
     pollingInterval: v.optional(v.union(v.null(), v.number())),
     clientId: v.optional(v.union(v.null(), v.string())),
     scope: v.optional(v.union(v.null(), v.string())),
-  }),
+  })
+    .index("deviceCode", ["deviceCode"])
+    .index("userCode", ["userCode"])
+    .index("expiresAt", ["expiresAt"]),
   jwks: defineTable({
     publicKey: v.string(),
     privateKey: v.string(),

@@ -14,6 +14,7 @@ export const NOTIFICATION_CATEGORIES = [
   "FEEDBACK",
   "FRIEND_REQUEST",
   "FRIEND_SCHEDULE_CHANGE",
+  "ACCOUNT_SECURITY",
 ] as const;
 
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
@@ -24,6 +25,8 @@ export type NotificationCategoryDetails = {
   defaultEnabled: boolean;
   description: string;
   label: string;
+  /** Always delivered, so it never appears in notification settings. */
+  alwaysOn?: boolean;
   staffOnly?: boolean;
 };
 
@@ -106,6 +109,13 @@ export const NOTIFICATION_CATEGORY_DETAILS = {
     defaultEnabled: true,
     description: 'Updates when a friend changes a schedule they share with you.',
     label: 'Friend Schedule Changes',
+  },
+  ACCOUNT_SECURITY: {
+    alwaysOn: true,
+    badgeLabel: 'Security',
+    defaultEnabled: true,
+    description: 'New sign-ins to your account, such as the command-line client.',
+    label: 'Account Security',
   },
 } as const satisfies Record<NotificationCategory, NotificationCategoryDetails>;
 

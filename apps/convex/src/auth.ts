@@ -11,7 +11,7 @@ import { MIN_PASSWORD_LENGTH } from "../../shared/limits";
 import authConfig from "./auth.config";
 import {
   createCliDeviceAuthorization,
-  createCliDeviceCodeGuard,
+  createCliSignInPlugin,
 } from "./auth/cliDeviceAuthorization";
 import { createLoginRateLimitPlugin } from "./auth/loginRateLimitPlugin";
 import authSchema from "./betterAuth/schema";
@@ -236,7 +236,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
           user: userAc,
         },
       }),
-      createCliDeviceCodeGuard(),
+      createCliSignInPlugin(ctx),
       createCliDeviceAuthorization(siteUrl),
       expo(),
       convex({ authConfig }),

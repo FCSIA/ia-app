@@ -49,6 +49,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               }
             | {
                 data: {
+                  clientId?: null | string;
                   createdAt: number;
                   expiresAt: number;
                   impersonatedBy?: null | string;
@@ -175,6 +176,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -412,6 +414,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -729,6 +732,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "session";
                 update: {
+                  clientId?: null | string;
                   createdAt?: number;
                   expiresAt?: number;
                   impersonatedBy?: null | string;
@@ -749,6 +753,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1029,6 +1034,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "session";
                 update: {
+                  clientId?: null | string;
                   createdAt?: number;
                   expiresAt?: number;
                   impersonatedBy?: null | string;
@@ -1049,6 +1055,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

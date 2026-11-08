@@ -42,7 +42,7 @@ export const AUDIT_CATEGORIES = {
 export type AuditCategory = keyof typeof AUDIT_CATEGORIES;
 export const auditEntityKey = (type: string) => type.replace(/[_\s]/g, '').toLowerCase();
 /** Known stored spellings share one semantic filter without rewriting history. */
-export const AUDIT_ENTITY_TYPES = ['User', 'authAccount', 'Club', 'ClubChannel', 'ClubChannelMessage', 'ClubWhiteboard', 'ClubUnit', 'ClubPeopleGroup', 'ClubJoinRequest', 'Announcement', 'Comment', 'Report', 'KeywordRule', 'StudentSchedule', 'StudentScheduleGroup', 'StudentFriendShareLink', 'SchoolDayBlock', 'SchoolDayTemplate', 'SchoolDayDateOverride', 'SchoolScheduleSettings', 'FlexFriday', 'FlexSession', 'FlexWorkshop', 'FlexRegistration', 'FlexAssignment', 'FlexAttendance', 'Event', 'user', 'club', 'studentSchedule', 'studentScheduleGroup', 'studentFriendShareLink', 'schoolDayBlock', 'schoolDayTemplate', 'schoolDayDateOverride', 'schoolScheduleSettings', 'FLEX_FRIDAY', 'FLEX_SESSION', 'FLEX_WORKSHOP', 'FLEX_REGISTRATION', 'FLEX_ASSIGNMENT', 'FLEX_ATTENDANCE', 'EVENT'] as const;
+export const AUDIT_ENTITY_TYPES = ['User', 'authAccount', 'authSession', 'Club', 'ClubChannel', 'ClubChannelMessage', 'ClubWhiteboard', 'ClubUnit', 'ClubPeopleGroup', 'ClubJoinRequest', 'Announcement', 'Comment', 'Report', 'KeywordRule', 'StudentSchedule', 'StudentScheduleGroup', 'StudentFriendShareLink', 'SchoolDayBlock', 'SchoolDayTemplate', 'SchoolDayDateOverride', 'SchoolScheduleSettings', 'FlexFriday', 'FlexSession', 'FlexWorkshop', 'FlexRegistration', 'FlexAssignment', 'FlexAttendance', 'Event', 'user', 'club', 'studentSchedule', 'studentScheduleGroup', 'studentFriendShareLink', 'schoolDayBlock', 'schoolDayTemplate', 'schoolDayDateOverride', 'schoolScheduleSettings', 'FLEX_FRIDAY', 'FLEX_SESSION', 'FLEX_WORKSHOP', 'FLEX_REGISTRATION', 'FLEX_ASSIGNMENT', 'FLEX_ATTENDANCE', 'EVENT'] as const;
 type AuditActionInfo = {
   label: string;
   category: AuditCategory;
@@ -144,6 +144,8 @@ export const AUDIT_ACTIONS = {
   "USER_FEEDBACK_REVIEW_ACCESS_UPDATED": { label: "Updated user feedback review access", category: "people-access" },
   "auth.login_locked": { label: "Temporarily locked sign-in", category: "people-access", system: true },
   "auth.login_unlocked": { label: "Unlocked sign-in", category: "people-access" },
+  "auth.cli_signed_in": { label: "Signed in to the command-line client", category: "people-access" },
+  "auth.cli_session_revoked": { label: "Signed out a command-line client", category: "people-access" },
   "club.unit_channel_defaults_updated": { label: "Updated club group channel defaults", category: "clubs-chat" },
   "club.unit_channels_created": { label: "Created club group channels", category: "clubs-chat" },
   "impersonation.requested": { label: "Requested impersonation", category: "people-access" },

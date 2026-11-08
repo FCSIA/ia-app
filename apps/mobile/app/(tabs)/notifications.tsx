@@ -32,6 +32,7 @@ const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
   FEEDBACK: "Feedback",
   FRIEND_REQUEST: "Friend request",
   FRIEND_SCHEDULE_CHANGE: "Schedule update",
+  ACCOUNT_SECURITY: "Security",
 };
 
 export default function NotificationsScreen() {
