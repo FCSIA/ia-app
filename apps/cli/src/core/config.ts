@@ -11,8 +11,27 @@ export interface AliasSetting {
   target: string;
 }
 
+export interface SignedInUser {
+  id: string;
+  username: string;
+  name: string;
+}
+
+export interface HostSettings {
+  // The discovery document and when it was fetched, reused for an hour.
+  discovery?: { document: unknown; fetchedAt: number };
+  // Who signed in here and where the token is kept. The token itself is never
+  // stored in this file unless the system credential store is unavailable.
+  user?: SignedInUser;
+  credentialStore?: "keychain" | "file";
+  signedInAt?: number;
+}
+
 export interface CliConfig {
   alias?: AliasSetting;
+  // The site saved by the most recent sign-in.
+  host?: string;
+  hosts?: Record<string, HostSettings>;
   [key: string]: unknown;
 }
 

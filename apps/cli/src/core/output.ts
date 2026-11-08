@@ -124,6 +124,27 @@ export class Output {
     }
   }
 
+  // A list on stdout. Piped, it is tab-separated with one header row so it
+  // stays parseable; at a terminal, columns are padded and the header faint.
+  table(headers: string[], rows: string[][]) {
+    if (!this.modes.stdout.isTTY) {
+      this.print(headers.join("\t"));
+      for (const row of rows) this.print(row.join("\t"));
+      return;
+    }
+    const widths = headers.map((header, column) =>
+      Math.max(visibleLength(header), ...rows.map((row) => visibleLength(row[column] ?? ""))),
+    );
+    const line = (cells: string[]) =>
+      `  ${cells
+        .map((cell, column) =>
+          column === cells.length - 1 ? cell : cell + " ".repeat(widths[column]! - visibleLength(cell) + 3),
+        )
+        .join("")}`.trimEnd();
+    this.print(this.data.faint(line(headers)));
+    for (const row of rows) this.print(line(row));
+  }
+
   // --- errors -------------------------------------------------------------
 
   error(error: CliError) {

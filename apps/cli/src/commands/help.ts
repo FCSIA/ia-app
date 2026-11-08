@@ -25,15 +25,7 @@ export function printHelp(context: CommandContext, node: Node, path: string[]) {
 }
 
 function table(context: CommandContext, rows: Array<[string, string]>, headers: [string, string]) {
-  const { out } = context;
-  if (!context.modes.stdout.isTTY) {
-    out.print(headers.join("\t"));
-    for (const row of rows) out.print(row.join("\t"));
-    return;
-  }
-  const width = Math.max(headers[0].length, ...rows.map(([left]) => left.length)) + 3;
-  out.print(`  ${headers[0].padEnd(width)}${headers[1]}`);
-  for (const [left, right] of rows) out.print(`  ${left.padEnd(width)}${right}`);
+  context.out.table(headers, rows);
 }
 
 const showHelp: CommandSpec = {

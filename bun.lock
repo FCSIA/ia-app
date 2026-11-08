@@ -20,6 +20,9 @@
       "bin": {
         "fcsia": "./src/main.ts",
       },
+      "dependencies": {
+        "convex": "1.47.0",
+      },
       "devDependencies": {
         "@types/bun": "^1.4.4",
         "typescript": "^5.9.3",

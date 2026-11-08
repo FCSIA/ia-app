@@ -92,7 +92,11 @@ const nextConfig: NextConfig = {
   // the handler lives at /api/meta and this serves it at the public URL.
   async rewrites() {
     return {
-      beforeFiles: [{ source: '/_meta', destination: '/api/meta' }],
+      beforeFiles: [
+        { source: '/_meta', destination: '/api/meta' },
+        // Discovery for the command-line client (apps/shared/cli.ts).
+        { source: '/.well-known/fcsia-cli.json', destination: '/api/cli/discovery' },
+      ],
     };
   },
 

@@ -7,7 +7,8 @@ import { api } from '~/apps/convex/src/_generated/api';
 // The matcher below repeats this host as an escaped regex; Next needs it static.
 const LEGACY_WEB_HOSTNAME = 'ia-app-alpha.vercel.app';
 // `/_meta` is the deploy marker; it must answer even when the backend is down.
-const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup', '/_meta']);
+// The CLI discovery document is public and needs no session lookup.
+const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup', '/_meta', '/.well-known/fcsia-cli.json']);
 
 function requestHostname(request: NextRequest) {
   const host =
@@ -33,7 +34,7 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next();
     response.headers.set(
       'X-Robots-Tag',
-      pathname === '/pwa-setup' || pathname === '/_meta' ? 'noindex, nofollow' : 'noindex, follow',
+      pathname === '/moved' ? 'noindex, follow' : 'noindex, nofollow',
     );
     return response;
   }

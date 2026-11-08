@@ -8,9 +8,13 @@ process.stdout.on("error", (error: NodeJS.ErrnoException) => {
   throw error;
 });
 
-// One root signal handler: restore the terminal and exit with 128 + n.
+// One root signal handler: abort pending work, then exit with 128 + n.
+const controller = new AbortController();
 for (const [signal, code] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 129]] as const) {
-  process.on(signal, () => process.exit(code));
+  process.on(signal, () => {
+    controller.abort();
+    process.exit(code);
+  });
 }
 
-process.exitCode = await runCli(processRuntime());
+process.exitCode = await runCli(processRuntime(controller.signal));
