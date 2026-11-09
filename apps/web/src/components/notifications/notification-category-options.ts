@@ -11,5 +11,5 @@ export type NotificationCategoryOption = NotificationCategoryDetails & {
 
 /** Settings-facing categories; always-on security notices are excluded. */
 export const NOTIFICATION_CATEGORY_OPTIONS: NotificationCategoryOption[] = NOTIFICATION_CATEGORIES.filter(
-  (key) => !NOTIFICATION_CATEGORY_DETAILS[key].alwaysOn,
+  (key) => !('alwaysOn' in NOTIFICATION_CATEGORY_DETAILS[key] && NOTIFICATION_CATEGORY_DETAILS[key].alwaysOn),
 ).map((key) => ({ key, ...NOTIFICATION_CATEGORY_DETAILS[key] }));

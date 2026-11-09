@@ -30,6 +30,7 @@ export const APP_ROUTES = [
   { id: 'admin', path: '/admin', label: 'Admin Panel', nav: 'admin' },
   { id: 'courses', path: '/courses' },
   { id: 'change-password', path: '/change-password' },
+  { id: 'device', path: '/device' },
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { fetchAuthQuery, isAuthenticated } from '@/lib/auth-server';
 import { isProtectedPathname } from '@/lib/routes';
 import { api } from '~/apps/convex/src/_generated/api';
+import { RETURN_PATH_PARAM, safeReturnPath } from '@/lib/return-path';
 
 // The matcher below repeats this host as an escaped regex; Next needs it static.
 const LEGACY_WEB_HOSTNAME = 'ia-app-alpha.vercel.app';
@@ -47,6 +48,9 @@ export async function proxy(request: NextRequest) {
 
   if (isProtectedPathname(pathname) && !isAuth) {
     const loginUrl = new URL('/login', request.url);
+    // Come back here after signing in, e.g. to approve a CLI sign-in code.
+    const returnPath = pathname === '/' ? null : safeReturnPath(`${pathname}${request.nextUrl.search}`);
+    if (returnPath) loginUrl.searchParams.set(RETURN_PATH_PARAM, returnPath);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -64,8 +68,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname === '/login' && isAuth) {
+    const returnPath = safeReturnPath(request.nextUrl.searchParams.get(RETURN_PATH_PARAM));
     return NextResponse.redirect(
-      new URL(mustResetPassword ? '/change-password' : '/', request.url),
+      new URL(mustResetPassword ? '/change-password' : (returnPath ?? '/'), request.url),
     );
   }
 
