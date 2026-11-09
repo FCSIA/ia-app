@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'input-otp';
-import { CircleCheck, CircleX, TerminalSquare } from 'lucide-react';
+import { CircleCheck, CircleX } from 'lucide-react';
 import { displayName } from '~/apps/shared/user-name';
 import { Banner, BannerDescription, BannerTitle } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { authClient } from '@/lib/auth-client';
 import { useCurrentUser } from '@/lib/auth';
@@ -112,114 +114,126 @@ export function DeviceApproval({ initialCode }: { initialCode: string }) {
   }
 
   const name = user ? displayName(user) : 'you';
+  const description =
+    step.kind === 'enter'
+      ? 'Enter the code shown in your terminal.'
+      : step.kind === 'confirm'
+        ? 'Check that this matches the code in your terminal.'
+        : null;
+  const errorBanner = problem ? (
+    <Banner status="error">
+      <BannerTitle>{problem.title}</BannerTitle>
+      {problem.description ? <BannerDescription>{problem.description}</BannerDescription> : null}
+    </Banner>
+  ) : null;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-4">
-      <div
-        className={`flex w-full max-w-md flex-col gap-6 rounded-xl border bg-card p-6 shadow-sm ${CARD_SURFACE_FOREGROUND}`}
-      >
-        <header className="flex flex-col gap-2">
-          <TerminalSquare className="size-5 text-muted-foreground" aria-hidden />
-          <h1 className="text-xl font-semibold text-foreground">Sign in to the command-line client</h1>
+    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
+      <Card className={`w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5 ${CARD_SURFACE_FOREGROUND}`}>
+        <CardHeader className="gap-3 pb-6">
+          <div className="flex size-12 items-center justify-center self-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+            <IaOrbitMark alt="" width={48} height={48} priority className="size-full object-contain" />
+          </div>
+          <div className="flex flex-col gap-1 text-center">
+            <CardTitle className="text-xl font-semibold tracking-tight">Sign in to the command-line client</CardTitle>
+            {description ? <CardDescription>{description}</CardDescription> : null}
+          </div>
+        </CardHeader>
+
+        <CardContent>
           {step.kind === 'enter' ? (
-            <p className="text-sm text-muted-foreground">Enter the code shown in your terminal.</p>
+            <form className="flex flex-col gap-5" onSubmit={submit}>
+              <InputOTP
+                maxLength={CODE_LENGTH}
+                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+                value={code}
+                onChange={(value) => {
+                  setCode(normalize(value));
+                  setProblem(null);
+                }}
+                autoFocus={!initialCode}
+                aria-label="Sign-in code"
+                containerClassName="justify-center"
+                inputMode="text"
+                autoCapitalize="characters"
+                spellCheck={false}
+              >
+                <InputOTPGroup>
+                  {[0, 1, 2, 3].map((index) => (
+                    <InputOTPSlot key={index} index={index} className="size-10 font-mono text-base uppercase" />
+                  ))}
+                </InputOTPGroup>
+                <InputOTPSeparator className="text-muted-foreground" />
+                <InputOTPGroup>
+                  {[4, 5, 6, 7].map((index) => (
+                    <InputOTPSlot key={index} index={index} className="size-10 font-mono text-base uppercase" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+              {errorBanner}
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                loading={busy === 'check'}
+                disabled={code.length !== CODE_LENGTH || busy !== null}
+              >
+                Continue
+              </Button>
+            </form>
           ) : null}
-        </header>
 
-        {step.kind === 'enter' ? (
-          <form className="flex flex-col gap-6" onSubmit={submit}>
-            <InputOTP
-              maxLength={CODE_LENGTH}
-              pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-              value={code}
-              onChange={(value) => {
-                setCode(normalize(value));
-                setProblem(null);
-              }}
-              autoFocus={!initialCode}
-              aria-label="Sign-in code"
-              containerClassName="justify-center"
-              inputMode="text"
-              autoCapitalize="characters"
-              spellCheck={false}
-            >
-              <InputOTPGroup>
-                {[0, 1, 2, 3].map((index) => (
-                  <InputOTPSlot key={index} index={index} className="size-10 font-mono text-base uppercase" />
-                ))}
-              </InputOTPGroup>
-              <InputOTPSeparator className="text-muted-foreground" />
-              <InputOTPGroup>
-                {[4, 5, 6, 7].map((index) => (
-                  <InputOTPSlot key={index} index={index} className="size-10 font-mono text-base uppercase" />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
-            {problem ? (
-              <Banner status="error">
-                <BannerTitle>{problem.title}</BannerTitle>
-                {problem.description ? <BannerDescription>{problem.description}</BannerDescription> : null}
+          {step.kind === 'confirm' ? (
+            <div className="flex flex-col gap-5">
+              <p className="rounded-xl bg-muted/50 py-4 text-center font-mono text-2xl font-semibold tracking-[0.2em] text-foreground">
+                {formatCode(step.code)}
+              </p>
+              <Banner status="warning">
+                <BannerTitle>Approving signs a terminal in as {name}.</BannerTitle>
+                <BannerDescription>
+                  Only approve a code you started yourself. If someone sent you this link, deny it.
+                </BannerDescription>
               </Banner>
-            ) : null}
-            <Button type="submit" loading={busy === 'check'} disabled={code.length !== CODE_LENGTH || busy !== null}>
-              Continue
-            </Button>
-          </form>
-        ) : null}
+              {errorBanner}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  loading={busy === 'deny'}
+                  disabled={busy !== null}
+                  onClick={() => void decide('deny', step.code)}
+                >
+                  Deny
+                </Button>
+                <Button
+                  size="lg"
+                  loading={busy === 'approve'}
+                  disabled={busy !== null}
+                  onClick={() => void decide('approve', step.code)}
+                >
+                  Approve
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
-        {step.kind === 'confirm' ? (
-          <div className="flex flex-col gap-6">
-            <p className="text-center font-mono text-2xl font-semibold tracking-widest text-foreground">
-              {formatCode(step.code)}
-            </p>
-            <Banner status="warning">
-              <BannerTitle>Approving signs a terminal in as {name}.</BannerTitle>
+          {step.kind === 'approved' ? (
+            <Banner status="success" icon={CircleCheck}>
+              <BannerTitle>The command-line client is signed in.</BannerTitle>
               <BannerDescription>
-                Only approve a code you started yourself. If someone sent you this link, deny it.
+                You can close this tab and go back to your terminal. To sign it out later, go to Profile &amp; Settings.
               </BannerDescription>
             </Banner>
-            {problem ? (
-              <Banner status="error">
-                <BannerTitle>{problem.title}</BannerTitle>
-                {problem.description ? <BannerDescription>{problem.description}</BannerDescription> : null}
-              </Banner>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                loading={busy === 'approve'}
-                disabled={busy !== null}
-                onClick={() => void decide('approve', step.code)}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="secondary"
-                loading={busy === 'deny'}
-                disabled={busy !== null}
-                onClick={() => void decide('deny', step.code)}
-              >
-                Deny
-              </Button>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {step.kind === 'approved' ? (
-          <Banner status="success" icon={CircleCheck}>
-            <BannerTitle>The command-line client is signed in.</BannerTitle>
-            <BannerDescription>
-              You can close this tab and go back to your terminal. To sign it out later, use Profile.
-            </BannerDescription>
-          </Banner>
-        ) : null}
-
-        {step.kind === 'denied' ? (
-          <Banner status="default" icon={CircleX}>
-            <BannerTitle>Sign-in denied.</BannerTitle>
-            <BannerDescription>Nothing was signed in. You can close this tab.</BannerDescription>
-          </Banner>
-        ) : null}
-      </div>
+          {step.kind === 'denied' ? (
+            <Banner status="default" icon={CircleX}>
+              <BannerTitle>Sign-in denied.</BannerTitle>
+              <BannerDescription>Nothing was signed in. You can close this tab.</BannerDescription>
+            </Banner>
+          ) : null}
+        </CardContent>
+      </Card>
     </main>
   );
 }
