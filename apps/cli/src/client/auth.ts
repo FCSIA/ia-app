@@ -53,7 +53,22 @@ export function formatUserCode(code: string) {
   return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
 }
 
-export async function requestDeviceCode(runtime: Runtime, discovery: CliDiscoveryDocument): Promise<DeviceCode> {
+// The approval page lives on the site the person chose, which can differ from
+// the address the backend was configured with (a local or preview server).
+function onSite(url: string, host: string) {
+  try {
+    const parsed = new URL(url);
+    return `${host}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
+export async function requestDeviceCode(
+  runtime: Runtime,
+  discovery: CliDiscoveryDocument,
+  host: string,
+): Promise<DeviceCode> {
   const response = await requestJson(runtime, authUrl(discovery, "/device/code"), {
     method: "POST",
     body: { client_id: CLIENT_ID },
@@ -79,8 +94,8 @@ export async function requestDeviceCode(runtime: Runtime, discovery: CliDiscover
   return {
     deviceCode,
     userCode,
-    verificationUri,
-    verificationUriComplete: verificationUriComplete ?? verificationUri,
+    verificationUri: onSite(verificationUri, host),
+    verificationUriComplete: onSite(verificationUriComplete ?? verificationUri, host),
     expiresIn,
     interval,
   };

@@ -91,8 +91,10 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
       return json({
         device_code: "device-code",
         user_code: "ABCDEFGH",
-        verification_uri: `${HOST}/device`,
-        verification_uri_complete: `${HOST}/device?user_code=ABCDEFGH`,
+        // The backend's configured site differs from HOST; the CLI must point
+        // people at HOST anyway.
+        verification_uri: "http://localhost:3000/device",
+        verification_uri_complete: "http://localhost:3000/device?user_code=ABCDEFGH",
         expires_in: 600,
         interval: 5,
       });

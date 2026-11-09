@@ -100,7 +100,7 @@ const login: CommandSpec = {
       }
     }
 
-    const code = await requestDeviceCode(runtime, discovery);
+    const code = await requestDeviceCode(runtime, discovery, host);
     const minutes = Math.round(code.expiresIn / 60);
     if (out.json) {
       // A person has to act before this command can finish, even for an agent
