@@ -6,7 +6,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
-import { statusForGithubIssue } from "./feedbackGithub";
+import { issueSnapshot, PUSH_LEASE_MS, statusForGithubIssue } from "./feedbackGithub";
 import { canRetryGithubSync, GITHUB_SYNC_STALE_MS } from "../../../shared/feedback-sync";
 import { insertUser } from "../../test/fixtures";
 
@@ -87,6 +87,17 @@ describe("GitHub feedback issue state mapping", () => {
   it("ignores non-state issue events and unknown closure reasons default to resolved", () => {
     expect(statusForGithubIssue("edited", null)).toBeNull();
     expect(statusForGithubIssue("closed", undefined)).toBe("RESOLVED");
+  });
+
+  it("reads the current status from a fetched issue", () => {
+    const updated_at = "2026-11-02T12:00:00Z";
+    expect(issueSnapshot({ state: "closed", state_reason: "not_planned", updated_at })).toEqual({
+      status: "DISMISSED", githubUpdatedAt: Date.parse(updated_at), stateReason: "not_planned",
+    });
+    expect(issueSnapshot({ state: "open", state_reason: null, updated_at })).toEqual({
+      status: "PENDING", githubUpdatedAt: Date.parse(updated_at),
+    });
+    expect(issueSnapshot({ state: "open" })).toBeNull();
   });
 });
 
@@ -248,26 +259,85 @@ describe("staff and GitHub status coordination", () => {
     return { ...ctx, admin: ctx.t.withIdentity({ subject: ctx.userId }) };
   }
 
-  it("keeps a staff decision when an older GitHub event arrives later", async () => {
+  it("keeps a decision its push could not mirror from older GitHub events, but not newer ones", async () => {
     vi.useFakeTimers();
-    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", undefined);
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-token");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 502 })));
     const { t, admin, reportId } = await superAdminFixture();
     await admin.mutation(api.moderation.reports.update, {
       reportId,
       status: "RESOLVED",
       reviewNote: "Fixed in the latest release.",
     });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
     const decided = await t.run((ctx) => ctx.db.get(reportId));
+    expect(decided?.githubIssuePushingSince).toBeUndefined();
+    const decidedAt = decided!.githubIssueDecidedAt!;
+    expect(decidedAt).toBeTypeOf("number");
+
     await t.mutation(internal.moderation.feedbackGithub.applyGithubIssueState, {
-      issueNumber: 123,
-      status: "PENDING",
-      githubUpdatedAt: decided!.githubIssueStateUpdatedAt! - 60_000,
+      issueNumber: 123, status: "PENDING", githubUpdatedAt: decidedAt - 60_000,
     });
     expect(await t.run((ctx) => ctx.db.get(reportId))).toMatchObject({
       status: "RESOLVED",
       reviewNote: "Fixed in the latest release.",
     });
+
+    await t.mutation(internal.moderation.feedbackGithub.applyGithubIssueState, {
+      issueNumber: 123, status: "PENDING", githubUpdatedAt: decidedAt + 60_000,
+    });
+    const reopened = await t.run((ctx) => ctx.db.get(reportId));
+    expect(reopened?.status).toBe("PENDING");
+    expect(reopened?.githubIssueDecidedAt).toBeUndefined();
+  });
+
+  it("applies a GitHub change made just after a mirrored decision while GitHub's clock runs behind", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-02T12:00:00.800Z"));
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-token");
+    // GitHub reports whole seconds, here two behind Convex's clock.
+    const githubNow = () => Math.floor((Date.now() - 2_000) / 1000) * 1000;
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ updated_at: new Date(githubNow()).toISOString() })));
+    const { t, admin, reportId } = await superAdminFixture();
+    await admin.mutation(api.moderation.reports.update, { reportId, status: "RESOLVED", reviewNote: "Fixed." });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    // Someone reopens the issue a second after our close. By GitHub's clock
+    // that is still earlier than the decision's time on Convex's.
+    vi.advanceTimersByTime(1_000);
+    await t.mutation(internal.moderation.feedbackGithub.applyGithubIssueState, {
+      issueNumber: 123, status: "PENDING", githubUpdatedAt: githubNow(),
+    });
+    expect((await t.run((ctx) => ctx.db.get(reportId)))?.status).toBe("PENDING");
+  });
+
+  it.each([
+    ["applies", "open", "PENDING"],
+    ["ignores", "closed", "RESOLVED"],
+  ] as const)("%s a same-second GitHub change once GitHub says which state won", async (_label, state, expected) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-02T12:00:00.200Z"));
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-token");
+    const pushedAt = "2026-11-02T12:00:00Z";
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "PATCH"
+        ? Response.json({ updated_at: pushedAt })
+        : Response.json({ state, state_reason: state === "closed" ? "completed" : null, updated_at: pushedAt }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { t, admin, reportId } = await superAdminFixture();
+    await admin.mutation(api.moderation.reports.update, { reportId, status: "RESOLVED", reviewNote: "Fixed." });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    // A reopen stamped with the same second as our close: before it or after?
+    await t.mutation(internal.moderation.feedbackGithub.applyGithubIssueState, {
+      issueNumber: 123, status: "PENDING", githubUpdatedAt: Date.parse(pushedAt),
+    });
+    expect((await t.run((ctx) => ctx.db.get(reportId)))?.status).toBe("RESOLVED");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(fetchMock.mock.calls.map(([, init]) => init?.method ?? "GET")).toEqual(["PATCH", "GET"]);
+    expect((await t.run((ctx) => ctx.db.get(reportId)))?.status).toBe(expected);
   });
 
   it("mirrors a staff decision to the GitHub issue without its echo replacing the note", async () => {
@@ -401,7 +471,10 @@ describe("staff and GitHub status coordination", () => {
     expect((await t.run((ctx) => ctx.db.get(reportId)))?.githubIssuePushingSince).toBeUndefined();
   });
 
-  it("overwrites a GitHub change that arrived while the push was finishing", async () => {
+  it.each([
+    ["a second after", 1_000],
+    ["in the same second as", 0],
+  ])("overwrites a GitHub change made %s the push's PATCH, before the push finished", async (_label, delay) => {
     vi.useFakeTimers();
     vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-token");
     const { t, admin, reportId } = await superAdminFixture();
@@ -412,7 +485,7 @@ describe("staff and GitHub status coordination", () => {
       if (sent.length === 1) {
         // Someone reopens the issue right after our close, before we finish.
         await t.mutation(internal.moderation.feedbackGithub.applyGithubIssueState, {
-          issueNumber: 123, status: "PENDING", githubUpdatedAt: patchedAt + 1_000,
+          issueNumber: 123, status: "PENDING", githubUpdatedAt: patchedAt + delay,
         });
       }
       return Response.json({ updated_at: new Date(patchedAt).toISOString() });
@@ -442,6 +515,60 @@ describe("staff and GitHub status coordination", () => {
     await admin.mutation(api.moderation.reports.update, { reportId, status: "DISMISSED", reviewNote: "Not planned." });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("pushes a decision made while a failing push was in flight", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-token");
+    const { t, admin, reportId } = await superAdminFixture();
+    const sent: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      if (sent.length > 1) return Response.json({ updated_at: new Date(Date.now()).toISOString() });
+      // Staff change their mind while the first PATCH is failing. The push in
+      // flight owns that decision, so no second push starts for it.
+      await admin.mutation(api.moderation.reports.update, { reportId, status: "DISMISSED", reviewNote: "Not planned." });
+      return new Response(null, { status: 502 });
+    }));
+    await admin.mutation(api.moderation.reports.update, { reportId, status: "RESOLVED", reviewNote: "Fixed." });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(sent).toEqual([
+      { state: "closed", state_reason: "completed" },
+      { state: "closed", state_reason: "not_planned" },
+    ]);
+    const settled = await t.run((ctx) => ctx.db.get(reportId));
+    expect(settled).toMatchObject({ status: "DISMISSED" });
+    expect(settled?.githubIssuePushingSince).toBeUndefined();
+    expect(settled?.githubIssueDecidedAt).toBeUndefined();
+  });
+
+  it("restarts a push whose run died once its lease lapses, sending the decision made meanwhile", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("GITHUB_FEEDBACK_TOKEN", "synthetic-token");
+    const fetchMock = vi.fn(async () => Response.json({ updated_at: new Date(Date.now()).toISOString() }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { t, admin, reportId } = await superAdminFixture();
+    await admin.mutation(api.moderation.reports.update, { reportId, status: "RESOLVED", reviewNote: "Fixed." });
+    // A deploy kills the run before it sends anything, leaving its lease set.
+    await t.run(async (ctx) => {
+      for (const job of await ctx.db.system.query("_scheduled_functions").collect()) {
+        if (job.state.kind === "pending") await ctx.scheduler.cancel(job._id);
+      }
+    });
+    // The lease still looks live, so this decision is left to the dead run.
+    await admin.mutation(api.moderation.reports.update, { reportId, status: "DISMISSED", reviewNote: "Not planned." });
+    await t.mutation(internal.moderation.feedbackGithub.restartStalledGithubIssuePushes, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(PUSH_LEASE_MS);
+    await t.mutation(internal.moderation.feedbackGithub.restartStalledGithubIssuePushes, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ state: "closed", state_reason: "not_planned" });
+    expect((await t.run((ctx) => ctx.db.get(reportId)))?.githubIssuePushingSince).toBeUndefined();
   });
 
   it("hands over to a fresh run when staff keep changing the status, and ends on the latest", async () => {

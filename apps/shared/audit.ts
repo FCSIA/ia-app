@@ -114,6 +114,7 @@ export const AUDIT_ACTIONS = {
   "EVENT_APPROVED": { label: "Approved event", category: "flex-events" },
   "EVENT_CANCELLED": { label: "Cancelled event", category: "flex-events" },
   "EVENT_CREATED": { label: "Created event", category: "flex-events" },
+  "EVENT_PUBLISHED": { label: "Published event", category: "flex-events" },
   "EVENT_REJECTED": { label: "Rejected event", category: "flex-events", destructive: true },
   "FEEDBACK_GITHUB_ISSUE_CREATED": { label: "Created feedback GitHub issue", category: "moderation", system: true },
   "FEEDBACK_GITHUB_ISSUE_FAILED": { label: "Failed feedback GitHub issue", category: "moderation", system: true },

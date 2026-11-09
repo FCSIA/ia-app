@@ -59,7 +59,9 @@ field, and so does every row the migrations touched. An older tag's
 the fields this release adds to `moderationReports`, which older schemas do
 not declare. Before deploying an older tag, set `isInactive: false` on every
 event and `enabled: level !== "OFF"` on every preference, and unset
-`githubIssueSyncQueuedAt` and `githubIssuePushingSince` on every report.
+`githubIssueSyncQueuedAt` and `githubIssuePushingSince` on every report. The
+later `githubIssueDecidedAt` field needs the same before deploying a tag
+without it.
 
 ## Running Backfills
 

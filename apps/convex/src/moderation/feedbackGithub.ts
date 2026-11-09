@@ -23,11 +23,13 @@ const githubFeedbackStatusValidator = v.union(
 
 // PATCHes one push run sends before handing over to a fresh run.
 const MAX_PUSH_ROUNDS = 3;
-// Each PATCH gives up after this, so a round never outlives the lease.
+// Each GitHub request gives up after this, so a round never outlives the lease.
 const PUSH_REQUEST_TIMEOUT_MS = 30 * 1000;
 // A push renews this lease every round; one that stops renewing has died.
-const PUSH_LEASE_MS = 5 * 60 * 1000;
+export const PUSH_LEASE_MS = 5 * 60 * 1000;
 const PUSH_HANDOFF_DELAY_MS = 5 * 1000;
+// GitHub's API reads can briefly trail the webhook for the same change.
+const ISSUE_RECONCILE_DELAY_MS = 5 * 1000;
 
 /** Whether a push is mirroring the app's status onto the issue. */
 function isPushInFlight(report: Doc<"moderationReports">, now: number) {
@@ -40,7 +42,8 @@ function isPushInFlight(report: Doc<"moderationReports">, now: number) {
 /**
  * Mirrors the report's status onto its GitHub issue. At most one push runs per
  * report: while one is in flight it picks up any newer status before it
- * finishes, so pushes never overlap or land out of order.
+ * finishes, so pushes never overlap or land out of order. A push that dies
+ * first is restarted by `restartStalledGithubIssuePushes`.
  */
 export async function requestGithubIssuePush(
   ctx: MutationCtx,
@@ -53,6 +56,31 @@ export async function requestGithubIssuePush(
     reportId: report._id,
   });
 }
+
+const STALLED_PUSH_BATCH = 50;
+
+/**
+ * Restarts pushes whose run was killed (by a crash or deploy) before it
+ * released its lease. Decisions made meanwhile were left to that run, so the
+ * new push sends the latest status. Runs on a cron.
+ */
+export const restartStalledGithubIssuePushes = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const stalled = await ctx.db
+      .query("moderationReports")
+      .withIndex("by_githubIssuePushingSince", (q) =>
+        q.gte("githubIssuePushingSince", 0).lte("githubIssuePushingSince", now - PUSH_LEASE_MS),
+      )
+      .take(STALLED_PUSH_BATCH);
+    for (const report of stalled) {
+      await requestGithubIssuePush(ctx, report);
+    }
+    return null;
+  },
+});
 
 /** The GitHub issue state that matches a feedback status set in the app. */
 export function githubIssueStateFor(status: FeedbackStatus) {
@@ -164,10 +192,28 @@ function isIssueWebhook(payload: unknown): payload is {
   );
 }
 
+function closedIssueStatus(stateReason: string | null | undefined): GithubFeedbackStatus {
+  return stateReason === "not_planned" ? "DISMISSED" : "RESOLVED";
+}
+
 export function statusForGithubIssue(action: string, stateReason: string | null | undefined): GithubFeedbackStatus | null {
   if (action === "reopened") return "PENDING";
   if (action !== "closed") return null;
-  return stateReason === "not_planned" ? "DISMISSED" : "RESOLVED";
+  return closedIssueStatus(stateReason);
+}
+
+/** The feedback status an issue fetched from the REST API shows now. */
+export function issueSnapshot(body: unknown) {
+  if (!body || typeof body !== "object") return null;
+  const issue = body as Record<string, unknown>;
+  const githubUpdatedAt = typeof issue.updated_at === "string" ? Date.parse(issue.updated_at) : Number.NaN;
+  if (Number.isNaN(githubUpdatedAt) || (issue.state !== "open" && issue.state !== "closed")) return null;
+  const stateReason = typeof issue.state_reason === "string" ? issue.state_reason : undefined;
+  return {
+    status: issue.state === "open" ? ("PENDING" as const) : closedIssueStatus(stateReason),
+    githubUpdatedAt,
+    ...(stateReason ? { stateReason } : {}),
+  };
 }
 
 export const loadPendingFeedback = internalQuery({
@@ -282,46 +328,69 @@ export const loadGithubIssueState = internalQuery({
   },
 });
 
+const pushRoundResultValidator = v.union(
+  v.object({
+    kind: v.literal("sent"),
+    status: feedbackStatusValidator,
+    githubUpdatedAt: v.number(),
+    seenStateUpdatedAt: v.optional(v.number()),
+  }),
+  v.object({ kind: v.literal("failed"), status: v.optional(feedbackStatusValidator) }),
+  v.object({ kind: v.literal("abandoned") }),
+);
+type PushRoundResult = typeof pushRoundResultValidator.type;
+
 /**
- * Records a push round. `githubUpdatedAt` is the issue's `updated_at` after
- * our PATCH, so later-arriving echoes of it count as older events. The push is
- * finished only if the report still has the status that was sent and no newer
- * GitHub change arrived during the round (it was ignored, so it must be
- * overwritten). `seenStateUpdatedAt` is the stored timestamp when the round
- * read the report: only a change to it during the round counts, because the
- * stored value may be a staff decision time from Convex's millisecond clock
- * that is later than GitHub's whole-second `updated_at` for the same moment.
- * The check runs in the same transaction that clears the in-flight marker;
- * otherwise the lease is renewed and the push keeps going. `status: null`
- * ends the push without a match (it failed).
+ * Records a push round and says whether the push goes on. The check runs in
+ * the same transaction that renews or releases the lease, so a staff decision
+ * either finds the push in flight (and is picked up here) or starts a new one.
+ *
+ * - `sent`: `githubUpdatedAt` is the issue's `updated_at` after our PATCH, so
+ *   later-arriving echoes of it count as older events. The push is finished
+ *   only if the report still has the status that was sent and no GitHub change
+ *   at or after the PATCH was recorded during the round (it was ignored, so it
+ *   must be overwritten; one in the same whole second cannot be ordered, so it
+ *   counts too). `seenStateUpdatedAt` is the stored time when the round read
+ *   the report, so only a change during the round counts.
+ * - `failed`: the request failed. A status set after the attempt was left to
+ *   this push, so the push continues in a fresh run; otherwise it ends. The
+ *   app status stays authoritative and the issue keeps its old state.
+ * - `abandoned`: there is no issue to update, or no credentials to update it.
  */
 export const finishGithubIssuePushRound = internalMutation({
   args: {
     reportId: v.id("moderationReports"),
-    status: v.union(feedbackStatusValidator, v.null()),
-    githubUpdatedAt: v.optional(v.number()),
-    seenStateUpdatedAt: v.optional(v.number()),
+    result: pushRoundResultValidator,
   },
-  returns: v.boolean(),
-  handler: async (ctx, args) => {
-    const report = await ctx.db.get(args.reportId);
-    if (!report) return true;
+  returns: v.union(v.literal("done"), v.literal("continue")),
+  handler: async (ctx, { reportId, result }) => {
+    const report = await ctx.db.get(reportId);
+    if (!report) return "done";
+    const lease = (done: boolean) => ({ githubIssuePushingSince: done ? undefined : Date.now() });
+    if (result.kind === "abandoned") {
+      await ctx.db.patch(report._id, lease(true));
+      return "done";
+    }
+    if (result.kind === "failed") {
+      const done = result.status === undefined || sameGithubIssueState(report.status, result.status);
+      await ctx.db.patch(report._id, lease(done));
+      return done ? "done" : "continue";
+    }
     const stored = report.githubIssueStateUpdatedAt;
     const newerGithubChange =
-      args.githubUpdatedAt !== undefined &&
-      stored !== args.seenStateUpdatedAt &&
-      (stored ?? 0) > args.githubUpdatedAt;
-    const done =
-      args.status === null ||
-      (sameGithubIssueState(report.status, args.status) && !newerGithubChange);
+      stored !== undefined &&
+      stored !== result.seenStateUpdatedAt &&
+      stored >= result.githubUpdatedAt;
+    const done = sameGithubIssueState(report.status, result.status) && !newerGithubChange;
     await ctx.db.patch(report._id, {
-      ...(args.githubUpdatedAt !== undefined &&
-      (report.githubIssueStateUpdatedAt ?? 0) < args.githubUpdatedAt
-        ? { githubIssueStateUpdatedAt: args.githubUpdatedAt }
+      ...lease(done),
+      ...((stored ?? 0) < result.githubUpdatedAt
+        ? { githubIssueStateUpdatedAt: result.githubUpdatedAt }
         : {}),
-      githubIssuePushingSince: done ? undefined : Date.now(),
+      // The issue now shows the staff decision; GitHub's clock orders what follows.
+      ...(done ? { githubIssueDecidedAt: undefined } : {}),
     });
-    return done;
+    return done ? "done" : "continue";
   },
 });
 
@@ -337,23 +406,27 @@ export const pushGithubIssueState = internalAction({
   args: { reportId: v.id("moderationReports") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const finish = (
-      status: FeedbackStatus | null,
-      githubUpdatedAt?: number,
-      seenStateUpdatedAt?: number,
-    ) =>
+    const finish = (result: PushRoundResult) =>
       ctx.runMutation(internal.moderation.feedbackGithub.finishGithubIssuePushRound, {
         reportId: args.reportId,
-        status,
-        ...(githubUpdatedAt !== undefined ? { githubUpdatedAt } : {}),
-        ...(seenStateUpdatedAt !== undefined ? { seenStateUpdatedAt } : {}),
+        result,
       });
+    // The pause caps the PATCH rate if a push ever fails to settle.
+    const handOff = () =>
+      ctx.scheduler.runAfter(PUSH_HANDOFF_DELAY_MS, internal.moderation.feedbackGithub.pushGithubIssueState, args);
+    let attempted: FeedbackStatus | undefined;
     try {
-      const token = await feedbackGithubToken(ctx);
+      let token: string | null | undefined;
       for (let round = 0; round < MAX_PUSH_ROUNDS; round += 1) {
         const current = await ctx.runQuery(internal.moderation.feedbackGithub.loadGithubIssueState, args);
-        if (!current || !token) {
-          await finish(null);
+        if (!current) {
+          await finish({ kind: "abandoned" });
+          return null;
+        }
+        attempted = current.status;
+        token ??= await feedbackGithubToken(ctx);
+        if (!token) {
+          await finish({ kind: "abandoned" });
           return null;
         }
         const sentAt = Date.now();
@@ -367,26 +440,70 @@ export const pushGithubIssueState = internalAction({
           },
         );
         if (!response.ok) {
-          // The app status stays authoritative; the issue is only a mirror.
           console.warn(`GitHub issue #${current.issueNumber} state update failed (${response.status})`);
-          await finish(null);
+          if ((await finish({ kind: "failed", status: current.status })) === "continue") await handOff();
           return null;
         }
         const body: unknown = await response.json().catch(() => null);
-        if (await finish(current.status, issueUpdatedAt(body) ?? sentAt, current.stateUpdatedAt)) {
-          return null;
-        }
+        const next = await finish({
+          kind: "sent",
+          status: current.status,
+          githubUpdatedAt: issueUpdatedAt(body) ?? sentAt,
+          ...(current.stateUpdatedAt !== undefined ? { seenStateUpdatedAt: current.stateUpdatedAt } : {}),
+        });
+        if (next === "done") return null;
       }
     } catch (error) {
-      // Release the lease so the next staff decision can push again.
       console.warn(`GitHub issue state push failed: ${error instanceof Error ? error.message : String(error)}`);
-      await finish(null).catch(() => {});
+      const next = await finish({
+        kind: "failed",
+        ...(attempted !== undefined ? { status: attempted } : {}),
+      }).catch(() => "done" as const);
+      if (next === "continue") await handOff();
       return null;
     }
     // Staff kept changing the status; continue in a fresh run so the issue
-    // still ends on the latest decision. The pause caps the PATCH rate if the
-    // run ever fails to settle.
-    await ctx.scheduler.runAfter(PUSH_HANDOFF_DELAY_MS, internal.moderation.feedbackGithub.pushGithubIssueState, args);
+    // still ends on the latest decision.
+    await handOff();
+    return null;
+  },
+});
+
+/**
+ * Settles a GitHub event that could not be ordered by time: it carried the
+ * same whole-second `updated_at` as the newest issue state the app knew, so it
+ * may have come before or after that state. Fetching the issue shows which one
+ * GitHub kept.
+ */
+export const reconcileGithubIssueState = internalAction({
+  args: { reportId: v.id("moderationReports"), tiedAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const current = await ctx.runQuery(internal.moderation.feedbackGithub.loadGithubIssueState, {
+      reportId: args.reportId,
+    });
+    if (!current) return null;
+    try {
+      const token = await feedbackGithubToken(ctx);
+      if (!token) return null;
+      const response = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${current.issueNumber}`,
+        { headers: githubHeaders(token), signal: AbortSignal.timeout(PUSH_REQUEST_TIMEOUT_MS) },
+      );
+      if (!response.ok) throw new Error(`lookup failed (${response.status})`);
+      const snapshot = issueSnapshot(await response.json());
+      if (!snapshot) throw new Error("invalid issue response");
+      await ctx.runMutation(internal.moderation.feedbackGithub.applyGithubIssueSnapshot, {
+        reportId: args.reportId,
+        issueNumber: current.issueNumber,
+        tiedAt: args.tiedAt,
+        ...snapshot,
+      });
+    } catch (error) {
+      console.warn(
+        `GitHub issue #${current.issueNumber} reconcile failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     return null;
   },
 });
@@ -482,60 +599,120 @@ export const applyGithubIssueState = internalMutation({
       .query("moderationReports")
       .withIndex("by_githubIssueNumber", (q) => q.eq("githubIssueNumber", args.issueNumber))
       .unique();
-    if (
-      !report ||
-      report.contentType !== "GENERAL" ||
-      (report.githubIssueStateUpdatedAt !== undefined && report.githubIssueStateUpdatedAt >= args.githubUpdatedAt)
-    ) {
+    if (!report || report.contentType !== "GENERAL") return null;
+    const known = report.githubIssueStateUpdatedAt;
+    // Older than an issue state already accounted for: a redelivery, or the
+    // echo of an earlier push.
+    if (known !== undefined && args.githubUpdatedAt < known) return null;
+    const keepStatus = async () => {
+      if (known === undefined || args.githubUpdatedAt > known) {
+        await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
+      }
       return null;
-    }
+    };
     // GitHub agreeing with the current status (including the echo of a staff
     // change pushed to the issue) must not replace the staff review note. An
     // open issue agrees with feedback that is in review.
-    if (sameGithubIssueState(report.status, args.status)) {
-      await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
-      return null;
-    }
+    if (sameGithubIssueState(report.status, args.status)) return keepStatus();
     // While a push is mirroring the app's status onto the issue, a disagreeing
     // event is either the echo of an earlier push or a change that push is
     // about to overwrite, so the app's status stands.
-    if (isPushInFlight(report, Date.now())) {
-      await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
+    if (isPushInFlight(report, Date.now())) return keepStatus();
+    if (report.githubIssueDecidedAt !== undefined) {
+      // A staff decision whose push failed, so GitHub's timeline lacks it.
+      // Only the two clocks can order them; anything up to it counts as older.
+      if (args.githubUpdatedAt <= report.githubIssueDecidedAt) return keepStatus();
+    } else if (args.githubUpdatedAt === known) {
+      // The issue last matched the app in this same whole second, and this
+      // event may come from before or after that. Ask GitHub which state won.
+      await ctx.scheduler.runAfter(
+        ISSUE_RECONCILE_DELAY_MS,
+        internal.moderation.feedbackGithub.reconcileGithubIssueState,
+        { reportId: report._id, tiedAt: known },
+      );
       return null;
     }
-
-    const reviewNote =
-      args.status === "PENDING"
-        ? `GitHub issue #${args.issueNumber} was reopened.`
-        : args.status === "DISMISSED"
-          ? `GitHub issue #${args.issueNumber} was closed as not planned.`
-          : `GitHub issue #${args.issueNumber} was closed as completed.`;
-    await ctx.db.patch(report._id, {
-      status: args.status,
-      reviewNote,
-      reviewedAt: Date.now(),
-      githubIssueStateUpdatedAt: args.githubUpdatedAt,
-    });
-
-    if (report.status !== "RESOLVED" && args.status === "RESOLVED") {
-      await deliverNotification(ctx, {
-        userId: report.submitterId,
-        category: "FEEDBACK",
-        title: "Your feedback was resolved",
-        body: reviewNote,
-        href: REPORT_HREF,
-        subject: { kind: "moderationReport", reportId: report._id },
-      });
-    }
-    await logAuditEvent(ctx, { actorId: "system",
-      action: "FEEDBACK_GITHUB_ISSUE_STATE_SYNCED",
-      entityType: "Report",
-      entityId: report._id,
-      meta: { issueNumber: args.issueNumber, status: args.status, stateReason: args.stateReason },
-    });
+    await applyGithubStatus(ctx, report, args);
     return null;
   },
 });
+
+/**
+ * Applies the issue's state as fetched by `reconcileGithubIssueState`, unless
+ * something newer settled the status first: another GitHub event, a push, or
+ * a staff decision.
+ */
+export const applyGithubIssueSnapshot = internalMutation({
+  args: {
+    reportId: v.id("moderationReports"),
+    issueNumber: v.number(),
+    tiedAt: v.number(),
+    status: githubFeedbackStatusValidator,
+    githubUpdatedAt: v.number(),
+    stateReason: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const report = await ctx.db.get(args.reportId);
+    if (
+      !report ||
+      report.contentType !== "GENERAL" ||
+      report.githubIssueNumber !== args.issueNumber ||
+      report.githubIssueStateUpdatedAt !== args.tiedAt ||
+      report.githubIssueDecidedAt !== undefined ||
+      isPushInFlight(report, Date.now())
+    ) {
+      return null;
+    }
+    if (sameGithubIssueState(report.status, args.status)) {
+      if (args.githubUpdatedAt > args.tiedAt) {
+        await ctx.db.patch(report._id, { githubIssueStateUpdatedAt: args.githubUpdatedAt });
+      }
+      return null;
+    }
+    await applyGithubStatus(ctx, report, args);
+    return null;
+  },
+});
+
+/** Makes a GitHub issue state change the report's status. */
+async function applyGithubStatus(
+  ctx: MutationCtx,
+  report: Doc<"moderationReports">,
+  change: { issueNumber: number; status: GithubFeedbackStatus; githubUpdatedAt: number; stateReason?: string },
+) {
+  const reviewNote =
+    change.status === "PENDING"
+      ? `GitHub issue #${change.issueNumber} was reopened.`
+      : change.status === "DISMISSED"
+        ? `GitHub issue #${change.issueNumber} was closed as not planned.`
+        : `GitHub issue #${change.issueNumber} was closed as completed.`;
+  await ctx.db.patch(report._id, {
+    status: change.status,
+    reviewNote,
+    reviewedAt: Date.now(),
+    githubIssueStateUpdatedAt: Math.max(report.githubIssueStateUpdatedAt ?? 0, change.githubUpdatedAt),
+    // This change is newer than any staff decision the issue did not show.
+    githubIssueDecidedAt: undefined,
+  });
+
+  if (report.status !== "RESOLVED" && change.status === "RESOLVED") {
+    await deliverNotification(ctx, {
+      userId: report.submitterId,
+      category: "FEEDBACK",
+      title: "Your feedback was resolved",
+      body: reviewNote,
+      href: REPORT_HREF,
+      subject: { kind: "moderationReport", reportId: report._id },
+    });
+  }
+  await logAuditEvent(ctx, { actorId: "system",
+    action: "FEEDBACK_GITHUB_ISSUE_STATE_SYNCED",
+    entityType: "Report",
+    entityId: report._id,
+    meta: { issueNumber: change.issueNumber, status: change.status, stateReason: change.stateReason },
+  });
+}
 
 function jsonResponse(status: number) {
   return new Response(null, { status });

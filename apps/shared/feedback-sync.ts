@@ -14,11 +14,20 @@ export type FeedbackSyncState = {
   githubIssueSyncQueuedAt?: number;
 };
 
+/** When a queued sync goes stale; undefined unless one is waiting to. */
+export function githubSyncStaleAt(report: FeedbackSyncState): number | undefined {
+  if (
+    report.githubIssueNumber !== undefined ||
+    report.githubIssueSyncState !== "PENDING" ||
+    report.githubIssueSyncQueuedAt === undefined
+  ) {
+    return undefined;
+  }
+  return report.githubIssueSyncQueuedAt + GITHUB_SYNC_STALE_MS;
+}
+
 export function canRetryGithubSync(report: FeedbackSyncState, now: number): boolean {
   if (report.githubIssueNumber !== undefined) return false;
-  if (report.githubIssueSyncState !== "PENDING") return true;
-  return (
-    report.githubIssueSyncQueuedAt === undefined ||
-    now - report.githubIssueSyncQueuedAt >= GITHUB_SYNC_STALE_MS
-  );
+  const staleAt = githubSyncStaleAt(report);
+  return staleAt === undefined || now >= staleAt;
 }

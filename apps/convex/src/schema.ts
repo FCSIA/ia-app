@@ -1485,12 +1485,19 @@ export const schema = defineSchema({
     githubIssueSyncQueuedAt: v.optional(v.number()),
     // Set while a push is mirroring the status onto the linked issue; at most
     // one runs per report. Disagreeing GitHub events are ignored meanwhile.
+    // A push renews it every round, so one left to lapse has died.
     githubIssuePushingSince: v.optional(v.number()),
     githubIssueCreatedAt: v.optional(v.number()),
+    // The newest issue `updated_at` the app has accounted for, on GitHub's
+    // clock. Only GitHub timestamps go here, so events compare like with like.
     githubIssueStateUpdatedAt: v.optional(v.number()),
+    // When staff set a status the issue does not show yet, on Convex's clock.
+    // Cleared once a push mirrors it or a newer GitHub change replaces it.
+    githubIssueDecidedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
+    .index("by_githubIssuePushingSince", ["githubIssuePushingSince"])
     .index("by_createdAt", ["createdAt"])
     .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_clubId_and_createdAt", ["clubId", "createdAt"])
