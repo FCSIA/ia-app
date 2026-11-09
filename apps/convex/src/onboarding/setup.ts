@@ -14,13 +14,20 @@ import {
   ONBOARDING_VERSION,
   hasOnboarding,
   onboardingSteps,
-  hasStudentOnboarding,
 } from "../../../shared/onboarding";
 import {
   decisionValidator,
   statusValidator,
   stepIdValidator,
 } from "./validators";
+
+/** Super admins have no setup; the exclusion overrides every other role. */
+async function setupUser(ctx: MutationCtx) {
+  const user = await getCurrentAppUser(ctx);
+  if (!hasOnboarding(user.roles))
+    throw new ConvexError("Setup is not available for your account.");
+  return user;
+}
 
 async function readState(ctx: QueryCtx | MutationCtx, user: Doc<"users">) {
   return ctx.db
@@ -44,10 +51,16 @@ async function status(
           ? "invited"
           : "available";
   const decisions = saved?.decisions ?? {};
+  const applicable = onboardingSteps(user.roles);
+  const undecided = new Set(
+    applicable.filter((step) => !decisions[step.id]).map((step) => step.id),
+  );
   const derived = new Set<string>();
-  // Terminal and unenrolled users do not hold live subscriptions to setup data.
-  if (phase === "active" || phase === "invited") {
-    if (hasStudentOnboarding(user.roles) && !decisions.schedule) {
+  // Deferred and unenrolled users do not hold live subscriptions to setup
+  // data. Completed users only read it for steps a role change or checklist
+  // version added after they finished.
+  if (phase === "active" || phase === "invited" || phase === "completed") {
+    if (undecided.has("schedule")) {
       const schedule = await ctx.db
         .query("studentSchedules")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
@@ -71,7 +84,7 @@ async function status(
           derived.add("schedule");
       }
     }
-    if (!decisions.notifications) {
+    if (undecided.has("notifications")) {
       const preference = await ctx.db
         .query("notificationPreferences")
         .withIndex("by_userId_and_category_and_scopeKey", (q) =>
@@ -81,13 +94,13 @@ async function status(
       if (preference) derived.add("notifications");
     }
   }
-  const steps = onboardingSteps(user.roles).map((step) => ({
+  // Steps that were not applicable when setup finished stay pending: a later
+  // role or version never receives credit it did not earn.
+  const steps = applicable.map((step) => ({
     id: step.id,
     state:
       decisions[step.id] ??
-      (derived.has(step.id) || phase === "completed"
-        ? ("done" as const)
-        : ("pending" as const)),
+      (derived.has(step.id) ? ("done" as const) : ("pending" as const)),
   }));
   return {
     phase,
@@ -111,7 +124,7 @@ export const start = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await setupUser(ctx);
     const saved = await readState(ctx, user);
     if (saved?.completedAt) return null;
     if (saved)
@@ -134,7 +147,7 @@ export const later = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await setupUser(ctx);
     const saved = await readState(ctx, user);
     if (saved?.completedAt) return null;
     if (saved) await ctx.db.patch(saved._id, { deferredAt: Date.now() });
@@ -153,11 +166,12 @@ export const decide = mutation({
   args: { step: stepIdValidator, decision: decisionValidator },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await setupUser(ctx);
     const saved = await readState(ctx, user);
-    if (!saved?.startedAt || saved.deferredAt)
+    // Finished setup stays finished; steps added since then can still be
+    // resolved from the Profile entry without reopening it.
+    if (!saved || (!saved.completedAt && (!saved.startedAt || saved.deferredAt)))
       throw new ConvexError("Start setup first.");
-    if (saved.completedAt) return null;
     const current = await status(ctx, user, saved);
     const step = current.steps.find((s) => s.id === args.step);
     if (!step)
@@ -181,7 +195,7 @@ export const finish = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await setupUser(ctx);
     const saved = await readState(ctx, user);
     if (saved?.completedAt) return null;
     if (!saved?.startedAt || saved.deferredAt)
@@ -194,6 +208,8 @@ export const finish = mutation({
     for (const step of current.steps)
       decisions[step.id] = step.state === "skipped" ? "skipped" : "done";
     await ctx.db.patch(saved._id, {
+      // Records which checklist version the user finished.
+      version: ONBOARDING_VERSION,
       decisions,
       completedAt: Date.now(),
       deferredAt: undefined,

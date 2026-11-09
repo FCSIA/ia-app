@@ -1,14 +1,18 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import type { Infer } from "convex/values";
 import schema from "../schema";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import {
+  ONBOARDING_STEPS,
   onboardingSteps,
   onboardingSaveError,
+  type OnboardingStepId,
 } from "../../../shared/onboarding";
+import { stepIdValidator } from "./validators";
 
 vi.mock("../../lib/currentUser", async (original) => {
   const actual = await original<typeof import("../../lib/currentUser")>();
@@ -184,9 +188,11 @@ describe("onboarding lifecycle and ownership", () => {
       (await secondDevice.query(api.onboarding.setup.get, {}))?.phase,
     ).toBe("completed");
     await t.run((ctx) => ctx.db.patch(ids[0], { roles: ["TEACHER"] }));
+    const afterRoleChange = await secondDevice.query(api.onboarding.setup.get, {});
+    expect(afterRoleChange?.phase).toBe("completed");
     expect(
-      (await secondDevice.query(api.onboarding.setup.get, {}))?.phase,
-    ).toBe("completed");
+      afterRoleChange?.steps.find((s) => s.id === "flex")?.state,
+    ).toBe("pending");
   });
   it("shows no setup to super admins", async () => {
     const { t, ids, user } = await fixture();
@@ -195,12 +201,8 @@ describe("onboarding lifecycle and ownership", () => {
   });
   it("uses student steps for mixed roles and excludes them for staff", async () => {
     const { staff } = await fixture();
-    expect(
-      onboardingSteps(["STUDENT", "STUDENT_ADMIN", "TEACHER"]),
-    ).toHaveLength(5);
     expect(onboardingSteps(["STUDENT_LEADER"])).toHaveLength(5);
-    expect(onboardingSteps(["STUDENT_ADMIN"])).toHaveLength(5);
-    expect((await staff.query(api.onboarding.setup.get, {}))?.total).toBe(3);
+    expect((await staff.query(api.onboarding.setup.get, {}))?.total).toBe(4);
     await staff.mutation(api.onboarding.setup.start, {});
     await expect(
       staff.mutation(api.onboarding.setup.decide, {
@@ -208,6 +210,118 @@ describe("onboarding lifecycle and ownership", () => {
         decision: "done",
       }),
     ).rejects.toThrow("not available");
+  });
+  it("tailors steps to each role and unions mixed roles in a stable order", () => {
+    const ids = (roles: string[]) => onboardingSteps(roles).map((s) => s.id);
+    const student = ["profile", "schedule", "privacy", "notifications", "essentials"];
+    expect(ids(["STUDENT"])).toEqual(student);
+    expect(ids(["STUDENT", "STUDENT_LEADER"])).toEqual(student);
+    expect(ids(["STUDENT", "STUDENT_ADMIN"])).toEqual([
+      "profile", "schedule", "privacy", "notifications", "flex", "essentials",
+    ]);
+    expect(ids(["TEACHER"])).toEqual(["profile", "notifications", "flex", "essentials"]);
+    expect(ids(["SPONSOR"])).toEqual(["profile", "notifications", "clubs", "essentials"]);
+    expect(ids(["SUPPORT_STAFF"])).toEqual(["profile", "notifications", "admin", "essentials"]);
+    expect(ids(["ADMIN"])).toEqual([
+      "profile", "notifications", "admin", "schoolDay", "essentials",
+    ]);
+    expect(ids(["SPONSOR", "TEACHER", "SUPPORT_STAFF", "ADMIN"])).toEqual([
+      "profile", "notifications", "flex", "clubs", "admin", "schoolDay", "essentials",
+    ]);
+    expect(ids(["TEACHER", "STUDENT_ADMIN"])).toEqual(ids(["STUDENT_ADMIN", "TEACHER"]));
+    expect(ids(["SUPER_ADMIN", "TEACHER", "STUDENT"])).toEqual([]);
+    const essentials = (roles: string[]) =>
+      onboardingSteps(roles).find((s) => s.id === "essentials")?.description;
+    expect(essentials(["TEACHER"])).not.toBe(essentials(["STUDENT"]));
+    expect(essentials(["TEACHER", "STUDENT"])).toBe(essentials(["STUDENT"]));
+  });
+  it("keeps the stored step validator in step with the shared step list", () => {
+    expectTypeOf<Infer<typeof stepIdValidator>>().toEqualTypeOf<OnboardingStepId>();
+    expect(stepIdValidator.members.map((m) => m.value)).toEqual(
+      ONBOARDING_STEPS.map((s) => s.id),
+    );
+  });
+  it("adds pending work for gained roles and drops lost roles from the count while keeping their decisions", async () => {
+    const { t, ids, staff } = await fixture();
+    await staff.mutation(api.onboarding.setup.start, {});
+    await staff.mutation(api.onboarding.setup.decide, {
+      step: "flex",
+      decision: "done",
+    });
+    await t.run((ctx) => ctx.db.patch(ids[2], { roles: ["TEACHER", "SPONSOR"] }));
+    let current = await staff.query(api.onboarding.setup.get, {});
+    expect(current?.total).toBe(5);
+    expect(current?.steps.find((s) => s.id === "clubs")?.state).toBe("pending");
+    expect(current?.steps.find((s) => s.id === "flex")?.state).toBe("done");
+    await t.run((ctx) => ctx.db.patch(ids[2], { roles: ["SPONSOR"] }));
+    current = await staff.query(api.onboarding.setup.get, {});
+    expect(current?.steps.map((s) => s.id)).not.toContain("flex");
+    expect(current?.resolved).toBe(0);
+    await expect(
+      staff.mutation(api.onboarding.setup.decide, { step: "flex", decision: "done" }),
+    ).rejects.toThrow("not available");
+    await t.run((ctx) => ctx.db.patch(ids[2], { roles: ["TEACHER"] }));
+    current = await staff.query(api.onboarding.setup.get, {});
+    expect(current?.steps.find((s) => s.id === "flex")?.state).toBe("done");
+  });
+  it("never reopens or credits finished setup, and offers new steps for review instead", async () => {
+    const { t, ids, staff } = await fixture();
+    await staff.mutation(api.onboarding.setup.start, {});
+    for (const step of onboardingSteps(["TEACHER"]))
+      await staff.mutation(api.onboarding.setup.decide, {
+        step: step.id,
+        decision: "done",
+      });
+    await staff.mutation(api.onboarding.setup.finish, {});
+    await t.run((ctx) => ctx.db.patch(ids[2], { roles: ["TEACHER", "ADMIN"] }));
+    let current = await staff.query(api.onboarding.setup.get, {});
+    expect(current?.phase).toBe("completed");
+    expect(current?.total).toBe(6);
+    expect(current?.resolved).toBe(4);
+    expect(current?.steps.find((s) => s.id === "admin")?.state).toBe("pending");
+    await staff.mutation(api.onboarding.setup.later, {});
+    await staff.mutation(api.onboarding.setup.start, {});
+    expect((await staff.query(api.onboarding.setup.get, {}))?.phase).toBe("completed");
+    await staff.mutation(api.onboarding.setup.decide, {
+      step: "admin",
+      decision: "skipped",
+    });
+    current = await staff.query(api.onboarding.setup.get, {});
+    expect(current?.phase).toBe("completed");
+    expect(current?.resolved).toBe(5);
+  });
+  it("leaves version 1 records complete while new role steps wait for review", async () => {
+    const { t, ids, staff } = await fixture();
+    await t.run((ctx) =>
+      ctx.db.insert("onboardingStates", {
+        userId: ids[2],
+        version: 1,
+        startedAt: 1,
+        completedAt: 2,
+        decisions: { profile: "done", notifications: "skipped", essentials: "done" },
+      }),
+    );
+    const current = await staff.query(api.onboarding.setup.get, {});
+    expect(current?.phase).toBe("completed");
+    expect(current?.steps).toEqual([
+      { id: "profile", state: "done" },
+      { id: "notifications", state: "skipped" },
+      { id: "flex", state: "pending" },
+      { id: "essentials", state: "done" },
+    ]);
+  });
+  it("rejects setup mutations from super admins, whatever their other roles", async () => {
+    const { t, ids, user } = await fixture();
+    await t.run((ctx) =>
+      ctx.db.patch(ids[0], { roles: ["SUPER_ADMIN", "STUDENT"] }),
+    );
+    expect(await user.query(api.onboarding.setup.get, {})).toBeNull();
+    for (const mutation of [
+      api.onboarding.setup.start,
+      api.onboarding.setup.later,
+      api.onboarding.setup.finish,
+    ])
+      await expect(user.mutation(mutation, {})).rejects.toThrow("not available");
   });
   it("rejects anonymous, inactive, reset-required and caller-supplied user IDs", async () => {
     const { t, ids, user } = await fixture();
