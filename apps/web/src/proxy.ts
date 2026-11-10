@@ -59,6 +59,7 @@ export async function proxy(request: NextRequest) {
     '/calendar',
     '/flex-friday',
     '/wrapped',
+    '/route-finder',
     '/notifications',
     '/profile',
     '/change-password',

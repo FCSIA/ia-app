@@ -13,6 +13,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "apps/web/src/proxy.test.ts",
+      "apps/web/src/features/route-finder/**/*.test.ts",
       "apps/web/src/components/layout/use-mobile-tab-memory.test.ts",
     ],
     fileParallelism: false,
