@@ -64,7 +64,7 @@ export default function ChannelSearchScreen() {
                   message={message}
                   onPress={() =>
                     router.push(
-                      `/clubs/${clubId}/channels/${channelId}/threads/${message.threadRootId ?? message._id}` as never,
+                      `/clubs/${clubId}/channels/${channelId}/threads/${message.threadRootId ?? message._id}`,
                     )
                   }
                 />

@@ -1,11 +1,10 @@
 import { TZDate } from '@date-fns/tz';
-
-export const CALENDAR_TIME_ZONE = 'America/New_York';
+import { SCHOOL_TIME_ZONE } from '~/apps/shared/school-time';
 
 export function calendarDate(value: Date | number = Date.now()) {
   return new TZDate(
     typeof value === 'number' ? value : value.getTime(),
-    CALENDAR_TIME_ZONE,
+    SCHOOL_TIME_ZONE,
   );
 }
 
@@ -14,7 +13,7 @@ export function calendarInputDate(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(value);
   if (!match) return new Date(NaN);
   const date = TZDate.tz(
-    CALENDAR_TIME_ZONE,
+    SCHOOL_TIME_ZONE,
     Number(match[1]),
     Number(match[2]) - 1,
     Number(match[3]),

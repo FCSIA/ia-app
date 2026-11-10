@@ -1,12 +1,9 @@
-import type { Pathway } from "../validators";
+import { PATHWAY_LABELS } from "../../../shared/labels";
+import { schoolDateKey } from "../../../shared/school-time";
+import { v, type Infer } from "convex/values";
+import { pathwayValidator, type Pathway } from "../validators";
 
 export const WRAPPED_SCHEMA_VERSION = 1;
-
-export const WRAPPED_STUDENT_ROLES = [
-  "STUDENT",
-  "STUDENT_LEADER",
-  "STUDENT_ADMIN",
-] as const;
 
 const STOPWORDS = new Set<string>([
   "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
@@ -23,43 +20,6 @@ const STOPWORDS = new Set<string>([
   "where", "which", "while", "every", "these", "those", "other", "stuff",
   "first", "next", "last", "long", "think", "https", "http", "message",
 ]);
-
-export function schoolYearRange(startYear: number): { start: number; end: number } {
-  const start = new Date(startYear, 7, 1).getTime();
-  const end = new Date(startYear + 1, 6, 31, 23, 59, 59, 999).getTime();
-  return { start, end };
-}
-
-export function schoolYearLabel(startYear: number): string {
-  return `${startYear}-${String((startYear + 1) % 100).padStart(2, "0")}`;
-}
-
-export function wrappedAvailability(now: Date = new Date()): {
-  open: boolean;
-  schoolYear: number;
-  opensAt: Date;
-  closesAt: Date;
-} {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  if (month === 4) {
-    return {
-      open: true,
-      schoolYear: year - 1,
-      opensAt: new Date(year, 4, 1),
-      closesAt: new Date(year, 4, 31, 23, 59, 59, 999),
-    };
-  }
-
-  const nextOpensYear = month < 4 ? year : year + 1;
-  return {
-    open: false,
-    schoolYear: nextOpensYear - 1,
-    opensAt: new Date(nextOpensYear, 4, 1),
-    closesAt: new Date(nextOpensYear, 4, 31, 23, 59, 59, 999),
-  };
-}
 
 export function extractTopWord(bodies: string[]): { word: string; count: number } | null {
   const counts = new Map<string, number>();
@@ -82,33 +42,10 @@ export function extractTopWord(bodies: string[]): { word: string; count: number 
   return top;
 }
 
-export function toEtDayKey(d: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d);
-  const y = parts.find((p) => p.type === "year")?.value ?? "0000";
-  const m = parts.find((p) => p.type === "month")?.value ?? "01";
-  const day = parts.find((p) => p.type === "day")?.value ?? "01";
-  return `${y}-${m}-${day}`;
-}
-
-export function etHour(d: Date): number {
-  const hourStr = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "2-digit",
-    hour12: false,
-  }).format(d);
-  const n = parseInt(hourStr, 10) % 24;
-  return Number.isFinite(n) ? n : 0;
-}
-
 export function longestMessageStreak(dates: Date[]): number {
   if (dates.length === 0) return 0;
   const dayKeys = new Set<string>();
-  for (const d of dates) dayKeys.add(toEtDayKey(d));
+  for (const d of dates) dayKeys.add(schoolDateKey(d));
   const sorted = [...dayKeys].sort();
   let longest = 1;
   let current = 1;
@@ -130,50 +67,70 @@ export const PATHWAY_META: Record<
   Pathway,
   { label: string; lanyard: string }
 > = {
-  HEALTH_SCIENCE: { label: "Health Science", lanyard: "Green" },
-  INFORMATION_TECHNOLOGY: { label: "Information Technology", lanyard: "Blue" },
-  ENGINEERING: { label: "Engineering", lanyard: "Yellow" },
+  HEALTH_SCIENCE: { label: PATHWAY_LABELS.HEALTH_SCIENCE, lanyard: "Green" },
+  INFORMATION_TECHNOLOGY: { label: PATHWAY_LABELS.INFORMATION_TECHNOLOGY, lanyard: "Blue" },
+  ENGINEERING: { label: PATHWAY_LABELS.ENGINEERING, lanyard: "Yellow" },
 };
 
-export type WrappedSummary = {
-  userId: string;
-  schoolYearStart: number;
-  schoolYearLabel: string;
-  rangeStart: string;
-  rangeEnd: string;
-  messagesSent: number;
-  channelsEngaged: number;
-  friends: number;
-  clubs: number;
-  flexCredits: number;
-  flexCreditsRequired: number;
-  pathwayFlexCredits: number;
-  topChannel: {
-    channelId: string;
-    channelName: string;
-    clubId: string;
-    clubName: string;
-    messages: number;
-  } | null;
-  topMentioned: {
-    userId: string;
-    firstName: string;
-    lastName: string;
-    preferredName?: string;
-    mentions: number;
-  } | null;
-  pathway: {
-    major: Pathway | null;
-    minor: Pathway | null;
-    lanyardColor: string | null;
-    label: string | null;
-    peers: number;
-  };
-  mostUsedWord: { word: string; count: number } | null;
-  peakHour: { hour: number; messages: number } | null;
-  longestStreak: number;
-  mostActiveDay: { date: string; messages: number } | null;
-  reactionsReceived: number;
-  topEmoji: { emoji: string; count: number } | null;
-  longestMessageChars: number;
-};
+export const wrappedSummaryValidator = v.object({
+  userId: v.string(),
+  schoolYearStart: v.number(),
+  schoolYearLabel: v.string(),
+  rangeStart: v.string(),
+  rangeEnd: v.string(),
+  messagesSent: v.number(),
+  channelsEngaged: v.number(),
+  friends: v.number(),
+  clubs: v.number(),
+  flexCredits: v.number(),
+  flexCreditsRequired: v.number(),
+  pathwayFlexCredits: v.number(),
+  topChannel: v.union(
+    v.object({
+      channelId: v.string(),
+      channelName: v.string(),
+      clubId: v.string(),
+      clubName: v.string(),
+      messages: v.number(),
+    }),
+    v.null(),
+  ),
+  topMentioned: v.union(
+    v.object({
+      userId: v.string(),
+      firstName: v.string(),
+      lastName: v.string(),
+      preferredName: v.optional(v.string()),
+      mentions: v.number(),
+    }),
+    v.null(),
+  ),
+  pathway: v.object({
+    major: v.union(pathwayValidator, v.null()),
+    minor: v.union(pathwayValidator, v.null()),
+    lanyardColor: v.union(v.string(), v.null()),
+    label: v.union(v.string(), v.null()),
+    peers: v.number(),
+  }),
+  mostUsedWord: v.union(
+    v.object({ word: v.string(), count: v.number() }),
+    v.null(),
+  ),
+  peakHour: v.union(
+    v.object({ hour: v.number(), messages: v.number() }),
+    v.null(),
+  ),
+  longestStreak: v.number(),
+  mostActiveDay: v.union(
+    v.object({ date: v.string(), messages: v.number() }),
+    v.null(),
+  ),
+  reactionsReceived: v.number(),
+  topEmoji: v.union(
+    v.object({ emoji: v.string(), count: v.number() }),
+    v.null(),
+  ),
+  longestMessageChars: v.number(),
+});
+
+export type WrappedSummary = Infer<typeof wrappedSummaryValidator>;

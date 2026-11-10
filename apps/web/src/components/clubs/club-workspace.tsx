@@ -1,5 +1,7 @@
 "use client";
 
+import { isSuperAdmin } from "~/apps/shared/roles";
+import { clubChannelHref, matchClubChannelPath } from "~/apps/shared/routes";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -25,7 +27,6 @@ import {
   Settings,
   Trash2,
   Users2,
-  X,
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
 import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
@@ -68,13 +69,14 @@ import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
-import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { DisclosureTitle } from "@/components/ui/pressable";
 import {
   formatMuteRemaining,
   useMutedChannels,
 } from "@/components/notifications/channel-notification-settings";
+import { ancestorIds } from "@/lib/club-units";
 import { cn } from "@/lib/utils";
 import type {
   ClubNavigationChannel,
@@ -284,7 +286,7 @@ export function ClubWorkspace({
 
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
-  }) as ClubWorkspaceNavigation | undefined;
+  });
   const activity = useQuery(api.clubs.detail.getWorkspaceActivity, {
     clubId,
   });
@@ -315,9 +317,7 @@ export function ClubWorkspace({
   const canDeleteChannels = navigation?.viewer.canDeleteChannels ?? false;
   const showClubPicker = !isSuperAdmin(user);
 
-  const activeChannelId = pathname.match(
-    /\/clubs\/[^/]+\/channels\/([^/]+)/,
-  )?.[1];
+  const activeChannelId = matchClubChannelPath(pathname)?.channelId;
   const clubRootPath = `/clubs/${clubId}`;
   const navigationPath = `${clubRootPath}/navigation`;
   const isNavigationPage = pathname === navigationPath;
@@ -806,7 +806,6 @@ type ClubNavigationPanelProps = {
   canCreateChannels: boolean;
   canEditChannels: boolean;
   canDeleteChannels: boolean;
-  onClose?: () => void;
   onNavigate?: () => void;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
   hideBrowseClubs?: boolean;
@@ -940,7 +939,6 @@ function ClubNavigationPanel({
   canCreateChannels,
   canEditChannels,
   canDeleteChannels,
-  onClose,
   onNavigate,
   onDeleteChannel,
   hideBrowseClubs = false,
@@ -989,15 +987,7 @@ function ClubNavigationPanel({
       (channel) => channel._id === activeChannelId,
     )?.ownerUnitId;
     if (!ownerUnitId) return;
-    const parentByUnit = new Map(
-      units.map((unit) => [unit._id, unit.parentUnitId]),
-    );
-    const toOpen: string[] = [];
-    let current: Id<"clubUnits"> | null | undefined = ownerUnitId;
-    while (current) {
-      toOpen.push(current);
-      current = parentByUnit.get(current);
-    }
+    const toOpen = ancestorIds(units, ownerUnitId);
     setOpenUnitIds((currentIds) =>
       toOpen.every((id) => currentIds.includes(id))
         ? currentIds
@@ -1053,29 +1043,6 @@ function ClubNavigationPanel({
               </div>
             )}
           </div>
-          {onClose ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Close club navigation"
-              onClick={onClose}
-            >
-              <X />
-            </Button>
-          ) : null}
-        </div>
-      ) : onClose ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Close club navigation"
-            onClick={onClose}
-          >
-            <X />
-          </Button>
         </div>
       ) : undefined}
       footer={!hideBrowseClubs ? (
@@ -1262,7 +1229,7 @@ function ChannelRow({
   return (
     <Card
       index={index}
-      href={`/clubs/${clubId}/channels/${channel._id}`}
+      href={clubChannelHref(clubId, channel._id)}
       onClick={() => onNavigate?.()}
       label={`Open #${channel.name}`}
       selected={active}

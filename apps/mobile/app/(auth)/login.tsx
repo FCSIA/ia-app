@@ -82,7 +82,6 @@ export default function LoginScreen() {
         Alert.alert("Unable to sign in", result.error.message ?? "Check your ID and password.");
         return;
       }
-      // The new session cookie is stored once signIn resolves.
       setSignedInAs(username);
       awaitSessionPickup();
     } catch {

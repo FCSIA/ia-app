@@ -4,17 +4,19 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, MapPin, Users, Ticket, CheckCircle } from 'lucide-react';
-import { formatTimeRange, workshopDetailHref } from '../_utils';
+import { formatTimeRange } from '../_utils';
+import { workshopDetailHref } from '@/lib/routes';
+import type { FlexSession, FlexWorkshop } from '../_types';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 
 interface Props {
-  workshops: any[];
-  selectedSession: any;
+  workshops: FlexWorkshop[];
+  selectedSession: FlexSession | null;
   onAddWorkshop: () => void;
-  onEditWorkshop: (workshop: any) => void;
-  onDeleteWorkshop: (workshop: any) => void;
+  onEditWorkshop: (workshop: FlexWorkshop) => void;
+  onDeleteWorkshop: (workshop: FlexWorkshop) => void;
   onRegister: (workshopId: string) => void;
   onUnregister: (workshopId: string) => void;
   onAttendance: (workshopId: string) => void;
@@ -145,7 +147,7 @@ export function WorkshopPanel({
 
                           {spansMultiple && (
                             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
-                              {linkedSessions.map((ls: any) => (
+                              {linkedSessions.map((ls) => (
                                 <Badge key={ls._id} variant="solid" color="gray" className="text-[9px] uppercase tracking-tighter py-0 px-1.5 font-bold">
                                   {ls.title} · {formatTimeRange(ls.startTime, ls.endTime)}
                                 </Badge>

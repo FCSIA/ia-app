@@ -10,6 +10,7 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 import { Divider } from "@/components/ui/layout";
 import { Txt } from "@/components/ui/typography";
+import { joinClassNames } from "@/lib/class-names";
 import { useTheme } from "@/lib/theme";
 import { densityMetrics, type Density } from "@/lib/tokens";
 
@@ -294,8 +295,4 @@ function getChildKey(child: ReactNode, index: number) {
     return String(child.key);
   }
   return String(index);
-}
-
-function joinClassNames(...names: Array<string | undefined>) {
-  return names.filter(Boolean).join(" ");
 }

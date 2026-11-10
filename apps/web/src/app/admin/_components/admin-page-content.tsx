@@ -1,32 +1,50 @@
 'use client';
 
-import { useEffect } from 'react';
+import {
+  hasAnyRole,
+  isAdmin,
+  isStaff,
+  SUPER_ADMIN_ROLES,
+} from '~/apps/shared/roles';
+import { useEffect, type ComponentType } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { AdminPageLayout } from './admin-page-layout';
 import { AdminMobileNavigation, AdminShell } from './admin-shell';
 import { AdminScrollTabPanel } from './admin-tab-panel';
-import { AnalyticsTabPanel } from './panels/analytics-tab-panel';
-import { AuditTabPanel } from './panels/audit-tab-panel';
-import { FeedbackTabPanel } from './panels/feedback-tab-panel';
-import { ModerationTabPanel } from './panels/moderation-tab-panel';
-import { AdministratorRosterTabPanel } from './panels/administrator-roster-tab-panel';
-import { ScheduleTabPanel } from './panels/schedule-tab-panel';
-import { UsersTabPanel } from './panels/users-tab-panel';
-import { WrappedTabPanel } from './panels/wrapped-tab-panel';
+import { AdministratorRosterTab } from './administrator-roster-tab';
+import { AnalyticsTab } from './analytics/analytics-tab';
+import { AuditTab } from './audit/audit-tab';
+import { FeedbackTab } from './feedback-tab';
+import { ModerationTab } from './moderation-tab';
+import { AdminScheduleTab } from './schedule-tab';
+import { AdminUsersTab } from './users/users-tab';
+import { WrappedSnapshotsTab } from './wrapped-snapshots-tab';
 import { useAdminModerationPending } from '../_hooks/use-admin-moderation-pending';
 import { useAdminTab } from '../_hooks/use-admin-tab';
+import { visibleAdminSections, type AdminTabId } from '../_lib/admin-sections';
+
+const SECTION_CONTENT: Record<AdminTabId, ComponentType> = {
+  users: AdminUsersTab,
+  schedule: AdminScheduleTab,
+  'administrator-roster': AdministratorRosterTab,
+  moderation: ModerationTab,
+  feedback: FeedbackTab,
+  wrapped: WrappedSnapshotsTab,
+  analytics: AnalyticsTab,
+  audit: AuditTab,
+};
 
 export function AdminPageContent() {
   const user = useCurrentUser();
   const router = useRouter();
   const reportId = useParams<{ reportId?: string }>()?.reportId;
-  const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+  const isSuperAdmin = hasAnyRole(user, SUPER_ADMIN_ROLES);
   const canReviewFeedback = isSuperAdmin || user?.canReviewFeedback === true;
-  const canManageWrapped = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const hasAdministrativeAccess = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const access = { isSuperAdmin, canManageWrapped: isAdmin(user) };
+  const hasAdministrativeAccess = isStaff(user);
 
-  const { activeTab } = useAdminTab(isSuperAdmin, canManageWrapped);
+  const activeTab = useAdminTab(access);
   const pendingReports = useAdminModerationPending();
 
   useEffect(() => {
@@ -39,7 +57,7 @@ export function AdminPageContent() {
     return (
       <AdminPageLayout>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col p-4 md:p-6 lg:p-8">
-          <FeedbackTabPanel canUpdateFeedback={false} />
+          <FeedbackTab canUpdateFeedback={false} />
         </div>
       </AdminPageLayout>
     );
@@ -48,61 +66,18 @@ export function AdminPageContent() {
   return (
     <AdminPageLayout
       headerNavigation={
-        <AdminMobileNavigation
-          activeTab={activeTab}
-          isSuperAdmin={isSuperAdmin}
-          canManageWrapped={canManageWrapped}
-          pendingReports={pendingReports}
-        />
+        <AdminMobileNavigation activeTab={activeTab} access={access} pendingReports={pendingReports} />
       }
     >
-      <AdminShell
-        activeTab={activeTab}
-        isSuperAdmin={isSuperAdmin}
-        canManageWrapped={canManageWrapped}
-        pendingReports={pendingReports}
-      >
-        <AdminScrollTabPanel value="users">
-          {activeTab === 'users' ? <UsersTabPanel /> : null}
-        </AdminScrollTabPanel>
-
-        {isSuperAdmin ? (
-          <AdminScrollTabPanel value="schedule">
-            {activeTab === 'schedule' ? <ScheduleTabPanel /> : null}
-          </AdminScrollTabPanel>
-        ) : null}
-
-        {isSuperAdmin ? (
-          <AdminScrollTabPanel value="administrator-roster">
-            {activeTab === 'administrator-roster' ? <AdministratorRosterTabPanel /> : null}
-          </AdminScrollTabPanel>
-        ) : null}
-
-        <AdminScrollTabPanel value="moderation">
-          {activeTab === 'moderation' ? <ModerationTabPanel /> : null}
-        </AdminScrollTabPanel>
-
-        {canReviewFeedback ? (
-          <AdminScrollTabPanel value="feedback">
-            {activeTab === 'feedback' ? <FeedbackTabPanel /> : null}
-          </AdminScrollTabPanel>
-        ) : null}
-
-        {canManageWrapped ? (
-          <AdminScrollTabPanel value="wrapped">
-            {activeTab === 'wrapped' ? <WrappedTabPanel canManageWrapped={canManageWrapped} /> : null}
-          </AdminScrollTabPanel>
-        ) : null}
-
-        {isSuperAdmin ? (
-          <AdminScrollTabPanel value="analytics">
-            {activeTab === 'analytics' ? <AnalyticsTabPanel /> : null}
-          </AdminScrollTabPanel>
-        ) : null}
-
-        <AdminScrollTabPanel value="audit">
-          {activeTab === 'audit' ? <AuditTabPanel /> : null}
-        </AdminScrollTabPanel>
+      <AdminShell activeTab={activeTab} access={access} pendingReports={pendingReports}>
+        {visibleAdminSections(access).map(({ id }) => {
+          const Content = SECTION_CONTENT[id];
+          return (
+            <AdminScrollTabPanel key={id} value={id}>
+              {activeTab === id ? <Content /> : null}
+            </AdminScrollTabPanel>
+          );
+        })}
       </AdminShell>
     </AdminPageLayout>
   );

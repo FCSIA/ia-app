@@ -5,7 +5,6 @@ import { deleteStoredChatAttachment } from "../uploads/chatAttachments";
 import {
   CHANNEL_MESSAGE_CLEANUP_BATCH_SIZE,
   hasMoreChannelMessageCleanup,
-  shouldRetainDeletedChannelMessage,
 } from "./channelDeletionPolicy";
 
 export const cleanupDeletedMessage = internalMutation({
@@ -86,7 +85,7 @@ export const cleanupDeletedMessage = internalMutation({
         q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
       )
       .first();
-    if (shouldRetainDeletedChannelMessage(!!reply)) return null;
+    if (reply) return null;
 
     await ctx.db.delete(message._id);
     if (message.parentMessageId) {

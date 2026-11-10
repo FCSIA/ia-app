@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { FunctionReturnType } from 'convex/server';
 import { useConvex } from '@/lib/convex-react';
-import { WhiteboardSnapshotImage } from '@/components/clubs/whiteboard/whiteboard-snapshot-image';
+import { WhiteboardSnapshotImage } from '@/components/whiteboard/whiteboard-snapshot-image';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AdminNotice } from '../admin-ui';

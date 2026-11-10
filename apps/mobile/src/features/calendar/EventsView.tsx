@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { EVENT_GENERAL_CREATOR_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { ChevronRight, Plus, X } from "lucide-react-native";
@@ -31,9 +33,7 @@ export function EventsView() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const { showToast } = useToast();
-  const canCreateGeneral = !!user?.roles?.some((role) =>
-    ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
-  );
+  const canCreateGeneral = hasAnyRole(user, EVENT_GENERAL_CREATOR_ROLES);
   const availableClubs = useMemo(
     () =>
       [
@@ -79,7 +79,7 @@ export function EventsView() {
           cancelEvent({ eventId: event._id }).catch((error) =>
             showToast({
               title: "Event not cancelled",
-              body: error instanceof Error ? error.message : "Try again.",
+              body: errorMessage(error),
             }),
           ),
       },

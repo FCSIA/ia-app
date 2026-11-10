@@ -1,4 +1,8 @@
+import { PATHWAY_OPTIONS, type Pathway } from '~/apps/shared/labels';
 import React, { useState } from 'react';
+import { useMutation } from '@/lib/convex-react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { FunctionArgs } from 'convex/server';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,33 +11,25 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DateField } from '@/components/forms/date-field';
 import { parseISO } from 'date-fns';
-import { FridayForm as FridayFormType, PATHWAY_OPTIONS } from '../_types';
+import { EMPTY_FRIDAY_FORM } from '../_constants';
+import type { FridayForm as FridayFormType, FridayType } from '../_types';
+import type { RunFlexAction } from '../_hooks/useFlexActions';
 import { useToast } from '@/hooks/use-toast';
 
 interface Props {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  runAction: (key: string, fn: () => Promise<unknown>) => Promise<unknown>;
-  mutations: {
-    createFriday: any;
-  };
+  runAction: RunFlexAction;
 }
 
 export function FridayForm({
   isOpen,
   onOpenChange,
   runAction,
-  mutations,
 }: Props) {
   const { toast } = useToast();
-  const [form, setForm] = useState<FridayFormType>({
-    date: '',
-    type: 'ALL_STUDENT',
-    gradeLevel: '9',
-    pathway: 'INFORMATION_TECHNOLOGY',
-    notes: '',
-    isSchoolDay: true,
-  });
+  const createFriday = useMutation(api.flexFriday.fridays.create);
+  const [form, setForm] = useState<FridayFormType>(EMPTY_FRIDAY_FORM);
 
   const handleSubmit = async () => {
     if (!form.date) {
@@ -41,23 +37,18 @@ export function FridayForm({
       return;
     }
 
-    const payload: any = {
+    const payload: FunctionArgs<typeof api.flexFriday.fridays.create> = {
       date: parseISO(form.date).getTime(),
       type: form.type,
       isSchoolDay: form.isSchoolDay,
+      ...(form.type === 'GRADE_SPECIFIC' ? { gradeLevel: parseInt(form.gradeLevel, 10) } : {}),
+      ...(form.type === 'PATHWAY_SPECIFIC' ? { pathway: form.pathway } : {}),
+      ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
     };
-    if (form.type === 'GRADE_SPECIFIC') payload.gradeLevel = parseInt(form.gradeLevel, 10);
-    if (form.type === 'PATHWAY_SPECIFIC') payload.pathway = form.pathway;
-    if (form.notes.trim()) payload.notes = form.notes.trim();
 
-    try {
-      await runAction('friday-create', async () => {
-        await mutations.createFriday(payload);
-      });
+    if (await runAction('friday-create', () => createFriday(payload))) {
       onOpenChange(false);
       toast({ title: 'Friday Scheduled' });
-    } catch {
-      // Error handled by runAction
     }
   };
 
@@ -81,7 +72,7 @@ export function FridayForm({
 
             <div className="space-y-2">
               <Label>Event Type</Label>
-              <Select value={form.type} onValueChange={(v: string) => setForm({ ...form, type: v as any })}>
+              <Select value={form.type} onValueChange={(type) => setForm({ ...form, type: type as FridayType })}>
                 <SelectTrigger placeholder="Select type" />
                 <SelectContent>
                   <SelectItem value="ALL_STUDENT" index={0}>All Students</SelectItem>
@@ -110,7 +101,7 @@ export function FridayForm({
             {form.type === 'PATHWAY_SPECIFIC' && (
               <div className="space-y-2">
                 <Label>Pathway</Label>
-                <Select value={form.pathway} onValueChange={(v: string) => setForm({ ...form, pathway: v })}>
+                <Select value={form.pathway} onValueChange={(pathway) => setForm({ ...form, pathway: pathway as Pathway })}>
                   <SelectTrigger placeholder="Select pathway" />
                   <SelectContent>
                     {PATHWAY_OPTIONS.map((p, i) => (

@@ -190,7 +190,7 @@ committing it, set `SCHEDULE_OCR_IMAGE` to its absolute path and run Vitest on
 `apps/web/src/lib/schedule-ocr-image.test.ts`. The opt-in test uses the same
 installed English model as the browser; the image stays local.
 
-Run `direnv exec . bun run test:schedule-ocr` for offline parser, geometry, and
+Run `direnv exec . bun run --filter web test -- schedule-ocr` for offline parser, geometry, and
 draft-preservation tests. They also run as part of `bun run test`. Set
 `SCHEDULE_OCR_INTEGRATION=1` to add real Tesseract runs against synthetic
 desktop, phone-card, cropped, PNG, JPEG, and WebP schedules, with either lunch

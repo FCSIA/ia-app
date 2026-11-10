@@ -7,7 +7,8 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { getViewerContext } from "../clubs/access";
 import { pushDevicePlatformValidator, type PushDevicePlatform } from "../validators";
 import { nextActivity } from "./_activity";
-import { appRoom, heartbeatIntervalMs, isDoNotDisturb, presence } from "./_status";
+import { PRESENCE_HEARTBEAT_INTERVAL_MS } from "../../../shared/limits";
+import { appRoom, isDoNotDisturb, presence } from "./_status";
 
 // Presence is read for at most this many people per club page.
 const maxClubPeople = 300;
@@ -49,7 +50,7 @@ export const heartbeat = mutation({
       appRoom,
       user._id,
       args.sessionId,
-      heartbeatIntervalMs,
+      PRESENCE_HEARTBEAT_INTERVAL_MS,
     );
     await recordActivity(ctx, user._id, args.platform, Date.now());
     return { sessionToken };

@@ -1,3 +1,5 @@
+import { userSummary } from "../summaries";
+import { SCHEDULE_FRIENDS_HREF } from "../../../shared/routes";
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -6,13 +8,13 @@ import {
   scheduleWeekdayValidator,
   schoolDayBlockKindValidator,
 } from "../validators";
-import { toCourseSummary } from "../courses/_lib";
-import type { AppRole } from "../../lib/roles";
+import { courseSummaryValidator, toCourseSummary } from "../courses/_lib";
+import { isAdmin, isStudent } from "../../../shared/roles";
 import { deliverNotification as deliverNotificationRow } from "../notifications/delivery";
+import { SCHOOL_WEEKDAYS, resolveLunchPeriod } from "../../../shared/school-time";
 import {
   findLunchCourseConflict,
   normalizeDayBlocks,
-  resolveLunchPeriod,
   type DayBlockInput,
 } from "./dayResolver";
 
@@ -32,11 +34,8 @@ export const studentScheduleEntryValidator = v.object({
   periodNumber: v.number(),
   className: v.string(),
   courseId: v.union(v.id("courses"), v.null()),
-  course: v.union(v.any(), v.null()), // using any here to avoid circular dependency if possible, or just repeat the summary validator
+  course: v.union(courseSummaryValidator, v.null()),
 });
-
-// Since I want to avoid circular dependencies and keep it simple, I'll repeat or refer to courses/lib
-// Actually, I can just use the validator from courses/lib if I import it correctly.
 
 export const studentScheduleRecordValidator = v.object({
   id: v.id("studentSchedules"),
@@ -170,16 +169,6 @@ export type ScheduleSearchFriendshipStatus =
   | "FRIENDS";
 export type ScheduleSearchResult = Infer<typeof scheduleSearchResultValidator>;
 
-const STUDENT_ROLES: AppRole[] = ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"];
-const ADMIN_ROLES: AppRole[] = ["ADMIN", "SUPER_ADMIN"];
-const SCHEDULE_WEEKDAYS: ScheduleEntryInput["weekday"][] = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-];
-
 export const MAX_SCHEDULE_CLASS_NAME_CHARACTERS = 160;
 
 export function normalizeScheduleClassName(value: string) {
@@ -193,18 +182,14 @@ export function normalizeScheduleClassName(value: string) {
   return normalized;
 }
 
-export function isStudentUser(user: Doc<"users">) {
-  return user.roles.some((role) => STUDENT_ROLES.includes(role));
-}
-
 export function requireStudentUser(user: Doc<"users">) {
-  if (!isStudentUser(user)) {
+  if (!isStudent(user)) {
     throw new ConvexError("Only student accounts can manage a personal schedule.");
   }
 }
 
 export function requireScheduleAdmin(user: Doc<"users">) {
-  if (!user.roles.some((role) => ADMIN_ROLES.includes(role))) {
+  if (!isAdmin(user)) {
     throw new ConvexError("Forbidden");
   }
 }
@@ -230,14 +215,9 @@ export function serializeBlock(block: Doc<"schoolDayBlocks">) {
 // Checked against the validator so a field added here without updating
 // `scheduleFriendUserValidator` fails typecheck instead of failing at runtime.
 export function serializeUser(user: Doc<"users">) {
-  return {
-    _id: user._id,
-    uniqueId: user.uniqueId,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    preferredName: user.preferredName,
-    isDeveloper: user.isDeveloper,
-  } satisfies Infer<typeof scheduleFriendUserValidator>;
+  return userSummary(user, "uniqueId", "isDeveloper") satisfies Infer<
+    typeof scheduleFriendUserValidator
+  >;
 }
 
 export async function getScheduleForUser(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
@@ -359,14 +339,14 @@ export function normalizeScheduleEntries(entries: ScheduleEntryInput[]) {
 
   return Array.from({ length: 8 }, (_, index) => index + 1).flatMap(
     (periodNumber) => {
-      const canonicalEntry = SCHEDULE_WEEKDAYS.map((weekday) =>
+      const canonicalEntry = SCHOOL_WEEKDAYS.map((weekday) =>
         normalizedEntries.find(
           (entry) =>
             entry.weekday === weekday && entry.periodNumber === periodNumber,
         ),
       ).find((entry) => entry !== undefined);
       return canonicalEntry
-        ? SCHEDULE_WEEKDAYS.map((weekday) => ({ ...canonicalEntry, weekday }))
+        ? SCHOOL_WEEKDAYS.map((weekday) => ({ ...canonicalEntry, weekday }))
         : [];
     },
   );
@@ -486,7 +466,7 @@ export async function deliverNotification(
     category: "FRIEND_REQUEST",
     title: input.title,
     body: input.body,
-    href: input.href ?? "/schedule?tab=friends",
+    href: input.href ?? SCHEDULE_FRIENDS_HREF,
     subject: { kind: "friendRequest", friendshipId: input.friendshipId },
   });
 }
@@ -496,7 +476,7 @@ export async function getStudentTarget(
   userId: Id<"users">,
 ) {
   const user = await ctx.db.get(userId);
-  if (!user || !user.isActive || !isStudentUser(user)) {
+  if (!user || !user.isActive || !isStudent(user)) {
     throw new ConvexError("Student not found.");
   }
   return user;

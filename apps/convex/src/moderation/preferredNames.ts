@@ -1,3 +1,4 @@
+import { PROFILE_HREF } from "../../../shared/routes";
 import { ConvexError } from "convex/values";
 import { Filter } from "glin-profanity";
 import type { Doc } from "../_generated/dataModel";
@@ -70,7 +71,7 @@ export async function moderatePreferredName(
     category: "CONTENT_MODERATED",
     title: "Preferred name filtered for language",
     body: "Your preferred name was masked. Choose another name in Profile & Settings.",
-    href: "/profile",
+    href: PROFILE_HREF,
     subject: { kind: "moderationReport", reportId },
   });
   return result.masked;

@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { displayName, regularName, MAX_PREFERRED_NAME_LENGTH } from '~/apps/shared/user-name';
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -5,15 +6,13 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useAction, useConvex, useMutation } from "@/lib/convex-react";
 import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
-import { authClient } from "@/lib/auth-client";
 import {
   discardPreparedAvatarImage,
   prepareAvatarImage,
   type PreparedAvatarImage,
 } from "@/lib/avatar-image";
-import { unregisterStoredNativePushToken } from "@/lib/push";
-import { clearOfflineCache } from "@/lib/offline-cache";
 import { useCurrentUser } from "@/lib/auth";
+import { signOut } from "@/lib/sign-out";
 import { Screen } from "@/components/screen";
 import { OnboardingEntry } from '@/features/onboarding/onboarding';
 import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
@@ -22,6 +21,7 @@ import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import { MIN_PASSWORD_LENGTH } from "~/apps/shared/limits";
 
 export default function ProfileScreen() {
   const user = useCurrentUser();
@@ -70,7 +70,7 @@ export default function ProfileScreen() {
       });
       showToast({ title: "Photo updated", tone: "success" });
     } catch (error) {
-      showToast({ title: "Photo wasn't updated", body: error instanceof Error ? error.message : "Try again.", tone: "warning" });
+      showToast({ title: "Photo wasn't updated", body: errorMessage(error), tone: "warning" });
     } finally {
       discardPreparedAvatarImage(prepared);
       setAvatarUploading(false);
@@ -85,17 +85,14 @@ export default function ProfileScreen() {
         text: "Sign out",
         style: "destructive",
         onPress: async () => {
-          await unregisterStoredNativePushToken(convex).catch(() => {});
-          await authClient.signOut();
-          await clearOfflineCache();
-          router.replace("/login");
+          await signOut(convex);
         },
       },
     ]);
   }
 
   async function submitPassword() {
-    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < MIN_PASSWORD_LENGTH || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,
@@ -105,7 +102,7 @@ export default function ProfileScreen() {
       setPasswordOpen(false);
       showToast({ title: "Password updated", tone: "success" });
     } catch (error) {
-      showToast({ title: "Password", body: error instanceof Error ? error.message : "Try again." });
+      showToast({ title: "Password", body: errorMessage(error) });
     }
   }
 
@@ -139,7 +136,7 @@ export default function ProfileScreen() {
             title="Remove"
             variant="ghost"
             disabled={avatarUploading}
-            onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Photo removed", tone: "success" })).catch((error) => showToast({ title: "Photo wasn't removed", body: error instanceof Error ? error.message : "Try again.", tone: "warning" }))}
+            onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Photo removed", tone: "success" })).catch((error) => showToast({ title: "Photo wasn't removed", body: errorMessage(error), tone: "warning" }))}
           />
         ) : null}
       </View>
@@ -147,8 +144,8 @@ export default function ProfileScreen() {
       {user ? <PreferredNameSettings key={`${user._id}:${user.preferredName ?? ''}`} preferredName={user.preferredName} /> : null}
 
       <Section title="Preferences">
-        <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme" as never)} />
-        <ListRow icon={Bell} title="Notifications" subtitle="Push alerts and topics" onPress={() => router.push("/settings/notifications" as never)} />
+        <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme")} />
+        <ListRow icon={Bell} title="Notifications" subtitle="Push alerts and topics" onPress={() => router.push("/settings/notifications")} />
       </Section>
 
       <Section title="Security">
@@ -166,7 +163,7 @@ export default function ProfileScreen() {
       </Section>
 
       {__DEV__ ? (
-        <Txt variant="caption" tone="muted" style={{ textAlign: "center" }} onLongPress={() => router.push("/design-system" as never)}>
+        <Txt variant="caption" tone="muted" style={{ textAlign: "center" }} onLongPress={() => router.push("/design-system")}>
           IA Mobile v0.0.1
         </Txt>
       ) : null}
@@ -181,7 +178,7 @@ export default function ProfileScreen() {
           label="New password"
           value={passwordForm.newPassword}
           onChangeText={(newPassword) => setPasswordForm((current) => ({ ...current, newPassword }))}
-          hint="At least 6 characters"
+          hint={`At least ${MIN_PASSWORD_LENGTH} characters`}
         />
         <PasswordField
           label="Confirm password"
@@ -190,7 +187,7 @@ export default function ProfileScreen() {
         />
         <Button
           title="Change password"
-          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword}
+          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < MIN_PASSWORD_LENGTH || passwordForm.newPassword !== passwordForm.confirmPassword}
           onPress={() => void submitPassword()}
         />
       </Sheet>
@@ -212,7 +209,7 @@ function PreferredNameSettings({ preferredName }: { preferredName?: string }) {
       setValue(updated.preferredName ?? "");
       showToast({ title: updated.preferredName ? "Preferred name saved" : "Using your regular name", tone: "success" });
     } catch (error) {
-      showToast({ title: "Name wasn't saved", body: error instanceof Error ? error.message : "Try again.", tone: "warning" });
+      showToast({ title: "Name wasn't saved", body: errorMessage(error), tone: "warning" });
     } finally {
       setSaving(false);
     }

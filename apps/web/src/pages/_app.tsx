@@ -1,3 +1,4 @@
+import { THEME_NAMES } from "~/packages/design-tokens/src/color";
 import type { AppProps } from "next/app";
 import { Work_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
@@ -15,15 +16,7 @@ export default function PagesApp({ Component, pageProps }: AppProps) {
       attribute="class"
       defaultTheme="dark"
       enableSystem
-      themes={[
-        "light",
-        "dark",
-        "system",
-        "high-contrast",
-        "bubblegum",
-        "bubblegum-dark",
-        "custom",
-      ]}
+      themes={[...THEME_NAMES, "system"]}
     >
       <ThemeFavicon />
       <div className={`${workSans.variable} font-sans`}>

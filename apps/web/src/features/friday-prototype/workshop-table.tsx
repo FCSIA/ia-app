@@ -5,6 +5,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { SCHOOL_TIME_ZONE } from "~/apps/shared/school-time";
 import { timeRange, type Workshop } from "./sample-data";
 import {
   Table,
@@ -79,8 +80,8 @@ export function exportCalendar(items: Workshop[], date: string) {
       "BEGIN:VEVENT",
       `UID:prototype-${date}-${item.id}@ia.local`,
       "DTSTAMP:20261021T120000Z",
-      `DTSTART;TZID=America/New_York:${stamp(item.start)}`,
-      `DTEND;TZID=America/New_York:${stamp(item.end)}`,
+      `DTSTART;TZID=${SCHOOL_TIME_ZONE}:${stamp(item.start)}`,
+      `DTEND;TZID=${SCHOOL_TIME_ZONE}:${stamp(item.end)}`,
       `SUMMARY:${item.title}`,
       `LOCATION:${item.room}`,
       "END:VEVENT",

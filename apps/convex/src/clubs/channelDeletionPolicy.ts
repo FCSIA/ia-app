@@ -21,7 +21,3 @@ export function hasMoreChannelMessageCleanup(
     (size) => size > CHANNEL_MESSAGE_CLEANUP_BATCH_SIZE,
   );
 }
-
-export function shouldRetainDeletedChannelMessage(hasReplies: boolean) {
-  return hasReplies;
-}

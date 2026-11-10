@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
+import { STORAGE_KEYS } from "./storage-keys";
 
-const key = "ia_gif_autoplay";
+const key = STORAGE_KEYS.gifAutoplay;
 let autoplay = false;
 let loaded = false;
 let revision = 0;

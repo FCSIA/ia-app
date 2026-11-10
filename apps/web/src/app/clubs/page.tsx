@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
 import { CommunityPrototype } from '@/features/friday-prototype/community-workspace';
 
@@ -9,7 +10,8 @@ import { useMutation, useQuery } from "@/lib/convex-react";
 import { ArrowRight, Check, Shield, UsersRound, X } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { AppShell } from "@/components/layout/AppShell";
-import { ClubListRow, ClubMark } from "@/components/clubs/club-list-row";
+import { ClubListRow } from "@/components/clubs/club-list-row";
+import { ClubMark } from "@/components/media/club-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardGroup } from "@/components/ui/card";
@@ -22,7 +24,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { cn } from "@/lib/utils";

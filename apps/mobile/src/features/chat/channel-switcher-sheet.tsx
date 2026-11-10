@@ -2,10 +2,8 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Check } from "lucide-react-native";
 import { PressableScale, Sheet, Skeleton, Txt } from "@/components/ui";
-import {
-  channelVisibilityIcon,
-  type ChannelVisibility,
-} from "@/features/clubs/channel-visibility";
+import type { ChannelVisibility } from "~/apps/shared/chat/protocol";
+import { channelVisibilityIcon } from "@/features/clubs/channel-visibility";
 import { useQuery } from "@/lib/convex-react";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";

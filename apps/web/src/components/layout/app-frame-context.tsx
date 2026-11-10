@@ -1,20 +1,20 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
+import { createContext, use, useSyncExternalStore, type ReactNode } from "react";
 import type { AppPageNavigation } from "@/components/layout/app-shell-navigation";
 import type { MobileNavigationSwipeOptions } from "@/components/layout/use-mobile-navigation-swipe";
 
 export type AppFrameRouteConfig = {
   pathname: string;
-  scheduleTab?: string;
-  scheduleSection?: string;
+  /** The nav link this page is showing, for routes that own several nav entries. */
+  activeHref?: string;
   pageNavigation?: AppPageNavigation;
   viewportMode: "document" | "visual";
   onMobileSwipeRight?: () => void;
   mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
 };
 
-export type AppFrameActions = {
+type AppFrameActions = {
   register: (owner: symbol, config: AppFrameRouteConfig) => void;
   unregister: (owner: symbol) => void;
   openGlobalSearch: () => void;
@@ -43,4 +43,12 @@ export function useAppFrameActions() {
   const actions = use(AppFrameActionsContext);
   if (!actions) throw new Error("AppShell must be rendered inside AppFrame");
   return actions;
+}
+
+const subscribeNever = () => () => {};
+const detectMacLikePlatform = () => /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+
+/** Whether the search shortcut is shown as ⌘K; false until the browser is known. */
+export function useCommandHint() {
+  return useSyncExternalStore(subscribeNever, detectMacLikePlatform, () => false);
 }

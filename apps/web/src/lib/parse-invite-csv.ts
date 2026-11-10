@@ -1,28 +1,10 @@
-/** Parse club invite CSV files client-side (unique ID column). */
-export function normalizeHeader(key: string) {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
+import { readCsvTable } from './csv';
 
-export function normalizeCsvRow(row: Record<string, unknown>) {
-  const normalized: Record<string, string> = {};
-  for (const [key, value] of Object.entries(row)) {
-    normalized[normalizeHeader(key)] =
-      typeof value === 'string' ? value.trim() : String(value ?? '').trim();
-  }
-  return normalized;
-}
+const IDENTIFIER_COLUMNS = ['uniqueid', 'studentid', 'userid', 'recipientid', 'id'];
 
-export function extractInviteIdentifier(row: Record<string, string>) {
-  const candidates = [
-    'uniqueid',
-    'studentid',
-    'userid',
-    'recipientid',
-    'id',
-  ];
-
-  for (const candidate of candidates) {
-    const value = row[candidate];
+function extractInviteIdentifier(row: Record<string, string>) {
+  for (const column of IDENTIFIER_COLUMNS) {
+    const value = row[column];
     if (value) return value;
   }
 
@@ -31,49 +13,19 @@ export function extractInviteIdentifier(row: Record<string, string>) {
   return undefined;
 }
 
-/** Minimal RFC4180-style CSV parse for invite uploads. */
+/** The student or user ID in each row of an invite upload. */
 export function parseInviteCsv(text: string): string[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return [];
-
-  const headers = splitCsvLine(lines[0]).map((cell) => normalizeHeader(cell));
+  const { headers, rows } = readCsvTable(text);
   const identifiers: string[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const cells = splitCsvLine(lines[i]);
-    const row: Record<string, unknown> = {};
+  for (const { cells } of rows) {
+    const row: Record<string, string> = {};
     headers.forEach((header, index) => {
       row[header] = cells[index] ?? '';
     });
-    const identifier = extractInviteIdentifier(normalizeCsvRow(row));
+    const identifier = extractInviteIdentifier(row);
     if (identifier) identifiers.push(identifier);
   }
 
   return identifiers;
-}
-
-function splitCsvLine(line: string) {
-  const cells: string[] = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (char === ',' && !inQuotes) {
-      cells.push(current.trim());
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-
-  cells.push(current.trim());
-  return cells;
 }

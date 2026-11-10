@@ -1,4 +1,5 @@
 import { displayName } from '../../../shared/user-name';
+import { isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
@@ -10,7 +11,6 @@ import {
   deliverNotification,
   getFriendshipBetween,
   getStudentTarget,
-  isStudentUser,
   requireStudentUser,
   serializeUser,
   scheduleFriendUserValidator,
@@ -163,7 +163,7 @@ export const preview = query({
       return { state: "SELF" as const, mode: link.mode, owner: serializeUser(user) };
     }
     const owner = await ctx.db.get(link.ownerId);
-    if (!owner || !owner.isActive || !isStudentUser(owner)) {
+    if (!owner || !owner.isActive || !isStudent(owner)) {
       return { state: "INVALID" as const, mode: null, owner: null };
     }
     return { state: "ACTIVE" as const, mode: link.mode, owner: serializeUser(owner) };

@@ -22,11 +22,14 @@ import { collectFeedbackMetadata } from '@/lib/feedback-metadata';
 import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
 import { meaningfulReviewNote } from '~/apps/shared/feedback-status';
 import { cn } from '@/lib/utils';
+import {
+  MAX_FEEDBACK_IMAGES,
+  MAX_FEEDBACK_IMAGE_BYTES,
+  STAGED_IMAGE_MIME_TYPES,
+} from '~/apps/shared/limits';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
-const MAX_FEEDBACK_IMAGES = 3;
-const MAX_FEEDBACK_IMAGE_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp']);
+const ACCEPTED_IMAGE_TYPES = new Set<string>(STAGED_IMAGE_MIME_TYPES);
 
 type SelectedImage = {
   file: File;

@@ -16,7 +16,8 @@ import {
   summarizeModeration,
   summarizePushHealth,
 } from "./_summaries";
-import { schoolDayBounds, schoolDayKey, shiftDay } from "./_days";
+import { schoolDateKey, schoolDayBounds } from "../../../shared/school-time";
+import { shiftDay } from "./_days";
 import type { AnalyticsData, AnnouncementsData } from "./validators";
 
 const day = 24 * 60 * 60 * 1000;
@@ -58,7 +59,7 @@ export const runDaily = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const today = schoolDayKey(Date.now());
+    const today = schoolDateKey(Date.now());
     const yesterday = shiftDay(today, -1);
     await ctx.scheduler.runAfter(0, internal.analytics.rollups.capturePushHealth, { day: today });
     for (const kind of ["notifications", "chat", "moderation", "engagement"] as const) {
@@ -345,7 +346,7 @@ export const countFlexFriday = internalMutation({
         .take(1_000);
       workshops.push({ capacity: workshop.capacity, registered: registrations.length });
     }
-    await upsertRow(ctx, schoolDayKey(friday.date), true, {
+    await upsertRow(ctx, schoolDateKey(friday.date), true, {
       kind: "flex",
       ...summarizeFlex(friday._id, workshops),
     });

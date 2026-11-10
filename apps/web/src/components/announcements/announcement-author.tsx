@@ -2,11 +2,10 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import { displayName } from '~/apps/shared/user-name';
-import type { UserProfilePerson } from '@/components/users/user-profile-avatar';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { cn } from '@/lib/utils';
-import { UserProfileDialog } from '@/components/clubs/user-profile-dialog';
+import { UserProfileDialog, type UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { useCurrentUser } from '@/lib/auth';
 import { Pressable } from '@/components/ui/pressable';
 

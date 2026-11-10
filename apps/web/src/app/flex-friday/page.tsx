@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useMutation } from '@/lib/convex-react';
+import { api } from '~/apps/convex/src/_generated/api';
+import { FRIDAY_PROTOTYPE_ENABLED } from '@/lib/friday-prototype';
+import { routePath } from '@/lib/routes';
 import { CalendarDays, History } from 'lucide-react';
 import { FridayPrototype } from '@/features/friday-prototype/friday-workspace';
 import { AppShell } from '@/components/layout/AppShell';
@@ -8,11 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
-// Hooks
 import { useFlexFriday } from './_hooks/useFlexFriday';
 import { useFlexActions } from './_hooks/useFlexActions';
 
-// Components
 import { FridayHeader } from './_components/FridayHeader';
 import { SessionPanel } from './_components/SessionPanel';
 import { WorkshopPanel } from './_components/WorkshopPanel';
@@ -22,15 +24,16 @@ import { SessionForm } from './_components/SessionForm';
 import { WorkshopForm } from './_components/WorkshopForm';
 import { AttendancePanel } from './_components/AttendancePanel';
 
-// Constants & Types
 import { EMPTY_SESSION_FORM, EMPTY_WORKSHOP_FORM } from './_constants';
 import type {
+  FlexSession,
+  FlexWorkshop,
   SessionForm as SessionFormType,
   WorkshopForm as WorkshopFormType,
 } from './_types';
 
 export default function FlexFridayPage() {
-  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_FRIDAY_PROTOTYPE === 'true') {
+  if (FRIDAY_PROTOTYPE_ENABLED) {
     return <FridayPrototype />;
   }
   return <FlexFridayWorkspace />;
@@ -39,13 +42,15 @@ export default function FlexFridayPage() {
 function FlexFridayWorkspace() {
   const { toast } = useToast();
 
-  // Data & State Hook
   const flex = useFlexFriday();
-
-  // Actions & Mutations Hook
   const actions = useFlexActions();
+  const deleteSession = useMutation(api.flexFriday.sessions.remove);
+  const deleteWorkshop = useMutation(api.flexFriday.workshops.remove);
+  const register = useMutation(api.flexFriday.registration.register);
+  const unregister = useMutation(api.flexFriday.registration.unregister);
+  const markAttendance = useMutation(api.flexFriday.attendance.markAttendance);
+  const clearAttendance = useMutation(api.flexFriday.attendance.clearAttendance);
 
-  // Form State
   const [fridayFormOpen, setFridayFormOpen] = useState(false);
 
   const [sessionFormOpen, setSessionFormOpen] = useState(false);
@@ -60,14 +65,13 @@ function FlexFridayWorkspace() {
   const [workshopForm, setWorkshopForm] =
     useState<WorkshopFormType>(EMPTY_WORKSHOP_FORM);
 
-  // ── Session Handlers ──────────────────────────────────────────────────────
   const openNewSessionForm = () => {
     setEditingSessionId(null);
     setSessionForm(EMPTY_SESSION_FORM);
     setSessionFormOpen(true);
   };
 
-  const openEditSessionForm = (s: any) => {
+  const openEditSessionForm = (s: FlexSession) => {
     setEditingSessionId(s._id);
     setSessionForm({
       title: s.title ?? '',
@@ -79,20 +83,19 @@ function FlexFridayWorkspace() {
     setSessionFormOpen(true);
   };
 
-  const handleDeleteSession = (s: any) => {
+  const handleDeleteSession = (s: FlexSession) => {
     if (
       confirm(
         `Delete session "${s.title}"? This will fail if workshops are attached.`,
       )
     ) {
       void actions.runAction('session-delete', async () => {
-        await actions.mutations.deleteSession({ sessionId: s._id });
+        await deleteSession({ sessionId: s._id });
         toast({ title: 'Session deleted' });
       });
     }
   };
 
-  // ── Workshop Handlers ─────────────────────────────────────────────────────
   const openNewWorkshopForm = () => {
     setEditingWorkshopId(null);
     setWorkshopForm({
@@ -102,7 +105,7 @@ function FlexFridayWorkspace() {
     setWorkshopFormOpen(true);
   };
 
-  const openEditWorkshopForm = (w: any) => {
+  const openEditWorkshopForm = (w: FlexWorkshop) => {
     setEditingWorkshopId(w._id);
     setWorkshopForm({
       title: w.title ?? '',
@@ -110,7 +113,7 @@ function FlexFridayWorkspace() {
       location: w.location ?? '',
       capacity: w.capacity != null ? String(w.capacity) : '',
       sessionIds: Array.isArray(w.linkedSessions)
-        ? w.linkedSessions.map((s: any) => s._id)
+        ? w.linkedSessions.map((s) => s._id)
         : [],
       targetGrades: Array.isArray(w.targetGrades) ? w.targetGrades : [],
       targetMajorPathways: Array.isArray(w.targetMajorPathways)
@@ -123,10 +126,10 @@ function FlexFridayWorkspace() {
     setWorkshopFormOpen(true);
   };
 
-  const handleDeleteWorkshop = (w: any) => {
+  const handleDeleteWorkshop = (w: FlexWorkshop) => {
     if (confirm(`Delete workshop "${w.title}"?`)) {
       void actions.runAction('workshop-delete', async () => {
-        await actions.mutations.deleteWorkshop({ workshopId: w._id });
+        await deleteWorkshop({ workshopId: w._id });
         toast({ title: 'Workshop deleted' });
       });
     }
@@ -134,7 +137,7 @@ function FlexFridayWorkspace() {
 
   const handleRegister = (workshopId: string) => {
     void actions.runAction('register', async () => {
-      await actions.mutations.register({
+      await register({
         workshopId: workshopId as Id<'flexWorkshops'>,
       });
       toast({ title: 'Registered successfully' });
@@ -143,7 +146,7 @@ function FlexFridayWorkspace() {
 
   const handleUnregister = (workshopId: string) => {
     void actions.runAction('unregister', async () => {
-      await actions.mutations.unregister({
+      await unregister({
         workshopId: workshopId as Id<'flexWorkshops'>,
       });
       toast({ title: 'Registration removed' });
@@ -155,7 +158,7 @@ function FlexFridayWorkspace() {
       pageNavigation={
         flex.canViewActivity
           ? {
-              parentHref: '/flex-friday',
+              parentHref: routePath('flex-friday'),
               label: 'Flex Friday',
               items: [
                 {
@@ -209,7 +212,6 @@ function FlexFridayWorkspace() {
             aria-label="Flex Friday schedule"
             className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12"
           >
-            {/* Sessions Column */}
             <div className="lg:col-span-4">
               <SessionPanel
                 sessions={flex.sessions}
@@ -225,7 +227,6 @@ function FlexFridayWorkspace() {
               />
             </div>
 
-            {/* Workshops Column */}
             <div className="flex flex-col gap-4 lg:col-span-8">
               <WorkshopPanel
                 workshops={flex.workshops}
@@ -249,7 +250,6 @@ function FlexFridayWorkspace() {
                 actionPending={actions.actionPending}
               />
 
-              {/* Attendance Overlay/Panel */}
               {flex.attendanceWorkshopId && (
                 <div>
                   <AttendancePanel
@@ -258,7 +258,7 @@ function FlexFridayWorkspace() {
                     error={null}
                     onMark={(studentId, status) =>
                       void actions.runAction('attendance-mark', () =>
-                        actions.mutations.markAttendance({
+                        markAttendance({
                           workshopId: flex.attendanceWorkshopId!,
                           studentId,
                           status,
@@ -267,7 +267,7 @@ function FlexFridayWorkspace() {
                     }
                     onClear={(studentId) =>
                       void actions.runAction('attendance-clear', () =>
-                        actions.mutations.clearAttendance({
+                        clearAttendance({
                           workshopId: flex.attendanceWorkshopId!,
                           studentId,
                         }),
@@ -282,12 +282,10 @@ function FlexFridayWorkspace() {
         )}
       </div>
 
-      {/* Modal Forms */}
       <FridayForm
         isOpen={fridayFormOpen}
         onOpenChange={setFridayFormOpen}
         runAction={actions.runAction}
-        mutations={actions.mutations}
       />
 
       {flex.selectedFriday ? (
@@ -299,7 +297,6 @@ function FlexFridayWorkspace() {
             initialData={sessionForm}
             flexFridayId={flex.selectedFriday._id}
             runAction={actions.runAction}
-            mutations={actions.mutations}
           />
 
           <WorkshopForm
@@ -310,7 +307,6 @@ function FlexFridayWorkspace() {
             sessions={flex.sessions}
             flexFridayId={flex.selectedFriday._id}
             runAction={actions.runAction}
-            mutations={actions.mutations}
           />
         </>
       ) : null}

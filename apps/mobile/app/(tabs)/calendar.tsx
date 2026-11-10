@@ -1,14 +1,15 @@
+import { hasAnyRole, STUDENT_ROLES } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import { router, useLocalSearchParams } from 'expo-router';
-import { RefreshControl, View } from "react-native";
+import { usePullToRefresh } from "@/lib/use-pull-to-refresh";
+import { View } from "react-native";
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
 import { SegmentedControl } from "@/components/ui";
 import { EventsView } from "@/features/calendar/EventsView";
 import { MonthView } from "@/features/calendar/MonthView";
 import { MyWeekView } from "@/features/calendar/MyWeekView";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
-import { useTheme } from "@/lib/theme";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { spacing } from "@/lib/tokens";
 
 type CalendarSegment = "week" | "month" | "events";
@@ -17,12 +18,11 @@ type NonStudentCalendarSegment = Exclude<CalendarSegment, "week">;
 export default function CalendarScreen() {
   const { view } = useLocalSearchParams<{ view?: string }>();
   const user = useLiveCurrentUser();
-  const isStudent = hasRole(user ?? null, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
   const [studentSegment, setStudentSegment] = useState<CalendarSegment>("week");
   const [nonStudentSegment, setNonStudentSegment] =
     useState<NonStudentCalendarSegment>("month");
-  const [refreshing, setRefreshing] = useState(false);
-  const { color } = useTheme();
+  const refreshControl = usePullToRefresh();
   const segment = isStudent ? studentSegment : nonStudentSegment;
   useEffect(() => {
     if (view === 'schedule' && isStudent) {
@@ -34,16 +34,7 @@ export default function CalendarScreen() {
   return (
     <Screen
       header={<AppHeader title="Calendar" />}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          tintColor={color("primary")}
-          onRefresh={() => {
-            setRefreshing(true);
-            setTimeout(() => setRefreshing(false), 550);
-          }}
-        />
-      }
+      refreshControl={refreshControl}
     >
       <View
         style={{

@@ -1,8 +1,11 @@
 'use client';
 
+import { isPathway, PATHWAY_ABBREVIATIONS } from '~/apps/shared/labels';
+import { isPrivilegedAccount } from '~/apps/shared/roles';
 import { displayName } from '~/apps/shared/user-name';
 
 import { forwardRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button, type ButtonProps } from '@/components/ui/button';
@@ -25,8 +28,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { formatPathwayLabel, formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
+import { formatPathwayLabel, formatRoleLabel } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
+import { useAdminUsers } from '../../_hooks/use-admin-users';
 import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
@@ -36,20 +40,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 const ROLE_BADGE_LIMIT = 2;
 const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Major', 'Minor', 'Roles', 'Status', 'Actions'] as const;
 
-function roleLabel(role: string) {
-  return formatRoleLabel(role);
-}
-
 function PathwayCell({ value }: { value?: string | null }) {
   const label = formatPathwayLabel(value);
-  const codes: Record<string, string> = {
-    INFORMATION_TECHNOLOGY: 'IT',
-    HEALTH_SCIENCE: 'HS',
-    ENGINEERING: 'ENG',
-  };
   return (
     <abbr title={label} aria-label={label} className="block truncate no-underline">
-      {(value && codes[value]) || label}
+      {(value && isPathway(value) && PATHWAY_ABBREVIATIONS[value]) || label}
     </abbr>
   );
 }
@@ -57,7 +52,7 @@ function PathwayCell({ value }: { value?: string | null }) {
 function RoleSummary({ roles }: { roles: string[] }) {
   const visibleRoles = roles.slice(0, ROLE_BADGE_LIMIT);
   const overflowCount = roles.length - visibleRoles.length;
-  const fullLabel = roles.map(roleLabel).join(', ') || 'No roles';
+  const fullLabel = roles.map(formatRoleLabel).join(', ') || 'No roles';
 
   return (
     <div
@@ -67,7 +62,7 @@ function RoleSummary({ roles }: { roles: string[] }) {
     >
       {visibleRoles.map((role) => (
         <Badge key={role} variant="solid" size="sm">
-          {roleLabel(role)}
+          {formatRoleLabel(role)}
         </Badge>
       ))}
       {overflowCount > 0 ? (
@@ -215,16 +210,13 @@ function UserTableSection({
   users,
   totalCount,
   isLoading,
-  errorMessage,
-  onRetry,
   search,
   onSearchChange,
   userRoleGroup,
   onUserRoleGroupChange,
   currentUserId,
   isSuperAdmin,
-  canDeactivate,
-  canResetPassword,
+  canManage,
   canDeleteUsers,
   onDeactivate,
   onActivate,
@@ -246,16 +238,13 @@ function UserTableSection({
   users: AdminUserRecord[];
   totalCount?: number;
   isLoading: boolean;
-  errorMessage?: string;
-  onRetry: () => void;
   search: string;
   onSearchChange: (value: string) => void;
   userRoleGroup: AdminUserRoleGroup;
   onUserRoleGroupChange: (value: AdminUserRoleGroup) => void;
   currentUserId?: string;
   isSuperAdmin: boolean;
-  canDeactivate: (user: AdminUserRecord) => boolean;
-  canResetPassword: (user: AdminUserRecord) => boolean;
+  canManage: (user: AdminUserRecord) => boolean;
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
@@ -321,21 +310,21 @@ function UserTableSection({
         onAssignRoles={onAssignRoles}
         onSetDeveloper={onSetDeveloper}
       />
-      {canResetPassword(user) && user._id !== currentUserId ? (
+      {canManage(user) && user._id !== currentUserId ? (
         <ResetPasswordAction
           user={user}
           disabled={isResetPasswordPending}
           onResetPassword={onResetPassword}
         />
       ) : null}
-      {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
+      {isSuperAdmin && user._id !== currentUserId && !isPrivilegedAccount(user) ? (
         <ImpersonateUserAction
           userId={user._id}
           name={displayName(user)}
         />
       ) : null}
       {user.isActive ? (
-        canDeactivate(user) && user._id !== currentUserId ? (
+        canManage(user) && user._id !== currentUserId ? (
           <IconActionButton
             label={`Deactivate ${displayName(user)}`}
             onClick={() => onDeactivate(user._id)}
@@ -474,9 +463,7 @@ function UserTableSection({
           <TableBody>
             {isLoading ? Array.from({ length: 8 }, (_, index) => (
               <TableRow key={index}><TableCell colSpan={8}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
-            )) : errorMessage ? (
-              <TableRow><TableCell colSpan={8}><AdminNotice tone="danger" title="Could not load users." message={errorMessage} actionLabel="Try again" onAction={onRetry} /></TableCell></TableRow>
-            ) : users.length === 0 ? (
+            )) : users.length === 0 ? (
               <TableRow><TableCell colSpan={8}><AdminNotice message={emptyMessage} /></TableCell></TableRow>
             ) : users.map((user, index) => (
               <TableRow key={user._id} index={index} className="group">
@@ -504,7 +491,7 @@ function UserTableSection({
                   <PathwayCell value={user.minor} />
                 </TableCell>
                 <TableCell className="min-w-0 overflow-hidden">
-                  <RoleSummary roles={getUserRoles(user)} />
+                  <RoleSummary roles={(user.roles ?? [])} />
                 </TableCell>
                 <TableCell>
                   <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
@@ -526,8 +513,6 @@ function UserTableSection({
           <div className="space-y-2">
             {[0, 1, 2, 3].map((index) => <Skeleton key={index} className="h-16 w-full" />)}
           </div>
-        ) : errorMessage ? (
-          <AdminNotice tone="danger" title="Could not load users." message={errorMessage} actionLabel="Try again" onAction={onRetry} />
         ) : users.length === 0 ? (
           <AdminNotice message={emptyMessage} />
         ) : (
@@ -547,7 +532,7 @@ function UserTableSection({
                     </span>
                   </CardTitle>
                   <CardDescription className="truncate">
-                    {[user.gradeLevel ? `Grade ${user.gradeLevel}` : null, getUserRoles(user).map(roleLabel).join(', ')]
+                    {[user.gradeLevel ? `Grade ${user.gradeLevel}` : null, (user.roles ?? []).map(formatRoleLabel).join(', ')]
                       .filter(Boolean)
                       .join(' · ')}
                   </CardDescription>
@@ -565,102 +550,46 @@ function UserTableSection({
   );
 }
 
-export function AdminUsersTab({
-  search,
-  onSearchChange,
-  userRoleGroup,
-  onUserRoleGroupChange,
-  isSuperAdmin,
-  users,
-  totalCount,
-  status,
-  canLoadPrevious,
-  pageIndex,
-  loadNextPage,
-  loadPreviousPage,
-  isUsersLoading,
-  isUsersError,
-  usersError,
-  refetchUsers,
-  selectedUserRoleMeta,
-  currentUserId,
-  canDeactivate,
-  canResetPassword,
-  canDeleteUsers,
-  onDeactivate,
-  onActivate,
-  onResetPassword,
-  onDeleteUsers,
-  isDeleteUsersPending,
-  isResetPasswordPending,
-  isAssignRolesPending,
-  onAssignRoles,
-  onSetDeveloper,
-}: {
-  search: string;
-  onSearchChange: (value: string) => void;
-  userRoleGroup: AdminUserRoleGroup;
-  onUserRoleGroupChange: (value: AdminUserRoleGroup) => void;
-  isSuperAdmin: boolean;
-  users: AdminUserRecord[];
-  totalCount?: number;
-  status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
-  canLoadPrevious: boolean;
-  pageIndex: number;
-  loadNextPage: () => void;
-  loadPreviousPage: () => void;
-  isUsersLoading: boolean;
-  isUsersError: boolean;
-  usersError: unknown;
-  refetchUsers: () => void;
-  selectedUserRoleMeta: typeof USER_ROLE_GROUP_META[AdminUserRoleGroup];
-  currentUserId?: string;
-  canDeactivate: (user: AdminUserRecord) => boolean;
-  canResetPassword: (user: AdminUserRecord) => boolean;
-  canDeleteUsers: boolean;
-  onDeactivate: (userId: string) => void;
-  onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
-  isDeleteUsersPending: boolean;
-  isResetPasswordPending: boolean;
-  isAssignRolesPending: boolean;
-  onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
-  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
-}) {
+export function AdminUsersTab() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams?.get('search') ?? '';
+  const initialUserId = searchParams?.get('user') ?? '';
+  return <AdminUsersTabContent key={`${initialSearch}:${initialUserId}`} initialSearch={initialSearch} initialUserId={initialUserId} />;
+}
+
+function AdminUsersTabContent({ initialSearch, initialUserId }: { initialSearch: string; initialUserId: string }) {
+  const users = useAdminUsers(initialSearch, initialUserId);
+
   return (
-          <UserTableSection
-            key={`${userRoleGroup}:${pageIndex}`}
-            title={selectedUserRoleMeta.label}
-            emptyMessage={selectedUserRoleMeta.emptyMessage}
-            users={users}
-            totalCount={totalCount}
-            isLoading={isUsersLoading}
-            errorMessage={isUsersError ? (usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.' : undefined}
-            onRetry={refetchUsers}
-            search={search}
-            onSearchChange={onSearchChange}
-            userRoleGroup={userRoleGroup}
-            onUserRoleGroupChange={onUserRoleGroupChange}
-            currentUserId={currentUserId}
-            isSuperAdmin={isSuperAdmin}
-            canDeactivate={canDeactivate}
-            canResetPassword={canResetPassword}
-            canDeleteUsers={canDeleteUsers}
-            onDeactivate={onDeactivate}
-            onActivate={onActivate}
-            onResetPassword={onResetPassword}
-            onDeleteUsers={onDeleteUsers}
-            isDeleteUsersPending={isDeleteUsersPending}
-            isResetPasswordPending={isResetPasswordPending}
-            isAssignRolesPending={isAssignRolesPending}
-            onSetDeveloper={onSetDeveloper}
-            onAssignRoles={onAssignRoles}
-            status={status}
-            canLoadPrevious={canLoadPrevious}
-            pageIndex={pageIndex}
-            loadNextPage={loadNextPage}
-            loadPreviousPage={loadPreviousPage}
-          />
+    <UserTableSection
+      key={`${users.userRoleGroup}:${users.pageIndex}`}
+      title={users.selectedUserRoleMeta.label}
+      emptyMessage={users.selectedUserRoleMeta.emptyMessage}
+      users={users.users}
+      totalCount={users.totalCount}
+      isLoading={users.isUsersLoading}
+      search={users.search}
+      onSearchChange={users.setSearch}
+      userRoleGroup={users.userRoleGroup}
+      onUserRoleGroupChange={users.setUserRoleGroup}
+      currentUserId={users.currentUserId}
+      isSuperAdmin={users.isSuperAdmin}
+      canManage={users.canManage}
+      canDeleteUsers={users.canDeleteUsers}
+      onDeactivate={users.onDeactivate}
+      onActivate={users.onActivate}
+      onResetPassword={users.onResetPassword}
+      onDeleteUsers={users.onDeleteUsers}
+      isDeleteUsersPending={users.isDeleteUsersPending}
+      isResetPasswordPending={users.isResetPasswordPending}
+      isAssignRolesPending={users.isAssignRolesPending}
+      onSetDeveloper={users.onSetDeveloper}
+      onAssignRoles={users.onAssignRoles}
+      status={users.status}
+      canLoadPrevious={users.canLoadPrevious}
+      pageIndex={users.pageIndex}
+      loadNextPage={users.loadNextPage}
+      loadPreviousPage={users.loadPreviousPage}
+    />
   );
 }

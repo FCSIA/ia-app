@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
-import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notification-category-options';
+import { NOTIFICATION_CATEGORY_DETAILS } from '~/apps/shared/notifications';
 import { AdminMetric, AdminNotice, AdminPanel } from '../admin-ui';
 import {
   BarListChart,
@@ -22,6 +22,7 @@ import {
   formatRatio,
   useStableValue,
 } from './analytics-charts';
+import { schoolDateKey } from '~/apps/shared/school-time';
 
 const sections = [
   { id: 'engagement', label: 'Engagement' },
@@ -40,10 +41,6 @@ const flexLookaheadDays = 21;
 
 const platformLabels = { ios: 'iPhone & iPad', android: 'Android', desktop: 'Computers' } as const;
 
-function schoolToday() {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
-}
-
 function shiftDay(day: string, days: number) {
   const date = new Date(`${day}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -61,7 +58,7 @@ function rangeFor(days: number, today: string): Range {
 export function AnalyticsTab() {
   const [section, setSection] = useState<SectionId>('engagement');
   const [days, setDays] = useState<(typeof rangeOptions)[number]>(30);
-  const today = useMemo(() => schoolToday(), []);
+  const today = useMemo(() => schoolDateKey(), []);
   const range = useMemo(() => rangeFor(days, today), [days, today]);
   const sectionIndex = sections.findIndex((item) => item.id === section);
 

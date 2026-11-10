@@ -12,12 +12,13 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Avatar, PressableScale, Sheet, Txt, useToast } from "@/components/ui";
+import { CHAT_REACTIONS } from "~/apps/shared/chat/protocol";
 import { messageGifUrls } from "~/apps/shared/chat/gifs";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
+import { hasPendingAction, pendingKey } from "./pending-actions";
 import {
   normalizeReactionSummaries,
-  QUICK_REACTIONS,
 } from "./quick-reactions";
 import {
   chatAuthorName,
@@ -72,8 +73,7 @@ export function MessageActionsSheet({
   const canPinMessage = mine || canPinMessages;
   const canDeleteMessage = mine || canModerateMessages;
   const disabled =
-    !!message &&
-    [...pendingActions].some((key) => key.includes(message._id));
+    !!message && hasPendingAction(pendingActions, message._id);
   const reactions = normalizeReactionSummaries(message?.reactions ?? []);
 
   return (
@@ -134,13 +134,13 @@ export function MessageActionsSheet({
                 gap: spacing.xs,
               }}
             >
-              {QUICK_REACTIONS.map(({ payload, label, glyph }) => {
+              {CHAT_REACTIONS.map(({ token: payload, name: label, glyph }) => {
                 const reaction = reactions.find(
                   (entry) => entry.emoji === payload,
                 );
                 const selected = !!reaction?.reactedByCurrentUser;
                 const reactionPending =
-                  pendingActions.has(`reaction:${message._id}:${payload}`);
+                  pendingActions.has(pendingKey.reaction(message._id, payload));
                 return (
                   <PressableScale
                     key={payload}

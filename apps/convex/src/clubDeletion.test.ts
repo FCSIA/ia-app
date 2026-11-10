@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "./_generated/api";
 import schema from "./schema";
+import { insertUser } from "../test/fixtures";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -16,22 +17,7 @@ describe("permanent club deletion", () => {
 
     const ids = await t.run(async (ctx) => {
       const now = 1;
-      const userId = await ctx.db.insert("users", {
-        uniqueId: "ADMIN001",
-        firstName: "Super",
-        lastName: "Admin",
-        roles: ["SUPER_ADMIN"],
-        isStudent: false,
-        isTeacherStaff: true,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: "Super Admin ADMIN001",
-        createdAt: now,
-        updatedAt: now,
-      });
+      const userId = await insertUser(ctx, { uniqueId: "ADMIN001", firstName: "Super", lastName: "Admin", roles: ["SUPER_ADMIN"], createdAt: now, updatedAt: now });
       const clubId = await ctx.db.insert("clubs", {
         name: "Delete Me",
         joinPolicy: "OPEN",

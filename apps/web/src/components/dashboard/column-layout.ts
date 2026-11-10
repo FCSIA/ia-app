@@ -65,7 +65,7 @@ export function canImproveBalance(
 }
 
 /** Interleave desktop columns into a useful mobile reading order. */
-export function withColumns(
+function withColumns(
   state: DashboardArrangement,
   columns: string[][],
 ): DashboardArrangement {

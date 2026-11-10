@@ -14,8 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import type { RosterCsvPreview } from '../_lib/roster-csv';
-import type { AdministratorImportResult } from '../_lib/types';
+import { useAdministratorRosterImport } from '../_hooks/use-admin-administrator-roster-import';
 import { AdminPanel } from './admin-ui';
 import {
   RosterCsvHelp,
@@ -23,33 +22,21 @@ import {
   RosterImportResult,
 } from './roster-csv-review';
 
-export function AdministratorRosterTab({
-  fileInputKey,
-  onFileChange,
-  canImport,
-  isImporting,
-  onImport,
-  lastImport,
-  onExportGeneratedPasswords,
-  fileName,
-  isReading,
-  fileError,
-  clearFile,
-  preview,
-}: {
-  fileInputKey: number;
-  onFileChange: (file: File | null) => void;
-  canImport: boolean;
-  isImporting: boolean;
-  onImport: () => void;
-  lastImport: AdministratorImportResult | null;
-  onExportGeneratedPasswords: () => void;
-  fileName?: string;
-  isReading: boolean;
-  fileError?: string;
-  clearFile: () => void;
-  preview: RosterCsvPreview<unknown> | null;
-}) {
+export function AdministratorRosterTab() {
+  const {
+    fileInputKey,
+    setFile,
+    canImport,
+    isImporting,
+    onImport,
+    lastImport,
+    onExportGeneratedPasswords,
+    fileName,
+    isReading,
+    fileError,
+    clearFile,
+    preview,
+  } = useAdministratorRosterImport();
   const count = preview?.rows.length ?? 0;
   const accountLabel = count === 1 ? 'administrator' : 'administrators';
   return (
@@ -64,7 +51,7 @@ export function AdministratorRosterTab({
             key={fileInputKey}
             accept=".csv,text/csv"
             label={fileName ? 'Replace CSV' : 'Choose CSV'}
-            onFileSelect={onFileChange}
+            onFileSelect={setFile}
             disabled={isImporting}
             loading={isReading}
           />

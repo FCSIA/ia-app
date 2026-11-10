@@ -4,7 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { Clock, Lock, X } from 'lucide-react';
-import { formatCountdown, schoolYearLabel } from '@/lib/wrapped';
+import { formatCountdown } from '@/lib/wrapped';
+import { schoolYearLabel } from '~/apps/shared/school-time';
 import { prefersReducedMotion, startAmbientLoops } from '../../_lib/motion';
 
 // Only the dashed rings rotate; a solid circle spinning about its own centre
@@ -112,7 +113,6 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
       ref={rootRef}
       className="fixed inset-0 z-[60] overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white"
     >
-      {/* Decorative orbiting rings */}
       <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <svg viewBox="0 0 800 800" className="locked-star w-[200%] max-w-none opacity-25">
           <circle cx="400" cy="400" r="320" stroke="white" strokeWidth="1" fill="none" strokeDasharray="4 12" />
@@ -125,7 +125,6 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
         </svg>
       </div>
 
-      {/* Starfield */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         {stars.map((star, i) => (
           <span
@@ -136,7 +135,6 @@ export function LockedScreen({ opensAt, schoolYear }: LockedScreenProps) {
         ))}
       </div>
 
-      {/* Close */}
       <Link
         href="/"
         aria-label="Close"

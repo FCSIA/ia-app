@@ -12,7 +12,6 @@ interface NavigationControlsProps {
 export function NavigationControls({ go, atStart, atEnd }: NavigationControlsProps) {
   return (
     <>
-      {/* Close button */}
       <Link
         href="/"
         aria-label="Close"

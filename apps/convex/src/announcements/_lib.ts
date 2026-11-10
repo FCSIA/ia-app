@@ -1,3 +1,9 @@
+import {
+  ANNOUNCEMENT_AUTHOR_ROLES,
+  ANNOUNCEMENT_REVIEWER_ROLES,
+  hasAnyRole,
+  isStaff,
+} from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -46,25 +52,15 @@ export const commentWithAuthorValidator = schema.doc("comments").extend({
 });
 
 export function isElevatedReader(roles: string[]) {
-  return (
-    roles.includes("ADMIN") ||
-    roles.includes("SUPER_ADMIN") ||
-    roles.includes("TEACHER")
-  );
+  return hasAnyRole(roles, ANNOUNCEMENT_REVIEWER_ROLES);
 }
 
 export function canPostGlobalAnnouncements(roles: readonly string[]) {
-  return roles.some((role) =>
-    ["ADMIN", "SUPER_ADMIN", "TEACHER", "STUDENT_ADMIN"].includes(role),
-  );
+  return hasAnyRole(roles, ANNOUNCEMENT_AUTHOR_ROLES);
 }
 
 export function isGlobalAnnouncementApprover(roles: string[]) {
-  return (
-    roles.includes("ADMIN") ||
-    roles.includes("SUPER_ADMIN") ||
-    roles.includes("SUPPORT_STAFF")
-  );
+  return isStaff(roles);
 }
 
 export async function canApproveAnnouncement(

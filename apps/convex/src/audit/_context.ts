@@ -1,3 +1,12 @@
+import {
+  ADMIN_MODERATION_HREF,
+  FLEX_FRIDAY_HREF,
+  adminUserHref,
+  announcementHref,
+  clubChannelHref,
+  clubHref,
+  eventHref,
+} from "../../../shared/routes";
 import type { Doc, Id, TableNames } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
 import { auditLabel, auditRecordLabel } from '../../../shared/audit';
@@ -136,17 +145,17 @@ export function auditContextResolver(ctx: QueryCtx) {
     const clubId = typeof meta.clubId === 'string' ? meta.clubId : typeof entity?.clubId === 'string' ? entity.clubId : null;
     const channelId = typeof meta.channelId === 'string' ? meta.channelId : typeof entity?.channelId === 'string' ? entity.channelId : null;
     const href = (targetTable: TableNames | undefined, id: string): string | null => {
-      if (targetTable === 'users') return `/admin/users?user=${id}`;
-      if (targetTable === 'clubs') return `/clubs/${id}`;
-      if (targetTable === 'clubChannels' && clubId) return `/clubs/${clubId}/channels/${id}`;
-      if (targetTable === 'clubChannelMessages' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?message=${id}`;
-      if (targetTable === 'clubWhiteboards' && clubId && channelId) return `/clubs/${clubId}/channels/${channelId}?view=whiteboard&board=${id}`;
-      if (targetTable === 'announcements') return `/announcements/${id}`;
-      if (targetTable === 'comments' && typeof (meta.announcementId ?? entity?.announcementId) === 'string') return `/announcements/${meta.announcementId ?? entity?.announcementId}`;
-      if (targetTable === 'events') return `/events/${id}`;
-      if (targetTable?.startsWith('flex')) return '/flex-friday';
-      if (targetTable === 'moderationReports' || targetTable === 'moderationKeywordRules') return '/admin/moderation';
-      if (targetTable?.startsWith('club') && clubId) return `/clubs/${clubId}`;
+      if (targetTable === 'users') return adminUserHref(id);
+      if (targetTable === 'clubs') return clubHref(id);
+      if (targetTable === 'clubChannels' && clubId) return clubChannelHref(clubId, id);
+      if (targetTable === 'clubChannelMessages' && clubId && channelId) return clubChannelHref(clubId, channelId, { messageId: id });
+      if (targetTable === 'clubWhiteboards' && clubId && channelId) return clubChannelHref(clubId, channelId, { whiteboardId: id });
+      if (targetTable === 'announcements') return announcementHref(id);
+      if (targetTable === 'comments' && typeof (meta.announcementId ?? entity?.announcementId) === 'string') return announcementHref(String(meta.announcementId ?? entity?.announcementId));
+      if (targetTable === 'events') return eventHref(id);
+      if (targetTable?.startsWith('flex')) return FLEX_FRIDAY_HREF;
+      if (targetTable === 'moderationReports' || targetTable === 'moderationKeywordRules') return ADMIN_MODERATION_HREF;
+      if (targetTable?.startsWith('club') && clubId) return clubHref(clubId);
       return null;
     };
     const links = [

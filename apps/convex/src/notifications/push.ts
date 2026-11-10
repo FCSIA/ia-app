@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { notificationCategoryValidator } from "../validators";
 import { activatePushPreferences } from "./_pushActivation";
@@ -12,13 +12,27 @@ import {
 } from "./_pushDevices";
 import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwnership";
 import { subscriptionsToRetire } from "./_subscriptionPruning";
-import { isDoNotDisturb } from "../presence/_status";
 import {
-  preferenceAllowsPush,
-  resolveNotificationPreference,
-} from "./deliveryPreference";
+  disablePushTarget,
+  publicVapidKey,
+  pushIsAllowed,
+  pushSendResultFields,
+  recordPushSendResult,
+  webPushTargetValidator,
+} from "./_pushTransport";
 
 const subscriptionPageSize = 20;
+
+function toWebPushTarget(subscription: Doc<"notificationPushSubscriptions">) {
+  return {
+    id: subscription._id,
+    endpoint: subscription.endpoint,
+    keys: {
+      p256dh: subscription.p256dh,
+      auth: subscription.auth,
+    },
+  };
+}
 
 const pushSubscriptionValidator = v.object({
   endpoint: v.string(),
@@ -36,10 +50,6 @@ const pushSubscriptionPublicValidator = v.object({
   failureCount: v.number(),
   lastError: v.optional(v.string()),
 });
-
-function publicVapidKey() {
-  return process.env.VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null;
-}
 
 export const getPublicKey = query({
   args: {},
@@ -88,7 +98,7 @@ async function retireSurplusSubscriptions(
     .take(100);
 
   for (const row of subscriptionsToRetire(rows)) {
-    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+    await disablePushTarget(ctx, row._id, now);
   }
 }
 
@@ -106,7 +116,7 @@ async function retireReplacedDeviceSubscriptions(
     .take(maxSubscriptionsPerDevice);
 
   for (const row of subscriptionsReplacedOnDevice(rows, currentEndpoint)) {
-    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+    await disablePushTarget(ctx, row._id, now);
   }
 }
 
@@ -123,7 +133,7 @@ async function releaseEndpointFromOtherAccounts(
     .take(maxAccountsPerPushTarget);
 
   for (const row of rowsHeldByOtherAccounts(rows, userId)) {
-    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+    await disablePushTarget(ctx, row._id, now);
   }
 }
 
@@ -199,10 +209,7 @@ export const removeSubscription = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        enabled: false,
-        updatedAt: Date.now(),
-      });
+      await disablePushTarget(ctx, existing._id);
     }
 
     return { success: true };
@@ -215,60 +222,27 @@ export const getDeliveryTargets = internalQuery({
     category: notificationCategoryValidator,
     scopeKey: v.string(),
   },
-  returns: v.array(v.object({
-    id: v.id("notificationPushSubscriptions"),
-    endpoint: v.string(),
-    keys: v.object({
-      p256dh: v.string(),
-      auth: v.string(),
-    }),
-  })),
+  returns: v.array(webPushTargetValidator),
   handler: async (ctx, args) => {
-    // Do Not Disturb holds push only; the delivery still reaches the inbox.
-    if (await isDoNotDisturb(ctx, args.userId)) return [];
-
-    const preference = await resolveNotificationPreference(ctx, args);
-
-    if (!preferenceAllowsPush(preference)) {
-      return [];
-    }
+    if (!(await pushIsAllowed(ctx, args))) return [];
 
     const subscriptions = await ctx.db
       .query("notificationPushSubscriptions")
       .withIndex("by_userId_and_enabled", (q) => q.eq("userId", args.userId).eq("enabled", true))
       .take(subscriptionPageSize);
 
-    return subscriptions.map((subscription) => ({
-      id: subscription._id,
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.p256dh,
-        auth: subscription.auth,
-      },
-    }));
+    return subscriptions.map(toWebPushTarget);
   },
 });
 
 export const recordSendResult = internalMutation({
   args: {
     id: v.id("notificationPushSubscriptions"),
-    success: v.boolean(),
-    error: v.optional(v.string()),
-    deactivate: v.optional(v.boolean()),
+    ...pushSendResultFields,
   },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const row = await ctx.db.get(args.id);
-    if (!row) return null;
-
-    await ctx.db.patch(args.id, {
-      enabled: args.deactivate ? false : row.enabled,
-      failureCount: args.success ? 0 : row.failureCount + 1,
-      lastError: args.success ? undefined : args.error?.slice(0, 500),
-      lastSentAt: args.success ? Date.now() : row.lastSentAt,
-      updatedAt: Date.now(),
-    });
-
+  handler: async (ctx, { id, ...result }) => {
+    await recordPushSendResult(ctx, id, result);
     return null;
   },
 });
@@ -289,27 +263,13 @@ export const getTestTargets = internalQuery({
   args: {
     userId: v.id("users"),
   },
-  returns: v.array(v.object({
-    id: v.id("notificationPushSubscriptions"),
-    endpoint: v.string(),
-    keys: v.object({
-      p256dh: v.string(),
-      auth: v.string(),
-    }),
-  })),
+  returns: v.array(webPushTargetValidator),
   handler: async (ctx, args) => {
     const subscriptions = await ctx.db
       .query("notificationPushSubscriptions")
       .withIndex("by_userId_and_enabled", (q) => q.eq("userId", args.userId).eq("enabled", true))
       .take(subscriptionPageSize);
 
-    return subscriptions.map((subscription) => ({
-      id: subscription._id,
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.p256dh,
-        auth: subscription.auth,
-      },
-    }));
+    return subscriptions.map(toWebPushTarget);
   },
 });

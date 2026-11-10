@@ -1,16 +1,9 @@
+import { isStudent } from "../../../shared/roles";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { canAssignFlexStudents } from "./permissions";
-
-function isStudent(user: { roles: string[] }) {
-  return (
-    user.roles.includes("STUDENT") ||
-    user.roles.includes("STUDENT_LEADER") ||
-    user.roles.includes("STUDENT_ADMIN")
-  );
-}
 
 function isActiveStudent(user: { isActive: boolean; isStudent: boolean; roles: string[] }) {
   return user.isActive && (user.isStudent || isStudent(user));

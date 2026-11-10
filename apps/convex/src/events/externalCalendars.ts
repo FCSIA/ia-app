@@ -1,5 +1,7 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 
@@ -60,7 +62,9 @@ export const listMine = query({
       .query("externalCalendarSubscriptions")
       .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", user._id))
       .take(MAX_SUBSCRIPTIONS_PER_USER);
-    return subscriptions.map(({ feedUrl: _feedUrl, userId: _userId, ...subscription }) => subscription);
+    return subscriptions.map(
+      ({ feedUrl: _feedUrl, userId: _userId, eventsHash: _eventsHash, ...subscription }) => subscription,
+    );
   },
 });
 
@@ -156,6 +160,7 @@ export const getSubscription = internalQuery({
       status: v.union(v.literal("ACTIVE"), v.literal("ERROR")),
       lastSyncedAt: v.optional(v.number()),
       lastError: v.optional(v.string()),
+      eventsHash: v.optional(v.string()),
       nextRefreshAt: v.number(),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -169,45 +174,114 @@ export const getSubscription = internalQuery({
   },
 });
 
+const importedEventValidator = v.object({
+  externalId: v.string(),
+  title: v.string(),
+  description: v.optional(v.string()),
+  location: v.optional(v.string()),
+  startAt: v.number(),
+  endAt: v.optional(v.number()),
+  allDay: v.optional(v.boolean()),
+  url: v.optional(v.string()),
+});
+
+type ImportedEvent = Infer<typeof importedEventValidator>;
+type StoredEventFields = Omit<
+  Doc<"externalCalendarEvents">,
+  "_id" | "_creationTime" | "subscriptionId" | "externalId" | "lastSeenAt"
+>;
+
+const EXTERNAL_EVENT_TAGS = ["external"];
+
+function storedEventFields(event: ImportedEvent, userId: Id<"users">): StoredEventFields {
+  // List every field, including absent optional ones, so a patch also clears
+  // a description or location the feed no longer provides.
+  return {
+    userId,
+    title: event.title,
+    description: event.description,
+    location: event.location,
+    startAt: event.startAt,
+    endAt: event.endAt,
+    allDay: event.allDay,
+    url: event.url,
+    tags: EXTERNAL_EVENT_TAGS,
+  };
+}
+
+function storedEventMatches(row: Doc<"externalCalendarEvents">, fields: StoredEventFields) {
+  return (
+    row.userId === fields.userId &&
+    row.title === fields.title &&
+    row.description === fields.description &&
+    row.location === fields.location &&
+    row.startAt === fields.startAt &&
+    row.endAt === fields.endAt &&
+    row.allDay === fields.allDay &&
+    row.url === fields.url &&
+    row.tags.length === fields.tags.length &&
+    row.tags.every((tag, index) => tag === fields.tags[index])
+  );
+}
+
+/**
+ * Brings a subscription's stored events in line with its feed, writing only
+ * rows that were added, changed or removed. Rewriting every row on every
+ * refresh dominated database I/O and woke every calendar view of the owner.
+ */
+async function reconcileEvents(
+  ctx: MutationCtx,
+  subscription: Doc<"externalCalendarSubscriptions">,
+  events: ImportedEvent[],
+  now: number,
+) {
+  const incoming = new Map(events.map((event) => [event.externalId, event]));
+  const matched = new Set<string>();
+  for await (const row of ctx.db
+    .query("externalCalendarEvents")
+    .withIndex("by_subscriptionId_and_externalId", (q) => q.eq("subscriptionId", subscription._id))) {
+    const event = incoming.get(row.externalId);
+    if (!event || matched.has(row.externalId)) {
+      await ctx.db.delete(row._id);
+      continue;
+    }
+    matched.add(row.externalId);
+    const fields = storedEventFields(event, subscription.userId);
+    if (!storedEventMatches(row, fields)) {
+      await ctx.db.patch(row._id, { ...fields, lastSeenAt: now });
+    }
+  }
+  for (const event of incoming.values()) {
+    if (matched.has(event.externalId)) continue;
+    await ctx.db.insert("externalCalendarEvents", {
+      subscriptionId: subscription._id,
+      externalId: event.externalId,
+      ...storedEventFields(event, subscription.userId),
+      lastSeenAt: now,
+    });
+  }
+}
+
 export const applySync = internalMutation({
   args: {
     subscriptionId: v.id("externalCalendarSubscriptions"),
-    events: v.array(v.object({
-      externalId: v.string(),
-      title: v.string(),
-      description: v.optional(v.string()),
-      location: v.optional(v.string()),
-      startAt: v.number(),
-      endAt: v.optional(v.number()),
-      allDay: v.optional(v.boolean()),
-      url: v.optional(v.string()),
-    })),
+    events: v.array(importedEventValidator),
+    // Optional so a refresh already in flight during a deploy still applies.
+    eventsHash: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const subscription = await ctx.db.get(args.subscriptionId);
     if (!subscription) return null;
     const now = Date.now();
-    for (const event of args.events) {
-      const existing = await ctx.db
-        .query("externalCalendarEvents")
-        .withIndex("by_subscriptionId_and_externalId", (q) =>
-          q.eq("subscriptionId", subscription._id).eq("externalId", event.externalId),
-        )
-        .unique();
-      const values = { ...event, allDay: event.allDay, userId: subscription.userId, tags: ["external"], lastSeenAt: now };
-      if (existing) await ctx.db.patch(existing._id, values);
-      else await ctx.db.insert("externalCalendarEvents", { subscriptionId: subscription._id, ...values });
-    }
-    const stale = await ctx.db
-      .query("externalCalendarEvents")
-      .withIndex("by_subscriptionId_and_lastSeenAt", (q) => q.eq("subscriptionId", subscription._id).lt("lastSeenAt", now))
-      .take(500);
-    for (const event of stale) await ctx.db.delete(event._id);
+    const unchanged =
+      args.eventsHash !== undefined && args.eventsHash === subscription.eventsHash;
+    if (!unchanged) await reconcileEvents(ctx, subscription, args.events, now);
     await ctx.db.patch(subscription._id, {
       status: "ACTIVE",
       lastSyncedAt: now,
       lastError: undefined,
+      eventsHash: args.eventsHash,
       nextRefreshAt: now + REFRESH_INTERVAL_MS,
       updatedAt: now,
     });

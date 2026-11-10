@@ -8,11 +8,24 @@ tags: [feature, onboarding, students]
 
 ## Experience
 
-Students get five checklist steps: confirm profile details, add classes and lunch,
-review schedule privacy, choose notifications, and find school essentials.
-Student leaders and student admins also get these steps. Staff get profile,
-notifications, and role-appropriate school essentials. Mixed roles retain the
-student tasks. Password reset remains an enforced prerequisite outside this
+Steps depend on role ([issue #218](https://github.com/FCSIA/ia-app/issues/218)).
+Every account with setup confirms its profile, chooses notifications, and finds
+school essentials. Role steps add to that:
+
+| Role | Added steps |
+| --- | --- |
+| Student, student leader | Classes and lunch, schedule privacy |
+| Student admin | Student steps, Flex Friday sessions |
+| Teacher | Flex Friday sessions |
+| Sponsor | Club management |
+| Support staff | Admin tools |
+| Admin | Admin tools, school day (calendar dates and bell templates) |
+| Super admin | No setup; this overrides every other role |
+
+Mixed roles get the deduplicated union in one stable order (profile, schedule,
+privacy, notifications, Flex Friday, clubs, admin tools, school day,
+essentials). Students and staff get different essentials copy; mixed roles get
+the student copy. Password reset remains an enforced prerequisite outside this
 dismissible checklist.
 
 The checklist links to existing profile, schedule, and notification editors.
@@ -47,16 +60,28 @@ decision; this change includes no backfill.
 
 One indexed, private `onboardingStates` record per authenticated user stores the
 version, bounded decisions, and start/defer/finish timestamps. Clients never send
-an acting user ID. Missing state means available or invited; only Start enrolls
-the user. Later durably hides the launcher until the user resumes from Profile.
+an acting user ID. Missing state means available or invited; opening setup from Home or Profile
+starts it. Later durably hides the reminder until the user resumes from Profile.
 Resume preserves progress. Closing the dialog does not defer setup.
 
 Finish requires every applicable task to be completed or skipped, snapshots
-inferred work, and latches completion. Schedule edits, role changes, another
-device, and future checklist versions do not reopen completed setup. Repeated
-Start, Later, and Finish calls are safe. Account deletion removes the private
-setup record. Deactivated, unauthenticated, and reset-required accounts cannot
-mutate setup.
+inferred work, records the checklist version, and latches completion.
+
+Role and version changes follow one policy:
+
+- Decisions are kept for every step ever resolved, even after a role change makes
+  the step inapplicable. Restoring the role reuses the decision.
+- Before Finish, a gained role adds pending steps and a lost role removes its
+  steps from the count.
+- After Finish, setup never reopens: no Home reminder or launcher returns. Steps
+  added later by a role or checklist version show as To do under **Set up IA
+  App** in Profile and can be resolved there. They never receive credit they did
+  not earn, except from saved work (schedule or notification preferences).
+- Version 2 added the staff role steps. Version 1 completions stay complete.
+
+Repeated Start, Later, and Finish calls are safe. Account deletion removes the
+private setup record. Deactivated, unauthenticated, reset-required, and super
+admin accounts cannot mutate setup.
 
 Save failures retain the current progress and provide retry. Expected schedule
 validation has actionable copy; unexpected failures never display request IDs
@@ -65,18 +90,23 @@ settings controls after explicit student action.
 
 ## UI contract and review
 
-The owner approved the floating Button + Progress launcher and Dialog checklist,
-with native equivalents, in the November 2 implementation session. Material
-visuals still need final design-owner review.
+The November 2 session approved a floating Button + Progress launcher and a
+Dialog checklist. Feedback in [issue #213](https://github.com/FCSIA/ia-app/issues/213)
+said the dialog showed too much at once, so web now works like this:
 
-- Actions use the existing Fluid Button; checklist destinations use its link composition.
-- The shared Dialog owns focus trapping, dismissal, safe-area geometry, scrolling,
-  and reduced-motion behavior. Feature code adds content and layout.
-- The local Radix Progress adapter now forwards its value to the accessible root.
-- Native uses the existing Button, Progress, Sheet, and typography components.
-  The launcher clears the tab bar/safe area and hides during keyboard use and chat.
-- Profile keeps a permanent entry to resume or review setup. Completing or
-  deferring setup removes the floating launcher.
+- Home shows a fixed Fluid `Banner` (the same composition as the notification
+  notice) instead of a launcher on every page: **Set up IA App** with Get
+  started, or **Finish setting up IA App · N of M done** with Continue.
+  Dismissing it is Later. While it is shown, the notification notice waits.
+- The Dialog lists steps in a Fluid `AccordionGroup` with one step open. Opening
+  setup expands the first pending step. Resolving a step collapses it to its
+  title with Done or Skipped and opens the next pending step. Copy is one short
+  sentence per step.
+- Native keeps its floating launcher. Its Sheet uses the same one-open-step
+  checklist with the native `Collapsible`.
+- Profile keeps a permanent entry to resume or review setup.
+
+Material visuals still need design-owner review.
 
 Research consulted the Fluid component index and live rendered/Code/API examples
 at [Button](https://www.fluidfunctionalism.com/docs/button) and

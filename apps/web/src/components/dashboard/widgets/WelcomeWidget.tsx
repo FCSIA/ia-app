@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAnyRole, STUDENT_ROLES } from "~/apps/shared/roles";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { addDays, startOfDay } from "date-fns";
@@ -7,15 +8,13 @@ import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@/lib/convex-react";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { FunctionReturnType } from "convex/server";
-import { parseTimeToMinutes } from "@/components/schedule/schedule-utils";
-import { formatSchoolTime } from "@/lib/time-format";
-import { schoolDateKey } from "@/lib/school-date";
+import { clockMinutes, formatClockTime, schoolDateKey } from "~/apps/shared/school-time";
 import { calendarDate } from "@/components/calendar/calendar-date";
 import { cn } from "@/lib/utils";
-import { workshopDetailHref } from "@/app/flex-friday/_utils";
+import { workshopDetailHref } from "@/lib/routes";
 
 type Day = FunctionReturnType<typeof api.schedule.dashboard.getDay>;
 type Flex = NonNullable<
@@ -43,8 +42,7 @@ export function WelcomeWidget() {
   const [now, setNow] = useState(() => calendarDate());
   const user = useCurrentUser();
   const use24HourTime = user?.use24HourTime ?? false;
-  const isStudent =
-    !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(calendarDate()), 60_000);
@@ -75,7 +73,7 @@ export function WelcomeWidget() {
   if (!user || flex === undefined || (isStudent && today === undefined)) {
     return null;
   }
-  const fmt = (time: string) => formatSchoolTime(time, use24HourTime);
+  const fmt = (time: string) => formatClockTime(time, use24HourTime);
 
   if (
     isStudent &&
@@ -309,8 +307,8 @@ function timeline(
     key: workshop.id,
     title: workshop.title,
     location: workshop.location,
-    start: parseTimeToMinutes(workshop.startTime),
-    end: parseTimeToMinutes(workshop.endTime),
+    start: clockMinutes(workshop.startTime),
+    end: clockMinutes(workshop.endTime),
     startTime: workshop.startTime,
     endTime: workshop.endTime,
     href: workshop.href,
@@ -318,8 +316,8 @@ function timeline(
   }));
   if (includeBlocks && day) {
     for (const block of day.blocks) {
-      const start = parseTimeToMinutes(block.startTime);
-      const end = parseTimeToMinutes(block.endTime);
+      const start = clockMinutes(block.startTime);
+      const end = clockMinutes(block.endTime);
       const covered =
         !block.entry &&
         items.some(

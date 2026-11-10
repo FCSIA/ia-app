@@ -1,7 +1,8 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
+import { deleteStorageQuietly } from "../../lib/storage";
 
 export const UPLOAD_INTENT_TTL_MS = 60 * 60 * 1000;
 
@@ -15,14 +16,7 @@ export const uploadPurposeValidator = v.union(
   v.literal("VOLUNTEER_PROOF"),
 );
 
-export type UploadPurpose =
-  | "CHAT_ATTACHMENT"
-  | "CLUB_IMAGE"
-  | "USER_IMAGE"
-  | "FEEDBACK_IMAGE"
-  | "ANNOUNCEMENT_IMAGE"
-  | "SCHEDULE_OCR"
-  | "VOLUNTEER_PROOF";
+export type UploadPurpose = Infer<typeof uploadPurposeValidator>;
 
 type UploadIntentClaimInput = {
   intent: {
@@ -158,7 +152,7 @@ export const discardRejectedUpload = internalMutation({
         .withIndex("by_proofStorageId", q => q.eq("proofStorageId", args.storageId)).first();
       if (submitted) return null;
     }
-    await ctx.storage.delete(args.storageId).catch(() => {});
+    await deleteStorageQuietly(ctx, args.storageId);
     await ctx.db.delete(intent._id);
     return null;
   },

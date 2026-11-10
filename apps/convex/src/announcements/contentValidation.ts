@@ -1,10 +1,6 @@
 import { ConvexError } from "convex/values";
 
-export const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
-export const MAX_ANNOUNCEMENT_BODY_CHARACTERS = 10_000;
-export const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
-export const MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS = 500;
-export const MAX_ANNOUNCEMENT_EMBEDS = 3;
+import { MAX_ANNOUNCEMENT_EMBEDS } from "../../../shared/limits";
 
 function characterCount(value: string) {
   return Array.from(value).length;

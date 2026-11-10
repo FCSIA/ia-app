@@ -4,28 +4,14 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
 const modules = import.meta.glob("/src/**/*.*s");
 
 async function fixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", {
-      uniqueId: "RECEIPT-TEST",
-      firstName: "Receipt",
-      lastName: "Test",
-      roles: ["STUDENT"],
-      isStudent: true,
-      isTeacherStaff: false,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: "Receipt Test",
-      createdAt: 1,
-      updatedAt: 1,
-    });
+    const userId = await insertUser(ctx, { uniqueId: "RECEIPT-TEST", firstName: "Receipt", lastName: "Test", roles: ["STUDENT"] });
     const clubId = await ctx.db.insert("clubs", {
       name: "Receipt club",
       joinPolicy: "OPEN",

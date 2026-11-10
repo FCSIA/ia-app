@@ -19,8 +19,8 @@ import {
   formatAttachmentSize,
   isImageAttachment,
   isPdfAttachment,
-  type ChatAttachment,
-} from "./types";
+} from "~/apps/shared/chat/attachments";
+import type { ChatAttachment } from "./types";
 
 type AttachmentViewerProps = {
   attachment: ChatAttachment | null;

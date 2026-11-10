@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
-export type PresenceStatus = 'online' | 'doNotDisturb';
+type PresenceStatus = 'online' | 'doNotDisturb';
 
-export const presenceLabels: Record<PresenceStatus, string> = {
+const presenceLabels: Record<PresenceStatus, string> = {
   online: 'Online',
   doNotDisturb: 'Do not disturb',
 };
@@ -57,7 +57,7 @@ export function useOnlineMemberCount(userIds: readonly string[]) {
  * The dot on an avatar's corner. Do Not Disturb adds a bar, so the two read
  * apart without color; the label carries the status for assistive tech.
  */
-export function PresenceBadge({ status, className }: { status: PresenceStatus; className?: string }) {
+function PresenceBadge({ status, className }: { status: PresenceStatus; className?: string }) {
   return (
     <span
       role="img"

@@ -1,13 +1,15 @@
+import { userSummary } from "../summaries";
 import { displayName } from '../../../shared/user-name';
+import { isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { acceptedFriendIds } from "./_friends";
 import {
   getFriendshipBetween,
   getScheduleFriendshipStatus,
   getStudentTarget,
   deliverNotification,
-  isStudentUser,
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
@@ -111,30 +113,6 @@ export function findMutualProfileClasses(
     .slice(0, MAX_PROFILE_CLASSES);
 }
 
-async function acceptedFriendIds(
-  ctx: Parameters<typeof getFriendshipBetween>[0],
-  userId: Parameters<typeof getFriendshipBetween>[1],
-) {
-  const [outgoing, incoming] = await Promise.all([
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
-        q.eq("requesterId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(MAX_PROFILE_FRIENDSHIPS),
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
-        q.eq("addresseeId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(MAX_PROFILE_FRIENDSHIPS),
-  ]);
-  return new Set([
-    ...outgoing.map((friendship) => friendship.addresseeId),
-    ...incoming.map((friendship) => friendship.requesterId),
-  ]);
-}
-
 export const search = query({
   args: {
     query: v.string(),
@@ -143,7 +121,7 @@ export const search = query({
   returns: v.array(scheduleSearchResultValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !isStudentUser(user)) return [];
+    if (!user || !isStudent(user)) return [];
     const search = args.query.trim().toLowerCase();
     if (search.length < 2) return [];
     const limit = Math.min(Math.max(args.limit ?? 20, 1), 50);
@@ -179,7 +157,7 @@ export const getStatuses = query({
   returns: v.array(scheduleFriendshipStateValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !isStudentUser(user)) return [];
+    if (!user || !isStudent(user)) return [];
 
     const userIds = [...new Set(args.userIds)]
       .filter((userId) => userId !== user._id)
@@ -205,11 +183,12 @@ async function loadMutualFriends(
   personId: Parameters<typeof getFriendshipBetween>[1],
 ) {
   const [viewerFriendIds, personFriendIds] = await Promise.all([
-    acceptedFriendIds(ctx, viewerId),
-    acceptedFriendIds(ctx, personId),
+    acceptedFriendIds(ctx, viewerId, MAX_PROFILE_FRIENDSHIPS),
+    acceptedFriendIds(ctx, personId, MAX_PROFILE_FRIENDSHIPS),
   ]);
-  const mutualFriendIds = [...personFriendIds]
-    .filter((friendId) => viewerFriendIds.has(friendId))
+  const viewerFriends = new Set(viewerFriendIds);
+  const mutualFriendIds = personFriendIds
+    .filter((friendId) => viewerFriends.has(friendId))
     .slice(0, MAX_PROFILE_FRIENDSHIPS);
   return (
     await Promise.all(mutualFriendIds.map((friendId) => ctx.db.get(friendId)))
@@ -235,7 +214,7 @@ export const listMutualFriends = query({
     const viewer = await getCurrentAppUser(ctx);
     if (args.personId === viewer._id) return [];
     const person = await ctx.db.get(args.personId);
-    if (!person?.isActive || !isStudentUser(person) || !isStudentUser(viewer))
+    if (!person?.isActive || !isStudent(person) || !isStudent(viewer))
       return [];
     const friends = await loadMutualFriends(ctx, viewer._id, person._id);
     return friends.map(toClubUserRef);
@@ -250,7 +229,7 @@ export const getProfileContext = query({
     if (args.personId === viewer._id) return null;
 
     const person = await ctx.db.get(args.personId);
-    if (!person?.isActive || !isStudentUser(person) || !isStudentUser(viewer))
+    if (!person?.isActive || !isStudent(person) || !isStudent(viewer))
       return null;
 
     const friendship = await getFriendshipBetween(ctx, viewer._id, person._id);
@@ -304,10 +283,7 @@ export const getProfileContext = query({
       mutualFriends: mutualFriendUsers
         .slice(0, MAX_PROFILE_MUTUAL_FRIENDS)
         .map((friend) => ({
-          _id: friend._id,
-          firstName: friend.firstName,
-          lastName: friend.lastName,
-          preferredName: friend.preferredName,
+          ...userSummary(friend),
           avatarUrl: friend.avatarUrl ?? null,
         })),
       scheduleVisibility,

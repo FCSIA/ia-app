@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   MAX_ANNOUNCEMENT_COMMENT_CHARACTERS,
   MAX_ANNOUNCEMENT_EMBEDS,
+} from "../../../shared/limits";
+import {
   normalizeBoundedText,
   normalizeAnnouncementEmbedUrls,
   normalizeOptionalBoundedText,

@@ -4,12 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { LayoutGrid } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PushNotificationAnnouncement } from "@/components/dashboard/PushNotificationAnnouncement";
+import {
+  OnboardingBanner,
+  useSetupReminder,
+} from "@/components/onboarding/onboarding";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 
 export default function DashboardPage() {
   const [editing, setEditing] = useState(false);
+  // One notice at a time: setup already covers notifications.
+  const setupReminder = useSetupReminder();
   const customizeButton = useRef<HTMLButtonElement>(null);
   const wasEditing = useRef(false);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(
@@ -22,7 +28,13 @@ export default function DashboardPage() {
   return (
     <AppShell
       headerMode={editing ? "editing" : "default"}
-      bannerSlot={editing ? undefined : <PushNotificationAnnouncement />}
+      bannerSlot={
+        editing ? undefined : setupReminder ? (
+          <OnboardingBanner />
+        ) : (
+          <PushNotificationAnnouncement />
+        )
+      }
       headerSlot={
         <div className="flex min-w-0 flex-1 items-center justify-end">
           <div

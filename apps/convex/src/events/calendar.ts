@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { isStudent } from "../../../shared/roles";
 import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import {
@@ -6,16 +7,16 @@ import {
   getMaybeCurrentAppUser,
 } from "../../lib/currentUser";
 import { createDocLoader } from "../../lib/docLoader";
-import { schoolDaySpan, schoolTimestamp } from "../../lib/schoolTime";
-import { calendarSourceValidator } from "../validators";
+import { schoolDateParts, schoolDaySpan, schoolTimestamp } from "../../../shared/school-time";
+import { calendarSourceValidator, inviteStatusValidator } from "../validators";
 import { schema } from "../schema";
 import {
   getFriendshipBetween,
-  isStudentUser,
   requireStudentUser,
   serializeUser,
   scheduleFriendUserValidator,
 } from "../schedule/_lib";
+import { listEligibleFriendsOf } from "../schedule/_friends";
 import {
   canRespondToCalendarInvite,
   canShareCalendarEntryWithFriend,
@@ -31,21 +32,25 @@ const calendarEntryOutputValidator = schema.doc("calendarEntries").extend({
   inviteId: v.optional(v.id("calendarInvites")),
   sharedBy: v.optional(scheduleFriendUserValidator),
 });
-const externalCalendarEntryOutputValidator = v.object({
-  _id: v.id("externalCalendarEvents"),
-  _creationTime: v.number(),
-  title: v.string(),
-  description: v.optional(v.string()),
-  location: v.optional(v.string()),
-  startAt: v.number(),
-  endAt: v.optional(v.number()),
-  allDay: v.optional(v.boolean()),
-  tags: v.array(v.string()),
-  source: v.literal("EXTERNAL"),
-  subscriptionId: v.id("externalCalendarSubscriptions"),
-  readOnly: v.literal(true),
-  url: v.optional(v.string()),
-});
+const externalCalendarEntryOutputValidator = schema
+  .doc("externalCalendarEvents")
+  .pick(
+    "_id",
+    "_creationTime",
+    "title",
+    "description",
+    "location",
+    "startAt",
+    "endAt",
+    "allDay",
+    "tags",
+    "subscriptionId",
+    "url",
+  )
+  .extend({
+    source: v.literal("EXTERNAL"),
+    readOnly: v.literal(true),
+  });
 const calendarListEntryValidator = v.union(
   calendarEntryOutputValidator,
   externalCalendarEntryOutputValidator,
@@ -60,7 +65,6 @@ export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvent
     location: entry.location,
     startAt: entry.startAt,
     endAt: entry.endAt,
-    ...(entry.allDay === undefined ? {} : { allDay: entry.allDay }),
     tags: entry.tags,
     source: "EXTERNAL" as const,
     subscriptionId: entry.subscriptionId,
@@ -73,41 +77,11 @@ export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvent
 const calendarInviteOutputValidator = v.object({
   _id: v.id("calendarInvites"),
   _creationTime: v.number(),
-  status: v.union(
-    v.literal("PENDING"),
-    v.literal("ACCEPTED"),
-    v.literal("DECLINED"),
-  ),
+  status: inviteStatusValidator,
   createdAt: v.number(),
   entry: calendarEntryOutputValidator,
   sender: scheduleFriendUserValidator,
 });
-
-async function acceptedFriendIds(
-  ctx: Parameters<typeof getFriendshipBetween>[0],
-  userId: Parameters<typeof getFriendshipBetween>[1],
-) {
-  const [outgoing, incoming] = await Promise.all([
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
-        q.eq("requesterId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(100),
-    ctx.db
-      .query("studentScheduleFriends")
-      .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
-        q.eq("addresseeId", userId).eq("status", "ACCEPTED"),
-      )
-      .take(100),
-  ]);
-  return Array.from(
-    new Set([
-      ...outgoing.map((friendship) => friendship.addresseeId),
-      ...incoming.map((friendship) => friendship.requesterId),
-    ]),
-  );
-}
 
 export const list = query({
   args: {
@@ -226,17 +200,8 @@ export const listEligibleFriends = query({
   returns: v.array(scheduleFriendUserValidator),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
-    if (!isStudentUser(user)) return [];
-    const friendIds = await acceptedFriendIds(ctx, user._id);
-    const candidates = await Promise.all(friendIds.map((friendId) => ctx.db.get(friendId)));
-    const friends = candidates.flatMap((friend) =>
-      friend?.isActive && isStudentUser(friend) ? [serializeUser(friend)] : [],
-    );
-    return friends.sort(
-      (left, right) =>
-        left.lastName.localeCompare(right.lastName) ||
-        left.firstName.localeCompare(right.firstName),
-    );
+    if (!isStudent(user)) return [];
+    return await listEligibleFriendsOf(ctx, user);
   },
 });
 
@@ -314,7 +279,7 @@ export const inviteFriends = mutation({
           senderId: user._id,
           recipientId: friendId,
           recipientIsActive: friend.isActive,
-          recipientIsStudent: isStudentUser(friend),
+          recipientIsStudent: isStudent(friend),
           friendshipStatus:
             friendship?.status === "ACCEPTED"
               ? "ACCEPTED"
@@ -480,13 +445,6 @@ export const remove = mutation({
 });
 
 /** Move an owned reminder without overwriting fields changed in another editor. */
-function schoolDateParts(timestamp: number) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric",
-  }).formatToParts(timestamp).map(({ type, value }) => [type, Number(value)]));
-  return { year: parts.year, month: parts.month, day: parts.day };
-}
-
 export const reschedule = mutation({
   args: {
     entryId: v.id("calendarEntries"),

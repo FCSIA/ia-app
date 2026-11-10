@@ -6,6 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageFrame } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { routePath } from "@/lib/routes";
+import { SCHEDULE_FRIENDS_HREF } from "~/apps/shared/routes";
 import { FriendsDayPanel } from "./FriendsDayPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
 import { MySchedulePanel } from "./MySchedulePanel";
@@ -33,8 +35,7 @@ export function ScheduleWorkspace() {
 
   return (
     <AppShell
-      scheduleTab={selectedTab}
-      scheduleSection={section}
+      activeHref={selectedTab === "friends" ? SCHEDULE_FRIENDS_HREF : routePath("schedule")}
       pageNavigation={canManageBlocks ? {
         parentHref: "/schedule",
         label: "Day plans",

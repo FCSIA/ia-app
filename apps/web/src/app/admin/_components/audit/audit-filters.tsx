@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useRef, useState, type ReactNode } from 'react';
 import { format, subDays } from 'date-fns';
-import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditRecordLabel, type AuditCategory } from '~/apps/shared/audit';
+import { AUDIT_CATEGORIES, auditActionInfo, auditActionLabel, auditRecordLabel, type AuditCategory } from '~/apps/shared/audit';
 import { displayName } from '~/apps/shared/user-name';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
@@ -15,7 +15,7 @@ import type { useAdminAudit } from '../../_hooks/use-admin-audit';
 type AuditState = ReturnType<typeof useAdminAudit>;
 export type AuditFilterColumn = 'When' | 'Person' | 'Action' | 'Record';
 /** `menu` is a header popup; `panel` is the same rows inline in the phone drawer. */
-export type AuditFilterSurface = 'menu' | 'panel';
+type AuditFilterSurface = 'menu' | 'panel';
 
 const matches = (text: string, query: string) => text.toLowerCase().includes(query.trim().toLowerCase());
 
@@ -77,7 +77,7 @@ function ActionFilter({ audit, surface }: { audit: AuditState; surface: AuditFil
   const toggle = <T extends string>(values: T[], value: T) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
   const categories = (Object.entries(AUDIT_CATEGORIES) as [AuditCategory, string][]).filter(([, label]) => matches(label, search));
   const actions = audit.auditActionOptions.filter((action) =>
-    (!audit.auditCategoryFilters.length || audit.auditCategoryFilters.includes(AUDIT_ACTIONS[action]?.category))
+    (!audit.auditCategoryFilters.length || audit.auditCategoryFilters.some((category) => category === auditActionInfo(action)?.category))
     && matches(`${auditActionLabel(action)} ${action}`, search));
   const rows: Row[] = [
     ...categories.map(([category, label], index) => ({
@@ -115,7 +115,7 @@ function RecordFilter({ audit, surface }: { audit: AuditState; surface: AuditFil
 }
 
 const day = (offset: number) => format(subDays(new Date(), offset), 'yyyy-MM-dd');
-export const WHEN_PRESETS = [
+const WHEN_PRESETS = [
   { label: 'Any time', range: () => ['', ''] },
   { label: 'Today', range: () => [day(0), day(0)] },
   { label: 'Yesterday', range: () => [day(1), day(1)] },

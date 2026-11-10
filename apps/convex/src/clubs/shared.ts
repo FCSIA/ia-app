@@ -2,8 +2,13 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { getViewerContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
+import { MAX_CHANNEL_MESSAGE_ATTACHMENTS } from "../../../shared/chat/attachments";
+import { resolveChannel } from "./channelGate";
+import {
+  REPLY_PREVIEW_CHARACTERS,
+  attachmentFileFields,
+  emptyPage,
+} from "./messageSerialization";
 import { clubUserRefValidator, toClubUserRef } from "./serialize";
 import { boundedSharedMessagePageSize } from "./sharedPagination";
 
@@ -20,14 +25,6 @@ const channelAttachmentValidator = v.object({
   author: v.union(clubUserRefValidator, v.null()),
 });
 
-function emptyPage(cursor: string | null) {
-  return {
-    page: [],
-    isDone: true,
-    continueCursor: cursor ?? "",
-  };
-}
-
 export const listChannelAttachments = query({
   args: {
     clubId: v.id("clubs"),
@@ -39,21 +36,14 @@ export const listChannelAttachments = query({
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyPage(args.paginationOpts.cursor);
 
-    const channel = await ctx.db.get(args.channelId);
-    if (!channel || channel.clubId !== args.clubId) {
+    const gate = await resolveChannel(ctx, user, args.channelId, {
+      clubId: args.clubId,
+      requireActiveClub: false,
+    });
+    if (gate.status !== "resolved" || !gate.access.canView) {
       return emptyPage(args.paginationOpts.cursor);
     }
-
-    const context = await getViewerContext(ctx, args.clubId, user);
-    const membership = await ctx.db
-      .query("clubChannelMemberships")
-      .withIndex("by_channelId_and_userId", (q) =>
-        q.eq("channelId", channel._id).eq("userId", user._id),
-      )
-      .first();
-    if (!(await getChannelAccess(ctx, channel, context, user._id)).canView) {
-      return emptyPage(args.paginationOpts.cursor);
-    }
+    const { channel } = gate;
 
     const messages = await ctx.db
       .query("clubChannelMessages")
@@ -75,18 +65,14 @@ export const listChannelAttachments = query({
             q.eq("messageId", message._id),
           )
           .order("desc")
-          .take(5);
+          .take(MAX_CHANNEL_MESSAGE_ATTACHMENTS);
         if (!attachments.length) return [];
         const author = await ctx.db.get(message.authorId);
         return attachments.map((attachment) => ({
           _id: attachment._id,
-          fileName: attachment.fileName,
-          fileUrl: attachment.fileUrl,
-          mimeType: attachment.mimeType,
-          size: attachment.size,
-          createdAt: new Date(attachment.createdAt).toISOString(),
+          ...attachmentFileFields(attachment),
           messageId: message._id,
-          messagePreview: message.body.slice(0, 160),
+          messagePreview: message.body.slice(0, REPLY_PREVIEW_CHARACTERS),
           author: author ? toClubUserRef(author) : null,
         }));
       }),

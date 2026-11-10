@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import {
   internalMutation,
   mutation,
@@ -46,19 +46,7 @@ export const listPage = query({
     unreadOnly: v.optional(v.boolean()),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.object({
-    page: v.array(notificationValidator),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-    pageStatus: v.optional(
-      v.union(
-        v.literal("SplitRecommended"),
-        v.literal("SplitRequired"),
-        v.null(),
-      ),
-    ),
-    splitCursor: v.optional(v.union(v.string(), v.null())),
-  }),
+  returns: paginationResultValidator(notificationValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) {

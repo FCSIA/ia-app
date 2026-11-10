@@ -1,5 +1,6 @@
+import { ADMIN_ROLES, hasAnyRole, SUPER_ADMIN_ROLES } from "~/apps/shared/roles";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import {
   CalendarDays,
   ChevronRight,
@@ -17,14 +18,14 @@ import { AdminRouteGuard } from "@/components/admin-route-guard";
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
 import { PressableScale, Txt } from "@/components/ui";
-import { hasRole, useLiveCurrentUser } from "@/lib/auth";
+import { useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 
 type WorkspaceDestination = {
   title: string;
   detail: string;
-  href: string;
+  href: Href;
   icon: LucideIcon;
 };
 
@@ -36,10 +37,12 @@ export default function AdminWorkspaceScreen() {
   );
 }
 
+const destination = (value: WorkspaceDestination) => value;
+
 function AdminWorkspace() {
   const user = useLiveCurrentUser();
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
-  const isSuperAdmin = !!user && hasRole(user, "SUPER_ADMIN");
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
+  const isSuperAdmin = hasAnyRole(user, SUPER_ADMIN_ROLES);
 
   const people: WorkspaceDestination[] = [
     {
@@ -49,30 +52,30 @@ function AdminWorkspace() {
       icon: Users,
     },
     ...(isSuperAdmin
-      ? [{
+      ? [destination({
           title: "Student roster",
           detail: "Import or export student records",
           href: "/admin/roster",
           icon: FileUp,
-        }]
+        })]
       : []),
   ];
 
   const operations: WorkspaceDestination[] = [
     ...(isAdmin
       ? [
-          {
+          destination({
             title: "School day",
             detail: "Blocks used by student schedules",
             href: "/admin/school-day",
             icon: ClipboardList,
-          },
-          {
+          }),
+          destination({
             title: "Flex Friday",
             detail: "Dates, sessions, workshops, and attendance",
             href: "/flex-friday",
             icon: Presentation,
-          },
+          }),
         ]
       : []),
     {
@@ -100,12 +103,12 @@ function AdminWorkspace() {
 
   const system: WorkspaceDestination[] = [
     ...(isAdmin
-      ? [{
+      ? [destination({
           title: "Wrapped",
           detail: "Snapshot readiness and generation",
           href: "/admin/wrapped",
           icon: Star,
-        }]
+        })]
       : []),
     {
       title: "Audit log",
@@ -118,7 +121,7 @@ function AdminWorkspace() {
   return (
     <Screen
       header={<AppHeader title="Admin" />}
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+      contentContainerStyle={{ gap: spacing.xl }}
     >
       <WorkspaceGroup title="People" destinations={people} />
       <WorkspaceGroup title="School operations" destinations={operations} />
@@ -151,9 +154,9 @@ function WorkspaceGroup({
       >
         {destinations.map((destination, index) => (
           <PressableScale
-            key={destination.href}
+            key={destination.title}
             accessibilityLabel={`${destination.title}. ${destination.detail}`}
-            onPress={() => router.push(destination.href as never)}
+            onPress={() => router.push(destination.href)}
             style={{ minHeight: 72, paddingHorizontal: spacing.md }}
           >
             <View

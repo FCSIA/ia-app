@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { displayName } from '~/apps/shared/user-name';
 import { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -8,11 +9,13 @@ import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, TextField, Txt, useToast } from "@/components/ui";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
-import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
-import { relativeTime } from "@/lib/format";
+import { announcementAudience } from "@/features/announcements/model";
+import { AnnouncementIconAction } from "@/features/announcements/ui";
+import { useAnnouncementActions } from "@/features/announcements/use-announcement-actions";
 import { success } from "@/lib/haptics";
+import { relativeTime } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
-import { radii, spacing } from "@/lib/tokens";
+import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useAnnouncementFeedClock } from "@/features/announcements/use-announcement-feed-clock";
 
@@ -20,10 +23,7 @@ export default function AnnouncementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const announcementNow = useAnnouncementFeedClock(3_600_000);
   const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any, now: announcementNow } : "skip");
-  const markRead = useMutation(api.announcements.engagement.markRead);
-  const markUnread = useMutation(api.announcements.engagement.markUnread);
-  const bookmark = useMutation(api.announcements.engagement.bookmark);
-  const unbookmark = useMutation(api.announcements.engagement.unbookmark);
+  const { markRead, toggleRead, toggleBookmark } = useAnnouncementActions();
   const addComment = useMutation(api.announcements.comments.add);
   const [comment, setComment] = useState("");
   const { color } = useTheme();
@@ -45,33 +45,9 @@ export default function AnnouncementDetailScreen() {
     } catch (error) {
       showToast({
         title: "Comment wasn't posted",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
-    }
-  }
-
-  async function toggleRead(isRead: boolean) {
-    if (!id) return;
-    try {
-      await (isRead ? markUnread({ announcementId: id as any }) : markRead({ announcementId: id as any }));
-      await success();
-      showToast({ title: isRead ? "Marked unread" : "Marked read", tone: "success" });
-    } catch {
-      showToast({ title: "Read status didn't change", body: "Try again.", tone: "warning" });
-    }
-  }
-
-  async function toggleBookmark(isBookmarked: boolean) {
-    if (!id) return;
-    try {
-      await (isBookmarked
-        ? unbookmark({ announcementId: id as any })
-        : bookmark({ announcementId: id as any }));
-      await success();
-      showToast({ title: isBookmarked ? "Removed from saved" : "Saved", tone: "success" });
-    } catch {
-      showToast({ title: "Saved status didn't change", body: "Try again.", tone: "warning" });
     }
   }
 
@@ -116,14 +92,14 @@ export default function AnnouncementDetailScreen() {
                       icon={announcement.isRead ? Mail : MailOpen}
                       label={announcement.isRead ? "Mark unread" : "Mark read"}
                       selected={announcement.isRead}
-                      onPress={() => void toggleRead(announcement.isRead)}
+                      onPress={() => void toggleRead(announcement._id, announcement.isRead)}
                     />
                     <AnnouncementIconAction
                       icon={announcement.isBookmarked ? BookmarkCheck : Bookmark}
                       label={announcement.isBookmarked ? "Unsave announcement" : "Save announcement"}
                       selected={announcement.isBookmarked}
                       accentWhenSelected
-                      onPress={() => void toggleBookmark(announcement.isBookmarked)}
+                      onPress={() => void toggleBookmark(announcement._id, announcement.isBookmarked)}
                     />
                   </View>
                 </View>

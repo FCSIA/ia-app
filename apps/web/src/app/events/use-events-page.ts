@@ -1,25 +1,23 @@
-import { useDeferredValue, useMemo, useState, useSyncExternalStore } from 'react';
+import { EVENT_GENERAL_CREATOR_ROLES, hasAnyRole } from '~/apps/shared/roles';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
+import { useMounted } from '@/hooks/use-mounted';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
-const subscribeToHydration = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
-
 export function useEventsPage() {
   const user = useCurrentUser();
-  const hydrated = useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot);
+  const hydrated = useMounted();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const [createPending, setCreatePending] = useState(false);
-  const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const canCreateGeneral = hasAnyRole(user, EVENT_GENERAL_CREATOR_ROLES);
 
   const events = useQuery(api.events.events.list, user ? {} : 'skip');
   const isLoading = events === undefined;

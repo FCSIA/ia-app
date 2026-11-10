@@ -1,3 +1,4 @@
+import { pathwayLabel } from "~/apps/shared/labels";
 export type AnnouncementAudienceInput = {
   targetType: string;
   targetGrade?: number | null;
@@ -9,7 +10,7 @@ export type AnnouncementAudienceInput = {
   club?: { name: string } | null;
 };
 
-export type AnnouncementAudiencePart =
+type AnnouncementAudiencePart =
   | { kind: 'grades'; values: number[]; shortLabel: string; label: string }
   | { kind: 'pathways'; values: string[]; labels: string[]; label: string }
   | { kind: 'club'; clubId?: string; label: string }
@@ -23,14 +24,17 @@ export type AnnouncementAudience = {
   accessibleLabel: string;
 };
 
-const PATHWAY_LABELS: Record<string, string> = {
-  HEALTH_SCIENCE: 'Health Science',
-  INFORMATION_TECHNOLOGY: 'Information Technology',
-  ENGINEERING: 'Engineering',
+/** The audience scope an announcement is filed under, as feed filters name it. */
+export const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
+  SCHOOL_WIDE: 'School-wide',
+  GRADE: 'Grade',
+  PATHWAY: 'Pathway',
+  CLUB: 'Club',
+  INTERSECTION: 'Combined audience',
 };
 
-export function formatAnnouncementPathway(pathway: string): string {
-  return PATHWAY_LABELS[pathway] ?? pathway
+function formatAnnouncementPathway(pathway: string): string {
+  return pathwayLabel(pathway) ?? pathway
     .replaceAll('_', ' ')
     .toLowerCase()
     .replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());

@@ -1,3 +1,4 @@
+import { COURSE_SOURCE_COMPACT_LABELS, courseGradeLabel, pathwayLabel } from "~/apps/shared/labels";
 import { useMemo, useState, type ReactNode } from "react";
 import { ScrollView, View } from "react-native";
 import { router } from "expo-router";
@@ -19,25 +20,6 @@ const pathways = [
 ] as const;
 
 const grades = ["ALL", "9", "10", "11", "12"] as const;
-
-function pathwayLabel(value?: string | null) {
-  if (value === "INFORMATION_TECHNOLOGY") return "Information Technology";
-  if (value === "HEALTH_SCIENCE") return "Health Science";
-  if (value === "ENGINEERING") return "Engineering";
-  return null;
-}
-
-function gradeLabel(course: any) {
-  if (course.gradeText) return course.gradeText;
-  if (course.minGrade && course.minGrade === course.maxGrade) return `Grade ${course.minGrade}`;
-  return `Grades ${course.minGrade ?? "?"}–${course.maxGrade ?? "?"}`;
-}
-
-function sourceLabel(value: string) {
-  if (value === "AP_CATALOG") return "AP catalog";
-  if (value === "MERGED") return "IA + AP catalogs";
-  return null;
-}
 
 export default function CoursesScreen() {
   const user = useCurrentUser();
@@ -64,7 +46,6 @@ export default function CoursesScreen() {
   return (
     <Screen
       title="Courses"
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}
       keyboardShouldPersistTaps="handled"
     >
       <View
@@ -160,16 +141,16 @@ function FilterRail({ label, children }: { label: string; children: ReactNode })
 
 function CourseRow({ course, showDivider }: { course: any; showDivider: boolean }) {
   const { color } = useTheme();
-  const pathway = pathwayLabel(course.pathway);
-  const source = sourceLabel(course.catalogSource);
+  const pathway = course.pathway ? pathwayLabel(course.pathway) ?? null : null;
+  const source = COURSE_SOURCE_COMPACT_LABELS[course.catalogSource as keyof typeof COURSE_SOURCE_COMPACT_LABELS] ?? null;
   const secondary = [pathway, source].filter(Boolean).join(" · ");
-  const metadata = [gradeLabel(course), course.courseNumbers?.join(", ")].filter(Boolean).join(" · ");
+  const metadata = [courseGradeLabel(course), course.courseNumbers?.join(", ")].filter(Boolean).join(" · ");
 
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`Open ${course.title}`}
-      onPress={() => router.push(`/courses/${course.slug}` as never)}
+      onPress={() => router.push(`/courses/${course.slug}`)}
       style={{ minHeight: 92, paddingHorizontal: spacing.md }}
     >
       <View

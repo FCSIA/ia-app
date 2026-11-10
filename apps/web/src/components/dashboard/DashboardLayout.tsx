@@ -76,15 +76,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
+  getDefaultDashboardColumns,
+  getDefaultDashboardLayout,
   normalizeDashboardColumns,
   normalizeDashboardLayout,
-} from "~/apps/convex/src/users/dashboardLayout";
+} from "~/apps/shared/dashboard-layout";
 import {
   WIDGETS,
   getWidget,
   getAvailableWidgets,
-  getDefaultLayout,
-  getDefaultColumns,
   isWidgetAllowed,
   type WidgetDefinition,
 } from "./widget-registry";
@@ -97,48 +97,19 @@ import {
   withMobileOrder,
   type DashboardArrangement,
 } from "./column-layout";
+import {
+  loadHeights,
+  loadLayout,
+  saveHeights,
+  saveLayout,
+  type HeightCache,
+} from "./dashboard-storage";
 import { DashboardWidgetEmptyContext } from "./widget-visibility";
 
 const loadMotionFeatures = () =>
   import("./dashboard-motion").then((module) => module.default);
 
-const STORAGE_PREFIX = "ia_dashboard_layout_";
-const HEIGHTS_PREFIX = "ia_dashboard_heights_";
-
 const HEIGHT_EPSILON = 8;
-
-/** Last settled widget heights per column count ("1" phone, "2" desktop). */
-type HeightCache = Record<string, Record<string, number>>;
-
-function loadHeights(userId: string): HeightCache {
-  try {
-    const parsed: unknown = JSON.parse(
-      localStorage.getItem(`${HEIGHTS_PREFIX}${userId}`) ?? "{}",
-    );
-    if (!parsed || typeof parsed !== "object") return {};
-    const cache: HeightCache = {};
-    for (const [columns, heights] of Object.entries(parsed)) {
-      if (!heights || typeof heights !== "object") continue;
-      cache[columns] = Object.fromEntries(
-        Object.entries(heights).filter(
-          (entry): entry is [string, number] =>
-            typeof entry[1] === "number" && Number.isFinite(entry[1]),
-        ),
-      );
-    }
-    return cache;
-  } catch {
-    return {};
-  }
-}
-
-function saveHeights(userId: string, cache: HeightCache) {
-  try {
-    localStorage.setItem(`${HEIGHTS_PREFIX}${userId}`, JSON.stringify(cache));
-  } catch {
-    // Reserving space is an optimization; without storage panels simply settle.
-  }
-}
 
 class WidgetErrorBoundary extends ReactComponent<
   { title: string; children: ReactNode },
@@ -166,52 +137,6 @@ class WidgetErrorBoundary extends ReactComponent<
         </Empty>
       </Panel>
     );
-  }
-}
-
-function storageKey(userId: string) {
-  return `${STORAGE_PREFIX}${userId}`;
-}
-
-function loadLayout(
-  userId: string,
-): { layout: string[]; columns?: string[][] } | null {
-  try {
-    const parsed: unknown = JSON.parse(
-      localStorage.getItem(storageKey(userId)) ?? "null",
-    );
-    if (Array.isArray(parsed) && parsed.every((id) => typeof id === "string")) {
-      return { layout: parsed };
-    }
-    if (!parsed || typeof parsed !== "object" || !("layout" in parsed))
-      return null;
-    const { layout } = parsed;
-    if (!Array.isArray(layout) || !layout.every((id) => typeof id === "string"))
-      return null;
-    const columns = "columns" in parsed ? parsed.columns : undefined;
-    return {
-      layout,
-      columns:
-        Array.isArray(columns) &&
-        columns.length === 2 &&
-        columns.every(
-          (column) =>
-            Array.isArray(column) &&
-            column.every((id) => typeof id === "string"),
-        )
-          ? columns
-          : undefined,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function saveLayout(userId: string, state: DashboardArrangement) {
-  try {
-    localStorage.setItem(storageKey(userId), JSON.stringify(state));
-  } catch {
-    // The server remains authoritative if the browser cache is unavailable.
   }
 }
 
@@ -550,12 +475,12 @@ export function DashboardLayout({
       ? { layout: user.dashboardLayout, columns: user.dashboardColumns }
       : local;
     const nextLayout = normalizeDashboardLayout(
-      saved?.layout ?? getDefaultLayout(user.roles),
+      saved?.layout ?? getDefaultDashboardLayout(user.roles),
     ).filter((id) => { const widget = getWidget(id); return widget && isWidgetAllowed(widget, user.roles); });
     setArrangement({
       layout: nextLayout,
       columns: normalizeDashboardColumns(
-        saved ? saved.columns : getDefaultColumns(user.roles),
+        saved ? saved.columns : getDefaultDashboardColumns(user.roles),
         nextLayout,
       ),
     });
@@ -665,13 +590,14 @@ export function DashboardLayout({
 
   const handleReset = useCallback(() => {
     beginEdit();
-    const fresh = getDefaultLayout(user?.roles).filter((id) =>
-      isWidgetAllowed(WIDGETS[id], user?.roles),
-    );
+    const fresh = getDefaultDashboardLayout(user?.roles).filter((id) => {
+      const widget = getWidget(id);
+      return widget && isWidgetAllowed(widget, user?.roles);
+    });
     const previous = arrangement;
     setArrangement({
       layout: fresh,
-      columns: normalizeDashboardColumns(getDefaultColumns(user?.roles), fresh),
+      columns: normalizeDashboardColumns(getDefaultDashboardColumns(user?.roles), fresh),
     });
     undoToast.current = toast({
       title: "Default home restored",
@@ -959,7 +885,7 @@ export function DashboardLayout({
 
           {/* Static / Fixed widgets (cannot be moved or removed) */}
           {fixedIds.map((id) => {
-            const widget = WIDGETS[id];
+            const widget = getWidget(id);
             if (!widget) return null;
             const Component = widget.Component;
             return (

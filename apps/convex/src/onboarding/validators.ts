@@ -1,23 +1,22 @@
 import { v } from "convex/values";
+import {
+  ONBOARDING_DECISIONS,
+  ONBOARDING_STEP_IDS,
+  type OnboardingStepId,
+} from "../../../shared/onboarding";
 
 export const stepIdValidator = v.union(
-  v.literal("profile"),
-  v.literal("schedule"),
-  v.literal("privacy"),
-  v.literal("notifications"),
-  v.literal("essentials"),
+  ...ONBOARDING_STEP_IDS.map((id) => v.literal(id)),
 );
 export const decisionValidator = v.union(
-  v.literal("done"),
-  v.literal("skipped"),
+  ...ONBOARDING_DECISIONS.map((decision) => v.literal(decision)),
 );
-export const decisionsValidator = v.object({
-  profile: v.optional(decisionValidator),
-  schedule: v.optional(decisionValidator),
-  privacy: v.optional(decisionValidator),
-  notifications: v.optional(decisionValidator),
-  essentials: v.optional(decisionValidator),
-});
+const optionalDecisionValidator = v.optional(decisionValidator);
+export const decisionsValidator = v.object(
+  Object.fromEntries(
+    ONBOARDING_STEP_IDS.map((id) => [id, optionalDecisionValidator]),
+  ) as Record<OnboardingStepId, typeof optionalDecisionValidator>,
+);
 export const statusValidator = v.object({
   phase: v.union(
     v.literal("available"),

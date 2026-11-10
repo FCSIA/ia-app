@@ -1,17 +1,24 @@
+import { isSuperAdmin } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getChannelViewerContext, getViewerContext } from "./access";
 import { getChannelAccessForChannels } from "./channelAccess";
-import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
-import { clubRolePermissionsValidator } from "../validators";
+import {
+  clubRoleSummaryValidator,
+  listClubRoles,
+  toClubRoleSummary,
+} from "./rolePermissions";
+import { MAX_CLUB_UNITS } from "./hierarchyRules";
+import { isDirectoryLeader, memberRoleId } from "./membership";
 import {
   clubSummaryValidator,
   clubUserRefValidator,
   clubViewerStateValidator,
   clubSummaryWithCounts,
   getVisibleChannels,
+  loadTagMemberRefs,
   toClubUserRef,
   toViewerState,
   visibleClubChannelValidator,
@@ -39,14 +46,7 @@ const clubDetailValidator = v.union(
     members: v.array(clubMemberWithUserValidator),
     leaders: v.array(clubMemberWithUserValidator),
     sponsors: v.array(clubSponsorWithUserValidator),
-    roles: v.array(v.object({
-      _id: v.id("clubRoles"),
-      name: v.string(),
-      permissions: clubRolePermissionsValidator,
-      isDefault: v.boolean(),
-      showInDirectory: v.boolean(),
-      position: v.number(),
-    })),
+    roles: v.array(clubRoleSummaryValidator),
     channels: v.array(visibleClubChannelValidator),
     tags: v.array(
       v.object({
@@ -210,27 +210,22 @@ export const get = query({
             )
             .collect()
         : Promise.resolve([]),
-      ctx.db
-        .query("clubRoles")
-        .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
-        .take(100),
+      listClubRoles(ctx, args.clubId),
       ctx.db
         .query("clubUnits")
         .withIndex("by_clubId_and_isActive_and_position", (q) =>
           q.eq("clubId", args.clubId).eq("isActive", true),
         )
-        .take(250),
+        .take(MAX_CLUB_UNITS),
       ctx.db
         .query("clubUnitMembers")
         .withIndex("by_clubId_and_unitId", (q) => q.eq("clubId", args.clubId))
         .collect(),
     ]);
 
-    // Deduplicate memberships by userId to prevent duplicate entries
     const uniqueMemberships = Array.from(
       new Map(memberships.map((m) => [m.userId, m])).values(),
     );
-    // Deduplicate sponsors by userId to prevent duplicate entries
     const uniqueSponsors = Array.from(
       new Map(sponsorsRows.map((s) => [s.userId, s])).values(),
     );
@@ -276,28 +271,17 @@ export const get = query({
     const defaultRole = customRoles.find((role) => role.isDefault);
     const legacyLeaderRole = customRoles.find((role) => role.position === 1);
     const roleForMember = (member: (typeof hydratedMembers)[number]) => {
-      const id = member.roleId ?? member.customRoleId ??
+      const id = memberRoleId(member) ??
         (member.role === "LEADER" || member.role === "SPONSOR" ? legacyLeaderRole?._id : defaultRole?._id);
       return id ? customRoles.find((role) => role._id === id) ?? null : null;
     };
-    const leaders = hydratedMembers.filter((member) => {
-      const role = roleForMember(member);
-      return role ? Object.values(role.permissions ?? NO_CLUB_PERMISSIONS).some(Boolean) : member.role === "LEADER";
-    });
+    const leaders = hydratedMembers.filter((member) =>
+      isDirectoryLeader(member, roleForMember(member)),
+    );
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
 
     const serializedTags = await Promise.all(
       tags.map(async (tag) => {
-        const tagMembers = await ctx.db
-          .query("clubTagMembers")
-          .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
-          .collect();
-        const membersWithUsers = await Promise.all(
-          tagMembers.map(async (tm) => {
-            const u = await ctx.db.get(tm.userId);
-            return u ? { user: toClubUserRef(u) } : null;
-          }),
-        );
         return {
           _id: tag._id,
           clubId: tag.clubId,
@@ -305,7 +289,7 @@ export const get = query({
           slug: tag.slug,
           createdById: tag.createdById,
           createdAt: tag.createdAt,
-          members: membersWithUsers.filter((m): m is NonNullable<typeof m> => !!m),
+          members: await loadTagMemberRefs(ctx, tag._id),
         };
       }),
     );
@@ -384,14 +368,7 @@ export const get = query({
       sponsors: hydratedSponsors,
       roles: customRoles
         .filter((role) => role.position !== undefined)
-        .map((role) => ({
-          _id: role._id,
-          name: role.name,
-          permissions: role.permissions ?? NO_CLUB_PERMISSIONS,
-          isDefault: role.isDefault ?? false,
-          showInDirectory: role.showInDirectory ?? false,
-          position: role.position ?? 0,
-        })),
+        .map(toClubRoleSummary),
       channels: visibleChannels?.channels ?? [],
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],
@@ -434,7 +411,7 @@ export const getWorkspaceNavigation = query({
       .withIndex("by_clubId_and_isActive_and_position", (q) =>
         q.eq("clubId", club._id).eq("isActive", true),
       )
-      .take(250);
+      .take(MAX_CLUB_UNITS);
     const accessByChannelId = await getChannelAccessForChannels(
       ctx,
       channelRows,
@@ -511,7 +488,7 @@ export const getWorkspaceNavigation = query({
       ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
       ...sponsorRows.map((sponsorship) => [sponsorship.clubId, "SPONSOR" as const] as const),
     ]);
-    const myClubs = user.roles.includes("SUPER_ADMIN")
+    const myClubs = isSuperAdmin(user)
       ? (
           await ctx.db
             .query("clubs")

@@ -11,12 +11,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
-  getDefaultDashboardLayout,
-  getDefaultDashboardColumns,
+  dashboardWidgetIds,
   isDashboardReviewer,
   isDashboardNoteId,
-} from '~/apps/convex/src/users/dashboardLayout';
-import type { AppRole } from '~/apps/convex/lib/roles';
+} from '~/apps/shared/dashboard-layout';
+import type { AppRole } from '~/apps/shared/roles';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { AnnouncementsWidget } from './widgets/AnnouncementsWidget';
@@ -27,7 +26,9 @@ import { FunFactWidget } from './widgets/FunFactWidget';
 import { NoteWidget } from './widgets/NoteWidget';
 import { SnakeWidget } from './widgets/SnakeWidget';
 
-export type WidgetSize = 'full' | 'half';
+type WidgetId = (typeof dashboardWidgetIds)[number];
+
+type WidgetSize = 'full' | 'half';
 
 export type WidgetDefinition = {
   id: string;
@@ -36,9 +37,7 @@ export type WidgetDefinition = {
   description: string;
   size: WidgetSize;
   Component: React.ComponentType<{ id?: string; layoutEditing?: boolean }>;
-  /** If set, widget is only available to users with at least one of these roles. */
-  allowedRoles?: AppRole[];
-  /** If set, any matching role takes precedence over allowedRoles. */
+  /** Roles that never get this widget. */
   excludedRoles?: AppRole[];
   /** If set, widget cannot be removed or rearranged. */
   isFixed?: boolean;
@@ -49,16 +48,16 @@ export type WidgetDefinition = {
   hideWhenEmpty?: (roles: AppRole[] | undefined) => boolean;
 };
 
-export const NOTE_WIDGET: WidgetDefinition = {
+const NOTE_WIDGET: WidgetDefinition = {
   id: 'note', icon: StickyNote, label: 'Note',
   description: 'A private Markdown note.', size: 'half', Component: NoteWidget,
 };
 
 export function getWidget(id: string): WidgetDefinition | undefined {
-  return isDashboardNoteId(id) ? NOTE_WIDGET : WIDGETS[id];
+  return isDashboardNoteId(id) ? NOTE_WIDGET : (WIDGETS as Record<string, WidgetDefinition | undefined>)[id];
 }
 
-export const WIDGETS: Record<string, WidgetDefinition> = {
+export const WIDGETS: Record<WidgetId, WidgetDefinition> = {
   welcome: {
     id: 'welcome',
     icon: Home,
@@ -126,23 +125,11 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
   },
 };
 
-/** Authored defaults keep first paint stable and phone order intentional. */
-export function getDefaultLayout(roles: AppRole[] = []): string[] {
-  return getDefaultDashboardLayout(roles);
-}
-
-export function getDefaultColumns(roles: AppRole[] = []): string[][] {
-  return getDefaultDashboardColumns(roles);
-}
-
 export function isWidgetAllowed(
   widget: WidgetDefinition,
   roles: AppRole[] | undefined,
 ): boolean {
-  if (widget.excludedRoles?.some((role) => roles?.includes(role))) return false;
-  if (!widget.allowedRoles) return true;
-  if (!roles) return false;
-  return widget.allowedRoles.some((r) => roles.includes(r));
+  return !widget.excludedRoles?.some((role) => roles?.includes(role));
 }
 
 export function getAvailableWidgets(

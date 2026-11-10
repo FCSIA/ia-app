@@ -4,7 +4,7 @@ import { PresenceAvatar, useMemberPresence } from "@/components/presence/club-pr
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { PersonTrigger } from "@/components/users/person-trigger";
-import type { UserProfilePerson } from "@/components/users/user-profile-avatar";
+import type { UserProfilePerson } from "@/components/users/user-profile-dialog";
 import { displayName } from "~/apps/shared/user-name";
 
 /** A person reference with avatar, presence, and profile preview. */

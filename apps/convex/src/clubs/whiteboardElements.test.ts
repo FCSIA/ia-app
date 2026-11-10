@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
+import { MAX_WHITEBOARD_ELEMENTS_PER_SAVE } from "../../../shared/chat/whiteboard-limits";
 import {
   MAX_WHITEBOARD_AUDIT_CHANGES,
-  MAX_WHITEBOARD_ELEMENTS_PER_SAVE,
   assertWhiteboardSaveBounds,
   assertWhiteboardThumbnail,
   classifyWhiteboardChange,

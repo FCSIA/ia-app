@@ -67,7 +67,6 @@ export function SlideView({ slide, direction }: SlideViewProps) {
         0.1,
       );
 
-      // Hero icon pop.
       if (heroIconRef.current) {
         tl.fromTo(
           heroIconRef.current,
@@ -77,7 +76,6 @@ export function SlideView({ slide, direction }: SlideViewProps) {
         );
       }
 
-      // Hero value.
       tl.fromTo('.slide-value', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6 }, 0.2);
 
       // Count-up for numeric slides. Only touch the DOM when the shown digits
@@ -102,7 +100,6 @@ export function SlideView({ slide, direction }: SlideViewProps) {
         );
       }
 
-      // Caption fade.
       tl.fromTo(
         '.slide-caption',
         { opacity: 0, y: 16 },
@@ -121,7 +118,6 @@ export function SlideView({ slide, direction }: SlideViewProps) {
         );
       }
 
-      // Footer line.
       tl.fromTo(
         '.slide-footer',
         { opacity: 0, y: 10 },

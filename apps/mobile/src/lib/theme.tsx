@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "./storage-keys";
 import { themes, hsl, type ThemeName, type ThemeTokens } from "@ia/design-tokens";
 
 type ThemeContextValue = {
@@ -13,8 +14,8 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const THEME_STORAGE_KEY = "ia_theme";
-const CUSTOM_THEME_STORAGE_KEY = "ia_custom_theme";
+const THEME_STORAGE_KEY = STORAGE_KEYS.theme;
+const CUSTOM_THEME_STORAGE_KEY = STORAGE_KEYS.customTheme;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [name, setName] = useState<ThemeName>("dark");

@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { isStaff } from "~/apps/shared/roles";
 import { displayName } from '~/apps/shared/user-name';
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
@@ -73,7 +75,7 @@ export function ModerationScreen() {
     } catch (error) {
       showToast({
         title: "Report wasn't updated",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -231,9 +233,7 @@ function ButtonlessReportRow({ report, last, onPress }: { report: Report; last: 
 
 function KeywordRules() {
   const user = useLiveCurrentUser();
-  const canManageRules = !!user?.roles.some((role) =>
-    ["SUPPORT_STAFF", "ADMIN", "SUPER_ADMIN"].includes(role),
-  );
+  const canManageRules = isStaff(user);
   const rules = useQuery(api.moderation.keywords.list, canManageRules ? {} : "skip");
   const addRule = useMutation(api.moderation.keywords.add);
   const removeRule = useMutation(api.moderation.keywords.remove);
@@ -255,7 +255,7 @@ function KeywordRules() {
     } catch (error) {
       showToast({
         title: "Rule wasn't added",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {
@@ -272,7 +272,7 @@ function KeywordRules() {
     } catch (error) {
       showToast({
         title: "Rule wasn't removed",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

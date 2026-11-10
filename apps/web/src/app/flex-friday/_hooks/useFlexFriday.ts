@@ -1,13 +1,20 @@
+import {
+  FLEX_ATTENDANCE_ROLES,
+  FLEX_FRIDAY_CREATOR_ROLES,
+  FLEX_MANAGER_ROLES,
+  FLEX_SESSION_CREATOR_ROLES,
+  hasAnyRole,
+  isAdmin,
+  STUDENT_ROLES,
+} from '~/apps/shared/roles';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery } from '@/lib/search';
-import { FlexFridayDoc, FlexSessionDoc, FlexWorkshopDoc } from '../_types';
-
-const EMPTY_REGISTRATIONS: never[] = [];
+import type { FlexFriday, FlexSession } from '../_types';
 
 export function useFlexFriday() {
   const user = useCurrentUser();
@@ -16,18 +23,14 @@ export function useFlexFriday() {
   const urlSessionId = searchParams?.get('session') ?? null;
   const urlAttendanceId = searchParams?.get('attendance') ?? null;
 
-  const [selectedFridayId, setSelectedFridayId] = useState<string | null>(
-    () => searchParams?.get('friday') ?? null,
-  );
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    () => searchParams?.get('session') ?? null,
-  );
+  const [selectedFridayId, setSelectedFridayId] = useState<string | null>(urlFridayId);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(urlSessionId);
   const [sessionSearch, setSessionSearch] = useState('');
   const deferredSessionSearch = useDeferredValue(sessionSearch);
   const [workshopSearch, setWorkshopSearch] = useState('');
   const deferredWorkshopSearch = useDeferredValue(workshopSearch);
 
-  const canManage = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const canManage = isAdmin(user);
   // Activity retains the existing audit-query role contract. A query string
   // selects a destination, never permission to read staff activity.
   const requestedView = searchParams?.get('view');
@@ -35,26 +38,12 @@ export function useFlexFriday() {
     canManage && (requestedView === 'activity' || requestedView === 'audit')
       ? 'audit'
       : 'schedule';
-  const canCreateFriday =
-    !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
-  const canCreateSession =
-    !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
-  const canManageSessions =
-    !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canManageWorkshops =
-    !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const canManageAttendance =
-    !!user &&
-    hasRole(
-      user,
-      'TEACHER',
-      'ADMIN',
-      'SUPER_ADMIN',
-      'SUPPORT_STAFF',
-      'STUDENT_ADMIN',
-    );
-  const isStudent =
-    !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const canCreateFriday = hasAnyRole(user, FLEX_FRIDAY_CREATOR_ROLES);
+  const canCreateSession = hasAnyRole(user, FLEX_SESSION_CREATOR_ROLES);
+  const canManageSessions = hasAnyRole(user, FLEX_MANAGER_ROLES);
+  const canManageWorkshops = hasAnyRole(user, FLEX_MANAGER_ROLES);
+  const canManageAttendance = hasAnyRole(user, FLEX_ATTENDANCE_ROLES);
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
 
   const fridaysQuery = useQuery(api.flexFriday.fridays.list, {});
   const fridays = fridaysQuery ?? [];
@@ -87,10 +76,9 @@ export function useFlexFriday() {
         : 'skip',
     ) ?? [];
 
-  const myRegs =
-    useQuery(api.flexFriday.registration.getMyRegistrations, {}) ?? EMPTY_REGISTRATIONS;
+  const myRegs = useQuery(api.flexFriday.registration.getMyRegistrations, {});
   const myRegWorkshopIds = useMemo(
-    () => new Set((myRegs as any[]).map((r: any) => r.workshopId)),
+    () => new Set((myRegs ?? []).map((registration) => registration.workshopId)),
     [myRegs],
   );
 
@@ -108,10 +96,7 @@ export function useFlexFriday() {
   );
 
   const [attendanceWorkshopId, setAttendanceWorkshopId] =
-    useState<Id<'flexWorkshops'> | null>(
-      () =>
-        (searchParams?.get('attendance') ?? null) as Id<'flexWorkshops'> | null,
-    );
+    useState<Id<'flexWorkshops'> | null>(urlAttendanceId as Id<'flexWorkshops'> | null);
   useEffect(() => {
     setSelectedFridayId(urlFridayId);
     setSelectedSessionId(urlSessionId);
@@ -146,7 +131,7 @@ export function useFlexFriday() {
 
   const filteredSessions = useMemo(() => {
     return filterBySearchQuery(
-      sessions as FlexSessionDoc[],
+      sessions,
       deferredSessionSearch,
       (session) => [session.title, session.description ?? ''],
     );
@@ -154,7 +139,7 @@ export function useFlexFriday() {
 
   const filteredWorkshops = useMemo(() => {
     return filterBySearchQuery(
-      workshops as FlexWorkshopDoc[],
+      workshops,
       deferredWorkshopSearch,
       (workshop) => [
         workshop.title,
@@ -175,12 +160,12 @@ export function useFlexFriday() {
     isStudent,
 
     selectedFriday,
-    setSelectedFriday: (f: FlexFridayDoc | null) => {
+    setSelectedFriday: (f: FlexFriday | null) => {
       setSelectedFridayId(f?._id ?? null);
       setSelectedSessionId(null);
     },
     selectedSession,
-    setSelectedSession: (session: FlexSessionDoc | null) => {
+    setSelectedSession: (session: FlexSession | null) => {
       setSelectedSessionId(session?._id ?? null);
     },
     activeView,
@@ -198,7 +183,6 @@ export function useFlexFriday() {
     workshopSearch,
     setWorkshopSearch,
 
-    myRegs,
     myRegWorkshopIds,
     auditEvents,
     auditLoading,

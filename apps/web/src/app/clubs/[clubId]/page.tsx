@@ -1,5 +1,7 @@
 "use client";
 
+import { parseClubJoinLink } from "~/apps/shared/routes";
+import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
 import {
   useDeferredValue,
   useEffect,
@@ -26,20 +28,19 @@ import {
 } from "lucide-react";
 import { useClubId } from "../club-route";
 import type { ClubDetail } from "@/components/clubs/types";
+import { useClubDetail } from "@/components/clubs/use-club-detail";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { AnnouncementDialog } from "@/components/clubs/dialogs/announcement-dialog";
-import {
-  UserProfileAvatar,
-  type UserProfilePerson,
-} from "@/components/users/user-profile-avatar";
+import { UserProfileAvatar } from "@/components/users/user-profile-avatar";
+import type { UserProfilePerson } from "@/components/users/user-profile-dialog";
 import { PersonRow } from "@/components/users/person-row";
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import {
   useOnlineMemberCount,
 } from "@/components/presence/club-presence";
 import { ClubHero } from "@/components/clubs/club-hero";
-import { fullName } from "@/components/clubs/types";
+import { displayName } from "~/apps/shared/user-name";
 import { AnnouncementCard } from "@/components/announcements/announcement-card";
 import { useAnnouncementFeedClock } from "@/components/announcements/use-announcement-feed-clock";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
@@ -57,7 +58,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { SearchInput } from "@/components/ui/search";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { filterBySearchQuery } from "@/lib/search";
 
@@ -183,7 +184,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
               <p className="truncate text-sm font-medium text-foreground">
-                {fullName(request.requester)}
+                {displayName(request.requester)}
               </p>
               <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                 <Clock3 className="size-3" />
@@ -197,7 +198,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
             <Button
               size="icon-compact"
               variant="tertiary"
-              aria-label={`Decline ${fullName(request.requester)}'s request`}
+              aria-label={`Decline ${displayName(request.requester)}'s request`}
               title="Decline request"
               onClick={() =>
                 void respondToJoinRequest({
@@ -212,7 +213,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
             <Button
               size="icon-compact"
               disabled={isFull}
-              aria-label={`Approve ${fullName(request.requester)}'s request`}
+              aria-label={`Approve ${displayName(request.requester)}'s request`}
               title="Approve request"
               onClick={() =>
                 void respondToJoinRequest({
@@ -485,7 +486,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">
-                        {fullName(sponsor.user)}
+                        {displayName(sponsor.user)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Club Sponsor
@@ -535,7 +536,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                             size="md"
                           />
                           <p className="min-w-0 truncate text-sm font-semibold text-foreground">
-                            {fullName(member.user)}
+                            {displayName(member.user)}
                           </p>
                         </div>
                       ))}
@@ -564,13 +565,12 @@ export default function ClubOverviewPage() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    ClubDetail | undefined;
+  const club = useClubDetail(clubId);
   const redeemJoinCode = useMutation(api.clubs.invitations.redeemJoinCode);
   const joinUnit = useMutation(api.clubs.hierarchy.join);
 
   useEffect(() => {
-    const code = searchParams?.get("joinCode");
+    const code = parseClubJoinLink(searchParams).code;
     const normalizedCode = code?.trim().toUpperCase();
     if (
       normalizedCode &&
@@ -606,8 +606,9 @@ export default function ClubOverviewPage() {
   }, [club, clubId, redeemJoinCode, searchParams, toast]);
 
   useEffect(() => {
-    const unitId = searchParams?.get("unitId") as Id<"clubUnits"> | null;
-    const unitCode = searchParams?.get("unitCode");
+    const join = parseClubJoinLink(searchParams);
+    const unitId = join.unitId as Id<"clubUnits"> | null;
+    const unitCode = join.unitCode;
     if (!unitId || !unitCode) return;
     const redemptionKey = `${unitId}:${unitCode}`;
     if (
@@ -661,7 +662,7 @@ export default function ClubOverviewPage() {
   const isSponsor = club.sponsors?.some(
     (sponsor) => sponsor.userId === user?._id,
   );
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const isAdmin = hasAnyRole(user, ADMIN_ROLES);
   const canPost = club.viewer.permissions.createAnnouncementDrafts;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
 

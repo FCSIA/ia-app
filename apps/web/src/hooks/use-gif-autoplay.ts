@@ -1,13 +1,14 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { readStorage, writeStorage } from '@/lib/browser-storage';
 
 const key = 'ia_gif_autoplay';
 const listeners = new Set<() => void>();
 let value = true;
 let initialized = false;
 function readStored() {
-  try { value = localStorage.getItem(key) !== 'false'; } catch { /* Keep this tab's choice when storage is blocked. */ }
+  value = readStorage(key) !== 'false';
   initialized = true;
 }
 function read() {
@@ -34,7 +35,7 @@ const serverSnapshot = () => false;
 function setAutoplay(next: boolean) {
   value = next;
   initialized = true;
-  try { localStorage.setItem(key, String(next)); } catch { /* Still update this tab. */ }
+  writeStorage(key, String(next));
   listeners.forEach((listener) => listener());
 }
 export function useGifAutoplay() {

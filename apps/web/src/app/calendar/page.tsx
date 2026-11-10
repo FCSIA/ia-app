@@ -1,5 +1,6 @@
 'use client';
 
+import { hasAnyRole, STUDENT_ROLES } from '~/apps/shared/roles';
 import {
   Component,
   Suspense,
@@ -24,7 +25,7 @@ import { displayName, type PersonName } from '~/apps/shared/user-name';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useMutation, useQuery } from '@/lib/convex-react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
 import { EditCalendarEntryDialog } from '@/components/calendar/EditCalendarEntryDialog';
 import { ExternalCalendarSettingsDialog } from '@/components/calendar/ExternalCalendarSettingsDialog';
@@ -35,8 +36,8 @@ import {
 import {
   calendarDate,
   calendarInputDate,
-  CALENDAR_TIME_ZONE,
 } from '@/components/calendar/calendar-date';
+import { SCHOOL_TIME_ZONE } from '~/apps/shared/school-time';
 import {
   CALENDAR_SOURCES,
   CalendarEventRow,
@@ -90,14 +91,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { calendarDetailHref } from '@/components/calendar/calendar-links';
+import { useMounted } from '@/hooks/use-mounted';
 import { useToast } from '@/hooks/use-toast';
-import { defaultCalendarRange } from '@/lib/calendar-range';
+import { ALL_CALENDAR_SOURCES, calendarListArgs, defaultCalendarRange } from '@/lib/calendar-range';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 type CalendarEntry = FunctionReturnType<
   typeof api.events.calendar.list
 >[number] & { inviteId?: Id<'calendarInvites'>; sharedBy?: PersonName };
-const SOURCES = Object.keys(CALENDAR_SOURCES) as CalendarSource[];
 const DESKTOP_VIEWS: CalendarView[] = ['month', 'week', 'day', 'agenda'];
 const MOBILE_VIEWS: CalendarView[] = ['agenda', 'day', 'days'];
 const VIEW_LABELS: Partial<Record<CalendarView, string>> = {
@@ -130,8 +132,7 @@ class InviteBoundary extends Component<
 function CalendarInvites() {
   const user = useCurrentUser();
   const isMobile = useIsMobile();
-  const isStudent =
-    !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const isStudent = hasAnyRole(user, STUDENT_ROLES);
   const invites =
     useQuery(api.events.calendar.listPendingInvites, isStudent ? {} : 'skip') ??
     [];
@@ -267,8 +268,7 @@ export default function CalendarPage() {
 
 function CalendarMounted() {
   const isMobile = useIsMobile();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   return mounted ? (
     <CalendarWorkspace isMobile={isMobile} />
   ) : (
@@ -307,7 +307,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
         : 'month',
   );
   const [range, setRange] = useState(defaultCalendarRange);
-  const [sources, setSources] = useState<CalendarSource[]>(SOURCES);
+  const [sources, setSources] = useState<CalendarSource[]>(ALL_CALENDAR_SOURCES);
   const [active, setActive] = useState<{
     entry: CalendarEntry;
     rect: DOMRect;
@@ -319,11 +319,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
   const [feedsOpen, setFeedsOpen] = useState(
     search?.get('connect') === 'canvas',
   );
-  const entries = useQuery(api.events.calendar.list, {
-    startDate: range.start,
-    endDate: range.end,
-    sources,
-  });
+  const entries = useQuery(api.events.calendar.list, calendarListArgs(range, sources));
   const previous = useRef<CalendarEntry[]>([]);
   useEffect(() => {
     if (entries) previous.current = entries;
@@ -462,7 +458,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       events={events}
       view={view}
       date={date}
-      timeZone={CALENDAR_TIME_ZONE}
+      timeZone={SCHOOL_TIME_ZONE}
       // Weekends are non-school days; ReUI's off-day surface recedes them.
       offDays={{ className: 'bg-muted/40' }}
       dayCount={3}
@@ -562,7 +558,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                       {isMobile ? (
                         <SlidersHorizontal />
                       ) : (
-                        `Sources${sources.length !== SOURCES.length ? ` (${sources.length})` : ''}`
+                        `Sources${sources.length !== ALL_CALENDAR_SOURCES.length ? ` (${sources.length})` : ''}`
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -574,7 +570,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                         setSources(next as CalendarSource[])
                       }
                     >
-                      {SOURCES.map((source) => (
+                      {ALL_CALENDAR_SOURCES.map((source) => (
                         <FilterToggleItem key={source} value={source}>
                           <CalendarSourceIcon source={source} />
                           {CALENDAR_SOURCES[source].label}
@@ -734,14 +730,7 @@ function CalendarDetails({
   const { toast } = useToast();
   anchor.current.getBoundingClientRect = () => rect ?? new DOMRect();
   if (!entry) return null;
-  const href =
-    entry.source === 'EXTERNAL'
-      ? entry.url
-      : entry.eventId
-        ? `/events/${entry.eventId}`
-        : entry.flexFridayId
-          ? '/flex-friday'
-          : null;
+  const href = calendarDetailHref(entry);
   const date = format(
     calendarDate(entry.startAt),
     entry.allDay ? "EEEE, MMMM d · 'All day'" : 'EEEE, MMMM d · h:mm a',

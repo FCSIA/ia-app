@@ -1,89 +1,155 @@
+import { isStudent, isSuperAdmin, STUDENT_ROLES } from "./roles";
 /** Shared product copy and destinations; clients own platform presentation. */
-export const ONBOARDING_VERSION = 1;
+/** Version 2 adds role-specific staff steps. See docs/features/onboarding.md. */
+export const ONBOARDING_VERSION = 2;
 export type OnboardingStepId =
-  "profile" | "schedule" | "privacy" | "notifications" | "essentials";
+  | "profile"
+  | "schedule"
+  | "privacy"
+  | "notifications"
+  | "flex"
+  | "clubs"
+  | "admin"
+  | "schoolDay"
+  | "essentials";
 export type OnboardingDecision = "done" | "skipped";
-export const ONBOARDING_STEPS = [
+
+export type OnboardingStep = {
+  id: OnboardingStepId;
+  title: string;
+  description: string;
+  action: string;
+  web: string;
+  native: string;
+  confirmation: string;
+  /** Roles that get this step. Omitted means every account with setup. */
+  roles?: readonly string[];
+};
+
+/**
+ * Applicable steps keep this order for every role mix, so a mixed-role
+ * account sees the deduplicated union in a stable sequence.
+ */
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: "profile",
     title: "Confirm your profile",
     description:
-      "Check your school details in Profile. Keep your roster name or choose a preferred name; a photo is optional. Ask school support to correct roster details.",
+      "Check your details and add a preferred name if you use one. School support fixes roster errors.",
     action: "Open profile",
     web: "/profile",
     native: "/profile",
-    studentOnly: false,
-    confirmation: "My details look right",
+    confirmation: "Looks right",
   },
   {
     id: "schedule",
     title: "Add classes and lunch",
     description:
-      "Add your classes and choose Period 4 or 5 for lunch. On web, you can import a schedule image. Infinite Campus remains your official schedule.",
+      "Add your classes and pick Period 4 or 5 for lunch. Infinite Campus stays your official schedule.",
     action: "Open schedule",
     web: "/schedule",
     native: "/calendar?view=schedule",
-    studentOnly: true,
-    confirmation: "Check saved schedule",
+    confirmation: "Check schedule",
+    roles: STUDENT_ROLES,
   },
   {
     id: "privacy",
     title: "Choose schedule privacy",
     description:
-      "Review Public or Private in your schedule settings (Share with friends on mobile). Keeping your schedule private is a valid choice. Friends and comparison groups are optional.",
+      "Decide whether friends can see your schedule. Keeping it private is fine.",
     action: "Review privacy",
     web: "/schedule",
     native: "/calendar?view=schedule",
-    studentOnly: true,
-    confirmation: "I understand sharing",
+    confirmation: "Got it",
+    roles: STUDENT_ROLES,
   },
   {
     id: "notifications",
-    title: "Choose your notifications",
+    title: "Choose notifications",
     description:
-      "Review school and club alerts. Push is optional and set up separately on each device; you can finish with push off or unavailable.",
+      "Pick the school and club alerts you want. Push is optional on each device.",
     action: "Open notifications",
     web: "/profile?section=notifications",
     native: "/settings/notifications",
-    studentOnly: false,
     confirmation: "Keep my choices",
   },
   {
-    id: "essentials",
-    title: "Find your school essentials",
+    id: "flex",
+    title: "Run Flex Friday sessions",
+    description: "Create sessions and assign students in Flex Friday.",
+    action: "Open Flex Friday",
+    web: "/flex-friday",
+    native: "/flex-friday",
+    confirmation: "Got it",
+    roles: ["TEACHER", "STUDENT_ADMIN"],
+  },
+  {
+    id: "clubs",
+    title: "Manage your clubs",
     description:
-      "Read Announcements, check Calendar and Events, and find Flex Friday sessions and your pass. Explore Clubs when you are ready. On web, use Report to ask for help or share feedback.",
+      "Approve join requests and club announcements, and set up channels for the clubs you sponsor.",
+    action: "Open clubs",
+    web: "/clubs",
+    native: "/clubs",
+    confirmation: "Got it",
+    roles: ["SPONSOR"],
+  },
+  {
+    id: "admin",
+    title: "Find your admin tools",
+    description:
+      "Handle reports, look up accounts, and review the audit log in Admin.",
+    action: "Open Admin",
+    web: "/admin/moderation",
+    native: "/admin",
+    confirmation: "Got it",
+    roles: ["SUPPORT_STAFF", "ADMIN"],
+  },
+  {
+    id: "schoolDay",
+    title: "Check the school day",
+    description:
+      "Review the calendar dates and bell templates that student schedules use.",
+    action: "Open day plans",
+    web: "/schedule?tab=admin&section=dates",
+    native: "/admin/school-day",
+    confirmation: "Got it",
+    roles: ["ADMIN"],
+  },
+  {
+    id: "essentials",
+    title: "Find school essentials",
+    description:
+      "Read announcements, check the calendar, and find Flex Friday and your pass.",
     action: "Read announcements",
     web: "/announcements",
     native: "/announcements",
-    studentOnly: false,
-    confirmation: "I know where to go",
+    confirmation: "Got it",
   },
-] as const;
+];
 
-export function onboardingSteps(roles: readonly string[]) {
+const STAFF_ESSENTIALS =
+  "Read announcements and check the calendar and events.";
+
+export function onboardingSteps(roles: readonly string[]): OnboardingStep[] {
+  if (!hasOnboarding(roles)) return [];
   const student = hasStudentOnboarding(roles);
-  return ONBOARDING_STEPS.filter((step) => !step.studentOnly || student).map(
-    (step) =>
-      !student && step.id === "essentials"
-        ? {
-            ...step,
-            description:
-              "Read Announcements, check Calendar and Events, and find your club workspaces. Use the tools available for your school role; administrative access is managed by the school.",
-          }
-        : step,
+  return ONBOARDING_STEPS.filter(
+    (step) => !step.roles || step.roles.some((role) => roles.includes(role)),
+  ).map((step) =>
+    !student && step.id === "essentials"
+      ? { ...step, description: STAFF_ESSENTIALS }
+      : step,
   );
 }
 
-/** Super admins provision the school; the account checklist is not for them. */
+/** Super admins provision the school; their exclusion overrides other roles. */
 export function hasOnboarding(roles: readonly string[]) {
-  return !roles.includes("SUPER_ADMIN");
+  return !isSuperAdmin(roles);
 }
 
 export function hasStudentOnboarding(roles: readonly string[]) {
-  return roles.some((role) =>
-    ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-  );
+  return isStudent(roles);
 }
 
 /** Never surface Convex request IDs or stack traces in the setup UI. */
@@ -97,3 +163,7 @@ export function onboardingSaveError(cause: unknown) {
     ? scheduleMessage
     : "Could not save setup. Your progress is unchanged. Try again.";
 }
+
+export const ONBOARDING_DECISIONS = ["done", "skipped"] as const;
+export const ONBOARDING_STEP_IDS = ONBOARDING_STEPS.map((step) => step.id);
+export const SCHEDULE_NOT_READY_ERROR = "Save classes and a lunch period in Schedule first, or skip for now.";

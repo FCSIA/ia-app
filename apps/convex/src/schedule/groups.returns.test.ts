@@ -5,52 +5,27 @@ import { describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
 // convex-test enforces each function's `returns` validator, so calling the
 // real queries end-to-end catches serializer/validator drift (e.g. a new user
 // field like `isDeveloper`) that TypeScript's structural typing lets through.
-const auth = vi.hoisted(() => ({ userId: null as string | null }));
-
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../lib/currentUser")>();
-  return {
-    ...actual,
-    getCurrentAppUser: async (ctx: { db: { get: (id: string) => Promise<unknown> } }) => {
-      const user = auth.userId ? await ctx.db.get(auth.userId) : null;
-      if (!user) throw new Error("Unauthenticated");
-      return user as Doc<"users">;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob("/src/**/*.*s");
 
 function studentUser(uniqueId: string, isDeveloper: boolean) {
-  return {
-    uniqueId,
-    firstName: uniqueId,
-    lastName: "Student",
-    roles: ["STUDENT" as const],
-    isStudent: true,
-    isTeacherStaff: false,
-    isStudentAdmin: false,
-    isOtherRole: false,
-    isActive: true,
-    mustResetPassword: false,
-    dashboardLayout: [],
-    searchText: `${uniqueId} Student`,
-    isDeveloper,
-    createdAt: 1,
-    updatedAt: 1,
-  };
+  return { uniqueId, lastName: "Student", isDeveloper };
 }
 
 describe("schedule group queries satisfy their return validators", () => {
   it.each([true, false])("with isDeveloper=%s users", async (isDeveloper) => {
     const t = convexTest(schema, modules);
     const { ownerId, groupId } = await t.run(async (ctx) => {
-      const ownerId = await ctx.db.insert("users", studentUser("OWNER001", isDeveloper));
-      const friendId = await ctx.db.insert("users", studentUser("FRIEND001", isDeveloper));
+      const ownerId = await insertUser(ctx, studentUser("OWNER001", isDeveloper));
+      const friendId = await insertUser(ctx, studentUser("FRIEND001", isDeveloper));
       await ctx.db.insert("studentScheduleFriends", {
         requesterId: ownerId,
         addresseeId: friendId,
@@ -90,17 +65,13 @@ describe("schedule group queries satisfy their return validators", () => {
       return { ownerId, groupId };
     });
 
-    auth.userId = ownerId;
-    try {
-      const group = await t.query(api.schedule.groups.get, { groupId });
-      expect(group?.owner.isDeveloper).toBe(isDeveloper);
-      expect(group?.members).toHaveLength(1);
-      expect(group?.members[0]?.user.isDeveloper).toBe(isDeveloper);
+    const owner = t.withIdentity({ subject: ownerId });
+    const group = await owner.query(api.schedule.groups.get, { groupId });
+    expect(group?.owner.isDeveloper).toBe(isDeveloper);
+    expect(group?.members).toHaveLength(1);
+    expect(group?.members[0]?.user.isDeveloper).toBe(isDeveloper);
 
-      await expect(t.query(api.schedule.groups.listMine, {})).resolves.toHaveLength(1);
-      await expect(t.query(api.schedule.groups.listEligibleFriends, {})).resolves.toHaveLength(1);
-    } finally {
-      auth.userId = null;
-    }
+    await expect(owner.query(api.schedule.groups.listMine, {})).resolves.toHaveLength(1);
+    await expect(owner.query(api.schedule.groups.listEligibleFriends, {})).resolves.toHaveLength(1);
   });
 });

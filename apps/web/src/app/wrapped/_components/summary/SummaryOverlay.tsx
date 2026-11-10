@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { WrappedSummary } from '../../_lib/types';
-import { shortYear } from '../../_lib/utils';
+import { schoolYearLabel } from '~/apps/shared/school-time';
 import { prefersReducedMotion } from '../../_lib/motion';
 
 export function SummaryOverlay({ summary }: { summary: WrappedSummary }) {
@@ -68,7 +68,7 @@ export function SummaryOverlay({ summary }: { summary: WrappedSummary }) {
         ? displayName(summary.topMentioned)
         : '—',
     },
-    { icon: Star, label: 'Year', value: shortYear(summary.schoolYearStart) },
+    { icon: Star, label: 'Year', value: schoolYearLabel(summary.schoolYearStart) },
   ];
 
   return (

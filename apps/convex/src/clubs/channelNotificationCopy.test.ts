@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
 import {
-  channelNotificationAuthorName,
   channelNotificationTitle,
 } from "./channelNotificationCopy";
 
@@ -44,7 +43,6 @@ describe("club channel notification copy", () => {
   });
 
   test("formats partial names and keeps a safe fallback", () => {
-    expect(channelNotificationAuthorName({ firstName: "Matthew" })).toBe("Matthew");
     expect(
       channelNotificationTitle({
         authorName: "",

@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { type Id } from "../_generated/dataModel";
-import { type AppRole } from "../../lib/roles";
 import {
   CLUB_DEFINITIONS,
   type SeedClubCategory,
@@ -9,6 +8,7 @@ import {
 } from "../../seed-data/clubs";
 import { createInitialClubRoles } from "./rolePermissions";
 import { recountClub } from "./counts";
+import type { ClubChannelVisibility } from "../validators";
 
 class SeedRandom {
   private seed: number;
@@ -49,7 +49,7 @@ function buildChannelBlueprints(club: SeedClubDefinition, rng: SeedRandom) {
   const channels: Array<{
     name: string;
     description: string;
-    visibility: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
+    visibility: ClubChannelVisibility;
   }> = [
     {
       name: "general",
@@ -214,7 +214,6 @@ export const run = internalMutation({
     const now = Date.now();
 
     if (args.reset) {
-      // Clean up previous seeds
       const oldMentions = await ctx.db
         .query("clubChannelMessageMentions")
         .take(5000);
@@ -278,7 +277,6 @@ export const run = internalMutation({
       for (const c of oldClubs) await ctx.db.delete(c._id);
     }
 
-    // Load users
     const allUsers = await ctx.db.query("users").take(5000);
     const studentUsers = allUsers.filter(
       (u) => u.roles.includes("STUDENT") && u.gradeLevel,
@@ -289,7 +287,6 @@ export const run = internalMutation({
     const roleActor = allUsers[0];
     if (!roleActor) throw new Error("Seed users before seeding clubs");
 
-    // Seed clubs
     const clubIdByName = new Map<string, any>();
     const defaultRoleIdByClub = new Map<string, Id<"clubRoles">>();
     const leaderRoleIdByClub = new Map<string, Id<"clubRoles">>();
@@ -316,7 +313,6 @@ export const run = internalMutation({
       leaderRoleIdByClub.set(clubDef.name, leaderRole._id);
     }
 
-    // Build user memberships
     const membershipsByStudent = new Map<string, Set<string>>();
     const membersByClub = new Map<string, Set<string>>();
     for (const student of studentUsers) {
@@ -395,7 +391,6 @@ export const run = internalMutation({
       }
     }
 
-    // Fill clubs to minimum sizes
     for (const club of CLUB_DEFINITIONS) {
       const minimumSize =
         club.category === "LEADERSHIP"
@@ -416,7 +411,6 @@ export const run = internalMutation({
       }
     }
 
-    // Insert memberships & sponsors & channels
     const leadershipTitlesByCategory: Record<SeedClubCategory, string[]> = {
       PATHWAY: ["President", "Vice President", "Project Lead"],
       ACADEMIC: ["President", "Vice President"],
@@ -470,7 +464,6 @@ export const run = internalMutation({
       }
     }
 
-    // Seed Sponsors
     let sponsorsSeeded = 0;
     const sponsorUniqueIds = sponsorUsers.map((u) => u.uniqueId);
     for (const [index, club] of CLUB_DEFINITIONS.entries()) {
@@ -503,7 +496,6 @@ export const run = internalMutation({
       }
     }
 
-    // Seed Channels and Channel Memberships
     let channelMembershipsSeeded = 0;
     for (const club of CLUB_DEFINITIONS) {
       const clubId = clubIdByName.get(club.name)!;
@@ -549,7 +541,6 @@ export const run = internalMutation({
       }
     }
 
-    // Seed Join Requests
     let joinRequestsSeeded = 0;
     const requestClubs = CLUB_DEFINITIONS.filter(
       (c) => c.joinPolicy === "REQUEST",

@@ -3,7 +3,6 @@ import type { ScheduleWeekday } from "../validators";
 import {
   assertNoLunchCourseConflict,
   academicDateDisposition,
-  inferLegacyLunchPeriod,
   normalizeDateKey,
   normalizeDayBlocks,
   resolveSchoolDay,
@@ -36,14 +35,6 @@ function entry(
 }
 
 describe("schedule lunch invariants", () => {
-  test("infers only an unambiguous legacy lunch gap", () => {
-    expect(inferLegacyLunchPeriod([entry("MONDAY", 5)])).toBe("PERIOD_4");
-    expect(inferLegacyLunchPeriod([entry("MONDAY", 4)])).toBe("PERIOD_5");
-    expect(
-      inferLegacyLunchPeriod([entry("MONDAY", 4), entry("MONDAY", 5)]),
-    ).toBeNull();
-  });
-
   test("rejects a course in the selected lunch period without deleting it", () => {
     expect(() =>
       assertNoLunchCourseConflict(

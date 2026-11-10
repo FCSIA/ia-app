@@ -1,10 +1,10 @@
+import { STAFF_ROLES } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import {
   getCurrentAppUser,
-  getMaybeCurrentAppUser,
   requireAnyRole,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { schema } from "../schema";
@@ -13,11 +13,8 @@ export const list = query({
   args: {},
   returns: v.array(schema.doc("moderationKeywordRules")),
   handler: async (ctx) => {
-    const user = await getMaybeCurrentAppUser(ctx);
-    if (
-      !user ||
-      !requireAnyRoleSafe(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
-    ) {
+    const user = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!user) {
       return [];
     }
 
@@ -36,7 +33,7 @@ export const add = mutation({
   returns: v.id("moderationKeywordRules"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    requireAnyRole(user, STAFF_ROLES);
 
     const keyword = args.keyword.trim().toLowerCase();
     if (!keyword) throw new ConvexError("Keyword required");
@@ -75,7 +72,7 @@ export const remove = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    requireAnyRole(user, STAFF_ROLES);
 
     const rule = await ctx.db.get(args.ruleId);
     if (!rule) throw new ConvexError("Keyword not found");

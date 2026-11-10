@@ -2,30 +2,22 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
-import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
-import { refreshWrappedResultTitle, schoolYearLabel } from '../_lib/admin-utils';
-import type { AdminTabId } from './use-admin-tab';
+import { schoolYearLabel, schoolYearStart } from '~/apps/shared/school-time';
+import { refreshWrappedResultTitle } from '../_lib/admin-utils';
 
-export type WrappedSnapshotStatus = FunctionReturnType<
-  typeof api.wrapped.snapshots.snapshotStatus
->;
-
-export function useAdminWrapped(activeTab: AdminTabId, canManageWrapped: boolean) {
+export function useAdminWrapped() {
   const { toast } = useToast();
 
-  const currentWrappedSchoolYear = useMemo(() => {
-    const now = new Date();
-    return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-  }, []);
+  const currentWrappedSchoolYear = useMemo(() => schoolYearStart(new Date()), []);
 
   const [wrappedSchoolYear, setWrappedSchoolYear] = useState(currentWrappedSchoolYear);
   const wrappedYearOptions = Array.from({ length: 5 }, (_, index) => currentWrappedSchoolYear - index);
 
   const wrappedSnapshotStatus = useQuery(
     api.wrapped.snapshots.snapshotStatus,
-    activeTab === 'wrapped' && canManageWrapped ? { schoolYear: wrappedSchoolYear } : 'skip',
+    { schoolYear: wrappedSchoolYear },
   );
 
   const runGenerateSnapshots = useMutation(api.wrapped.snapshots.generateSnapshots);
@@ -64,9 +56,7 @@ export function useAdminWrapped(activeTab: AdminTabId, canManageWrapped: boolean
     setWrappedSchoolYear,
     wrappedYearOptions,
     status: wrappedSnapshotStatus,
-    isLoading: wrappedSnapshotStatus === undefined && activeTab === 'wrapped' && canManageWrapped,
-    isError: false,
-    error: null,
+    isLoading: wrappedSnapshotStatus === undefined,
     generateMutation,
   };
 }

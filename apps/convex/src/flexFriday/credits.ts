@@ -1,19 +1,16 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
-
-export const FLEX_CREDITS_REQUIRED_PER_YEAR = 12;
-export const FLEX_CREDITS_REQUIRED_PER_SEMESTER = 6;
-
-function schoolYearStart(date: Date): number {
-  return date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
-}
-
-function schoolYearRange(startYear: number) {
-  const start = new Date(startYear, 7, 1).getTime();
-  const end = new Date(startYear + 1, 6, 31, 23, 59, 59, 999).getTime();
-  return { start, end };
-}
+import {
+  FLEX_CREDITS_REQUIRED_PER_SEMESTER,
+  FLEX_CREDITS_REQUIRED_PER_YEAR,
+  flexAttendancesInRange,
+} from "./_credits";
+import {
+  schoolYearLabel,
+  schoolYearRange,
+  schoolYearStart,
+} from "../../../shared/school-time";
 
 function semesterRanges(startYear: number) {
   return [
@@ -40,20 +37,12 @@ export const getMyCredits = query({
     const start = args.schoolYearStart ?? schoolYearStart(new Date());
     const { start: rangeStart, end: rangeEnd } = schoolYearRange(start);
 
-    const attendances = await ctx.db
-      .query("flexAttendances")
-      .withIndex("by_studentId_and_flexFridayId", (q) => q.eq("studentId", user._id))
-      .collect();
-
-    const inRange = await Promise.all(
-      attendances.map(async (row) => {
-        const friday = await ctx.db.get(row.flexFridayId);
-        if (!friday || friday.date < rangeStart || friday.date > rangeEnd) {
-          return null;
-        }
-        const workshop = await ctx.db.get(row.workshopId);
+    const inRange = await flexAttendancesInRange(ctx, user._id, { start: rangeStart, end: rangeEnd });
+    const scoped = await Promise.all(
+      inRange.map(async ({ attendance, friday }) => {
+        const workshop = await ctx.db.get(attendance.workshopId);
         return {
-          ...row,
+          ...attendance,
           workshop: workshop
             ? { _id: workshop._id, title: workshop.title }
             : null,
@@ -64,10 +53,6 @@ export const getMyCredits = query({
           },
         };
       }),
-    );
-
-    const scoped = inRange.filter(
-      (row): row is NonNullable<typeof row> => row !== null,
     );
     const presentAttendances = scoped.filter((a) => a.status === "PRESENT");
     const earned = presentAttendances.length;
@@ -88,7 +73,7 @@ export const getMyCredits = query({
     return {
       studentId: user._id,
       schoolYearStart: start,
-      schoolYearLabel: `${start}-${String(start + 1).slice(-2)}`,
+      schoolYearLabel: schoolYearLabel(start),
       required: FLEX_CREDITS_REQUIRED_PER_YEAR,
       earned,
       remaining: Math.max(FLEX_CREDITS_REQUIRED_PER_YEAR - earned, 0),

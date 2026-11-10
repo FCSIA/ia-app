@@ -5,7 +5,10 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { clubUnitJoinPolicyValidator } from "../validators";
-import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
+import {
+  createClubRole,
+  listClubRoles,
+} from "./rolePermissions";
 import { getClubContext, getViewerContext } from "./access";
 import {
   MAX_CLUB_UNITS,
@@ -14,11 +17,13 @@ import {
   MAX_CLUB_UNIT_NAME_LENGTH,
   assertDistinctSiblingName,
   assertHierarchyDepth,
+  normalizeLabel,
   normalizeOptionalLabel,
   normalizeRequiredLabel,
 } from "./hierarchyRules";
 import { clubUserRefValidator, toClubUserRef } from "./serialize";
-import { adjustClubCounts, recountClub } from "./counts";
+import { insertClubChannel } from "./channelPolicy";
+import { recountClub } from "./counts";
 
 const unitSummaryValidator = v.object({
   _id: v.id("clubUnits"),
@@ -248,20 +253,17 @@ export const create = mutation({
     });
     const club = await ctx.db.get(args.clubId);
     if (club?.autoCreateUnitChannels) {
-      await adjustClubCounts(ctx, args.clubId, { channels: 1 });
-      await ctx.db.insert("clubChannels", {
+      await insertClubChannel(ctx, {
         clubId: args.clubId,
         ownerUnitId: unitId,
         position: 0,
-        accessPolicyVersion: 2,
         accessUnitId: unitId,
         postingPolicy: "AUDIENCE",
         name,
         description: undefined,
         visibility: "PRIVATE",
         createdById: user._id,
-        createdAt: now,
-        updatedAt: now,
+        now,
       });
     }
 
@@ -300,7 +302,7 @@ export const bulkCreate = mutation({
       throw new ConvexError(`A club can have up to ${MAX_CLUB_UNITS} active units`);
     }
 
-    const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+    const normalize = (value: string) => normalizeLabel(value).toLocaleLowerCase();
     const byName = new Map<string, Doc<"clubUnits">[]>();
     for (const unit of existingUnits) {
       const matches = byName.get(normalize(unit.name)) ?? [];
@@ -308,9 +310,9 @@ export const bulkCreate = mutation({
       byName.set(normalize(unit.name), matches);
     }
     const pending = args.units.map((unit) => ({
-      name: unit.name.trim().replace(/\s+/g, " "),
-      parentName: unit.parentName?.trim().replace(/\s+/g, " ") ?? "",
-      kind: unit.kind?.trim().replace(/\s+/g, " ") || undefined,
+      name: normalizeLabel(unit.name),
+      parentName: unit.parentName ? normalizeLabel(unit.parentName) : "",
+      kind: (unit.kind && normalizeLabel(unit.kind)) || undefined,
     }));
     let created = 0;
     let existing = 0;
@@ -358,20 +360,22 @@ export const bulkCreate = mutation({
         });
         const club = await ctx.db.get(args.clubId);
         if (club?.autoCreateUnitChannels) {
-          await ctx.db.insert("clubChannels", {
-            clubId: args.clubId,
-            ownerUnitId: unitId,
-            position: 0,
-            accessPolicyVersion: 2,
-            accessUnitId: unitId,
-            postingPolicy: "AUDIENCE",
-            name: row.name,
-            description: undefined,
-            visibility: "PRIVATE",
-            createdById: user._id,
-            createdAt: now,
-            updatedAt: now,
-          });
+          await insertClubChannel(
+            ctx,
+            {
+              clubId: args.clubId,
+              ownerUnitId: unitId,
+              position: 0,
+              accessUnitId: unitId,
+              postingPolicy: "AUDIENCE",
+              name: row.name,
+              description: undefined,
+              visibility: "PRIVATE",
+              createdById: user._id,
+              now,
+            },
+            { countChannel: false },
+          );
           createdChannels += 1;
         }
         const matches = byName.get(normalize(row.name)) ?? [];
@@ -652,117 +656,6 @@ export const setMember = mutation({
   },
 });
 
-/** Atomically replaces or adds direct unit memberships for a bounded CSV import. */
-export const bulkSetMembers = mutation({
-  args: {
-    clubId: v.id("clubs"),
-    assignments: v.array(bulkUnitAssignmentValidator),
-    replaceExisting: v.boolean(),
-  },
-  returns: v.object({ assigned: v.number(), removed: v.number() }),
-  handler: async (ctx, args) => {
-    if (args.assignments.length === 0) {
-      throw new ConvexError("Add at least one assignment");
-    }
-    if (args.assignments.length > MAX_BULK_UNIT_ASSIGNMENTS) {
-      throw new ConvexError(
-        `A CSV import can assign up to ${MAX_BULK_UNIT_ASSIGNMENTS} rows at a time`,
-      );
-    }
-
-    const user = await getCurrentAppUser(ctx);
-    await requireHierarchyManager(ctx, args.clubId, user);
-
-    const uniqueAssignments = new Map<
-      string,
-      (typeof args.assignments)[number]
-    >();
-    for (const assignment of args.assignments) {
-      uniqueAssignments.set(
-        `${assignment.memberId}:${assignment.unitId}`,
-        assignment,
-      );
-    }
-    const assignments = [...uniqueAssignments.values()];
-    const memberIds = [
-      ...new Set(assignments.map((assignment) => assignment.memberId)),
-    ];
-    const unitIds = [
-      ...new Set(assignments.map((assignment) => assignment.unitId)),
-    ];
-
-    const memberships = await Promise.all(
-      memberIds.map((memberId) =>
-        ctx.db
-          .query("clubMembers")
-          .withIndex("by_clubId_and_userId", (q) =>
-            q.eq("clubId", args.clubId).eq("userId", memberId),
-          )
-          .unique(),
-      ),
-    );
-    await Promise.all(
-      unitIds.map((unitId) => requireUnit(ctx, args.clubId, unitId)),
-    );
-    if (memberships.some((membership) => membership === null)) {
-      throw new ConvexError("Every imported person must be a club member");
-    }
-    let removed = 0;
-    if (args.replaceExisting) {
-      for (const memberId of memberIds) {
-        const current = await ctx.db
-          .query("clubUnitMembers")
-          .withIndex("by_userId_and_clubId", (q) =>
-            q.eq("userId", memberId).eq("clubId", args.clubId),
-          )
-          .take(MAX_DIRECT_UNIT_MEMBERSHIPS_PER_IMPORTED_MEMBER + 1);
-        if (current.length > MAX_DIRECT_UNIT_MEMBERSHIPS_PER_IMPORTED_MEMBER) {
-          throw new ConvexError(
-            "An imported member has too many direct unit assignments to replace in one CSV import",
-          );
-        }
-        for (const membership of current) {
-          await ctx.db.delete(membership._id);
-          removed += 1;
-        }
-      }
-    }
-
-    const now = Date.now();
-    for (const assignment of assignments) {
-      const existing = await ctx.db
-        .query("clubUnitMembers")
-        .withIndex("by_unitId_and_userId", (q) =>
-          q.eq("unitId", assignment.unitId).eq("userId", assignment.memberId),
-        )
-        .unique();
-      if (!existing) {
-        await ctx.db.insert("clubUnitMembers", {
-          clubId: args.clubId,
-          unitId: assignment.unitId,
-          userId: assignment.memberId,
-          joinedAt: now,
-          updatedAt: now,
-        });
-      }
-    }
-
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "CLUB_UNIT_MEMBERS_BULK_SET",
-      entityType: "Club",
-      entityId: args.clubId,
-      meta: {
-        clubId: args.clubId,
-        assigned: assignments.length,
-        removed,
-        replaceExisting: args.replaceExisting,
-      },
-    });
-    return { assigned: assignments.length, removed };
-  },
-});
-
 /** Applies unit memberships and club roles in one bounded transaction. */
 export const bulkImportMembers = mutation({
   args: {
@@ -816,38 +709,27 @@ export const bulkImportMembers = mutation({
         .map((membership) => membership.userId),
     );
 
-    const roles = await ctx.db.query("clubRoles")
-      .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
-      .take(100);
+    const roles = await listClubRoles(ctx, args.clubId);
     const roleByName = new Map(
       roles.map((role) => [role.name.trim().toLocaleLowerCase(), role._id]),
     );
     const now = Date.now();
     let createdRoles = 0;
     for (const assignment of args.roleAssignments) {
-      const name = assignment.roleName.trim().replace(/\s+/g, " ");
+      const name = normalizeLabel(assignment.roleName);
       if (!name) throw new ConvexError("Every role assignment needs a role");
       const key = name.toLocaleLowerCase();
       if (roleByName.has(key)) continue;
       if (!context.permissions.manageRoles) {
         throw new ConvexError(`Role does not exist: ${name}`);
       }
-      if (roles.length + createdRoles >= 100) {
-        throw new ConvexError("A club can have up to 100 roles");
-      }
-      const roleId = await ctx.db.insert("clubRoles", {
+      const roleId = await createClubRole(ctx, {
         clubId: args.clubId,
         name,
-        permissions: NO_CLUB_PERMISSIONS,
-        isDefault: false,
-        showInDirectory: false,
-        position: roles.reduce(
-          (position, role) => Math.max(position, (role.position ?? -1) + 1),
-          createdRoles,
-        ),
-        createdById: user._id,
-        createdAt: now,
-        updatedAt: now,
+        actorId: user._id,
+        existingRoles: roles,
+        createdSoFar: createdRoles,
+        now,
       });
       roleByName.set(key, roleId);
       createdRoles += 1;
@@ -898,7 +780,7 @@ export const bulkImportMembers = mutation({
         skippedRoles += 1;
         continue;
       }
-      const roleId = roleByName.get(assignment.roleName.trim().replace(/\s+/g, " ").toLocaleLowerCase());
+      const roleId = roleByName.get(normalizeLabel(assignment.roleName).toLocaleLowerCase());
       if (!roleId) throw new ConvexError("Role could not be resolved");
       await ctx.db.patch(member._id, {
         roleId,

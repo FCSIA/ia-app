@@ -7,23 +7,11 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import { NO_CLUB_PERMISSIONS } from "../clubs/rolePermissions";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../lib/currentUser")>();
-  const fromIdentity = async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  };
-  return {
-    ...original,
-    getMaybeCurrentAppUser: fromIdentity,
-    getCurrentAppUser: async (ctx: QueryCtx) => {
-      const user = await fromIdentity(ctx);
-      if (!user) throw new Error("Unauthenticated");
-      return user;
-    },
-  };
-});
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 
 // Deactivation also bans the Better Auth account; only the app side matters here.
 vi.mock("../auth", async (importOriginal) => {
@@ -47,22 +35,7 @@ async function fixture({ sponsors = 2 } = {}) {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
     const makeUser = (name: string, roles: Array<"STUDENT" | "TEACHER">) =>
-      ctx.db.insert("users", {
-        uniqueId: name,
-        firstName: name,
-        lastName: "Test",
-        roles,
-        isStudent: roles.includes("STUDENT"),
-        isTeacherStaff: roles.includes("TEACHER"),
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        dashboardLayout: [],
-        searchText: name,
-        createdAt: 1,
-        updatedAt: 1,
-      });
+      insertUser(ctx, { uniqueId: name, firstName: name, lastName: "Test", roles });
     const authorId = await makeUser("Author", ["STUDENT"]);
     const clubId = await ctx.db.insert("clubs", {
       name: "Robotics",

@@ -1,6 +1,8 @@
 "use client";
 
-import { nameSearchValues } from "~/apps/shared/user-name";
+import { clubJoinHref, parseClubPeopleLink } from "~/apps/shared/routes";
+import { isPrivilegedAccount, isSuperAdmin } from "~/apps/shared/roles";
+import { displayName, nameSearchValues } from "~/apps/shared/user-name";
 
 import {
   useDeferredValue,
@@ -8,7 +10,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
@@ -29,22 +30,24 @@ import {
 } from "lucide-react";
 import { useClubId } from "../../club-route";
 import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
+import { useOrigin } from "@/hooks/use-origin";
+import { descendantIds } from "@/lib/club-units";
+import { useFriendship, type FriendshipStatus } from "@/components/users/use-friendship";
+import { useClubDetail } from "@/components/clubs/use-club-detail";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
-import { ClubPersonAvatar } from "@/components/clubs/club-person-avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   PresenceAvatar,
   useMemberPresence,
 } from "@/components/presence/club-presence";
 import { DeveloperBadge } from "@/components/ui/developer-badge";
-import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
+import { UserProfileDialog } from "@/components/users/user-profile-dialog";
 import { PersonTrigger } from "@/components/users/person-trigger";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
 import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
 import { PeopleFilterPopover } from "@/components/clubs/people-filter-popover";
 import type { PeopleKindFilter } from "@/components/clubs/people-filter-popover";
-import { fullName } from "@/components/clubs/types";
 import { IaQrCode } from "@/components/ui/ia-qr-code";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,7 +109,7 @@ import { Tabs, TabPanel, TabsList, TabItem } from "@/components/ui/tabs";
 import { api } from "~/apps/convex/src/_generated/api";
 import { parseInviteCsv } from "@/lib/parse-invite-csv";
 import { parseUnitAssignmentCsv } from "@/lib/parse-unit-assignment-csv";
-import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 import { ImpersonateUserAction } from "@/components/auth/impersonate-user-action";
 import { useToast } from "@/hooks/use-toast";
 import { filterBySearchQuery } from "@/lib/search";
@@ -143,10 +146,6 @@ type UnitAssignmentPreview = {
   skipped: boolean;
 };
 
-const subscribeToOrigin = () => () => undefined;
-const getClientOrigin = () => window.location.origin;
-const getServerOrigin = () => "";
-
 function ManagePeopleDialog({
   club,
   open,
@@ -164,11 +163,7 @@ function ManagePeopleDialog({
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<BulkUploadResult | null>(null);
-  const origin = useSyncExternalStore(
-    subscribeToOrigin,
-    getClientOrigin,
-    getServerOrigin,
-  );
+  const origin = useOrigin();
 
   const generateJoinCode = useMutation(api.clubs.invitations.generateJoinCode);
 
@@ -272,7 +267,7 @@ function ManagePeopleDialog({
 
   const joinUrl =
     origin && club.activeJoinCode?.code
-      ? `${origin}/clubs/${club._id}?joinCode=${club.activeJoinCode.code}`
+      ? `${origin}${clubJoinHref(club._id, { code: club.activeJoinCode.code })}`
       : "";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -372,7 +367,7 @@ function ManagePeopleDialog({
                 <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                   <UserAvatar person={selected} className="size-9" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{fullName(selected)}</p>
+                    <p className="truncate font-medium">{displayName(selected)}</p>
                   </div>
                   <Button
                     type="button"
@@ -432,7 +427,7 @@ function ManagePeopleDialog({
                             <UserAvatar person={student} size={32} />
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">
-                                {fullName(student)}
+                                {displayName(student)}
                               </p>
                             </div>
                           </CommandItem>
@@ -835,26 +830,21 @@ export default function ClubPeoplePage() {
   );
   const [isRemoving, setIsRemoving] = useState(false);
   const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
-  const [friendRequestPendingId, setFriendRequestPendingId] = useState<
-    string | null
-  >(null);
 
   const [filter, setFilter] = useState(() =>
-    searchParams?.get("tab") === "requests" ? "requests" : "all",
+    parseClubPeopleLink(searchParams).requestsTab ? "requests" : "all",
   );
 
   useEffect(() => {
-    if (searchParams?.get("tab") === "requests") setFilter("requests");
+    if (parseClubPeopleLink(searchParams).requestsTab) setFilter("requests");
   }, [searchParams]);
 
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    ClubDetail | undefined;
+  const club = useClubDetail(clubId);
   const removeMember = useMutation(api.clubs.management.removeMember);
   const respondToJoinRequest = useMutation(
     api.clubs.invitations.respondToJoinRequest,
   );
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
-  const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const canAssignRoles = !!club?.viewer.permissions.assignRoles;
   const canManageStructure = !!club?.viewer.permissions.manageClubStructure;
@@ -946,37 +936,16 @@ export default function ClubPeoplePage() {
 
   const selectedUnitIds = useMemo(() => {
     if (!selectedUnitId || !hierarchy?.units) return null;
-    const byParent = new Map<Id<"clubUnits"> | null, Id<"clubUnits">[]>();
-    for (const unit of hierarchy.units) {
-      const parent = unit.parentUnitId ?? null;
-      const list = byParent.get(parent) ?? [];
-      list.push(unit._id);
-      byParent.set(parent, list);
-    }
-    const collected = new Set<Id<"clubUnits">>([selectedUnitId]);
-    const stack: Id<"clubUnits">[] = [selectedUnitId];
-    while (stack.length) {
-      const cur = stack.pop()!;
-      for (const child of byParent.get(cur) ?? []) {
-        if (!collected.has(child)) {
-          collected.add(child);
-          stack.push(child);
-        }
-      }
-    }
-    return collected;
+    return descendantIds(hierarchy.units, selectedUnitId);
   }, [selectedUnitId, hierarchy]);
 
   const matchesSelectedSubstructure = (person: ClubDirectoryEntry) =>
     !selectedUnitIds ||
-    (
-      ((person as unknown as { unitIds?: Id<"clubUnits">[] }).unitIds ??
-        []) as Id<"clubUnits">[]
-    ).some((id) => selectedUnitIds.has(id));
+    person.unitIds.some((id) => selectedUnitIds.has(id));
 
   const matchesSelectedRoles = (person: ClubDirectoryEntry) =>
     selectedRoleIds.size === 0 ||
-    (!!person.roleId && selectedRoleIds.has(person.roleId as Id<"clubRoles">));
+    (!!person.roleId && selectedRoleIds.has(person.roleId));
 
   const matchesKindFilter = (person: ClubDirectoryEntry) =>
     kindFilter === "all" || person.kind === kindFilter;
@@ -1053,19 +1022,7 @@ export default function ClubPeoplePage() {
         .map((person) => person._id),
     [user?._id, visiblePeople],
   );
-  const friendshipStatuses = useQuery(
-    api.schedule.friends.getStatuses,
-    user && friendshipTargetIds.length > 0
-      ? { userIds: friendshipTargetIds }
-      : "skip",
-  );
-  const friendshipStatusByUserId = useMemo(
-    () =>
-      new Map(
-        friendshipStatuses?.map(({ userId, status }) => [userId, status]),
-      ),
-    [friendshipStatuses],
-  );
+  const friendship = useFriendship({ targetIds: friendshipTargetIds, enabled: !!user });
 
   const selectedGroup = peopleGroups?.groups.find(
     (group) => group._id === selectedGroupId,
@@ -1108,7 +1065,7 @@ export default function ClubPeoplePage() {
     setIsRemoving(true);
     try {
       await removeMember({ clubId, memberId: removeTarget._id });
-      toast({ title: `${fullName(removeTarget)} removed` });
+      toast({ title: `${displayName(removeTarget)} removed` });
       setRemoveTarget(null);
     } catch (error) {
       toast({
@@ -1118,25 +1075,6 @@ export default function ClubPeoplePage() {
       });
     } finally {
       setIsRemoving(false);
-    }
-  }
-
-  async function handleSendFriendRequest(friendId: string) {
-    if (friendRequestPendingId) return;
-    setFriendRequestPendingId(friendId);
-    try {
-      await sendFriendRequest({ friendId: friendId as Id<"users"> });
-      toast({ title: "Friend request sent" });
-    } catch (error) {
-      toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : "Failed to send friend request",
-        variant: "destructive",
-      });
-    } finally {
-      setFriendRequestPendingId(null);
     }
   }
 
@@ -1330,18 +1268,18 @@ export default function ClubPeoplePage() {
                       person={person}
                       isCurrentUser={person._id === user?._id}
                       isFriend={
-                        friendshipStatusByUserId.get(person._id) === "FRIENDS"
+                        friendship.statusByUserId.get(person._id) === "FRIENDS"
                       }
                       canSendFriendRequest={
-                        friendshipStatusByUserId.get(person._id) === "NONE"
+                        friendship.statusByUserId.get(person._id) === "NONE"
                       }
-                      friendshipStatus={friendshipStatusByUserId.get(
+                      friendshipStatus={friendship.statusByUserId.get(
                         person._id,
                       )}
                       friendRequestPending={
-                        friendRequestPendingId === person._id
+                        friendship.pendingId === person._id
                       }
-                      onSendFriendRequest={handleSendFriendRequest}
+                      onSendFriendRequest={friendship.send}
                       canAssignRole={canAssignRoles && person.kind === "MEMBER"}
                       canManageUnits={
                         canManageStructure && person.kind === "MEMBER"
@@ -1349,10 +1287,8 @@ export default function ClubPeoplePage() {
                       canRemove={canRemoveMembers && person.kind === "MEMBER"}
                       canImpersonate={Boolean(
                         user &&
-                        hasRole(user, "SUPER_ADMIN") &&
-                        !person.roles.some(
-                          (role) => role === "ADMIN" || role === "SUPER_ADMIN",
-                        ),
+                        isSuperAdmin(user) &&
+                        !isPrivilegedAccount(person),
                       )}
                       onRemove={setRemoveTarget}
                     />
@@ -1406,7 +1342,7 @@ export default function ClubPeoplePage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove {removeTarget ? fullName(removeTarget) : "member"} from{" "}
+              Remove {removeTarget ? displayName(removeTarget) : "member"} from{" "}
               {club?.name ?? "this club"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -1479,9 +1415,9 @@ function PersonRow({
   canRemove: boolean;
   canImpersonate: boolean;
   canSendFriendRequest: boolean;
-  friendshipStatus?: "NONE" | "REQUEST_SENT" | "REQUEST_RECEIVED" | "FRIENDS";
+  friendshipStatus?: FriendshipStatus;
   friendRequestPending: boolean;
-  onSendFriendRequest: (userId: string) => void;
+  onSendFriendRequest: (userId: Id<"users">) => void;
   onRemove: (person: ClubDirectoryEntry) => void;
 }) {
   const showManage =
@@ -1505,15 +1441,15 @@ function PersonRow({
           }
         }}
         onClick={() => setProfileOpen(true)}
-        label={`View ${fullName(person)} profile`}
+        label={`View ${displayName(person)} profile`}
       >
         <PresenceAvatar status={presence}>
-          <ClubPersonAvatar person={person} />
+          <UserAvatar person={person} />
         </PresenceAvatar>
         <CardHeader>
           <div className="flex min-w-0 items-center gap-1.5">
             <CardTitle className="min-w-0 truncate">
-              {fullName(person)}
+              {displayName(person)}
             </CardTitle>
             <DeveloperBadge user={person} size={13} />
           </div>
@@ -1556,7 +1492,7 @@ function PersonRow({
             {canImpersonate ? (
               <ImpersonateUserAction
                 userId={person._id}
-                name={fullName(person)}
+                name={displayName(person)}
               />
             ) : null}
             {canRemove ? (
@@ -1564,7 +1500,7 @@ function PersonRow({
                 type="button"
                 size="icon-sm"
                 variant="ghost"
-                aria-label={`Remove ${fullName(person)} from club`}
+                aria-label={`Remove ${displayName(person)} from club`}
                 onClick={() => onRemove(person)}
               >
                 <UserMinus />
@@ -1666,7 +1602,7 @@ function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
           type="button"
           size="icon-sm"
           variant="ghost"
-          aria-label={`Assign ${fullName(person)} to a unit`}
+          aria-label={`Assign ${displayName(person)} to a unit`}
           title="Assign unit"
         >
           <GitBranch className="size-4" />
@@ -1678,8 +1614,8 @@ function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
         if (unitId) void addMembership(unitId);
       }}
       title="Choose unit"
-      subtitle={fullName(person)}
-      ariaLabel={`Unit assignments for ${fullName(person)}`}
+      subtitle={displayName(person)}
+      ariaLabel={`Unit assignments for ${displayName(person)}`}
       loading={options === undefined}
       footer={
         options?.directMemberships.length ? (

@@ -1,3 +1,5 @@
+import { userSummary } from "../summaries";
+import { isStudent } from "../../../shared/roles";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
@@ -15,10 +17,7 @@ function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string
 function isActiveStudent(user: { isActive: boolean; isStudent: boolean; roles: string[] }) {
   return (
     user.isActive &&
-    (user.isStudent ||
-      user.roles.includes("STUDENT") ||
-      user.roles.includes("STUDENT_LEADER") ||
-      user.roles.includes("STUDENT_ADMIN"))
+    (user.isStudent || isStudent(user))
   );
 }
 
@@ -61,14 +60,7 @@ export const getRoster = query({
     const serializeStudent = async (studentId: Id<"users">) => {
       const student = await ctx.db.get(studentId);
       if (!student) return null;
-      return {
-        _id: student._id,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        preferredName: student.preferredName,
-        gradeLevel: student.gradeLevel,
-        uniqueId: student.uniqueId,
-      };
+      return userSummary(student, "gradeLevel", "uniqueId");
     };
 
     return {

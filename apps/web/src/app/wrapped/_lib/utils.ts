@@ -23,20 +23,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { Slide, WrappedSummary } from './types';
+import { schoolYearLabel } from '~/apps/shared/school-time';
 import { PATHWAY_THEME } from './constants';
 
-export function shortYear(startYear: number) {
-  return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
-}
-
-export function formatHour(hour: number): string {
+function formatHour(hour: number): string {
   // 0 → 12 AM, 13 → 1 PM, etc.
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
   const suffix = hour < 12 ? 'AM' : 'PM';
   return `${h12} ${suffix}`;
 }
 
-export function hourVibe(hour: number): { label: string; icon: LucideIcon } {
+function hourVibe(hour: number): { label: string; icon: LucideIcon } {
   if (hour >= 5 && hour < 11) return { label: 'Morning person', icon: Sun };
   if (hour >= 11 && hour < 17) return { label: 'Midday operator', icon: Sun };
   if (hour >= 17 && hour < 22) return { label: 'Evening chatter', icon: Sparkles };
@@ -55,7 +52,7 @@ export function formatDateLabel(dateKey: string): string {
 }
 
 export function buildSlides(summary: WrappedSummary, displayName: string): Slide[] {
-  const year = shortYear(summary.schoolYearStart);
+  const year = schoolYearLabel(summary.schoolYearStart);
   const avgPerWeek = Math.max(1, Math.round(summary.messagesSent / 40));
   const slides: Slide[] = [];
 

@@ -7,13 +7,11 @@ import type { QueryCtx } from '../_generated/server';
 import type { Doc } from '../_generated/dataModel';
 import schema from '../schema';
 import { listForUser, listPinnedForUser } from './feed';
+import { insertUser } from '../../test/fixtures';
 
-vi.mock('../../lib/currentUser', () => ({
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Doc<'users'>['_id']) : null;
-  },
-}));
+vi.mock('../../lib/currentUser', async (original) =>
+  (await import('../../test/auth')).currentUserFromIdentity(await original()),
+);
 
 const modules = import.meta.glob('/src/**/*.*s');
 
@@ -21,22 +19,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   const now = Date.now();
   const user = await t.run(async (ctx) => {
-    const authorId = await ctx.db.insert('users', {
-      uniqueId: 'TEACHER-1',
-      firstName: 'Ada',
-      lastName: 'Lovelace',
-      roles: ['TEACHER'],
-      isStudent: false,
-      isTeacherStaff: true,
-      isStudentAdmin: false,
-      isOtherRole: false,
-      isActive: true,
-      mustResetPassword: false,
-      dashboardLayout: [],
-      searchText: 'ada lovelace',
-      createdAt: 0,
-      updatedAt: 0,
-    });
+    const authorId = await insertUser(ctx, { uniqueId: 'TEACHER-1', firstName: 'Ada', lastName: 'Lovelace', roles: ['TEACHER'], createdAt: 0, updatedAt: 0 });
 
     for (let index = 1; index <= 5; index += 1) {
       await ctx.db.insert('announcements', {
@@ -267,23 +250,7 @@ describe('announcement feed pagination', () => {
   it('does not reveal a pin when the current audience cannot view it', async () => {
     const { t, user } = await fixture();
     const outsider = await t.run(async (ctx) => {
-      const outsiderId = await ctx.db.insert('users', {
-        uniqueId: 'STUDENT-10',
-        firstName: 'Grace',
-        lastName: 'Hopper',
-        roles: ['STUDENT'],
-        isStudent: true,
-        isTeacherStaff: false,
-        isStudentAdmin: false,
-        isOtherRole: false,
-        isActive: true,
-        mustResetPassword: false,
-        gradeLevel: 10,
-        dashboardLayout: [],
-        searchText: 'grace hopper',
-        createdAt: 0,
-        updatedAt: 0,
-      });
+      const outsiderId = await insertUser(ctx, { uniqueId: 'STUDENT-10', firstName: 'Grace', lastName: 'Hopper', roles: ['STUDENT'], gradeLevel: 10, createdAt: 0, updatedAt: 0 });
       const announcementId = await ctx.db.insert('announcements', {
         authorId: user._id,
         title: 'grade-nine-only',

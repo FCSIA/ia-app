@@ -2,14 +2,18 @@
 
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery } from '@/lib/convex-react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
-import type { AdminTabId } from './use-admin-tab';
+import { USER_ROLE_GROUP_META } from '../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
-import type { AppRole } from '~/apps/convex/lib/roles';
+import {
+  type AppRole,
+  canManageUser,
+  hasAnyRole,
+  SUPER_ADMIN_ROLES,
+} from '~/apps/shared/roles';
 
 const USERS_PAGE_SIZE = 30;
 
@@ -22,13 +26,12 @@ type UsersPage = {
 type UsersPageStatus = 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
 
 type DisplayedUsersPageState = {
-  activeTab: AdminTabId;
   search: string;
   userRoleGroup: AdminUserRoleGroup;
   page: UsersPage | undefined;
 };
 
-export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initialUserId = '') {
+export function useAdminUsers(initialSearch = '', initialUserId = '') {
   const user = useCurrentUser();
   const { toast } = useToast();
 
@@ -40,46 +43,29 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [previousCursors, setPreviousCursors] = useState<(string | null)[]>([]);
   const [displayedPageState, setDisplayedPageState] = useState<DisplayedUsersPageState>({
-    activeTab,
     search: deferredSearch,
     userRoleGroup,
     page: undefined,
   });
 
-  const canManageUser = (targetUser: AdminUserRecord) => {
-    if (!user) return false;
-    const targetRoles = getUserRoles(targetUser);
-    const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
-    if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
-    return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  };
+  const canManage = (targetUser: AdminUserRecord) => canManageUser(user, targetUser);
 
-  const canDeactivate = canManageUser;
-  const canResetPassword = canManageUser;
-
-  const usersPage = useQuery(
-    api.users.admin.list,
-    activeTab === 'users'
-      ? {
-          search: deferredSearch || undefined,
-          userId: exactUserId,
-          roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup,
-          paginationOpts: {
-            numItems: USERS_PAGE_SIZE,
-            cursor: currentCursor,
-          },
-        }
-      : 'skip',
-  );
+  const usersPage = useQuery(api.users.admin.list, {
+    search: deferredSearch || undefined,
+    userId: exactUserId,
+    roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup,
+    paginationOpts: {
+      numItems: USERS_PAGE_SIZE,
+      cursor: currentCursor,
+    },
+  });
 
   let displayedPage = displayedPageState.page;
   const isSearchChangeOnly =
-    displayedPageState.activeTab === activeTab &&
     displayedPageState.userRoleGroup === userRoleGroup &&
     displayedPageState.search !== deferredSearch;
 
   if (
-    displayedPageState.activeTab !== activeTab ||
     displayedPageState.search !== deferredSearch ||
     displayedPageState.userRoleGroup !== userRoleGroup
   ) {
@@ -87,7 +73,6 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
       displayedPage = undefined;
     }
     setDisplayedPageState({
-      activeTab,
       search: deferredSearch,
       userRoleGroup,
       page: isSearchChangeOnly ? displayedPageState.page : undefined,
@@ -103,9 +88,7 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
   // Actual total count for the selected role group (shown in the header badge).
   const totalCount = useQuery(
     api.users.admin.count,
-    activeTab === 'users' && !exactUserId
-      ? { roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup }
-      : 'skip',
+    exactUserId ? 'skip' : { roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup },
   );
 
   const deactivateUser = useMutation(api.users.admin.deactivate);
@@ -138,7 +121,7 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
   };
 
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
-  const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+  const isSuperAdmin = hasAnyRole(user, SUPER_ADMIN_ROLES);
   const status: UsersPageStatus = displayedPage
     ? usersPage
       ? usersPage.isDone
@@ -180,14 +163,10 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '', initial
       setCurrentCursor(previousCursors[previousCursors.length - 1] ?? null);
       setPreviousCursors((cursors) => cursors.slice(0, -1));
     },
-    isUsersLoading: activeTab === 'users' && !displayedPage && !usersPage,
-    isUsersError: false,
-    usersError: null,
-    refetchUsers: () => undefined,
+    isUsersLoading: !displayedPage && !usersPage,
     selectedUserRoleMeta,
     currentUserId: user?._id,
-    canDeactivate,
-    canResetPassword,
+    canManage,
     canDeleteUsers: isSuperAdmin,
     onDeactivate: (userId: string) =>
       void runUserMutation(

@@ -1,4 +1,7 @@
-import { AppState, RefreshControl, View } from "react-native";
+import { notificationsQueries } from "@/lib/tab-queries";
+import { useAppActive } from "@/lib/use-app-active";
+import { usePullToRefresh } from "@/lib/use-pull-to-refresh";
+import { View } from "react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
@@ -13,8 +16,9 @@ import { dismissPresentedNotificationsThrough } from "@/lib/push";
 import { radii, spacing } from "@/lib/tokens";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
+import type { NotificationCategory } from "~/apps/shared/notifications";
 
-const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
+const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
   SCHOOL_ANNOUNCEMENT: "Announcement",
   CLUB_ANNOUNCEMENT: "Club announcement",
   CLUB_JOIN_REQUEST: "Club request",
@@ -31,15 +35,15 @@ const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function NotificationsScreen() {
-  const notifications = useQuery(api.notifications.inbox.list, { limit: 50 });
+  const inboxQuery = notificationsQueries.inbox();
+  const notifications = useQuery(inboxQuery.query, inboxQuery.args);
   const markRead = useMutation(api.notifications.inbox.markRead);
   // `acknowledgeInbox` is deliberately server-batched against a fixed cutoff;
   // a device must never clear an alert that arrived after it opened the inbox.
   const acknowledgeInbox = useMutation(api.notifications.inbox.acknowledgeInbox);
-  const { color } = useTheme();
-  const [refreshing, setRefreshing] = useState(false);
+  const refreshControl = usePullToRefresh();
   const [isFocused, setIsFocused] = useState(false);
-  const [isActive, setIsActive] = useState(AppState.currentState === "active");
+  const isActive = useAppActive();
   const acknowledgedUnreadKeyRef = useRef<string | null>(null);
   const acknowledgedThisFocusRef = useRef(false);
   const acknowledgingRef = useRef(false);
@@ -56,13 +60,6 @@ export default function NotificationsScreen() {
       return () => setIsFocused(false);
     }, []),
   );
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      setIsActive(state === "active");
-    });
-    return () => subscription.remove();
-  }, []);
 
   useEffect(() => {
     if (!isFocused || !isActive || notifications === undefined) {
@@ -108,16 +105,7 @@ export default function NotificationsScreen() {
   return (
     <Screen
       header={<AppHeader title="Inbox" />}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          tintColor={color("primary")}
-          onRefresh={() => {
-            setRefreshing(true);
-            setTimeout(() => setRefreshing(false), 550);
-          }}
-        />
-      }
+      refreshControl={refreshControl}
     >
       <DataBoundary data={notifications} emptyTitle="No notifications yet">
         {() => (
@@ -210,6 +198,6 @@ function NotificationRow({ item, onPress }: { item: any; onPress: () => void }) 
   );
 }
 
-function notificationCategory(category: string) {
+function notificationCategory(category: NotificationCategory) {
   return NOTIFICATION_CATEGORY_LABELS[category] ?? "Notification";
 }

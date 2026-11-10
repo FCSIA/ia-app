@@ -1,13 +1,13 @@
+import { FLEX_FRIDAY_HREF } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { flexFridayValidator } from "./_lib";
-import { flexSessionTypeValidator } from "../validators";
+import { flexFridayTypeValidator, flexSessionTypeValidator, pathwayValidator } from "../validators";
 import { deliverMany, flexFridayAudience } from "../notifications/delivery";
 import { canCreateFlexFriday } from "./permissions";
 import { countFlexSessions } from "./counts";
-import { schoolDaySpan } from "../../lib/schoolTime";
+import { schoolDaySpan } from "../../../shared/school-time";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -37,9 +37,9 @@ export const list = query({
 export const create = mutation({
   args: {
     date: v.union(v.string(), v.number()),
-    type: flexFridayValidator.type,
+    type: flexFridayTypeValidator,
     gradeLevel: v.optional(v.number()),
-    pathway: flexFridayValidator.pathway,
+    pathway: v.optional(pathwayValidator),
     isSchoolDay: v.optional(v.boolean()),
     notes: v.optional(v.string()),
     sessions: v.optional(
@@ -110,7 +110,7 @@ export const create = mutation({
         category: "FLEX_FRIDAY",
         title: "Flex Friday scheduled",
         body: args.notes?.trim() || "A new Flex Friday has been added.",
-        href: "/flex-friday",
+        href: FLEX_FRIDAY_HREF,
         subject: { kind: "flexFriday", flexFridayId: friday._id },
       });
     }

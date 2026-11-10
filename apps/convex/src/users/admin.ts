@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from "convex/server";
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
@@ -13,45 +13,53 @@ import { logAuditEvent } from "../audit/_lib";
 import { settleSponsorApprovals } from "../events/approvals";
 import {
   getCurrentAppUser,
-  getMaybeCurrentAppUser,
   requireAnyRole,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
-import { USER_MANAGEMENT_ROLES } from "../../lib/roles";
+import {
+  ADMIN_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLES,
+  isPrivilegedAccount,
+  isStudent,
+  isSuperAdmin,
+  type AppRole,
+} from "../../../shared/roles";
 import {
   appRoleValidator,
   pathwayValidator,
+  type Pathway,
 } from "../validators";
 import {
   authComponent,
   createAuth,
 } from "../auth";
-import { getStoredUserCount, incrementUserCounts, replaceUserCounts } from "../stats";
+import { getStoredUserCount, incrementUserCounts } from "../stats";
 import {
-  classifyRoles,
   createLinkedUser,
   createUserResultValidator,
   buildStudentEmail,
   generateTemporaryPassword,
+  isGradeLevelOutOfRange,
   listUsersResultValidator,
   normalizeUniqueId,
   adminUserProfileValidator,
+  applyRoleChange,
   assertCanActOn,
   assertCanResetPassword,
   betterAuthRoleForAppRoles,
   isPrivilegeReduction,
   revokeBetterAuthSessions,
-  searchText,
   setBetterAuthPassword,
   syncBetterAuthRole,
-  isStudentUser,
-  administratorImportResultValidator,
   studentExportRowValidator,
-  studentImportResultValidator,
+  userImportResultValidator,
+  userImportRowResultValidator,
   toAdminUserProfile,
   userRoleGroupValidator,
-  type Pathway,
+  writeUserNames,
 } from "./_lib";
+import { assertCsvRowCount, recordAuditBestEffort, runCsvRows } from "./_csvRows";
 
 const studentImportRowValidator = v.object({
   uniqueId: v.string(),
@@ -87,8 +95,8 @@ export const list = query({
   },
   returns: listUsersResultValidator,
   handler: async (ctx, args) => {
-    const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"])) {
+    const actor = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!actor) {
       return {
         page: [],
         isDone: true,
@@ -169,8 +177,8 @@ export const count = query({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"])) {
+    const actor = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!actor) {
       return 0;
     }
 
@@ -235,21 +243,16 @@ export const createUser = mutation({
   returns: createUserResultValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
-    const requestedRoles = args.roles?.length
-      ? args.roles
-      : ["STUDENT"];
-    const createsPrivilegedUser = requestedRoles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    if (createsPrivilegedUser && !actor.roles.includes("SUPER_ADMIN")) {
+    const requestedRoles: AppRole[] = args.roles?.length ? args.roles : ["STUDENT"];
+    if (isPrivilegedAccount(requestedRoles) && !isSuperAdmin(actor)) {
       throw new ConvexError("Only super admins can create admin accounts.");
     }
 
     const result = await createLinkedUser(ctx, {
       ...args,
-      roles: requestedRoles as any,
+      roles: requestedRoles,
     });
 
     await logAuditEvent(ctx, {
@@ -264,80 +267,42 @@ export const createUser = mutation({
   },
 });
 
-const generatedCredentialValidator = v.object({
-  firstName: v.string(),
-  lastName: v.string(),
-  uniqueId: v.string(),
-  email: v.string(),
-  temporaryPassword: v.string(),
-});
-
-type GeneratedCredential = {
-  firstName: string;
-  lastName: string;
-  uniqueId: string;
-  email: string;
-  temporaryPassword: string;
-};
-
-type StudentImportRowResult =
-  | {
-      kind: "created";
-      credential?: GeneratedCredential;
-    }
-  | {
-      kind: "skipped";
-      error?: string;
-    };
-
-type StudentImportResult = {
-  created: number;
-  skipped: number;
-  errors: string[];
-  generatedCredentials: GeneratedCredential[];
-};
-
-const studentImportRowResultValidator = v.union(
-  v.object({
-    kind: v.literal("created"),
-    credential: v.optional(generatedCredentialValidator),
-  }),
-  v.object({
-    kind: v.literal("skipped"),
-    error: v.optional(v.string()),
-  }),
-);
-
-type StudentBulkUpdateRowResult =
-  | { kind: "updated" }
-  | { kind: "skipped"; error?: string };
-
-type StudentBulkUpdateResult = {
-  updated: number;
-  skipped: number;
-  errors: string[];
-};
+type UserImportRowResult = Infer<typeof userImportRowResultValidator>;
+type UserImportResult = Infer<typeof userImportResultValidator>;
 
 const studentBulkUpdateRowResultValidator = v.union(
   v.object({ kind: v.literal("updated") }),
   v.object({ kind: v.literal("skipped"), error: v.optional(v.string()) }),
 );
+type StudentBulkUpdateRowResult = Infer<typeof studentBulkUpdateRowResultValidator>;
 
 const studentBulkUpdateResultValidator = v.object({
   updated: v.number(),
   skipped: v.number(),
   errors: v.array(v.string()),
 });
+type StudentBulkUpdateResult = Infer<typeof studentBulkUpdateResultValidator>;
 
-const STUDENT_IMPORT_BATCH_SIZE = 5;
-const ADMINISTRATOR_IMPORT_BATCH_SIZE = 5;
+function foldImportRow(
+  results: UserImportResult,
+  rowNumber: number,
+  outcome: UserImportRowResult,
+) {
+  if (outcome.kind === "created") {
+    results.created += 1;
+    if (outcome.credential) results.generatedCredentials.push(outcome.credential);
+  } else {
+    results.skipped += 1;
+    if (outcome.error) results.errors.push(`Row ${rowNumber}: ${outcome.error}`);
+  }
+}
 
 export const requireStudentImportActor = internalQuery({
   args: {},
   returns: v.id("users"),
   handler: async (ctx): Promise<Id<"users">> => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
     return actor._id;
   },
 });
@@ -346,14 +311,14 @@ export const importStudentRow = internalMutation({
   args: {
     row: studentImportRowValidator,
   },
-  returns: studentImportRowResultValidator,
-  handler: async (ctx, args): Promise<StudentImportRowResult> => {
+  returns: userImportRowResultValidator,
+  handler: async (ctx, args): Promise<UserImportRowResult> => {
     const { row } = args;
     const uniqueId = normalizeUniqueId(row.uniqueId);
     const firstName = row.firstName.trim();
     const lastName = row.lastName.trim();
 
-    const skip = (error?: string): StudentImportRowResult => ({
+    const skip = (error?: string): UserImportRowResult => ({
       kind: "skipped",
       ...(error === undefined ? {} : { error }),
     });
@@ -366,10 +331,7 @@ export const importStudentRow = internalMutation({
         `Student ID '${uniqueId}' is too short. It must be at least 3 characters.`,
       );
     }
-    if (
-      row.gradeLevel != null &&
-      (row.gradeLevel < 9 || row.gradeLevel > 12)
-    ) {
+    if (row.gradeLevel != null && isGradeLevelOutOfRange(row.gradeLevel)) {
       return skip(
         `Grade level must be between 9 and 12. Received "${row.gradeLevel}"`,
       );
@@ -396,8 +358,8 @@ export const importStudentRow = internalMutation({
       firstName,
       lastName,
       gradeLevel: row.gradeLevel,
-      major: row.major as Pathway | undefined,
-      minor: row.minor as Pathway | undefined,
+      major: row.major,
+      minor: row.minor,
       email,
       password: temporaryPassword,
       roles: ["STUDENT"],
@@ -439,7 +401,7 @@ export const updateStudentRow = internalMutation({
     if (
       args.row.gradeLevel !== undefined &&
       args.row.gradeLevel !== null &&
-      (args.row.gradeLevel < 9 || args.row.gradeLevel > 12)
+      isGradeLevelOutOfRange(args.row.gradeLevel)
     ) {
       return skip("grade level must be between 9 and 12");
     }
@@ -517,99 +479,38 @@ export const importStudents = action({
   args: {
     rows: v.array(studentImportRowValidator),
   },
-  returns: studentImportResultValidator,
-  handler: async (ctx, args): Promise<StudentImportResult> => {
+  returns: userImportResultValidator,
+  handler: async (ctx, args): Promise<UserImportResult> => {
     const actorId: Id<"users"> = await ctx.runQuery(
       internal.users.admin.requireStudentImportActor,
       {},
     );
+    assertCsvRowCount(args.rows.length, {
+      none: "Import at least one student.",
+      tooMany: "Import at most 200 students at a time.",
+    });
 
-    if (args.rows.length === 0) {
-      throw new ConvexError("Import at least one student.");
-    }
-    if (args.rows.length > 200) {
-      throw new ConvexError("Import at most 200 students at a time.");
-    }
-
-    const results: StudentImportResult = {
+    const results: UserImportResult = {
       created: 0,
       skipped: 0,
       errors: [],
       generatedCredentials: [],
     };
-
-    const seenUniqueIds = new Set<string>();
-    const work = args.rows.map((row, index) => {
-      const uniqueId = normalizeUniqueId(row.uniqueId);
-      const duplicateWithinImport =
-        uniqueId.length > 0 && seenUniqueIds.has(uniqueId);
-
-      if (uniqueId.length > 0) {
-        seenUniqueIds.add(uniqueId);
-      }
-
-      return {
-        row,
-        rowNumber: index + 2,
-        uniqueId,
-        duplicateWithinImport,
-      };
+    const rows = await runCsvRows(args.rows, {
+      duplicateError: (uniqueId) => `Duplicate student ID '${uniqueId}' in this CSV.`,
+      processRow: (row): Promise<UserImportRowResult> =>
+        ctx.runMutation(internal.users.admin.importStudentRow, { row }),
     });
+    for (const { rowNumber, outcome } of rows) foldImportRow(results, rowNumber, outcome);
 
-    for (let start = 0; start < work.length; start += STUDENT_IMPORT_BATCH_SIZE) {
-      const batch = work.slice(start, start + STUDENT_IMPORT_BATCH_SIZE);
-      const batchResults = await Promise.all(
-        batch.map(async (entry): Promise<StudentImportRowResult> => {
-          if (entry.duplicateWithinImport) {
-            return {
-              kind: "skipped",
-              error: `Duplicate student ID '${entry.uniqueId}' in this CSV.`,
-            };
-          }
-
-          try {
-            return await ctx.runMutation(
-              internal.users.admin.importStudentRow,
-              {
-                row: entry.row,
-              },
-            );
-          } catch (error) {
-            return {
-              kind: "skipped",
-              error: error instanceof Error ? error.message : "Unknown error",
-            };
-          }
-        }),
-      );
-
-      for (const [batchIndex, result] of batchResults.entries()) {
-        const rowNumber = batch[batchIndex]!.rowNumber;
-
-        if (result.kind === "created") {
-          results.created += 1;
-          if (result.credential) {
-            results.generatedCredentials.push(result.credential);
-          }
-        } else {
-          results.skipped += 1;
-          if (result.error) {
-            results.errors.push(`Row ${rowNumber}: ${result.error}`);
-          }
-        }
-      }
-    }
-
-    try {
-      await ctx.runMutation(internal.users.admin.logStudentImportAudit, {
+    await recordAuditBestEffort("student import", () =>
+      ctx.runMutation(internal.users.admin.logStudentImportAudit, {
         actorId,
         created: results.created,
         skipped: results.skipped,
         generatedPasswords: true,
-      });
-    } catch (error) {
-      console.error("Failed to record student import audit event", error);
-    }
+      }),
+    );
 
     return results;
   },
@@ -625,88 +526,43 @@ export const updateStudents = action({
       internal.users.admin.requireStudentImportActor,
       {},
     );
-    if (args.rows.length === 0) throw new ConvexError("Import at least one student update.");
-    if (args.rows.length > 200) throw new ConvexError("Update at most 200 students at a time.");
-
-    const results: StudentBulkUpdateResult = { updated: 0, skipped: 0, errors: [] };
-    const seenUniqueIds = new Set<string>();
-    const work = args.rows.map((row, index) => {
-      const uniqueId = normalizeUniqueId(row.uniqueId);
-      const duplicateWithinImport = uniqueId.length > 0 && seenUniqueIds.has(uniqueId);
-      if (uniqueId.length > 0) seenUniqueIds.add(uniqueId);
-      return { row, rowNumber: index + 2, uniqueId, duplicateWithinImport };
+    assertCsvRowCount(args.rows.length, {
+      none: "Import at least one student update.",
+      tooMany: "Update at most 200 students at a time.",
     });
 
-    for (let start = 0; start < work.length; start += STUDENT_IMPORT_BATCH_SIZE) {
-      const batch = work.slice(start, start + STUDENT_IMPORT_BATCH_SIZE);
-      const batchResults = await Promise.all(batch.map(async (entry): Promise<StudentBulkUpdateRowResult> => {
-        if (entry.duplicateWithinImport) {
-          return { kind: "skipped", error: `duplicate student ID '${entry.uniqueId}' in this CSV` };
-        }
-        try {
-          return await ctx.runMutation(internal.users.admin.updateStudentRow, { row: entry.row });
-        } catch (error) {
-          return { kind: "skipped", error: error instanceof Error ? error.message : "Unknown error" };
-        }
-      }));
-
-      for (const [batchIndex, result] of batchResults.entries()) {
-        if (result.kind === "updated") {
-          results.updated += 1;
-        } else {
-          results.skipped += 1;
-          if (result.error) results.errors.push(`Row ${batch[batchIndex]!.rowNumber}: ${result.error}`);
-        }
+    const results: StudentBulkUpdateResult = { updated: 0, skipped: 0, errors: [] };
+    const rows = await runCsvRows(args.rows, {
+      duplicateError: (uniqueId) => `duplicate student ID '${uniqueId}' in this CSV`,
+      processRow: (row): Promise<StudentBulkUpdateRowResult> =>
+        ctx.runMutation(internal.users.admin.updateStudentRow, { row }),
+    });
+    for (const { rowNumber, outcome } of rows) {
+      if (outcome.kind === "updated") {
+        results.updated += 1;
+      } else {
+        results.skipped += 1;
+        if (outcome.error) results.errors.push(`Row ${rowNumber}: ${outcome.error}`);
       }
     }
 
-    try {
-      await ctx.runMutation(internal.users.admin.logStudentBulkUpdateAudit, {
+    await recordAuditBestEffort("student bulk update", () =>
+      ctx.runMutation(internal.users.admin.logStudentBulkUpdateAudit, {
         actorId,
         updated: results.updated,
         skipped: results.skipped,
-      });
-    } catch (error) {
-      console.error("Failed to record student bulk update audit event", error);
-    }
+      }),
+    );
     return results;
   },
 });
-
-type AdministratorImportRowResult =
-  | {
-      kind: "created";
-      credential?: GeneratedCredential;
-    }
-  | {
-      kind: "skipped";
-      error?: string;
-    };
-
-type AdministratorImportResult = {
-  created: number;
-  skipped: number;
-  errors: string[];
-  generatedCredentials: GeneratedCredential[];
-};
-
-const administratorImportRowResultValidator = v.union(
-  v.object({
-    kind: v.literal("created"),
-    credential: v.optional(generatedCredentialValidator),
-  }),
-  v.object({
-    kind: v.literal("skipped"),
-    error: v.optional(v.string()),
-  }),
-);
 
 export const requireAdministratorImportActor = internalQuery({
   args: {},
   returns: v.id("users"),
   handler: async (ctx): Promise<Id<"users">> => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
     return actor._id;
   },
 });
@@ -715,14 +571,14 @@ export const importAdministratorRow = internalMutation({
   args: {
     row: administratorImportRowValidator,
   },
-  returns: administratorImportRowResultValidator,
-  handler: async (ctx, args): Promise<AdministratorImportRowResult> => {
+  returns: userImportRowResultValidator,
+  handler: async (ctx, args): Promise<UserImportRowResult> => {
     const uniqueId = normalizeUniqueId(args.row.uniqueId);
     const firstName = args.row.firstName.trim();
     const lastName = args.row.lastName.trim();
     const email = args.row.email.trim();
 
-    const skip = (error?: string): AdministratorImportRowResult => ({
+    const skip = (error?: string): UserImportRowResult => ({
       kind: "skipped",
       ...(error === undefined ? {} : { error }),
     });
@@ -791,91 +647,37 @@ export const importAdministrators = action({
   args: {
     rows: v.array(administratorImportRowValidator),
   },
-  returns: administratorImportResultValidator,
-  handler: async (ctx, args): Promise<AdministratorImportResult> => {
+  returns: userImportResultValidator,
+  handler: async (ctx, args): Promise<UserImportResult> => {
     const actorId: Id<"users"> = await ctx.runQuery(
       internal.users.admin.requireAdministratorImportActor,
       {},
     );
+    assertCsvRowCount(args.rows.length, {
+      none: "Import at least one administrator.",
+      tooMany: "Import at most 200 administrators at a time.",
+    });
 
-    if (args.rows.length === 0) {
-      throw new ConvexError("Import at least one administrator.");
-    }
-    if (args.rows.length > 200) {
-      throw new ConvexError("Import at most 200 administrators at a time.");
-    }
-
-    const results: AdministratorImportResult = {
+    const results: UserImportResult = {
       created: 0,
       skipped: 0,
       errors: [],
       generatedCredentials: [],
     };
-    const seenUniqueIds = new Set<string>();
-    const work = args.rows.map((row, index) => {
-      const uniqueId = normalizeUniqueId(row.uniqueId);
-      const duplicateWithinImport =
-        uniqueId.length > 0 && seenUniqueIds.has(uniqueId);
-      if (uniqueId.length > 0) seenUniqueIds.add(uniqueId);
-
-      return {
-        row,
-        rowNumber: index + 2,
-        uniqueId,
-        duplicateWithinImport,
-      };
+    const rows = await runCsvRows(args.rows, {
+      duplicateError: (uniqueId) => `Duplicate administrator ID '${uniqueId}' in this CSV.`,
+      processRow: (row): Promise<UserImportRowResult> =>
+        ctx.runMutation(internal.users.admin.importAdministratorRow, { row }),
     });
+    for (const { rowNumber, outcome } of rows) foldImportRow(results, rowNumber, outcome);
 
-    for (
-      let start = 0;
-      start < work.length;
-      start += ADMINISTRATOR_IMPORT_BATCH_SIZE
-    ) {
-      const batch = work.slice(start, start + ADMINISTRATOR_IMPORT_BATCH_SIZE);
-      const batchResults = await Promise.all(
-        batch.map(async (entry): Promise<AdministratorImportRowResult> => {
-          if (entry.duplicateWithinImport) {
-            return {
-              kind: "skipped",
-              error: `Duplicate administrator ID '${entry.uniqueId}' in this CSV.`,
-            };
-          }
-
-          try {
-            return await ctx.runMutation(
-              internal.users.admin.importAdministratorRow,
-              { row: entry.row },
-            );
-          } catch (error) {
-            return {
-              kind: "skipped",
-              error: error instanceof Error ? error.message : "Unknown error",
-            };
-          }
-        }),
-      );
-
-      for (const [batchIndex, result] of batchResults.entries()) {
-        const rowNumber = batch[batchIndex]!.rowNumber;
-        if (result.kind === "created") {
-          results.created += 1;
-          if (result.credential) results.generatedCredentials.push(result.credential);
-        } else {
-          results.skipped += 1;
-          if (result.error) results.errors.push(`Row ${rowNumber}: ${result.error}`);
-        }
-      }
-    }
-
-    try {
-      await ctx.runMutation(internal.users.admin.logAdministratorImportAudit, {
+    await recordAuditBestEffort("administrator import", () =>
+      ctx.runMutation(internal.users.admin.logAdministratorImportAudit, {
         actorId,
         created: results.created,
         skipped: results.skipped,
-      });
-    } catch (error) {
-      console.error("Failed to record administrator import audit event", error);
-    }
+      }),
+    );
 
     return results;
   },
@@ -885,8 +687,8 @@ export const exportStudents = query({
   args: {},
   returns: v.array(studentExportRowValidator),
   handler: async (ctx) => {
-    const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, ["SUPER_ADMIN"])) return [];
+    const actor = await viewerWithRoles(ctx, SUPER_ADMIN_ROLES);
+    if (!actor) return [];
 
     const students = await ctx.db
       .query("users")
@@ -915,11 +717,11 @@ export const setFeedbackReviewer = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) throw new ConvexError("User not found.");
-    if (!isStudentUser(target)) {
+    if (!isStudent(target)) {
       throw new ConvexError("Feedback review access is reserved for student developers.");
     }
 
@@ -952,7 +754,7 @@ export const setDeveloper = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) throw new ConvexError("User not found.");
@@ -982,7 +784,7 @@ export const activate = mutation({
   returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) {
@@ -1027,7 +829,7 @@ export const deactivate = mutation({
   returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     if (actor._id === args.userId) {
       throw new ConvexError("You cannot deactivate your own account.");
@@ -1086,7 +888,7 @@ export const deleteUsers = mutation({
   }),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, SUPER_ADMIN_ROLES);
 
     const userIds = Array.from(new Set(args.userIds));
     if (userIds.length === 0) {
@@ -1148,6 +950,8 @@ export const deleteUsers = mutation({
   },
 });
 
+const MAX_STUDENT_ADMINS = 5;
+
 export const assignRoles = mutation({
   args: {
     userId: v.id("users"),
@@ -1156,7 +960,7 @@ export const assignRoles = mutation({
   returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    requireAnyRole(actor, ADMIN_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) {
@@ -1169,33 +973,23 @@ export const assignRoles = mutation({
       throw new ConvexError("User must have at least one role.");
     }
 
-    if (
-      nextRoles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role)) &&
-      !actor.roles.includes("SUPER_ADMIN")
-    ) {
+    if (isPrivilegedAccount(nextRoles) && !isSuperAdmin(actor)) {
       throw new ConvexError("Only super admins can assign admin roles.");
     }
     if (
-      nextRoles.includes("SUPER_ADMIN") &&
-      !target.roles.includes("SUPER_ADMIN")
+      isSuperAdmin(nextRoles) &&
+      !isSuperAdmin(target)
     ) {
       throw new ConvexError("Super-admin promotion requires an out-of-band process.");
     }
 
-    const nextPrivileged = nextRoles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    const currentPrivileged = target.roles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
     if (
-      (nextPrivileged || currentPrivileged) &&
-      !actor.roles.includes("SUPER_ADMIN")
+      (isPrivilegedAccount(nextRoles) || isPrivilegedAccount(target)) &&
+      !isSuperAdmin(actor)
     ) {
       throw new ConvexError("Only super admins can change admin roles.");
     }
 
-    // Check for STUDENT_ADMIN limit (max 5)
     const isAddingStudentAdmin = nextRoles.includes("STUDENT_ADMIN");
     const alreadyIsStudentAdmin = target.roles.includes("STUDENT_ADMIN");
 
@@ -1205,36 +999,15 @@ export const assignRoles = mutation({
         .withIndex("by_isStudentAdmin_and_lastName_and_firstName", (q) =>
           q.eq("isStudentAdmin", true),
         )
-        .take(5);
-      if (currentStudentAdmins.length >= 5) {
+        .take(MAX_STUDENT_ADMINS);
+      if (currentStudentAdmins.length >= MAX_STUDENT_ADMINS) {
         throw new ConvexError(
-          "Maximum of 5 students can have the Student Admin role.",
+          `Maximum of ${MAX_STUDENT_ADMINS} students can have the Student Admin role.`,
         );
       }
     }
 
-    const nextRoleFlags = classifyRoles(nextRoles as any);
-    await ctx.db.patch(target._id, {
-      roles: nextRoles as any,
-      ...nextRoleFlags,
-      updatedAt: Date.now(),
-    });
-
-    await replaceUserCounts(ctx, target, { ...target, ...nextRoleFlags });
-
-    const updatedRolesTarget = { ...target, roles: nextRoles as any };
-    await syncBetterAuthRole(ctx, updatedRolesTarget);
-    if (isPrivilegeReduction(target.roles, nextRoles)) {
-      await revokeBetterAuthSessions(ctx, target.authUserId);
-    }
-
-    await logAuditEvent(ctx, {
-      actorId: actor._id,
-      action: "user.roles_assigned",
-      entityType: "user",
-      entityId: target._id,
-      meta: { roles: nextRoles },
-    });
+    await applyRoleChange(ctx, actor, target, nextRoles);
 
     const updated = await ctx.db.get(target._id);
     if (!updated) {
@@ -1253,7 +1026,7 @@ export const resetPassword = mutation({
   }),
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    requireAnyRole(actor, STAFF_ROLES);
 
     const target = await ctx.db.get(args.userId);
     if (!target) {
@@ -1399,7 +1172,7 @@ export const rebuildPrivateUserSearchIndex = internalMutation({
   handler: async (ctx, args) => {
     const page = await ctx.db.query("users").paginate({ numItems: 100, cursor: args.cursor ?? null });
     for (const user of page.page) {
-      await ctx.db.patch(user._id, { searchText: searchText(user), updatedAt: Date.now() });
+      await writeUserNames(ctx, user, {});
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.users.admin.rebuildPrivateUserSearchIndex, { cursor: page.continueCursor });
     return { updated: page.page.length, isDone: page.isDone, continueCursor: page.continueCursor };

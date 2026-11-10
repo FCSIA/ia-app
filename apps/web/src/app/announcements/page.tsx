@@ -1,11 +1,18 @@
 'use client';
 
+import { GRADE_LEVELS, PATHWAY_OPTIONS } from '~/apps/shared/labels';
+import {
+  ANNOUNCEMENT_AUTHOR_ROLES,
+  ANNOUNCEMENT_REVIEWER_ROLES,
+  hasAnyRole,
+  isAdmin,
+} from '~/apps/shared/roles';
 import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAction, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Archive, Bookmark, Check, ChevronDown, ChevronUp, Inbox, Mail, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { CardGroup } from '@/components/ui/card';
@@ -36,19 +43,11 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnnouncementFilterPanel } from '@/components/announcements/announcement-filter-panel';
+import { MAX_ANNOUNCEMENT_TITLE_CHARACTERS } from '~/apps/shared/limits';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
-
-const PATHWAY_OPTIONS = [
-  { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
-  { value: 'HEALTH_SCIENCE', label: 'Health Science' },
-  { value: 'ENGINEERING', label: 'Engineering' },
-];
-
-const GRADE_OPTIONS = [9, 10, 11, 12];
-const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
 
 type ClubFilterOption = {
   id: string;
@@ -151,10 +150,10 @@ export default function AnnouncementsPage() {
     setForm({ ...next, targetType });
   };
 
-  const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
+  const canPost = hasAnyRole(user, ANNOUNCEMENT_AUTHOR_ROLES);
   const canPin = !!user;
-  const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
+  const canArchiveAny = isAdmin(user);
+  const canApproveAnnouncements = hasAnyRole(user, ANNOUNCEMENT_REVIEWER_ROLES);
 
   const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: false, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined, now: feedNow }, { initialNumItems: 30 });
   const { results: pinnedData, status: pinnedStatus, loadMore: loadMorePins } = usePaginatedQuery(
@@ -454,7 +453,7 @@ export default function AnnouncementsPage() {
                         onFiltersChange={dispatchFilters}
                         availableTags={availableTags}
                         availableClubs={availableClubs}
-                        gradeOptions={GRADE_OPTIONS}
+                        gradeOptions={GRADE_LEVELS}
                         pathwayOptions={PATHWAY_OPTIONS}
                       />
                     </div>
@@ -532,10 +531,10 @@ export default function AnnouncementsPage() {
                           <FieldSet className="min-w-0 gap-0">
                             <FieldLegend variant="label">Grades</FieldLegend>
                             <CheckboxGroup
-                              checkedIndices={new Set(GRADE_OPTIONS.flatMap((grade, index) => (form.targetGrades.includes(grade) ? [index] : [])))}
+                              checkedIndices={new Set(GRADE_LEVELS.flatMap((grade, index) => (form.targetGrades.includes(grade) ? [index] : [])))}
                               className="w-full"
                             >
-                              {GRADE_OPTIONS.map((grade, index) => (
+                              {GRADE_LEVELS.map((grade, index) => (
                                 <CheckboxItem
                                   key={grade}
                                   index={index}
@@ -601,7 +600,7 @@ export default function AnnouncementsPage() {
                     />
                     Allow comments
                   </label>
-                  {hasRole(user, 'ADMIN', 'SUPER_ADMIN') ? (
+                  {isAdmin(user) ? (
                     <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                       <input
                         type="checkbox"
@@ -617,7 +616,7 @@ export default function AnnouncementsPage() {
                       Send push notifications
                     </label>
                   ) : null}
-                  {hasRole(user, 'ADMIN', 'SUPER_ADMIN') ? (
+                  {isAdmin(user) ? (
                     <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                       <input
                         type="checkbox"

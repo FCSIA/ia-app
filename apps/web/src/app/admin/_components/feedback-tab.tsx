@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@/lib/convex-react';
+import { api } from '~/apps/convex/src/_generated/api';
 import Image from 'next/image';
 import {
   Archive,
@@ -66,6 +69,7 @@ import {
 } from '@/components/moderation/report-status-actions';
 import { ReportStatusBadge } from '@/components/moderation/report-status-badge';
 import { formatDateTime, formatShortDate } from '../_lib/admin-utils';
+import { useAdminFeedback } from '../_hooks/use-admin-feedback';
 import { AdminNotice } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
@@ -114,31 +118,22 @@ const VIEWS = [
   { value: 'archive', label: 'Archive', icon: Archive, status: 'DISMISSED' },
 ] as const;
 
-export function FeedbackTab({
-  focusedReport,
-  onFocusedReportClose,
-  feedbackSearch,
-  onFeedbackSearchChange,
-  deferredFeedbackSearch,
-  filteredReports,
-  reportMutation,
-  responseMutation,
-  retryGithubIssueMutation,
-  isLoading,
-  canUpdateFeedback = true,
-}: {
-  focusedReport?: FeedbackReport;
-  onFocusedReportClose?: () => void;
-  feedbackSearch: string;
-  onFeedbackSearchChange: (value: string) => void;
-  deferredFeedbackSearch: string;
-  filteredReports: FeedbackReport[];
-  reportMutation: FeedbackMutation;
-  responseMutation: FeedbackResponseMutation;
-  retryGithubIssueMutation: RetryGithubIssueMutation;
-  isLoading: boolean;
-  canUpdateFeedback?: boolean;
-}) {
+export function FeedbackTab({ canUpdateFeedback = true }: { canUpdateFeedback?: boolean }) {
+  const {
+    isLoading,
+    feedbackSearch,
+    setFeedbackSearch,
+    deferredFeedbackSearch,
+    filteredReports,
+    reportMutation,
+    responseMutation,
+    retryGithubIssueMutation,
+  } = useAdminFeedback();
+  const reportId = useParams<{ reportId?: string }>()?.reportId;
+  const router = useRouter();
+  const focusedQuery = useQuery(api.moderation.reports.getFeedback, reportId ? { reportId } : 'skip');
+  const focusedReport = focusedQuery ?? undefined;
+  const onFocusedReportClose = () => router.replace('/admin/feedback');
   const [view, setView] = useState<(typeof VIEWS)[number]['value']>('new');
   // Drafts live in the queue so closing the sheet or changing views keeps a
   // reply the reviewer is still writing.
@@ -154,12 +149,12 @@ export function FeedbackTab({
       item.value,
       filteredReports.filter((report) => report.status === item.status),
     ]),
-  ) as Record<(typeof VIEWS)[number]['value'], FeedbackReport[]>;
+  ) as Record<(typeof VIEWS)[number]['value'], typeof filteredReports>;
   const reports = byStatus[view];
   const columns = canUpdateFeedback ? 5 : 4;
 
   const close = () => {
-    if (openId === focusedReport?._id) onFocusedReportClose?.();
+    if (openId === focusedReport?._id) onFocusedReportClose();
     setSelectedId(null);
   };
   const empty = (
@@ -170,186 +165,190 @@ export function FeedbackTab({
           : 'No feedback in this view.'
       }
       actionLabel={deferredFeedbackSearch ? 'Clear search' : undefined}
-      onAction={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
+      onAction={deferredFeedbackSearch ? () => setFeedbackSearch('') : undefined}
     />
   );
 
   return (
-    <Tabs value={view} onValueChange={(value) => setView(value as typeof view)}>
-      <DataTableSection
-        label="Feedback"
-        toolbar={
-          <>
-            <SearchToolbarRow className="flex-row items-center gap-2">
-              <SearchInput
-                className="min-w-0 flex-1"
-                aria-label="Search feedback"
-                value={feedbackSearch}
-                onValueChange={onFeedbackSearchChange}
-                placeholder="Search feedback…"
-              />
-              <DataTableCount>
-                {isLoading
-                  ? '—'
-                  : `${filteredReports.length} ${deferredFeedbackSearch ? (filteredReports.length === 1 ? 'match' : 'matches') : 'items'}`}
-              </DataTableCount>
-            </SearchToolbarRow>
-            <TabsList aria-label="Feedback views">
-              {VIEWS.map((item) => (
-                <TabItem
-                  key={item.value}
-                  value={item.value}
-                  label={`${item.label} ${byStatus[item.value].length}`}
-                  icon={item.icon}
+    <>
+      {reportId && focusedQuery === undefined ? <AdminNotice message="Loading feedback report…" /> : null}
+      {reportId && focusedQuery === null ? <AdminNotice message="Feedback report unavailable." /> : null}
+      <Tabs value={view} onValueChange={(value) => setView(value as typeof view)}>
+        <DataTableSection
+          label="Feedback"
+          toolbar={
+            <>
+              <SearchToolbarRow className="flex-row items-center gap-2">
+                <SearchInput
+                  className="min-w-0 flex-1"
+                  aria-label="Search feedback"
+                  value={feedbackSearch}
+                  onValueChange={setFeedbackSearch}
+                  placeholder="Search feedback…"
                 />
-              ))}
-            </TabsList>
-          </>
-        }
-      >
-        <TabPanel value={view}>
-          <div className="hidden md:block">
-            <Table className="table-fixed" aria-label="Feedback queue" aria-busy={reportMutation.isPending}>
-              <colgroup>
-                <col />
-                <col className="w-[11rem]" />
-                <col className="w-[5.5rem]" />
-                {canUpdateFeedback ? <col className="w-[11.5rem]" /> : null}
-                <col className="w-11" />
-              </colgroup>
-              <TableHeader className={PINNED_TABLE_HEADER}>
-                <TableRow>
-                  <TableHead scope="col">Feedback</TableHead>
-                  <TableHead scope="col">Submitted by</TableHead>
-                  <TableHead scope="col">Submitted</TableHead>
-                  {canUpdateFeedback ? (
-                    <TableHead scope="col">
-                      <span className="sr-only">Status actions</span>
-                    </TableHead>
-                  ) : null}
-                  <TableHead scope="col">
-                    <span className="sr-only">Details</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 6 }, (_, index) => (
-                    <TableRow key={index}>
-                      <TableCell colSpan={columns}>
-                        <Skeleton className="h-5 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : reports.length ? (
-                  reports.map((report, index) => (
-                    <TableRow
-                      key={report._id}
-                      index={index}
-                      interactive
-                      selected={report._id === openId}
-                      onClick={(click) => {
-                        const target = click.target;
-                        if (
-                          !(target instanceof Element) ||
-                          target.closest('button,a,input,textarea,[role="button"],[role="menuitem"]')
-                        )
-                          return;
-                        setSelectedId(report._id);
-                      }}
-                    >
-                      <TableCell className="py-2">
-                        <p className="truncate text-foreground" title={report.reason}>
-                          {report.reason}
-                        </p>
-                        <FeedbackRowMeta report={report} />
-                      </TableCell>
-                      <TableCell>
-                        <span className="block truncate">{displayName(report.submitter)}</span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap tabular-nums">
-                        <time
-                          dateTime={new Date(report._creationTime).toISOString()}
-                          title={formatDateTime(report._creationTime)}
-                        >
-                          {formatShortDate(report._creationTime)}
-                        </time>
-                      </TableCell>
-                      {canUpdateFeedback ? (
-                        <TableCell>
-                          <div className="flex justify-end">
-                            <FeedbackStatusActions report={report} reportMutation={reportMutation} />
-                          </div>
-                        </TableCell>
-                      ) : null}
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-compact"
-                          aria-label={`Details: feedback from ${displayName(report.submitter)}`}
-                          onClick={() => setSelectedId(report._id)}
-                        >
-                          <ChevronRight />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
+                <DataTableCount>
+                  {isLoading
+                    ? '—'
+                    : `${filteredReports.length} ${deferredFeedbackSearch ? (filteredReports.length === 1 ? 'match' : 'matches') : 'items'}`}
+                </DataTableCount>
+              </SearchToolbarRow>
+              <TabsList aria-label="Feedback views">
+                {VIEWS.map((item) => (
+                  <TabItem
+                    key={item.value}
+                    value={item.value}
+                    label={`${item.label} ${byStatus[item.value].length}`}
+                    icon={item.icon}
+                  />
+                ))}
+              </TabsList>
+            </>
+          }
+        >
+          <TabPanel value={view}>
+            <div className="hidden md:block">
+              <Table className="table-fixed" aria-label="Feedback queue" aria-busy={reportMutation.isPending}>
+                <colgroup>
+                  <col />
+                  <col className="w-[11rem]" />
+                  <col className="w-[5.5rem]" />
+                  {canUpdateFeedback ? <col className="w-[11.5rem]" /> : null}
+                  <col className="w-11" />
+                </colgroup>
+                <TableHeader className={PINNED_TABLE_HEADER}>
                   <TableRow>
-                    <TableCell colSpan={columns}>{empty}</TableCell>
+                    <TableHead scope="col">Feedback</TableHead>
+                    <TableHead scope="col">Submitted by</TableHead>
+                    <TableHead scope="col">Submitted</TableHead>
+                    {canUpdateFeedback ? (
+                      <TableHead scope="col">
+                        <span className="sr-only">Status actions</span>
+                      </TableHead>
+                    ) : null}
+                    <TableHead scope="col">
+                      <span className="sr-only">Details</span>
+                    </TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="md:hidden">
-            {isLoading ? (
-              <div className="space-y-2">
-                {[0, 1, 2].map((index) => (
-                  <Skeleton key={index} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : reports.length ? (
-              <CardGroup orientation="inline" border="none" corners="compact">
-                {reports.map((report) => (
-                  <Card
-                    key={report._id}
-                    onClick={() => setSelectedId(report._id)}
-                    selected={report._id === openId}
-                    label={`Details: feedback from ${displayName(report.submitter)}`}
-                  >
-                    <CardHeader>
-                      <CardTitle>
-                        <span className="line-clamp-2">{report.reason}</span>
-                      </CardTitle>
-                      <CardDescription className="truncate">
-                        {displayName(report.submitter)} · {formatShortDate(report._creationTime)}
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-                ))}
-              </CardGroup>
-            ) : (
-              empty
-            )}
-          </div>
-        </TabPanel>
-      </DataTableSection>
-      <FeedbackSheet
-        report={selected}
-        open={openId !== null}
-        onClose={close}
-        body={openId ? (drafts[openId] ?? '') : ''}
-        onBodyChange={(body) => {
-          if (openId) setDrafts((current) => ({ ...current, [openId]: body }));
-        }}
-        reportMutation={reportMutation}
-        responseMutation={responseMutation}
-        retryGithubIssueMutation={retryGithubIssueMutation}
-        canUpdateFeedback={canUpdateFeedback}
-      />
-    </Tabs>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 6 }, (_, index) => (
+                      <TableRow key={index}>
+                        <TableCell colSpan={columns}>
+                          <Skeleton className="h-5 w-full" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : reports.length ? (
+                    reports.map((report, index) => (
+                      <TableRow
+                        key={report._id}
+                        index={index}
+                        interactive
+                        selected={report._id === openId}
+                        onClick={(click) => {
+                          const target = click.target;
+                          if (
+                            !(target instanceof Element) ||
+                            target.closest('button,a,input,textarea,[role="button"],[role="menuitem"]')
+                          )
+                            return;
+                          setSelectedId(report._id);
+                        }}
+                      >
+                        <TableCell className="py-2">
+                          <p className="truncate text-foreground" title={report.reason}>
+                            {report.reason}
+                          </p>
+                          <FeedbackRowMeta report={report} />
+                        </TableCell>
+                        <TableCell>
+                          <span className="block truncate">{displayName(report.submitter)}</span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          <time
+                            dateTime={new Date(report._creationTime).toISOString()}
+                            title={formatDateTime(report._creationTime)}
+                          >
+                            {formatShortDate(report._creationTime)}
+                          </time>
+                        </TableCell>
+                        {canUpdateFeedback ? (
+                          <TableCell>
+                            <div className="flex justify-end">
+                              <FeedbackStatusActions report={report} reportMutation={reportMutation} />
+                            </div>
+                          </TableCell>
+                        ) : null}
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-compact"
+                            aria-label={`Details: feedback from ${displayName(report.submitter)}`}
+                            onClick={() => setSelectedId(report._id)}
+                          >
+                            <ChevronRight />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns}>{empty}</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="md:hidden">
+              {isLoading ? (
+                <div className="space-y-2">
+                  {[0, 1, 2].map((index) => (
+                    <Skeleton key={index} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : reports.length ? (
+                <CardGroup orientation="inline" border="none" corners="compact">
+                  {reports.map((report) => (
+                    <Card
+                      key={report._id}
+                      onClick={() => setSelectedId(report._id)}
+                      selected={report._id === openId}
+                      label={`Details: feedback from ${displayName(report.submitter)}`}
+                    >
+                      <CardHeader>
+                        <CardTitle>
+                          <span className="line-clamp-2">{report.reason}</span>
+                        </CardTitle>
+                        <CardDescription className="truncate">
+                          {displayName(report.submitter)} · {formatShortDate(report._creationTime)}
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </CardGroup>
+              ) : (
+                empty
+              )}
+            </div>
+          </TabPanel>
+        </DataTableSection>
+        <FeedbackSheet
+          report={selected}
+          open={openId !== null}
+          onClose={close}
+          body={openId ? (drafts[openId] ?? '') : ''}
+          onBodyChange={(body) => {
+            if (openId) setDrafts((current) => ({ ...current, [openId]: body }));
+          }}
+          reportMutation={reportMutation}
+          responseMutation={responseMutation}
+          retryGithubIssueMutation={retryGithubIssueMutation}
+          canUpdateFeedback={canUpdateFeedback}
+        />
+      </Tabs>
+    </>
   );
 }
 

@@ -1,10 +1,11 @@
+import { userSummary } from "../summaries";
+import { isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { schema } from "../schema";
-import { schoolDaySpan, schoolTimestamp } from "../../lib/schoolTime";
+import { SCHOOL_TIME_ZONE, schoolDaySpan, schoolTimestamp } from "../../../shared/school-time";
 
-const TIME_ZONE = "America/New_York" as const;
 const MAX_WORKSHOP_SESSIONS = 128;
 const MAX_FRIDAYS = 16;
 const MAX_FRIDAY_SESSIONS = 32;
@@ -34,14 +35,14 @@ export const workshopDetailValidator = v.union(
       schema.doc("users").pick("_id", "firstName", "lastName", "preferredName"),
     ),
     viewer: viewerValidator,
-    timeZone: v.literal(TIME_ZONE),
+    timeZone: v.literal(SCHOOL_TIME_ZONE),
   }),
 );
 
 export const upcomingPersonalValidator = v.object({
   friday: v.union(v.null(), schema.doc("flexFridays").pick("_id", "date")),
   student: v.boolean(),
-  timeZone: v.literal(TIME_ZONE),
+  timeZone: v.literal(SCHOOL_TIME_ZONE),
   hasMore: v.boolean(),
   items: v.array(
     v.object({
@@ -57,7 +58,7 @@ export const upcomingPersonalValidator = v.object({
 function schoolSessionTimes(date: number, session: Doc<"flexSessions">) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
-      timeZone: TIME_ZONE,
+      timeZone: SCHOOL_TIME_ZONE,
       year: "numeric",
       month: "numeric",
       day: "numeric",
@@ -175,16 +176,9 @@ export async function getWorkshopDetail(
     },
     workshop,
     sessions,
-    teacher: teacher
-      ? {
-          _id: teacher._id,
-          firstName: teacher.firstName,
-          lastName: teacher.lastName,
-          preferredName: teacher.preferredName,
-        }
-      : null,
+    teacher: teacher ? userSummary(teacher) : null,
     viewer: await viewerRelationship(ctx, workshop, user),
-    timeZone: TIME_ZONE,
+    timeZone: SCHOOL_TIME_ZONE,
   };
 }
 
@@ -198,15 +192,11 @@ export async function getUpcomingPersonalWorkshops(
     throw new ConvexError("A finite current time and limit are required");
   }
   const limit = Math.max(1, Math.min(10, Math.floor(args.limit ?? 3)));
-  const student =
-    user.isStudent ||
-    user.roles.some((role) =>
-      ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-    );
+  const student = user.isStudent || isStudent(user);
   const empty = {
     friday: null,
     student,
-    timeZone: TIME_ZONE,
+    timeZone: SCHOOL_TIME_ZONE,
     items: [],
     hasMore: false,
   };
@@ -285,7 +275,7 @@ export async function getUpcomingPersonalWorkshops(
       return {
         friday: { _id: friday._id, date: friday.date },
         student,
-        timeZone: TIME_ZONE,
+        timeZone: SCHOOL_TIME_ZONE,
         items: items.slice(0, limit),
         hasMore: truncated || items.length > limit,
       };

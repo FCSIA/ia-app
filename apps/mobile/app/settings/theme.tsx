@@ -1,14 +1,25 @@
 import { useMemo, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { Check, RotateCcw } from "lucide-react-native";
-import { hsl, themes, type ThemeName, type ThemeTokens } from "@ia/design-tokens";
+import {
+  hexToHslToken,
+  hsl,
+  hslTokenToRgb,
+  parseHex as parseHexColor,
+  rgbToHex,
+  rgbToHsl,
+  THEME_NAMES,
+  themes,
+  type ThemeName,
+  type ThemeTokens,
+} from "@ia/design-tokens";
 import { Screen } from "@/components/screen";
 import { Button, PressableScale, Section, TextField, Txt, Switch, ListRow, useToast } from "@/components/ui";
 import { useGifAutoplay } from "@/lib/gif-playback";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 
-const names = Object.keys(themes) as ThemeName[];
+const names = THEME_NAMES;
 const editableColors = [
   { key: "background", label: "Background" },
   { key: "card", label: "Surface" },
@@ -49,7 +60,7 @@ export default function ThemeScreen() {
   const customPreview = useMemo(() => {
     const next = { ...theme.customTokens };
     for (const item of editableColors) {
-      const token = hexToHslToken(draftHex[item.key]);
+      const token = hexToHslToken(normalizeHexInput(draftHex[item.key]), { shorthand: true });
       if (token) next[item.key] = token;
     }
     applyReadablePairs(next);
@@ -80,7 +91,7 @@ export default function ThemeScreen() {
   return (
     <Screen
       title="Appearance"
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+      contentContainerStyle={{ gap: spacing.xl }}
     >
       <Section title="Animations">
         <ListRow title="Autoplay GIFs" subtitle="Play automatically on this device. Turn off to start paused. Reduced motion starts paused; individual play buttons still work." trailing={
@@ -371,17 +382,8 @@ function normalizeHexInput(value: string) {
   return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
 }
 
-function hexToHslToken(value: string) {
-  const rgb = parseHex(value);
-  if (!rgb) return null;
-  const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-  return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-}
-
 function hslTokenToHex(token: string) {
-  const [h = "0", s = "0%", l = "0%"] = token.split(/\s+/);
-  const { r, g, b } = hslToRgb(Number(h), Number(s.replace("%", "")) / 100, Number(l.replace("%", "")) / 100);
-  return rgbToHex(r, g, b);
+  return rgbToHex(hslTokenToRgb(token));
 }
 
 function hexToRgb(value: string) {
@@ -390,55 +392,7 @@ function hexToRgb(value: string) {
 }
 
 function parseHex(value: string) {
-  const match = normalizeHexInput(value).match(/^#([0-9a-f]{6}|[0-9a-f]{3})$/i);
-  if (!match) return null;
-  const raw = match[1];
-  const hexValue = raw.length === 3 ? raw.split("").map((part) => part + part).join("") : raw;
-  return {
-    r: Number.parseInt(hexValue.slice(0, 2), 16),
-    g: Number.parseInt(hexValue.slice(2, 4), 16),
-    b: Number.parseInt(hexValue.slice(4, 6), 16),
-  };
-}
-
-function rgbToHex(r: number, g: number, b: number) {
-  return `#${[r, g, b].map((part) => part.toString(16).padStart(2, "0")).join("")}`;
-}
-
-function rgbToHsl(r: number, g: number, b: number) {
-  const r1 = r / 255;
-  const g1 = g / 255;
-  const b1 = b / 255;
-  const max = Math.max(r1, g1, b1);
-  const min = Math.min(r1, g1, b1);
-  const l = (max + min) / 2;
-  if (max === min) return { h: 0, s: 0, l };
-  const delta = max - min;
-  const s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
-  const h =
-    max === r1 ? ((g1 - b1) / delta + (g1 < b1 ? 6 : 0)) * 60 :
-    max === g1 ? ((b1 - r1) / delta + 2) * 60 :
-    ((r1 - g1) / delta + 4) * 60;
-  return { h, s, l };
-}
-
-function hslToRgb(h: number, s: number, l: number) {
-  const chroma = (1 - Math.abs(2 * l - 1)) * s;
-  const huePrime = (((h % 360) + 360) % 360) / 60;
-  const x = chroma * (1 - Math.abs((huePrime % 2) - 1));
-  const [r1, g1, b1] =
-    huePrime < 1 ? [chroma, x, 0] :
-    huePrime < 2 ? [x, chroma, 0] :
-    huePrime < 3 ? [0, chroma, x] :
-    huePrime < 4 ? [0, x, chroma] :
-    huePrime < 5 ? [x, 0, chroma] :
-    [chroma, 0, x];
-  const m = l - chroma / 2;
-  return {
-    r: Math.round((r1 + m) * 255),
-    g: Math.round((g1 + m) * 255),
-    b: Math.round((b1 + m) * 255),
-  };
+  return parseHexColor(normalizeHexInput(value), { shorthand: true });
 }
 
 function applyReadablePairs(tokens: ThemeTokens) {
@@ -487,5 +441,5 @@ function soften(foreground: string, background: string) {
 function rgbToHslFromToken(token: string) {
   const hex = hslTokenToHex(token);
   const rgb = parseHex(hex) ?? { r: 0, g: 0, b: 0 };
-  return rgbToHsl(rgb.r, rgb.g, rgb.b);
+  return rgbToHsl(rgb);
 }

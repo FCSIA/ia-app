@@ -24,18 +24,7 @@ export const courseSummaryValidator = v.object({
 
 export type CourseSummary = Infer<typeof courseSummaryValidator>;
 
-export const courseDetailValidator = v.object({
-  id: v.id("courses"),
-  slug: v.string(),
-  title: v.string(),
-  courseNumbers: v.array(v.string()),
-  department: v.string(),
-  pathway: v.union(pathwayValidator, v.null()),
-  catalogSource: courseCatalogSourceValidator,
-  term: v.union(courseTermValidator, v.null()),
-  gradeText: v.union(v.string(), v.null()),
-  minGrade: v.union(v.number(), v.null()),
-  maxGrade: v.union(v.number(), v.null()),
+export const courseDetailValidator = courseSummaryValidator.extend({
   prerequisitesText: v.union(v.string(), v.null()),
   summary: v.union(v.string(), v.null()),
   majorTopics: v.union(v.string(), v.null()),

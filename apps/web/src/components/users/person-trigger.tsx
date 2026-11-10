@@ -1,14 +1,15 @@
 'use client';
 
+import { isAdmin } from '~/apps/shared/roles';
 import Link from 'next/link';
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { Copy, UserRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { UserProfileContent, UserProfileDialog, type UserProfilePerson } from '@/components/clubs/user-profile-dialog';
+import { UserProfileContent, UserProfileDialog, type UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { displayName } from '~/apps/shared/user-name';
-import { isAdmin, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { copyText } from '@/lib/share';
 
 /** Click/tap profile preview shared by activity tables and person references. */

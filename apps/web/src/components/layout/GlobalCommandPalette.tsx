@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  isAdmin,
+  isStaff,
+  isStudent,
+  isSuperAdmin,
+} from '~/apps/shared/roles';
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useConvexAuth, useQuery } from '@/lib/convex-react';
@@ -19,7 +25,7 @@ import {
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
-import { hasRole, isSuperAdmin, type AppUser } from '@/lib/auth';
+import { type AppUser } from '@/lib/auth';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import {
   CommandMenu,
@@ -37,20 +43,27 @@ import {
   type CommandAction,
 } from '@/components/layout/use-global-command-actions';
 import { personalCommandQueryArgs, rankCommandSuggestions } from './command-suggestions';
-import { schoolDateKey } from '@/lib/school-date';
+import { schoolDateKey } from '~/apps/shared/school-time';
+import { routePath, type AppRouteId } from '@/lib/routes';
 
-const staticActions: CommandAction[] = [
-  { id: 'route-dashboard', label: 'Home', detail: 'Your widgets', href: '/', Icon: Home },
-  { id: 'route-announcements', label: 'Announcements', detail: 'Official updates', href: '/announcements', Icon: Megaphone },
-  { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: Waypoints },
-  { id: 'route-schedule', label: 'Schedule', detail: 'Classes and friends', href: '/schedule', Icon: ClipboardList },
-  { id: 'route-events', label: 'Events', detail: 'School and club events', href: '/events', Icon: Ticket },
-  { id: 'route-calendar', label: 'Calendar', detail: 'Shared calendar', href: '/calendar', Icon: CalendarRange },
-  { id: 'route-courses', label: 'Courses', detail: 'Course catalog', href: '/courses', Icon: BookOpen },
-  { id: 'route-flex', label: 'Flex Friday', detail: 'Workshops and passes', href: '/flex-friday', Icon: Presentation },
-  { id: 'route-notifications', label: 'Notifications', detail: 'Inbox and settings', href: '/notifications', Icon: Bell },
-  { id: 'route-profile', label: 'Profile Settings', detail: 'Account and preferences', href: '/profile', Icon: Settings },
+const ROUTE_ACTIONS: Array<{ route: AppRouteId; label: string; detail: string; Icon: CommandAction['Icon'] }> = [
+  { route: 'home', label: 'Home', detail: 'Your widgets', Icon: Home },
+  { route: 'announcements', label: 'Announcements', detail: 'Official updates', Icon: Megaphone },
+  { route: 'clubs', label: 'Clubs', detail: 'Directory and workspaces', Icon: Waypoints },
+  { route: 'schedule', label: 'Schedule', detail: 'Classes and friends', Icon: ClipboardList },
+  { route: 'events', label: 'Events', detail: 'School and club events', Icon: Ticket },
+  { route: 'calendar', label: 'Calendar', detail: 'Shared calendar', Icon: CalendarRange },
+  { route: 'courses', label: 'Courses', detail: 'Course catalog', Icon: BookOpen },
+  { route: 'flex-friday', label: 'Flex Friday', detail: 'Workshops and passes', Icon: Presentation },
+  { route: 'notifications', label: 'Notifications', detail: 'Inbox and settings', Icon: Bell },
+  { route: 'profile', label: 'Profile Settings', detail: 'Account and preferences', Icon: Settings },
 ];
+
+const staticActions: CommandAction[] = ROUTE_ACTIONS.map(({ route, ...action }) => ({
+  id: `route-${route}`,
+  href: routePath(route),
+  ...action,
+}));
 
 const commandTabs = [
   { value: 'all', label: 'All' },
@@ -109,7 +122,7 @@ function GlobalCommandPaletteContent({
   const deferredSearch = useDeferredValue(searchValue.trim());
   const shouldLoad = open && isAuthenticated && !!user;
   const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
-  const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const showAdmin = isStaff(user);
   const announcementNow = useAnnouncementFeedClock();
   const minuteNow = useAnnouncementFeedClock(60_000);
   const [openedAt] = useState(() => Date.now());
@@ -137,7 +150,7 @@ function GlobalCommandPaletteContent({
     api.schedule.dashboard.get,
     shouldLoad &&
       !!user &&
-      hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
+      (isStudent(user) || isAdmin(user))
       ? { dateKey: schoolDateKey(new Date(now)) }
       : 'skip',
   );
@@ -178,7 +191,7 @@ function GlobalCommandPaletteContent({
         id: 'route-admin',
         label: 'Admin Panel',
         detail: 'Users, moderation, audit, and system controls',
-        href: '/admin',
+        href: routePath('admin'),
         Icon: Shield,
       });
     }

@@ -3,17 +3,18 @@ import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { formatTimeRange } from '../_utils';
+import type { FlexSession } from '../_types';
 import { Card, CardAction, CardGroup } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 interface Props {
-  sessions: any[];
-  selectedSession: any;
-  onSelectSession: (session: any) => void;
+  sessions: FlexSession[];
+  selectedSession: FlexSession | null;
+  onSelectSession: (session: FlexSession) => void;
   onAddSession: () => void;
-  onEditSession: (session: any) => void;
-  onDeleteSession: (session: any) => void;
+  onEditSession: (session: FlexSession) => void;
+  onDeleteSession: (session: FlexSession) => void;
   canCreate: boolean;
   canManage: boolean;
   search: string;

@@ -1,27 +1,10 @@
 import { describe, expect, test } from "vitest";
-import type { AppRole } from "../../lib/roles";
+import type { AppRole } from "../../../shared/roles";
 import type { Id } from "../_generated/dataModel";
 import {
-  canCreateClub,
   canPermanentlyDeleteClub,
   roleRemovalChannelAccessUpdate,
 } from "./management";
-
-describe("club management authorization", () => {
-  test.each<AppRole>(["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"])(
-    "allows %s to create clubs",
-    (role) => {
-      expect(canCreateClub([role])).toBe(true);
-    },
-  );
-
-  test.each<AppRole>(["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN", "SPONSOR"])(
-    "does not allow %s to create clubs",
-    (role) => {
-      expect(canCreateClub([role])).toBe(false);
-    },
-  );
-});
 
 describe("permanent club deletion authorization", () => {
   test("allows superadmins", () => {

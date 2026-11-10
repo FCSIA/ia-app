@@ -1,3 +1,5 @@
+export const FEEDBACK_DISPLAY_MODES = ["browser", "standalone"] as const;
+
 /** Diagnostics only: no identity, IP, referrer, query string, or free-form URL. */
 export type FeedbackMetadata = {
   userAgent: string;
@@ -10,5 +12,5 @@ export type FeedbackMetadata = {
   screenHeight: number;
   pixelRatio: number;
   touchPoints: number;
-  displayMode: "browser" | "standalone";
+  displayMode: (typeof FEEDBACK_DISPLAY_MODES)[number];
 };

@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  GRADE_LEVELS,
+  isPathway,
+  type Pathway,
+  PATHWAY_LABELS,
+} from '~/apps/shared/labels';
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
@@ -17,7 +23,6 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
-import type { CourseSummary } from '@/components/courses/types';
 import {
   Select,
   SelectContent,
@@ -27,28 +32,12 @@ import {
 import { useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 
-function pathwayLabel(pathway?: CourseSummary['pathway']) {
-  if (!pathway) return 'All pathways';
-  if (pathway === 'HEALTH_SCIENCE') return 'Health Science';
-  if (pathway === 'INFORMATION_TECHNOLOGY') return 'Information Technology';
-  return 'Engineering';
-}
-
-type CoursePathway = NonNullable<CourseSummary['pathway']>;
-
-function isCoursePathway(value: string): value is CoursePathway {
-  return (
-    value === 'ENGINEERING' ||
-    value === 'INFORMATION_TECHNOLOGY' ||
-    value === 'HEALTH_SCIENCE'
-  );
-}
 
 export default function CoursesPage() {
   const user = useCurrentUser();
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('ALL');
-  const [pathway, setPathway] = useState<CoursePathway | 'ALL'>('ALL');
+  const [pathway, setPathway] = useState<Pathway | 'ALL'>('ALL');
   const [grade, setGrade] = useState('ALL');
   const deferredSearch = useDeferredValue(search);
 
@@ -132,21 +121,21 @@ export default function CoursesPage() {
             </Select>
             <Select
               value={pathway}
-              onValueChange={(value) => setPathway(isCoursePathway(value) ? value : 'ALL')}
+              onValueChange={(value) => setPathway(isPathway(value) ? value : 'ALL')}
             >
               <SelectTrigger className="rounded-2xl" placeholder="Pathway" />
               <SelectContent>
                 <SelectItem index={0} value="ALL">All pathways</SelectItem>
-                <SelectItem index={0} value="ENGINEERING">Engineering</SelectItem>
-                <SelectItem index={0} value="INFORMATION_TECHNOLOGY">Information Technology</SelectItem>
-                <SelectItem index={0} value="HEALTH_SCIENCE">Health Science</SelectItem>
+                {(['ENGINEERING', 'INFORMATION_TECHNOLOGY', 'HEALTH_SCIENCE'] as const).map((value) => (
+                  <SelectItem index={0} key={value} value={value}>{PATHWAY_LABELS[value]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={grade} onValueChange={setGrade}>
               <SelectTrigger className="rounded-2xl" placeholder="Grade" />
               <SelectContent>
                 <SelectItem index={0} value="ALL">All grades</SelectItem>
-                {[9, 10, 11, 12].map((entry) => (
+                {GRADE_LEVELS.map((entry) => (
                   <SelectItem index={0} key={entry} value={String(entry)}>
                     Grade {entry}
                   </SelectItem>
@@ -166,7 +155,7 @@ export default function CoursesPage() {
           action={
             <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs text-muted-foreground">
               <SlidersHorizontal className="size-3.5" />
-              {pathwayLabel(pathway === 'ALL' ? undefined : pathway)}
+              {pathway === 'ALL' ? 'All pathways' : PATHWAY_LABELS[pathway]}
             </div>
           }
         >

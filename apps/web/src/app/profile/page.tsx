@@ -1,5 +1,7 @@
 'use client';
 
+import { useMounted } from '@/hooks/use-mounted';
+import { hasAnyRole, MODERATION_ALERT_ROLES, SCHEDULE_ROLES } from '~/apps/shared/roles';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from '@/lib/convex-react';
@@ -7,13 +9,13 @@ import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
 import { OnboardingEntry } from '@/components/onboarding/onboarding';
 import { useToast } from '@/hooks/use-toast';
-import { hasRole, startLogout, useCurrentUser } from '@/lib/auth';
+import { startLogout, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { useSeenRelease } from '@/components/devlog/use-seen-release';
 import { MobileTabEditor } from '@/components/layout/mobile-tab-editor';
 import { getMobileTabEditorItems } from '@/components/layout/app-shell-navigation';
-import { computeWrappedAvailability } from '@/lib/wrapped';
+import { wrappedAvailability } from '~/apps/shared/wrapped-window';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,10 +56,10 @@ function ProfilePageContent() {
   const user = useCurrentUser();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [navigationOpen, setNavigationOpen] = useState(false);
-  const showSchedule = Boolean(user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN'));
-  const navigationOptions = getMobileTabEditorItems({ pathname: '/profile', showAdmin: false, showSchedule, showWrapped: computeWrappedAvailability().open });
+  const showSchedule = hasAnyRole(user, SCHEDULE_ROLES);
+  const navigationOptions = getMobileTabEditorItems({ pathname: '/profile', showAdmin: false, showSchedule, showWrapped: wrappedAvailability().open });
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -70,15 +72,13 @@ function ProfilePageContent() {
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
 
-  useEffect(() => setMounted(true), []);
-
   // Reading the section is what marks the release as read.
   useEffect(() => {
     if (activeSection === 'whats-new') markSeen();
   }, [activeSection, markSeen]);
 
   const canSeeModeration =
-    hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN') || moderationAlerts.length > 0;
+    hasAnyRole(user, MODERATION_ALERT_ROLES) || moderationAlerts.length > 0;
   const visibleSection =
     activeSection === 'moderation' && !canSeeModeration ? 'account' : activeSection;
 

@@ -6,30 +6,20 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { insertUser } from "../../test/fixtures";
 
-vi.mock("../../lib/currentUser", () => ({
-  getCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const user = identity ? await ctx.db.get(identity.subject as Id<"users">) : null;
-    if (!user) throw new ConvexError("Unauthenticated");
-    return user;
-  },
-  getMaybeCurrentAppUser: async (ctx: QueryCtx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity ? ctx.db.get(identity.subject as Id<"users">) : null;
-  },
-}));
+vi.mock("../../lib/currentUser", async (original) =>
+  (await import("../../test/auth")).currentUserFromIdentity(await original()),
+);
 const modules = import.meta.glob("/src/**/*.*s");
 
 async function fixture() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
-    const user = { firstName: "Alex", lastName: "Student", roles: ["STUDENT" as const], gradeLevel: 9,
-      isStudent: true, isTeacherStaff: false, isStudentAdmin: false, isOtherRole: false,
-      isActive: true, mustResetPassword: false, dashboardLayout: [], searchText: "alex student", createdAt: 0, updatedAt: 0 };
-    const sender = await ctx.db.insert("users", { ...user, uniqueId: "sender" });
-    const recipient = await ctx.db.insert("users", { ...user, uniqueId: "recipient" });
-    const outsider = await ctx.db.insert("users", { ...user, uniqueId: "outsider" });
+    const user = { firstName: "Alex", lastName: "Student", roles: ["STUDENT" as const], gradeLevel: 9, createdAt: 0, updatedAt: 0 };
+    const sender = await insertUser(ctx, { ...user, uniqueId: "sender" });
+    const recipient = await insertUser(ctx, { ...user, uniqueId: "recipient" });
+    const outsider = await insertUser(ctx, { ...user, uniqueId: "outsider" });
     const friendship = await ctx.db.insert("studentScheduleFriends", { requesterId: sender, addresseeId: recipient, status: "ACCEPTED", createdAt: 1, acceptedAt: 1 });
     const entry = await ctx.db.insert("calendarEntries", { title: "Reminder", startAt: 1000, source: "PERSONAL", createdById: sender, tags: [], createdAt: 1 });
     return { sender, recipient, outsider, friendship, entry };

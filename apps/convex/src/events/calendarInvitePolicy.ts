@@ -1,3 +1,5 @@
+import type { InviteStatus } from "../validators";
+
 export function canShareCalendarEntryWithFriend(input: {
   senderId: string;
   recipientId: string;
@@ -15,7 +17,7 @@ export function canShareCalendarEntryWithFriend(input: {
 
 export function canRespondToCalendarInvite(input: {
   isRecipient: boolean;
-  inviteStatus: "PENDING" | "ACCEPTED" | "DECLINED";
+  inviteStatus: InviteStatus;
   entryIsPersonal: boolean;
   entryOwnedBySender: boolean;
   friendshipStatus: "ACCEPTED" | "PENDING" | null;

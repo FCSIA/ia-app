@@ -15,12 +15,12 @@ export default function SettingsScreen() {
         leading={<Avatar uri={user?.avatarUrl} name={fullName} size={44} />}
         title={fullName || "Innovation Academy"}
         subtitle="Profile and account"
-        onPress={() => router.push("/profile" as never)}
+        onPress={() => router.push("/profile")}
       />
 
       <Section title="Preferences">
-        <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme" as never)} />
-        <ListRow icon={Bell} title="Notifications" subtitle="Push alerts and topics" onPress={() => router.push("/settings/notifications" as never)} />
+        <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme")} />
+        <ListRow icon={Bell} title="Notifications" subtitle="Push alerts and topics" onPress={() => router.push("/settings/notifications")} />
       </Section>
     </Screen>
   );

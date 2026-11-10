@@ -1,3 +1,4 @@
+import { isAdmin, isStudent } from "../../../shared/roles";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -6,17 +7,22 @@ import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   WRAPPED_SCHEMA_VERSION,
-  WRAPPED_STUDENT_ROLES,
-  WrappedSummary,
-  etHour,
+  wrappedSummaryValidator,
+  type WrappedSummary,
   extractTopWord,
   longestMessageStreak,
-  schoolYearLabel,
-  schoolYearRange,
-  toEtDayKey,
-  wrappedAvailability,
   PATHWAY_META,
 } from "./_lib";
+import {
+  schoolDateKey,
+  schoolHour,
+  schoolYearLabel,
+  schoolYearRange,
+} from "../../../shared/school-time";
+import { FLEX_CREDITS_REQUIRED_PER_YEAR, flexAttendancesInRange } from "../flexFriday/_credits";
+import { wrappedAvailability } from "../../../shared/wrapped-window";
+import type { Pathway } from "../validators";
+
 
 const availabilityValidator = v.object({
   open: v.boolean(),
@@ -27,97 +33,58 @@ const availabilityValidator = v.object({
   secondsUntilOpen: v.number(),
 });
 
-const wrappedSummaryValidator = v.object({
-  userId: v.string(),
-  schoolYearStart: v.number(),
-  schoolYearLabel: v.string(),
-  rangeStart: v.string(),
-  rangeEnd: v.string(),
-  messagesSent: v.number(),
-  channelsEngaged: v.number(),
-  friends: v.number(),
-  clubs: v.number(),
-  flexCredits: v.number(),
-  flexCreditsRequired: v.number(),
-  pathwayFlexCredits: v.number(),
-  topChannel: v.union(
-    v.object({
-      channelId: v.string(),
-      channelName: v.string(),
-      clubId: v.string(),
-      clubName: v.string(),
-      messages: v.number(),
-    }),
-    v.null(),
-  ),
-  topMentioned: v.union(
-    v.object({
-      userId: v.string(),
-      firstName: v.string(),
-      lastName: v.string(),
-      preferredName: v.optional(v.string()),
-      mentions: v.number(),
-    }),
-    v.null(),
-  ),
-  pathway: v.object({
-    major: v.union(
-      v.literal("INFORMATION_TECHNOLOGY"),
-      v.literal("HEALTH_SCIENCE"),
-      v.literal("ENGINEERING"),
-      v.null(),
-    ),
-    minor: v.union(
-      v.literal("INFORMATION_TECHNOLOGY"),
-      v.literal("HEALTH_SCIENCE"),
-      v.literal("ENGINEERING"),
-      v.null(),
-    ),
-    lanyardColor: v.union(v.string(), v.null()),
-    label: v.union(v.string(), v.null()),
-    peers: v.number(),
-  }),
-  mostUsedWord: v.union(
-    v.object({ word: v.string(), count: v.number() }),
-    v.null(),
-  ),
-  peakHour: v.union(
-    v.object({ hour: v.number(), messages: v.number() }),
-    v.null(),
-  ),
-  longestStreak: v.number(),
-  mostActiveDay: v.union(
-    v.object({ date: v.string(), messages: v.number() }),
-    v.null(),
-  ),
-  reactionsReceived: v.number(),
-  topEmoji: v.union(
-    v.object({ emoji: v.string(), count: v.number() }),
-    v.null(),
-  ),
-  longestMessageChars: v.number(),
-});
-
-function isStudentRole(roles: string[]) {
-  return roles.some((r) =>
-    (WRAPPED_STUDENT_ROLES as readonly string[]).includes(r),
-  );
-}
-
-function isAdmin(roles: string[]) {
-  return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
-}
-
 const SNAPSHOT_BATCH_SIZE = 10;
+const MAX_PATHWAY_PEER_SCAN = 500;
+
+type PathwayStudentCounts = Record<Pathway, number>;
+
+const pathwayStudentCountsValidator = v.object({
+  INFORMATION_TECHNOLOGY: v.number(),
+  HEALTH_SCIENCE: v.number(),
+  ENGINEERING: v.number(),
+});
 
 function currentSchoolYearStart(now: Date): number {
   return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+/**
+ * Counts active students per major. A snapshot run reads the roster once and
+ * carries these totals between batches; reading it again for every student
+ * made each run quadratic in the number of students.
+ */
+async function countActiveStudentsByPathway(
+  ctx: QueryCtx | MutationCtx,
+): Promise<PathwayStudentCounts> {
+  const students = await ctx.db
+    .query("users")
+    .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
+      q.eq("isStudent", true),
+    )
+    .take(MAX_PATHWAY_PEER_SCAN);
+  const counts: PathwayStudentCounts = {
+    INFORMATION_TECHNOLOGY: 0,
+    HEALTH_SCIENCE: 0,
+    ENGINEERING: 0,
+  };
+  for (const student of students) {
+    if (student.isActive && student.major) counts[student.major] += 1;
+  }
+  return counts;
+}
+
+/** Other active students who share `user`'s major. */
+function pathwayPeerCount(user: Doc<"users">, counts: PathwayStudentCounts) {
+  if (!user.major) return 0;
+  const countsSelf = user.isStudent && user.isActive;
+  return Math.max(counts[user.major] - (countsSelf ? 1 : 0), 0);
 }
 
 async function buildSummaryForUser(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
   startYear: number,
+  pathwayCounts?: PathwayStudentCounts,
 ): Promise<WrappedSummary> {
   const { start, end } = schoolYearRange(startYear);
   const label = schoolYearLabel(startYear);
@@ -141,8 +108,8 @@ async function buildSummaryForUser(
   const channelCounts = new Map<Id<"clubChannels">, number>();
 
   for (const m of userMessages) {
-    hourCounts[etHour(new Date(m.createdAt))] += 1;
-    const dk = toEtDayKey(new Date(m.createdAt));
+    hourCounts[schoolHour(m.createdAt)] += 1;
+    const dk = schoolDateKey(m.createdAt);
     dayCounts.set(dk, (dayCounts.get(dk) ?? 0) + 1);
     if (m.body.length > longestMessageChars) longestMessageChars = m.body.length;
     channelCounts.set(m.channelId, (channelCounts.get(m.channelId) ?? 0) + 1);
@@ -194,37 +161,29 @@ async function buildSummaryForUser(
     .take(200);
   const clubs = clubMemberships.filter((m) => m.joinedAt <= end).length;
 
-  let flexCredits = 0;
+  const creditedAttendances = await flexAttendancesInRange(
+    ctx,
+    userId,
+    { start, end },
+    { presentOnly: true, limit: 500 },
+  );
+  const flexCredits = creditedAttendances.length;
   let pathwayFlexCredits = 0;
-  const attendances = await ctx.db
-    .query("flexAttendances")
-    .withIndex("by_studentId_and_flexFridayId", (q) => q.eq("studentId", userId))
-    .take(500);
-  for (const row of attendances) {
-    if (row.status !== "PRESENT") continue;
-    const friday = await ctx.db.get(row.flexFridayId);
-    if (!friday || friday.date < start || friday.date > end) continue;
-    flexCredits += 1;
-    if (user.major) {
-      const workshop = await ctx.db.get(row.workshopId);
+  if (user.major) {
+    for (const { attendance } of creditedAttendances) {
+      const workshop = await ctx.db.get(attendance.workshopId);
       if (workshop?.targetMajorPathways.includes(user.major)) {
         pathwayFlexCredits += 1;
       }
     }
   }
 
-  let pathwayPeers = 0;
-  if (user.major) {
-    const peers = await ctx.db
-      .query("users")
-      .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
-        q.eq("isStudent", true),
+  const pathwayPeers = user.major
+    ? pathwayPeerCount(
+        user,
+        pathwayCounts ?? (await countActiveStudentsByPathway(ctx)),
       )
-      .take(500);
-    pathwayPeers = peers.filter(
-      (p) => p._id !== userId && p.isActive && p.major === user.major,
-    ).length;
-  }
+    : 0;
 
   let topChannel: WrappedSummary["topChannel"] = null;
   let topChannelId: Id<"clubChannels"> | null = null;
@@ -319,7 +278,7 @@ async function buildSummaryForUser(
     friends,
     clubs,
     flexCredits,
-    flexCreditsRequired: 12,
+    flexCreditsRequired: FLEX_CREDITS_REQUIRED_PER_YEAR,
     pathwayFlexCredits,
     topChannel,
     topMentioned,
@@ -419,7 +378,7 @@ export const getMine = query({
       .unique();
 
     if (existing && existing.schemaVersion === WRAPPED_SCHEMA_VERSION) {
-      const summary = existing.summary as WrappedSummary;
+      const summary = existing.summary;
       if (!summary.topMentioned) return summary;
       const personId = ctx.db.normalizeId("users", summary.topMentioned.userId);
       const person = personId ? await ctx.db.get(personId) : null;
@@ -471,7 +430,7 @@ export const snapshotStatus = query({
       )
       .take(5000);
     const eligibleUsers = students.filter(
-      (u) => u.isActive && isStudentRole(u.roles),
+      (u) => u.isActive && isStudent(u),
     ).length;
 
     const snapshots = await ctx.db
@@ -556,11 +515,14 @@ export const runSnapshotBatch = internalMutation({
     cursor: v.optional(v.string()),
     offset: v.optional(v.number()),
     userIds: v.optional(v.array(v.id("users"))),
+    pathwayCounts: v.optional(pathwayStudentCountsValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const selectedIds = args.userIds;
     const offset = args.offset ?? 0;
+    const pathwayCounts =
+      args.pathwayCounts ?? (await countActiveStudentsByPathway(ctx));
     let nextCursor: string | null = null;
     let students: Doc<"users">[];
 
@@ -580,7 +542,7 @@ export const runSnapshotBatch = internalMutation({
     }
 
     for (const student of students) {
-      if (!student.isActive || !isStudentRole(student.roles)) continue;
+      if (!student.isActive || !isStudent(student)) continue;
       if (!args.refresh) {
         const existing = await ctx.db
           .query("wrappedSnapshots")
@@ -593,7 +555,12 @@ export const runSnapshotBatch = internalMutation({
       await storeSnapshot(
         ctx,
         student._id,
-        await buildSummaryForUser(ctx, student._id, args.schoolYear),
+        await buildSummaryForUser(
+          ctx,
+          student._id,
+          args.schoolYear,
+          pathwayCounts,
+        ),
       );
     }
 
@@ -603,12 +570,14 @@ export const runSnapshotBatch = internalMutation({
         refresh: args.refresh,
         userIds: selectedIds,
         offset: offset + SNAPSHOT_BATCH_SIZE,
+        pathwayCounts,
       });
     } else if (nextCursor) {
       await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
         schoolYear: args.schoolYear,
         refresh: args.refresh,
         cursor: nextCursor,
+        pathwayCounts,
       });
     }
     return null;

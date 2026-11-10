@@ -12,7 +12,13 @@ import {
   type QueryCtx,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { volunteerLogs, volunteerMembers } from "./volunteerAggregates";
+import {
+  logsNamespace,
+  membersNamespace,
+  volunteerLogs,
+  volunteerMembers,
+} from "./volunteerAggregates";
+import { approvalStatusValidator } from "../validators";
 import { displayName } from "../../../shared/user-name";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
@@ -20,11 +26,6 @@ import { getClubContext } from "./access";
 import { consumeVolunteerProof } from "../uploads/volunteerProofs";
 import { logAuditEvent } from "../audit/_lib";
 
-const logStatus = v.union(
-  v.literal("PENDING"),
-  v.literal("APPROVED"),
-  v.literal("DECLINED"),
-);
 const logItem = v.object({
   _id: v.id("clubVolunteerLogs"),
   userId: v.id("users"),
@@ -34,7 +35,7 @@ const logItem = v.object({
   minutes: v.number(),
   notes: v.union(v.string(), v.null()),
   proofAvailable: v.boolean(),
-  status: logStatus,
+  status: approvalStatusValidator,
   submittedAt: v.number(),
   reviewedAt: v.union(v.number(), v.null()),
   reviewerNote: v.union(v.string(), v.null()),
@@ -408,7 +409,7 @@ export const getClubSummary = query({
         declinedCount: 0,
       };
     }
-    const namespace = `logs:${args.clubId}`;
+    const namespace = logsNamespace(args.clubId);
     const results = await Promise.all(
       (["APPROVED", "PENDING", "DECLINED"] as const).map(async (status) => {
         const options = {
@@ -425,7 +426,7 @@ export const getClubSummary = query({
     return {
       ready: true,
       volunteerCount: await volunteerMembers.count(ctx, {
-        namespace: `members:${args.clubId}`,
+        namespace: membersNamespace(args.clubId),
       }),
       approvedMinutes: results[0].minutes,
       approvedCount: results[0].count,
@@ -454,7 +455,7 @@ async function serializeMember(
     pendingCount: totals?.pendingCount ?? 0,
     declinedCount: totals?.declinedCount ?? 0,
     declinedMinutes: await volunteerLogs.sum(ctx, {
-      namespace: `logs:${clubId}`,
+      namespace: logsNamespace(clubId),
       bounds: { prefix: ["DECLINED", userId] },
     }),
   };
@@ -510,7 +511,7 @@ export const listHistory = query({
   args: {
     clubId: v.id("clubs"),
     userId: v.optional(v.id("users")),
-    status: v.optional(logStatus),
+    status: v.optional(approvalStatusValidator),
     paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(logItem),

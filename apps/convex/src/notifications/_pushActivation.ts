@@ -1,3 +1,4 @@
+import { GLOBAL_SCOPE_KEY } from "../../../shared/notifications";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { preferenceIsOn, resolveNotificationPreference } from "./deliveryPreference";
@@ -39,12 +40,12 @@ export async function activatePushPreferences(
     const globalPreference = await ctx.db
       .query("notificationPreferences")
       .withIndex("by_userId_and_category_and_scopeKey", (q) =>
-        q.eq("userId", userId).eq("category", category).eq("scopeKey", "global"),
+        q.eq("userId", userId).eq("category", category).eq("scopeKey", GLOBAL_SCOPE_KEY),
       )
       .unique();
 
     const effectivePreference = globalPreference ?? (category === "FEEDBACK"
-      ? await resolveNotificationPreference(ctx, { userId, category, scopeKey: "global" })
+      ? await resolveNotificationPreference(ctx, { userId, category, scopeKey: GLOBAL_SCOPE_KEY })
       : null);
 
     // A global OFF preference is an explicit opt-out and wins over a
@@ -59,7 +60,7 @@ export async function activatePushPreferences(
         category,
         level: "PUSH",
         locked: false,
-        scopeKey: "global",
+        scopeKey: GLOBAL_SCOPE_KEY,
         createdAt: now,
         updatedAt: now,
       });
@@ -80,7 +81,7 @@ export async function activatePushPreferences(
       .take(maxScopedPreferencesPerCategory);
 
     for (const preference of scopedPreferences) {
-      if (preference.scopeKey === "global" || !preferenceNeedsPushUpgrade(preference)) {
+      if (preference.scopeKey === GLOBAL_SCOPE_KEY || !preferenceNeedsPushUpgrade(preference)) {
         continue;
       }
       await ctx.db.patch(preference._id, {

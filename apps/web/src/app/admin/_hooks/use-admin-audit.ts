@@ -2,20 +2,19 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AUDIT_ACTIONS, AUDIT_CATEGORIES, auditActionLabel, auditRecordLabel, parseAuditSearch, type AuditCategory } from '~/apps/shared/audit';
+import { AUDIT_CATEGORIES, auditActionInfo, auditActionLabel, auditRecordLabel, parseAuditSearch, type AuditCategory } from '~/apps/shared/audit';
 import { useQuery, useStreamPaginatedQuery } from '@/lib/convex-react';
 import { useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
-import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope } from '../_lib/types';
 
 function validDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value ? value : '';
 }
 
-export function useAdminAudit(activeTab: AdminTabId) {
+export function useAdminAudit() {
   const user = useCurrentUser();
   const searchParams = useSearchParams();
   const param = (name: string, fallback = '') => searchParams?.get(`audit_${name}`) ?? fallback;
@@ -86,11 +85,11 @@ export function useAdminAudit(activeTab: AdminTabId) {
     categories: auditCategoryFilters.length ? auditCategoryFilters : undefined,
   }), [deferredQuery, auditActor, auditActorId, auditEntityId, auditActionFilters, auditEntityTypeFilter, auditActorScope, auditStartDate, auditEndDate, auditCategoryFilters]);
   const { results: auditEvents, status: auditStatus, loadMore: loadMoreAuditEvents, isStale } = useStreamPaginatedQuery(
-    api.audit.events.listFilteredPage, activeTab === 'audit' ? auditQueryParams : 'skip',
+    api.audit.events.listFilteredPage, auditQueryParams,
     { initialNumItems: AUDIT_FETCH_LIMIT, keepPreviousResults: true, scopeKey: user?._id ?? 'signed-out' },
   );
-  const auditCounts = useQuery(api.audit.events.counts, activeTab === 'audit' ? auditQueryParams : 'skip');
-  const auditFilterOptions = useQuery(api.audit.events.listFilterOptions, activeTab === 'audit' ? {} : 'skip');
+  const auditCounts = useQuery(api.audit.events.counts, auditQueryParams);
+  const auditFilterOptions = useQuery(api.audit.events.listFilterOptions, {});
   const auditEventDetail = useQuery(api.audit.events.get, selectedAuditEventId ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> } : 'skip');
   const clearAuditFilters = () => {
     setDraft('');
@@ -120,7 +119,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     setAuditStartDateWithBounds: (value: string) => update({ from: value, ...(value && auditEndDate && value > auditEndDate ? { to: value } : {}) }),
     setAuditDateRange: (from: string, to: string) => update({ from, to }),
     setAuditEndDateWithBounds: (value: string) => update({ to: value, ...(value && auditStartDate && value < auditStartDate ? { from: value } : {}) }),
-    auditCategoryFilters, setAuditCategoryFilters: (values: AuditCategory[]) => update({ category: values.join(','), action: auditActionFilters.filter((action) => !values.length || !!AUDIT_ACTIONS[action] && values.includes(AUDIT_ACTIONS[action].category)).join(',') }),
+    auditCategoryFilters, setAuditCategoryFilters: (values: AuditCategory[]) => update({ category: values.join(','), action: auditActionFilters.filter((action) => !values.length || values.includes(auditActionInfo(action)?.category as AuditCategory)).join(',') }),
     selectedAuditEventId, setSelectedAuditEventId, auditEvents, displayedAuditEvents: auditEvents,
     isAuditLoading: auditStatus === 'LoadingFirstPage' && !isStale, isStale,
     auditStatus, loadMoreAuditEvents, auditCounts,

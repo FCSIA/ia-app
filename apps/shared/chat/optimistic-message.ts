@@ -32,7 +32,7 @@ export type OptimisticMessageAuthor = Pick<
 
 export type OptimisticChatMessage = ChannelPageMessage & {
   clientGeneratedId: string;
-  deliveryState: "sending" | "failed";
+  deliveryState: "sending";
 };
 
 type OptimisticMessageContext = {

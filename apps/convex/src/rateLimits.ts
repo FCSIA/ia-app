@@ -1,12 +1,6 @@
 import { HOUR, MINUTE, RateLimiter } from "@convex-dev/rate-limiter";
 import { components } from "./_generated/api";
 
-/** Failed password attempts allowed per account before lockout. */
-export const MAX_FAILED_LOGINS_PER_ACCOUNT = 5;
-
-/** How long account lockout lasts after too many failed password attempts. */
-export const ACCOUNT_LOCKOUT_PERIOD = 30 * MINUTE;
-
 /** Login attempts allowed per IP address in a short window. */
 export const MAX_LOGIN_ATTEMPTS_PER_IP = 30;
 

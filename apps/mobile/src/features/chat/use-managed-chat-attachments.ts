@@ -3,10 +3,10 @@ import * as DocumentPicker from "expo-document-picker";
 import { File, type UploadTask } from "expo-file-system";
 import { useAction, useMutation } from "@/lib/convex-react";
 import { useToast } from "@/components/ui";
+import { MAX_CHANNEL_MESSAGE_ATTACHMENTS } from "~/apps/shared/chat/attachments";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import {
-  MAX_CHAT_ATTACHMENTS,
   normalizedMimeType,
   parseConvexStorageId,
   validatePickedChatAttachment,
@@ -178,7 +178,7 @@ export function useManagedChatAttachments() {
 
   const pickAttachments = useCallback(async () => {
     if (pickerBusyRef.current) return;
-    const remaining = MAX_CHAT_ATTACHMENTS - itemsRef.current.length;
+    const remaining = MAX_CHANNEL_MESSAGE_ATTACHMENTS - itemsRef.current.length;
     if (remaining <= 0) {
       showToast({
         title: "Attachment limit reached",
@@ -359,7 +359,7 @@ export function useManagedChatAttachments() {
   return {
     items,
     pickerBusy,
-    canPickAttachments: !pickerBusy && items.length < MAX_CHAT_ATTACHMENTS,
+    canPickAttachments: !pickerBusy && items.length < MAX_CHANNEL_MESSAGE_ATTACHMENTS,
     readyAttachmentUploadIds,
     hasReadyAttachments: readyAttachmentUploadIds.length > 0,
     attachmentSubmissionBlocked,

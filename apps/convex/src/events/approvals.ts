@@ -5,7 +5,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializedEventValidator } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
-import { deliverMany, eventAudience } from "../notifications/delivery";
+import { publishEvent } from "./_publish";
 
 /**
  * Remove the approvals still waiting on a decision once the event has left
@@ -46,45 +46,6 @@ export async function activeClubSponsorIds(
   ];
 }
 
-async function publishEvent(ctx: MutationCtx, event: Doc<"events">) {
-  await ctx.db.patch(event._id, {
-    status: "PUBLISHED",
-    publishedAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-  // Requests left with sponsors who can no longer act are moot now.
-  await clearPendingApprovals(ctx, event._id);
-  const existingCalendar = await ctx.db
-    .query("calendarEntries")
-    .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
-    .first();
-  if (!existingCalendar) {
-    await ctx.db.insert("calendarEntries", {
-      eventId: event._id,
-      title: event.title,
-      description: event.description,
-      location: event.location,
-      startAt: event.startAt,
-      endAt: event.endAt,
-      tags: ["event"],
-      source: event.clubId ? "CLUB" : "SCHOOL",
-      createdById: event.authorId,
-      createdAt: Date.now(),
-    });
-  }
-  await deliverMany(ctx, await eventAudience(ctx, event), {
-    category: "EVENT",
-    title: event.title,
-    body: event.description ?? "New event published.",
-    href: `/events/${event._id}`,
-    subject: {
-      kind: "event",
-      eventId: event._id,
-      ...(event.clubId ? { clubId: event.clubId } : {}),
-    },
-  });
-}
-
 /**
  * Moves a pending club event on after an approval or a change in who can
  * approve it. Requests waiting on someone who is no longer an active sponsor
@@ -114,6 +75,8 @@ export async function settlePendingEvent(
   }
   if (waiting > 0) return false;
   if (approvals.some((approval) => approval.status === "APPROVED")) {
+    // Requests left with sponsors who can no longer act are moot now.
+    await clearPendingApprovals(ctx, event._id);
     await publishEvent(ctx, event);
     return true;
   }

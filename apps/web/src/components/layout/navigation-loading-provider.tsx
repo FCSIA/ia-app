@@ -206,14 +206,6 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
   );
 }
 
-export function useNavigationLoading() {
-  const ctx = useContext(NavigationLoadingContext);
-  if (!ctx) {
-    throw new Error('useNavigationLoading must be used within NavigationLoadingProvider');
-  }
-  return ctx;
-}
-
 /** Safe when provider is absent (e.g. tests). */
 export function useNavigationLoadingOptional() {
   return useContext(NavigationLoadingContext);

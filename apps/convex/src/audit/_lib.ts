@@ -1,7 +1,9 @@
-import { auditCategory } from "../../../shared/audit";
+import { auditCategory, type AuditAction } from "../../../shared/audit";
 import { auditByActor, auditByCategory } from "./_aggregates";
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
 import { auditContextResolver } from "./_context";
+import { createDocLoader } from "../../lib/docLoader";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -38,28 +40,15 @@ export const auditEventValidator = v.object({
   }),
 });
 
-export const auditPageValidator = v.object({
-  page: v.array(auditEventValidator),
-  isDone: v.boolean(),
-  continueCursor: v.string(),
-  pageStatus: v.optional(
-    v.union(
-      v.literal("SplitRecommended"),
-      v.literal("SplitRequired"),
-      v.null(),
-    ),
-  ),
-  splitCursor: v.optional(v.union(v.string(), v.null())),
-});
+export const auditPageValidator = paginationResultValidator(auditEventValidator);
 
 /** One serializer per response shares actor/context reads across streamed rows. */
 export function auditEventSerializer(ctx: QueryCtx) {
-  const actors = new Map<Id<"users">, Promise<Doc<"users"> | null>>();
+  const loader = createDocLoader(ctx);
   const resolveContext = auditContextResolver(ctx);
   return async (event: Doc<"auditEvents">) => {
-    if (event.actorId && !actors.has(event.actorId)) actors.set(event.actorId, ctx.db.get(event.actorId));
     const [actor, context] = await Promise.all([
-      event.actorId ? actors.get(event.actorId) ?? null : null,
+      event.actorId ? loader.get(event.actorId) : null,
       resolveContext(event),
     ]);
     return {
@@ -81,8 +70,6 @@ export function auditEventSerializer(ctx: QueryCtx) {
     };
   };
 }
-/** Name used on main for the same per-response serializer. */
-export const auditEventResolver = auditEventSerializer;
 export async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
   return await auditEventSerializer(ctx)(event);
 }
@@ -90,28 +77,11 @@ export async function toAuditEvents(ctx: QueryCtx, events: Doc<"auditEvents">[])
   return await Promise.all(events.map(auditEventSerializer(ctx)));
 }
 
-export function includes(value: string | null | undefined, needle: string) {
-  return value?.toLowerCase().includes(needle) ?? false;
-}
-
-export function matchesDateRange(
-  createdAt: number,
-  startDate?: string,
-  endDate?: string,
-) {
-  const start = startDate ? Date.parse(`${startDate}T00:00:00.000`) : null;
-  const end = endDate ? Date.parse(`${endDate}T23:59:59.999`) : null;
-  return (
-    (start == null || Number.isNaN(start) || createdAt >= start) &&
-    (end == null || Number.isNaN(end) || createdAt <= end)
-  );
-}
-
 export async function logAuditEvent(
   ctx: MutationCtx,
   input: {
     actorId: Id<"users"> | "system";
-    action: string;
+    action: AuditAction;
     entityType: string;
     entityId?: string;
     meta?: unknown;

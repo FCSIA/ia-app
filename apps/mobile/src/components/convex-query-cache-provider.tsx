@@ -1,7 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  DEFAULT_IDLE_MS,
-  DEFAULT_MAX_IDLE,
   QueryKeepAliveContext,
   createQueryKeepAlive,
   useConvex,
@@ -18,16 +16,12 @@ import {
  */
 export function ConvexQueryCacheProvider({
   children,
-  idleMs = DEFAULT_IDLE_MS,
-  maxIdleQueries = DEFAULT_MAX_IDLE,
 }: {
   children: ReactNode;
-  idleMs?: number;
-  maxIdleQueries?: number;
 }) {
   const client = useConvex();
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const [cache] = useState(() => createQueryKeepAlive(client, idleMs, maxIdleQueries));
+  const [cache] = useState(() => createQueryKeepAlive(client));
 
   useEffect(() => () => cache.clear(), [cache]);
 

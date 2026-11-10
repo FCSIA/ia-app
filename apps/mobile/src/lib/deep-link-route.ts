@@ -1,3 +1,11 @@
+import {
+  clubChannelHref,
+  clubHref,
+  matchClubChannelPath,
+  matchClubPath,
+  matchClubPeoplePath,
+} from "~/apps/shared/routes";
+
 export function normalizeHref(href?: string | null) {
   if (!href) return "/";
   try {
@@ -14,16 +22,14 @@ export function resolveAppHref(href?: string | null) {
   if (path.startsWith("/announcements/")) return path;
   if (path.startsWith("/announcements")) return "/announcements";
 
-  const channelMatch = path.match(/^\/clubs\/([^/]+)\/channels\/([^/?#]+)/);
-  if (channelMatch) {
-    return `/clubs/${channelMatch[1]}/channels/${channelMatch[2]}`;
-  }
+  const channel = matchClubChannelPath(path);
+  if (channel) return clubChannelHref(channel.clubId, channel.channelId);
 
-  const clubPeopleMatch = path.match(/^\/clubs\/([^/?#]+)\/people/);
-  if (clubPeopleMatch) return `/clubs/${clubPeopleMatch[1]}/people`;
+  const clubPeople = matchClubPeoplePath(path);
+  if (clubPeople) return `${clubHref(clubPeople.clubId)}/people`;
 
-  const clubMatch = path.match(/^\/clubs\/([^/?#]+)/);
-  if (clubMatch) return `/clubs/${clubMatch[1]}`;
+  const club = matchClubPath(path);
+  if (club) return clubHref(club.clubId);
 
   if (path.startsWith("/courses/")) return path;
   if (path.startsWith("/courses")) return "/courses";

@@ -9,8 +9,8 @@ import type { QueryCtx } from "../_generated/server";
 import { searchText, toAdminUserProfile, toUserSelfProfile } from "./_lib";
 import { toClubUserRef } from "../clubs/serialize";
 import { serializeUser } from "../schedule/_lib";
-import { channelNotificationAuthorName } from "../clubs/channelNotificationCopy";
 import { displayName, greetingName, nameInitials, nameSearchValues } from "../../../shared/user-name";
+import { insertUser } from "../../test/fixtures";
 
 // Use real current-user guards, substituting only Better Auth's identity lookup.
 vi.mock("../auth", async (importOriginal) => {
@@ -33,15 +33,7 @@ async function fixture() {
   const t = convexTest(schema, modules);
   rateLimiter.register(t);
   const ids = await t.run(async (ctx) => {
-    const makeUser = (uniqueId: string, firstName: string, admin = false) => ctx.db.insert("users", {
-      authUserId: uniqueId,
-      uniqueId, firstName, lastName: "Johnson", gradeLevel: 10,
-      roles: admin ? ["SUPER_ADMIN"] : ["STUDENT"],
-      isStudent: !admin, isTeacherStaff: admin, isStudentAdmin: false, isOtherRole: false,
-      isActive: true, mustResetPassword: false, dashboardLayout: [],
-      searchText: searchText({ uniqueId, firstName, lastName: "Johnson" }),
-      createdAt: 1, updatedAt: 1,
-    });
+    const makeUser = (uniqueId: string, firstName: string, admin = false) => insertUser(ctx, { authUserId: uniqueId, uniqueId, firstName, lastName: "Johnson", gradeLevel: 10, roles: admin ? ["SUPER_ADMIN"] : ["STUDENT"] });
     const aliceId = await makeUser("NAME001", "Alice");
     const bobId = await makeUser("NAME002", "Bob");
     const adminId = await makeUser("NAMEADMIN", "Admin", true);
@@ -121,7 +113,6 @@ describe("preferred profile names", () => {
     await t.run(async ctx => {
       const user = (await ctx.db.get(aliceId))!;
       for (const project of [toClubUserRef, serializeUser, toUserSelfProfile, toAdminUserProfile]) expect(displayName(project(user))).toBe("Ally");
-      expect(channelNotificationAuthorName(user)).toBe("Ally");
     });
     await alice.mutation(api.users.me.updatePreferredName, { preferredName: "" });
     expect(displayName((await read()).page[0].author)).toBe("Alice Johnson");

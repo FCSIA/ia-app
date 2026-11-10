@@ -1,18 +1,18 @@
+import { clubChannelHref } from "../../../shared/routes";
+import { STAFF_ROLES } from "../../../shared/roles";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../schema";
-import { AUDIT_ACTIONS, AUDIT_CATEGORIES, AUDIT_ENTITY_TYPES, auditEntityKey, auditCategory, isFlexAudit, type AuditCategory } from "../../../shared/audit";
+import { AUDIT_ACTIONS, AUDIT_CATEGORIES, AUDIT_ENTITY_TYPES, auditActionInfo, auditEntityKey, auditCategory, isFlexAudit, type AuditCategory } from "../../../shared/audit";
 import { auditByActor, auditByCategory, auditIndexReady } from "./_aggregates";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
-  getMaybeCurrentAppUser,
-  requireAnyRoleSafe,
+  viewerWithRoles,
 } from "../../lib/currentUser";
 import {
   auditEventValidator,
-  auditEventResolver,
   auditPageValidator,
   auditEventSerializer,
   toAuditEvent,
@@ -40,14 +40,6 @@ function metaRecord(meta: unknown): Record<string, unknown> {
   return typeof meta === "object" && meta !== null && !Array.isArray(meta)
     ? (meta as Record<string, unknown>)
     : {};
-}
-
-function whiteboardHref(
-  clubId: Id<"clubs">,
-  channelId: Id<"clubChannels">,
-  boardId: Id<"clubWhiteboards">,
-) {
-  return `/clubs/${clubId}/channels/${channelId}?view=whiteboard&board=${boardId}`;
 }
 
 /** Resolves the current context of whiteboard audit rows for reviewers. */
@@ -79,7 +71,7 @@ async function resolveEntityPreview(ctx: QueryCtx, row: Doc<"auditEvents">) {
       .join(" · "),
     body: text || null,
     href: channel
-      ? whiteboardHref(board.clubId, board.channelId, board._id)
+      ? clubChannelHref(board.clubId, board.channelId, { whiteboardId: board._id })
       : null,
     hrefLabel: channel ? "Open whiteboard" : null,
     fields:
@@ -99,11 +91,8 @@ export const list = query({
   args: { limit: v.optional(v.number()), ...auditFilters },
   returns: v.array(auditEventValidator),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return [];
     const matches = auditMatcher(args);
     const rows = await ctx.db
@@ -119,14 +108,11 @@ export const listFilterOptions = query({
   args: {},
   returns: auditFilterOptionsValidator,
   handler: async (ctx) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return { actions: [], entityTypes: [] };
     return {
-      actions: Object.keys(AUDIT_ACTIONS).sort((a, b) => AUDIT_ACTIONS[a]!.label.localeCompare(AUDIT_ACTIONS[b]!.label)),
+      actions: Object.keys(AUDIT_ACTIONS).sort((a, b) => auditActionInfo(a)!.label.localeCompare(auditActionInfo(b)!.label)),
       entityTypes: AUDIT_ENTITY_TYPES.filter((type, index, types) => types.findIndex((candidate) => auditEntityKey(candidate) === auditEntityKey(type)) === index),
     };
   },
@@ -138,8 +124,8 @@ export const listPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]))
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
     const result = await ctx.db.query("auditEvents")
@@ -155,11 +141,8 @@ export const listFilteredPage = query({
   args: { paginationOpts: paginationOptsValidator, ...auditFilters },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return { page: [], isDone: true, continueCursor: "" };
     const matches = auditMatcher(args);
     const db = stream(ctx.db, schema);
@@ -224,11 +207,8 @@ export const get = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (
-      !viewer ||
-      !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])
-    )
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer)
       return null;
     const row = await ctx.db.get(args.auditEventId);
     if (!row) return null;
@@ -245,8 +225,8 @@ export const counts = query({
   args: auditFilters,
   returns: v.object({ total: v.union(v.number(), v.null()), exact: v.boolean(), byCategory: v.array(v.object({ category: v.string(), count: v.number() })) }),
   handler: async (ctx, args) => {
-    const viewer = await getMaybeCurrentAppUser(ctx);
-    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) return { total: null, exact: false, byCategory: [] };
+    const viewer = await viewerWithRoles(ctx, STAFF_ROLES);
+    if (!viewer) return { total: null, exact: false, byCategory: [] };
     if (!(await auditIndexReady(ctx))) return { total: null, exact: false, byCategory: [] };
     const byCategory = await Promise.all((Object.keys(AUDIT_CATEGORIES) as AuditCategory[]).map(async (category) => ({
       category,

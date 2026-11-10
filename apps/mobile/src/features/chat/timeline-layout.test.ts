@@ -21,7 +21,7 @@ function message(
     createdAt,
     updatedAt: createdAt,
     ...overrides,
-  };
+  } as ChatMessage;
 }
 
 function localTimestamp(day: number, hour: number, minute: number) {

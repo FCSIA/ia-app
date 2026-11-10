@@ -1,4 +1,4 @@
-import { hsl, type ThemeTokens } from "@ia/design-tokens";
+import { contrastRatio as contrastRatioOf, hsl, linearChannel, type ThemeTokens } from "@ia/design-tokens";
 
 type SurfaceToken = "card" | "secondary" | "accent";
 type ForegroundToken = "cardForeground" | "secondaryForeground" | "accentForeground";
@@ -74,21 +74,11 @@ function rgbString([red, green, blue]: Rgb) {
 }
 
 function contrastRatio(left: Rgb, right: Rgb) {
-  const lighter = Math.max(relativeLuminance(left), relativeLuminance(right));
-  const darker = Math.min(relativeLuminance(left), relativeLuminance(right));
-  return (lighter + 0.05) / (darker + 0.05);
+  return contrastRatioOf(toChannels(left), toChannels(right));
 }
 
-function relativeLuminance([red, green, blue]: Rgb) {
-  const [r, g, b] = [red, green, blue].map(linearChannel);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function linearChannel(channel: number) {
-  const value = Math.min(255, Math.max(0, channel)) / 255;
-  return value <= 0.04045
-    ? value / 12.92
-    : Math.pow((value + 0.055) / 1.055, 2.4);
+function toChannels([r, g, b]: Rgb) {
+  return { r, g, b };
 }
 
 function perceptualDistance(left: Rgb, right: Rgb) {

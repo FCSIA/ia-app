@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { DAY_MS, floorToResolution } from "@/lib/time-window";
 
-export function useAnnouncementFeedClock(resolutionMs = 86_400_000) {
-  const [now, setNow] = useState(() => Math.floor(Date.now() / resolutionMs) * resolutionMs);
+export function useAnnouncementFeedClock(resolutionMs = DAY_MS) {
+  const [now, setNow] = useState(() => floorToResolution(resolutionMs));
   useEffect(() => {
     const timer = setTimeout(
-      () => setNow(Math.floor(Date.now() / resolutionMs) * resolutionMs),
+      () => setNow(floorToResolution(resolutionMs)),
       Math.max(1, now + resolutionMs - Date.now() + 100),
     );
     return () => clearTimeout(timer);

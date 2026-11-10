@@ -20,13 +20,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useCurrentUser } from '@/lib/auth';
+import { eventStatusLabel } from '../_status';
 import { shareUrl } from '@/lib/share';
 import { useToast } from '@/hooks/use-toast';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  useCurrentUser();
   const { toast } = useToast();
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');
@@ -89,7 +88,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 variant={event.status === 'PUBLISHED' ? 'solid' : 'solid'}
                 className={event.status === 'PUBLISHED' ? 'bg-emerald-500/15 text-emerald-500' : ''}
               >
-                {event.status.replace(/_/g, ' ')}
+                {eventStatusLabel(event.status)}
               </Badge>
               {event.club && (
                 <Badge variant="solid" className="text-blue-500 border-blue-500/30">

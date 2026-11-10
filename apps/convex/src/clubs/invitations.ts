@@ -1,3 +1,4 @@
+import { clubHref, clubPeopleRequestsHref } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { displayName } from '../../../shared/user-name';
 import { v } from "convex/values";
@@ -12,7 +13,7 @@ import { internal } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
-import { getClubContext, getViewerContext } from "./access";
+import { getClubContext } from "./access";
 import {
   clubAudience,
   deliverMany,
@@ -284,7 +285,7 @@ export const requestToJoin = mutation({
           category: "CLUB_JOIN_REQUEST",
           title: "New club join request",
           body: `${displayName(user)} requested to join ${club.name}.`,
-          href: `/clubs/${args.clubId}/people?tab=requests`,
+          href: clubPeopleRequestsHref(args.clubId),
           subject: { kind: "club", clubId: args.clubId },
         },
       );
@@ -340,7 +341,7 @@ export const respondToJoinRequest = mutation({
       category: "CLUB_JOIN_REQUEST",
       title: args.accept ? "Club request approved" : "Club request declined",
       body: `${club?.name ?? "Club"} ${args.accept ? "approved" : "declined"} your join request.`,
-      href: `/clubs/${args.clubId}`,
+      href: clubHref(args.clubId),
       subject: { kind: "club", clubId: args.clubId },
     });
 
@@ -771,29 +772,6 @@ export const generateJoinCode = mutation({
       entityId: args.clubId,
     });
     return code;
-  },
-});
-
-export const revokeJoinCode = mutation({
-  args: { clubId: v.id("clubs") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.permissions.manageJoinCodes)
-      throw new Error("You do not have permission to manage join codes");
-    await ctx.db.patch(args.clubId, {
-      joinCode: undefined,
-      joinCodeUpdatedAt: Date.now(),
-      joinCodeExpiresAt: undefined,
-    });
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "CLUB_JOIN_CODE_REVOKED",
-      entityType: "Club",
-      entityId: args.clubId,
-    });
-    return null;
   },
 });
 

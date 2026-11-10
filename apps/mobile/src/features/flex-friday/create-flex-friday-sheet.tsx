@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { View } from "react-native";
 import { useMutation } from "@/lib/convex-react";
@@ -41,7 +42,6 @@ export function CreateFlexFridaySheet({ open, onClose }: CreateFlexFridaySheetPr
     if (!canSubmit) return;
     setCreating(true);
     
-    // Normalize date to start of day
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
 
@@ -59,7 +59,7 @@ export function CreateFlexFridaySheet({ open, onClose }: CreateFlexFridaySheetPr
     } catch (error) {
       showToast({
         title: "Couldn't create Flex Friday",
-        body: error instanceof Error ? error.message : "Try again.",
+        body: errorMessage(error),
         tone: "warning",
       });
     } finally {

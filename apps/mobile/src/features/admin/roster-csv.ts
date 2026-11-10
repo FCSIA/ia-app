@@ -1,3 +1,4 @@
+import { errorMessage } from "../../lib/errors";
 export const MAX_STUDENT_IMPORT_ROWS = 200;
 
 export type StudentPathway =
@@ -84,7 +85,7 @@ export function parseStudentCsv(text: string): StudentCsvPreview {
     records = parseCsvRecords(text.replace(/^\uFEFF/, ""));
   } catch (error) {
     const issue = {
-      message: error instanceof Error ? error.message : "The CSV could not be read.",
+      message: errorMessage(error, "The CSV could not be read."),
     };
     return { rows: [], totalRows: 0, invalidRows: 0, issues: [issue], blockingIssues: [issue] };
   }

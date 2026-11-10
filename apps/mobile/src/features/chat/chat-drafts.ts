@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from "../../lib/storage-keys";
+
 export const CHAT_DRAFT_VERSION = 1;
 export const CHAT_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -22,7 +24,7 @@ function draftPart(value: string) {
 
 export function chatDraftKey(identity: ChatDraftIdentity) {
   return [
-    "ia_chat_draft",
+    STORAGE_KEYS.chatDraftPrefix,
     CHAT_DRAFT_VERSION,
     draftPart(identity.userId),
     draftPart(identity.clubId),

@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { GLOBAL_SCOPE_KEY, NOTIFICATION_CATEGORY_DETAILS } from "~/apps/shared/notifications";
 import { useState } from "react";
 import { useAction, useConvex, useMutation, useQuery } from "@/lib/convex-react";
 import { Smartphone } from "lucide-react-native";
@@ -49,7 +51,7 @@ export default function NotificationSettingsScreen() {
       const result = await sendTestPush({ title: "Innovation Academy", body: "Push notifications are connected." });
       showToast({ title: "Test sent", body: `${result.sent} device${result.sent === 1 ? "" : "s"} targeted.`, tone: "success" });
     } catch (error) {
-      showToast({ title: "Test failed", body: error instanceof Error ? error.message : "Try again on a physical device.", tone: "warning" });
+      showToast({ title: "Test failed", body: errorMessage(error, "Try again on a physical device."), tone: "warning" });
     } finally {
       setTestLoading(false);
     }
@@ -74,8 +76,8 @@ export default function NotificationSettingsScreen() {
 
       <Section title="Topics">
         {categories.map(([category, label]) => {
-          const pref = preferences?.find((item: any) => item.category === category && item.scopeKey === "global");
-          const enabled = pref ? pref.enabled : category !== "CLUB_CHANNEL_MESSAGE";
+          const pref = preferences?.find((item: any) => item.category === category && item.scopeKey === GLOBAL_SCOPE_KEY);
+          const enabled = pref ? pref.enabled : NOTIFICATION_CATEGORY_DETAILS[category].defaultEnabled;
           return (
             <ListRow
               key={category}
@@ -88,7 +90,7 @@ export default function NotificationSettingsScreen() {
                     upsertPreference({
                       category: category as any,
                       enabled: next,
-                      scopeKey: "global",
+                      scopeKey: GLOBAL_SCOPE_KEY,
                       level: next ? "PUSH" : "OFF",
                     }).catch(() => showToast({ title: "Preference didn't update", body: "Try again.", tone: "warning" }))
                   }

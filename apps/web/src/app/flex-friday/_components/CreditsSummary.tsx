@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type CreditsSemester = {
+type CreditsSemester = {
   key: 'FALL' | 'SPRING';
   label: string;
   earned: number;

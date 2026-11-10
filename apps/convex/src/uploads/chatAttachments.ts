@@ -1,16 +1,19 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { deleteStorageQuietly } from "../../lib/storage";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import {
   isSupportedStoredFileMime,
   normalizeStoredFileMime,
 } from "./fileSignatures";
+import {
+  MAX_CHANNEL_MESSAGE_ATTACHMENTS,
+  MAX_CHAT_ATTACHMENT_BYTES,
+  MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS,
+} from "../../../shared/chat/attachments";
 
-export const MAX_CHAT_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-export const MAX_CHANNEL_MESSAGE_ATTACHMENTS = 5;
 export const STAGED_CHAT_ATTACHMENT_TTL_MS = 60 * 60 * 1000;
 
-const MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS = 160;
 type StorageMetadataInput = {
   contentType?: string;
   size: number;
@@ -51,7 +54,7 @@ export function assertStagedChatAttachmentIds(
   attachmentUploadIds: Id<"clubChannelAttachmentUploads">[],
 ) {
   if (attachmentUploadIds.length > MAX_CHANNEL_MESSAGE_ATTACHMENTS) {
-    throw new ConvexError("A message can include at most 5 attachments");
+    throw new ConvexError(`A message can include at most ${MAX_CHANNEL_MESSAGE_ATTACHMENTS} attachments`);
   }
   if (new Set(attachmentUploadIds).size !== attachmentUploadIds.length) {
     throw new ConvexError("An attachment can only be added once");
@@ -67,23 +70,11 @@ export function assertStagedChatAttachmentOwner(
   }
 }
 
-async function deleteStorageFile(
-  ctx: MutationCtx,
-  storageId: Id<"_storage"> | undefined,
-) {
-  if (!storageId) return;
-  try {
-    await ctx.storage.delete(storageId);
-  } catch {
-    // The storage object may already have been removed.
-  }
-}
-
 export async function deleteStoredChatAttachment(
   ctx: MutationCtx,
   attachment: Pick<Doc<"clubChannelMessageAttachments">, "storageId">,
 ) {
-  await deleteStorageFile(ctx, attachment.storageId);
+  await deleteStorageQuietly(ctx, attachment.storageId);
 }
 
 export async function consumeStagedChatAttachments(
@@ -135,7 +126,7 @@ export const cleanupStagedChatAttachment = internalMutation({
   handler: async (ctx, args) => {
     const staged = await ctx.db.get(args.attachmentUploadId);
     if (!staged) return null;
-    await deleteStorageFile(ctx, staged.storageId);
+    await deleteStorageQuietly(ctx, staged.storageId);
     await ctx.db.delete(staged._id);
     return null;
   },

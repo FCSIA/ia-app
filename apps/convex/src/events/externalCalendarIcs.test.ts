@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseIcs } from "./externalCalendarIcs";
+import { importedEventsHash } from "./externalCalendarSync";
 
 const feed = (event: string) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:assignment\r\nSUMMARY:Assignment\r\n${event}\r\nEND:VEVENT\r\nEND:VCALENDAR`;
 const now = Date.parse("2026-10-21T12:00:00Z");
@@ -39,5 +40,17 @@ describe("ICS normalization", () => {
     const single = "BEGIN:VEVENT\r\nUID:other\r\nDTSTART;VALUE=DATE:20270320\r\nSUMMARY:Other\r\nEND:VEVENT";
     const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${daily}\r\n${single}\r\nEND:VCALENDAR`;
     expect(parseIcs(ics, start).some((event) => event.title === "Other")).toBe(true);
+  });
+});
+
+describe("imported event digest", () => {
+  const quiz = { externalId: "quiz", title: "Quiz", startAt: 1_000, endAt: 2_000, allDay: false };
+  const lab = { externalId: "lab", title: "Lab", startAt: 3_000, endAt: 4_000, allDay: false };
+
+  it("ignores feed order but tracks every stored field", () => {
+    expect(importedEventsHash([quiz, lab])).toBe(importedEventsHash([lab, quiz]));
+    expect(importedEventsHash([quiz, lab])).not.toBe(importedEventsHash([{ ...quiz, description: "Chapter 4" }, lab]));
+    expect(importedEventsHash([quiz, lab])).not.toBe(importedEventsHash([{ ...quiz, allDay: true }, lab]));
+    expect(importedEventsHash([quiz, lab])).not.toBe(importedEventsHash([quiz]));
   });
 });
