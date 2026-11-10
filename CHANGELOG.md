@@ -12,6 +12,53 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.46 — 2026-11-10 (alpha)
+
+### Added
+
+- **route-finder** — Find directions between rooms with floor maps and routes between floors. ([#220](https://github.com/FCSIA/ia-app/pull/220), [`df8df76f`](https://github.com/FCSIA/ia-app/commit/df8df76f))
+- **feedback** — Your feedback history now shows when school staff are reviewing something you sent, and you'll get a notification when they start. ([`843bc045`](https://github.com/FCSIA/ia-app/commit/843bc045))
+- **web** — Pages now fade smoothly into view when you navigate, while keeping your place and respecting reduced motion. ([`5915cf03`](https://github.com/FCSIA/ia-app/commit/5915cf03))
+
+### Improved
+
+- **app** — Setup now guides you one step at a time for your school role, calendar sync and Wrapped use less database work, and sidebar wallpaper renders correctly. ([`47ef860a`](https://github.com/FCSIA/ia-app/commit/47ef860a))
+- **events** — Club events no longer wait forever for approval from a sponsor who has left. ([`f22b4c42`](https://github.com/FCSIA/ia-app/commit/f22b4c42))
+- **feedback** — Recover GitHub issue pushes and order events by GitHub's clock. ([`13e2a42e`](https://github.com/FCSIA/ia-app/commit/13e2a42e))
+- **dashboard** — Snake's arrow buttons now steer on iPhone instead of pausing the game. ([#219](https://github.com/FCSIA/ia-app/pull/219), [`de4e2c26`](https://github.com/FCSIA/ia-app/commit/de4e2c26))
+- **announcements** — Announcement details now say when a post has expired. ([#205](https://github.com/FCSIA/ia-app/pull/205), [`ee4d2a27`](https://github.com/FCSIA/ia-app/commit/ee4d2a27))
+- **web** — Load page transitions with LazyMotion. ([`460508ce`](https://github.com/FCSIA/ia-app/commit/460508ce))
+- **admin** — Give record tables the audit log's anatomy. ([`6ce5c7e4`](https://github.com/FCSIA/ia-app/commit/6ce5c7e4))
+- **audit** — Keep the count in one place. ([`3517bb53`](https://github.com/FCSIA/ia-app/commit/3517bb53))
+- **onboarding** — Super admins no longer see the account setup checklist. ([`184a48e5`](https://github.com/FCSIA/ia-app/commit/184a48e5))
+- **admin** — Give the collapsed sidebar's reopen trigger its own gutter. ([`47e554f3`](https://github.com/FCSIA/ia-app/commit/47e554f3))
+- **audit** — Paint pinned bands with the main surface and keep times on one line. ([`83d61a45`](https://github.com/FCSIA/ia-app/commit/83d61a45))
+- **moderation** — Your feedback history now shows colored statuses and when staff replied. ([`c5403427`](https://github.com/FCSIA/ia-app/commit/c5403427))
+- **feedback** — Quiet the detail dialog and queue rows. ([`e210717f`](https://github.com/FCSIA/ia-app/commit/e210717f))
+- **feedback** — Give the detail dialog clear hierarchy. ([`6ae24cbf`](https://github.com/FCSIA/ia-app/commit/6ae24cbf))
+- **feedback** — Your feedback history no longer repeats its status as a review note. ([`b7a8a3e4`](https://github.com/FCSIA/ia-app/commit/b7a8a3e4))
+- **admin** — Make the sidebar resizable with the official rail. ([`4d6736fa`](https://github.com/FCSIA/ia-app/commit/4d6736fa))
+- **audit** — Rebuild column filters as Fluid menus and pin the toolbar. ([`0ac78fe9`](https://github.com/FCSIA/ia-app/commit/0ac78fe9))
+- Keep table filter popups from lighting rows underneath. ([`894e0236`](https://github.com/FCSIA/ia-app/commit/894e0236))
+- **dashboard** — Feedback in Needs you now shows a short headline and opens the report directly. ([`5d0e6607`](https://github.com/FCSIA/ia-app/commit/5d0e6607))
+- Merge the current Fluid Dropdown with search and multi-select. ([`1fea4a2e`](https://github.com/FCSIA/ia-app/commit/1fea4a2e))
+- **friends** — Removing a friend now asks you to confirm first. ([`7b8a878e`](https://github.com/FCSIA/ia-app/commit/7b8a878e))
+- **calendar** — The Coming up widget is more compact and easier to scan, with source icons, full titles, and no more "7:00 PM – 7:00 PM" for due dates. ([`ef2e9bea`](https://github.com/FCSIA/ia-app/commit/ef2e9bea))
+- **dashboard** — Snake now takes a break during class (it'll tell you when it's back), and plays more smoothly. ([`d5c2c8a6`](https://github.com/FCSIA/ia-app/commit/d5c2c8a6))
+- **settings** — Keep section definitions separate from components. ([`eb02bfc8`](https://github.com/FCSIA/ia-app/commit/eb02bfc8))
+- **flex-friday** — Flex Friday now uses cleaner panels without nested outlines around empty states and session lists. ([`0c3bd88a`](https://github.com/FCSIA/ia-app/commit/0c3bd88a))
+- **feedback** — Feedback details now separate submission text, device information, attachments, and responses with clearer spacing. ([`d0b901a1`](https://github.com/FCSIA/ia-app/commit/d0b901a1))
+- **dashboard** — Snake now glides smoothly between cells, including turns and growth. ([`70f1f473`](https://github.com/FCSIA/ia-app/commit/70f1f473))
+
+### Fixed
+
+- **settings** — Navigation settings now open correctly so you can customize your mobile tab bar. ([`f7561004`](https://github.com/FCSIA/ia-app/commit/f7561004))
+
+### Internal
+
+- Scope animation plan to page transitions. ([`51d02611`](https://github.com/FCSIA/ia-app/commit/51d02611))
+- Plan smooth Fluid animations. ([`72b46be9`](https://github.com/FCSIA/ia-app/commit/72b46be9))
+
 ## v0.8.45 — 2026-11-04 (alpha)
 
 ### Improved

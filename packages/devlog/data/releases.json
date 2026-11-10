@@ -2,6 +2,210 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.46",
+      "date": "2026-11-10",
+      "commit": "47ef860a",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "route-finder",
+          "summary": "Find directions between rooms with floor maps and routes between floors.",
+          "commit": "df8df76f",
+          "pr": 220
+        },
+        {
+          "category": "Added",
+          "scope": "feedback",
+          "summary": "Your feedback history now shows when school staff are reviewing something you sent, and you'll get a notification when they start.",
+          "commit": "843bc045"
+        },
+        {
+          "category": "Added",
+          "scope": "web",
+          "summary": "Pages now fade smoothly into view when you navigate, while keeping your place and respecting reduced motion.",
+          "commit": "5915cf03"
+        },
+        {
+          "category": "Improved",
+          "scope": "app",
+          "summary": "Setup now guides you one step at a time for your school role, calendar sync and Wrapped use less database work, and sidebar wallpaper renders correctly.",
+          "commit": "47ef860a"
+        },
+        {
+          "category": "Improved",
+          "scope": "events",
+          "summary": "Club events no longer wait forever for approval from a sponsor who has left.",
+          "commit": "f22b4c42"
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Recover GitHub issue pushes and order events by GitHub's clock.",
+          "commit": "13e2a42e"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Snake's arrow buttons now steer on iPhone instead of pausing the game.",
+          "commit": "de4e2c26",
+          "pr": 219
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Announcement details now say when a post has expired.",
+          "commit": "ee4d2a27",
+          "pr": 205
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Load page transitions with LazyMotion.",
+          "commit": "460508ce"
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Give record tables the audit log's anatomy.",
+          "commit": "6ce5c7e4"
+        },
+        {
+          "category": "Improved",
+          "scope": "audit",
+          "summary": "Keep the count in one place.",
+          "commit": "3517bb53"
+        },
+        {
+          "category": "Improved",
+          "scope": "onboarding",
+          "summary": "Super admins no longer see the account setup checklist.",
+          "commit": "184a48e5"
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Give the collapsed sidebar's reopen trigger its own gutter.",
+          "commit": "47e554f3"
+        },
+        {
+          "category": "Improved",
+          "scope": "audit",
+          "summary": "Paint pinned bands with the main surface and keep times on one line.",
+          "commit": "83d61a45"
+        },
+        {
+          "category": "Improved",
+          "scope": "moderation",
+          "summary": "Your feedback history now shows colored statuses and when staff replied.",
+          "commit": "c5403427"
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Quiet the detail dialog and queue rows.",
+          "commit": "e210717f"
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Give the detail dialog clear hierarchy.",
+          "commit": "6ae24cbf"
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Your feedback history no longer repeats its status as a review note.",
+          "commit": "b7a8a3e4"
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Make the sidebar resizable with the official rail.",
+          "commit": "4d6736fa"
+        },
+        {
+          "category": "Improved",
+          "scope": "audit",
+          "summary": "Rebuild column filters as Fluid menus and pin the toolbar.",
+          "commit": "0ac78fe9"
+        },
+        {
+          "category": "Improved",
+          "summary": "Keep table filter popups from lighting rows underneath.",
+          "commit": "894e0236"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Feedback in Needs you now shows a short headline and opens the report directly.",
+          "commit": "5d0e6607"
+        },
+        {
+          "category": "Improved",
+          "summary": "Merge the current Fluid Dropdown with search and multi-select.",
+          "commit": "1fea4a2e"
+        },
+        {
+          "category": "Improved",
+          "scope": "friends",
+          "summary": "Removing a friend now asks you to confirm first.",
+          "commit": "7b8a878e"
+        },
+        {
+          "category": "Improved",
+          "scope": "calendar",
+          "summary": "The Coming up widget is more compact and easier to scan, with source icons, full titles, and no more \"7:00 PM – 7:00 PM\" for due dates.",
+          "commit": "ef2e9bea"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Snake now takes a break during class (it'll tell you when it's back), and plays more smoothly.",
+          "commit": "d5c2c8a6"
+        },
+        {
+          "category": "Improved",
+          "scope": "settings",
+          "summary": "Keep section definitions separate from components.",
+          "commit": "eb02bfc8"
+        },
+        {
+          "category": "Improved",
+          "scope": "flex-friday",
+          "summary": "Flex Friday now uses cleaner panels without nested outlines around empty states and session lists.",
+          "commit": "0c3bd88a"
+        },
+        {
+          "category": "Improved",
+          "scope": "feedback",
+          "summary": "Feedback details now separate submission text, device information, attachments, and responses with clearer spacing.",
+          "commit": "d0b901a1"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Snake now glides smoothly between cells, including turns and growth.",
+          "commit": "70f1f473"
+        },
+        {
+          "category": "Fixed",
+          "scope": "settings",
+          "summary": "Navigation settings now open correctly so you can customize your mobile tab bar.",
+          "commit": "f7561004"
+        },
+        {
+          "category": "Internal",
+          "summary": "Scope animation plan to page transitions.",
+          "commit": "51d02611"
+        },
+        {
+          "category": "Internal",
+          "summary": "Plan smooth Fluid animations.",
+          "commit": "72b46be9"
+        }
+      ]
+    },
+    {
       "version": "0.8.45",
       "date": "2026-11-04",
       "commit": "892ed453",
