@@ -38,6 +38,7 @@ const ENTITY_TABLES: Record<string, TableNames> = {
   schooldayblock: 'schoolDayBlocks',
   schooldaytemplate: 'schoolDayTemplates',
   schooldaydateoverride: 'schoolDayDateOverrides',
+  schooldayscopedassignment: 'schoolDayScopedAssignments',
 };
 const REFERENCE_TABLES: Record<string, TableNames> = {
   userId: 'users',

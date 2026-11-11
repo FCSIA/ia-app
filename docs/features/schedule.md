@@ -31,6 +31,9 @@ and special-day plans without rewriting student course choices.
 - Fridays remain explicitly unassigned until an administrator assigns a template. Resetting a Friday returns it to unassigned; resetting Monday–Thursday returns it to the default template.
 - Date assignments stay linked to their template, so later template edits update every linked date. `Unlink and customize` snapshots the current blocks onto that date and severs the link.
 - No-school templates are a first-class plan type with zero schedule blocks. They are not represented by fake periods or an audience label.
+- Admins can link a Friday template to selected grades and/or a pathway. A pathway matches either the student's major or minor. Grade 9 can use its own Flex template while matching Grades 10–12 use the standard template. Other students retain the school-wide date plan.
+- School-wide no-school plans take priority over scoped plans. Overlapping scoped plans are rejected (including pathways that could match the same student's major/minor); assignments remain linked to template edits. Remove scoped assignments before deleting their template.
+- In day-plan management, the pathway and grade selectors beside the template control choose the assignment audience. All pathways + All grades uses the existing school-wide assignment. Scoped plans appear in the selected date's inspector and can be removed independently. Resetting a school-wide date does not remove scoped assignments.
 
 ## Academic Year Setup
 
@@ -93,6 +96,8 @@ After setup, the admin workspace keeps a full month calendar visible. Compact st
 - `api.schedule.dayPlans.setRegularTemplate`
 - `api.schedule.dayPlans.configureAcademicYear`
 - `api.schedule.dayPlans.applyTemplateToDate`
+- `api.schedule.dayPlans.applyScopedTemplateToDate`
+- `api.schedule.dayPlans.removeScopedAssignment`
 - `api.schedule.dayPlans.unlinkDateTemplate`
 - `api.schedule.dayPlans.saveDateOverride`
 - `api.schedule.dayPlans.resetDateOverride`
