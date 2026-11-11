@@ -48,6 +48,7 @@ export const userSelfProfileValidator = adminUserProfileValidator.extend(
       "dashboardColumns",
       "dashboardNotes",
       "mobileTabLayout",
+      "sidebarLayout",
       "use24HourTime",
       "chatDoubleTapReaction",
       "customBackgroundUrl",

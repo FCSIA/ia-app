@@ -218,6 +218,7 @@ function PersistentAppFrame({ children, defaultSidebarOpen }: {
     pageNavigation: routeConfig?.pageNavigation,
     showWrapped,
     mobileTabLayout: user?.mobileTabLayout,
+    sidebarLayout: user?.sidebarLayout,
   };
 
   return (

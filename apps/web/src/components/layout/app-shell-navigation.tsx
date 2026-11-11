@@ -61,6 +61,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { CommandMenuDialogTrigger } from "@/components/ui/command-menu";
 
 import { MobileTabEditor } from "./mobile-tab-editor";
+import { normalizeSidebarLayout } from "~/apps/shared/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { normalizeMobileTabLayout } from "./mobile-tab-layout";
 import {
@@ -141,6 +142,7 @@ type AppShellNavigationProps = {
   pageNavigation?: AppPageNavigation;
   showWrapped: boolean;
   mobileTabLayout?: string[];
+  sidebarLayout?: string[];
 };
 
 function getNavigationItems({
@@ -258,6 +260,14 @@ function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] 
   ];
 }
 
+function getSidebarEditorItems(props: AppShellNavigationProps) {
+  return [
+    ...getNavigationItems(props).filter((item) => item.href !== "/"),
+    ...accountNav.filter((item) => item.href !== "/profile"),
+    ...(props.showAdmin ? adminNav : []),
+  ];
+}
+
 function AppShellDesktopNavigation(props: AppShellNavigationProps & {
   commandHint: boolean;
 }) {
@@ -270,6 +280,17 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
     ...accountNav.filter((item) => item.href !== profile.href),
     ...(props.showAdmin ? adminNav : []),
   ];
+  const available = getSidebarEditorItems(props);
+  const selected = normalizeSidebarLayout(props.sidebarLayout, available.map((item) => item.href));
+  const customized = props.sidebarLayout !== undefined;
+  const ordered = selected.map((href) => available.find((item) => item.href === href)!);
+  const more = available.filter((item) => !selected.includes(item.href));
+  const renderItem = (item: NavItem) => (
+    <DesktopNavLink key={item.href} item={item}
+      active={isActive(props.pathname, item.href, props.activeHref)}
+      badge={item.href === "/notifications" ? props.unreadBadge : undefined}
+      subNavigation={getSubNavigation(item.href)} />
+  );
 
   return (
     <Sidebar variant="inset" role="navigation" aria-label="Primary navigation" className="z-40">
@@ -295,6 +316,18 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        {customized ? <>
+          <SidebarGroup>
+            <SidebarMenu>
+              {renderItem(primaryNav[0])}
+              {ordered.map(renderItem)}
+            </SidebarMenu>
+          </SidebarGroup>
+          {more.length ? <SidebarGroup collapsible defaultOpen={false}>
+            <SidebarGroupLabel>More</SidebarGroupLabel>
+            <SidebarMenu>{more.map(renderItem)}</SidebarMenu>
+          </SidebarGroup> : null}
+        </> : <>
         <SidebarGroup>
           <SidebarMenu>
             {primary.map((item) => (
@@ -324,6 +357,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
             ))}
           </SidebarMenu>
         </SidebarGroup>
+        </>}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
@@ -588,4 +622,5 @@ export {
   AppShellMobileNavigation,
   AppShellMobileTabBar,
   getMobileTabEditorItems,
+  getSidebarEditorItems,
 };

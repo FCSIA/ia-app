@@ -23,6 +23,7 @@ import { isDashboardNoteId, normalizeDashboardColumns, normalizeDashboardLayout 
 import { moderatePreferredName } from "../moderation/preferredNames";
 import { contentRateLimiter } from "../rateLimits";
 import { MAX_WALLPAPER_BLUR } from "../../../shared/custom-theme";
+import { SIDEBAR_DESTINATIONS } from "../../../shared/sidebar-layout";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 const wallpaperColorPattern = /^#[0-9a-f]{6}$/;
@@ -129,6 +130,21 @@ export const updateDashboardNote = mutation({
       updatedAt: Date.now(),
     });
     return null;
+  },
+});
+
+export const updateSidebarLayout = mutation({
+  args: { layout: v.optional(v.array(v.string())) },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, { layout }) => {
+    const user = await getCurrentAppUser(ctx);
+    if (layout && (layout.length > SIDEBAR_DESTINATIONS.length ||
+      new Set(layout).size !== layout.length ||
+      layout.some((href) => !SIDEBAR_DESTINATIONS.some((allowed) => allowed === href)))) {
+      throw new ConvexError("Choose different sidebar destinations from the available list.");
+    }
+    await ctx.db.patch(user._id, { sidebarLayout: layout, updatedAt: Date.now() });
+    return toUserSelfProfile({ ...user, sidebarLayout: layout });
   },
 });
 
