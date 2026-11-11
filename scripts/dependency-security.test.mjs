@@ -53,8 +53,8 @@ test("RSA verification rejects extra nested DigestAlgorithm children (GHSA-86w9-
   }
 });
 
-test("upstream node-forge 1.4.2 retains Buffer PEM compatibility", () => {
-  assert.equal(require("node-forge/package.json").version, "1.4.2");
+test("upstream node-forge 1.4.3 retains Buffer PEM compatibility", () => {
+  assert.equal(require("node-forge/package.json").version, "1.4.3");
   assert.equal(forge.pki.privateKeyFromPem(Buffer.from(pem)).n.toString(), privateKey.n.toString());
 });
 
@@ -75,6 +75,61 @@ test("Expo code signing round-trips certificates and produces valid manifest sig
   const key = forge.pki.publicKeyToPem(publicKey);
   assert.equal(verify("sha256", manifest, key, signature), true);
   assert.equal(verify("sha256", Buffer.from("tampered"), key, signature), false);
+});
+
+test("Forge rejects forged Ed25519 signatures using an identity public key", () => {
+  const identity = Buffer.alloc(32);
+  identity[0] = 1;
+  const forged = Buffer.alloc(64);
+  identity.copy(forged);
+  assert.equal(forge.ed25519.verify({
+    message: "admin=true", encoding: "utf8", signature: forged, publicKey: identity,
+  }), false);
+  const keys = forge.ed25519.generateKeyPair();
+  const signed = forge.ed25519.sign({ message: "ordinary", encoding: "utf8", privateKey: keys.privateKey });
+  assert.equal(forge.ed25519.verify({
+    message: "ordinary", encoding: "utf8", signature: signed, publicKey: keys.publicKey,
+  }), true);
+  assert.equal(forge.ed25519.verify({
+    message: "tampered", encoding: "utf8", signature: signed, publicKey: keys.publicKey,
+  }), false);
+});
+
+test("Forge TLS ignores stray handshakes after close and refuses unsupported compression", () => {
+  const errors = [];
+  const client = () => forge.tls.createConnection({
+    server: false, connected() {}, tlsDataReady() {}, dataReady() {}, closed() {},
+    error(_connection, error) { errors.push(error.message); },
+  });
+  const closed = client();
+  closed.handshake();
+  closed.process(forge.util.hexToBytes("15030100020100"));
+  assert.equal(closed.session, null);
+  assert.doesNotThrow(() => closed.process(forge.util.hexToBytes("160301000402000000")));
+  const compression = client();
+  compression.handshake();
+  const hello = forge.util.createBuffer();
+  hello.putBytes("\x03\x01" + "\x00".repeat(32) + "\x00\x00\x2f\xff");
+  const handshake = forge.util.createBuffer();
+  handshake.putByte(2);
+  handshake.putInt24(hello.length());
+  handshake.putBytes(hello.getBytes());
+  const record = forge.util.createBuffer();
+  record.putBytes("\x16\x03\x01");
+  record.putInt16(handshake.length());
+  record.putBytes(handshake.getBytes());
+  assert.doesNotThrow(() => compression.process(record.getBytes()));
+  assert.ok(errors.includes("Unsupported compression method."));
+});
+
+test("Forge HTTP trims adversarial whitespace without quadratic backtracking", () => {
+  const http = require("node-forge/lib/http");
+  vm.runInNewContext(`
+    const response = http.createResponse();
+    const value = "x" + " ".repeat(1_000_000) + "x";
+    response.setField("X-Test", value + "  ");
+    assert.equal(response.getField("X-Test"), value);
+  `, { http, assert }, { timeout: 2000 });
 });
 
 test("fixed Zod rejects oversized collections before validating their elements", () => {
@@ -99,7 +154,7 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   // OSV ignores an advisory globally. Guard every instance, including nested
   // versions, so an update cannot silently inherit a reviewed exception.
   const scopes = {
-    "node-forge": ["1.4.2"],
+    "node-forge": ["1.4.3"],
     sandbox: ["4.4.0"],
     deepmerge: ["4.3.1"],
     zod: ["3.22.4", "3.25.76", "4.6.7"],
@@ -126,14 +181,17 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   ].sort());
   for (const block of blocks) {
     assert.match(block, /owner @rebanto/);
-    assert.match(block, /Reviewed 2026-10-30/);
+    assert.match(block, /Reviewed 2026-11-10/);
     const expiry = block.match(/ignoreUntil = (\d{4}-\d{2}-\d{2})/)[1];
-    assert.equal(expiry, "2026-11-16");
+    assert.equal(expiry, "2027-01-24");
+    const review = block.match(/Reviewed (\d{4}-\d{2}-\d{2})/)[1];
+    const reviewWindowDays = (Date.parse(expiry) - Date.parse(review)) / 86_400_000;
+    assert.ok(reviewWindowDays >= 60 && reviewWindowDays <= 90, `Review window must be 60-90 days: ${block}`);
     assert.ok(Date.now() < Date.parse(`${expiry}T00:00:00Z`), `Expired audit exception: ${block}`);
   }
   assert.doesNotMatch(config, /\[\[PackageOverrides\]\]/);
   const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(manifest.overrides["node-forge"], "1.4.2");
+  assert.equal(manifest.overrides["node-forge"], "1.4.3");
   assert.equal(manifest.patchedDependencies["node-forge@1.4.0"], undefined);
 });
 
