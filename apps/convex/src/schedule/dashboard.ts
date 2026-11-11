@@ -43,7 +43,7 @@ export const get = query({
     const [mySchedule, blocks, dayPlanSource] = await Promise.all([
       viewerIsStudent && user ? serializeScheduleForUser(ctx, user._id) : Promise.resolve(null),
       ctx.db.query("schoolDayBlocks").take(250),
-      loadDayPlanSource(ctx, dateKey),
+      loadDayPlanSource(ctx, dateKey, user),
     ]);
     const resolved = resolveSchoolDay({
       dateKey,
@@ -148,7 +148,7 @@ export const getDay = query({
     const mySchedule = user && isStudent(user)
       ? await serializeScheduleForUser(ctx, user._id)
       : null;
-    const dayPlanSource = await loadDayPlanSource(ctx, dateKey);
+    const dayPlanSource = await loadDayPlanSource(ctx, dateKey, user);
     const resolved = resolveSchoolDay({
       dateKey,
       lunchPeriod: mySchedule?.lunchPeriod ?? null,

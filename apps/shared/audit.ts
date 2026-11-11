@@ -42,7 +42,7 @@ export const AUDIT_CATEGORIES = {
 export type AuditCategory = keyof typeof AUDIT_CATEGORIES;
 export const auditEntityKey = (type: string) => type.replace(/[_\s]/g, '').toLowerCase();
 /** Known stored spellings share one semantic filter without rewriting history. */
-export const AUDIT_ENTITY_TYPES = ['User', 'authAccount', 'Club', 'ClubChannel', 'ClubChannelMessage', 'ClubWhiteboard', 'ClubUnit', 'ClubPeopleGroup', 'ClubJoinRequest', 'Announcement', 'Comment', 'Report', 'KeywordRule', 'StudentSchedule', 'StudentScheduleGroup', 'StudentFriendShareLink', 'SchoolDayBlock', 'SchoolDayTemplate', 'SchoolDayDateOverride', 'SchoolScheduleSettings', 'FlexFriday', 'FlexSession', 'FlexWorkshop', 'FlexRegistration', 'FlexAssignment', 'FlexAttendance', 'Event', 'user', 'club', 'studentSchedule', 'studentScheduleGroup', 'studentFriendShareLink', 'schoolDayBlock', 'schoolDayTemplate', 'schoolDayDateOverride', 'schoolScheduleSettings', 'FLEX_FRIDAY', 'FLEX_SESSION', 'FLEX_WORKSHOP', 'FLEX_REGISTRATION', 'FLEX_ASSIGNMENT', 'FLEX_ATTENDANCE', 'EVENT'] as const;
+export const AUDIT_ENTITY_TYPES = ['User', 'authAccount', 'Club', 'ClubChannel', 'ClubChannelMessage', 'ClubWhiteboard', 'ClubUnit', 'ClubPeopleGroup', 'ClubJoinRequest', 'Announcement', 'Comment', 'Report', 'KeywordRule', 'StudentSchedule', 'StudentScheduleGroup', 'StudentFriendShareLink', 'SchoolDayBlock', 'SchoolDayTemplate', 'SchoolDayDateOverride', 'SchoolScheduleSettings', 'FlexFriday', 'FlexSession', 'FlexWorkshop', 'FlexRegistration', 'FlexAssignment', 'FlexAttendance', 'Event', 'user', 'club', 'studentSchedule', 'studentScheduleGroup', 'studentFriendShareLink', 'schoolDayBlock', 'schoolDayTemplate', 'schoolDayDateOverride', 'schoolDayScopedAssignment', 'schoolScheduleSettings', 'FLEX_FRIDAY', 'FLEX_SESSION', 'FLEX_WORKSHOP', 'FLEX_REGISTRATION', 'FLEX_ASSIGNMENT', 'FLEX_ATTENDANCE', 'EVENT'] as const;
 type AuditActionInfo = {
   label: string;
   category: AuditCategory;
@@ -160,6 +160,8 @@ export const AUDIT_ACTIONS = {
   "schoolDayBlock.created": { label: "Created school day block", category: "schedules" },
   "schoolDayBlock.deleted": { label: "Deleted school day block", category: "schedules", destructive: true },
   "schoolDayBlock.updated": { label: "Updated school day block", category: "schedules" },
+  "schoolDayScopedAssignment.assigned": { label: "Assigned a grade or pathway day plan", category: "schedules" },
+  "schoolDayScopedAssignment.removed": { label: "Removed a grade or pathway day plan", category: "schedules" },
   "schoolDayDateOverride.applied_template": { label: "Applied a day template", category: "schedules" },
   "schoolDayDateOverride.created": { label: "Created school day date override", category: "schedules" },
   "schoolDayDateOverride.reset": { label: "Reset school day date override", category: "schedules" },

@@ -531,6 +531,18 @@ export const schema = defineSchema({
     .index("by_dateKey", ["dateKey"])
     .index("by_sourceTemplateId", ["sourceTemplateId"]),
 
+  schoolDayScopedAssignments: defineTable({
+    dateKey: v.string(),
+    templateId: v.id("schoolDayTemplates"),
+    gradeLevels: v.array(v.number()),
+    pathway: v.optional(pathwayValidator),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_dateKey", ["dateKey"])
+    .index("by_templateId", ["templateId"]),
+
   schoolDayDateBlocks: defineTable({
     overrideId: v.id("schoolDayDateOverrides"),
     position: v.number(),

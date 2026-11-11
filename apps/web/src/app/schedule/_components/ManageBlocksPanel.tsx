@@ -447,6 +447,7 @@ function DatePlanWorkspace({
   onSaveDate,
   onResetDate,
   onUnlinkTemplate,
+  scopePathway, onScopePathwayChange, scopeGrade, onScopeGradeChange, onRemoveScope,
 }: {
   workspace: AdminWorkspace;
   dateKey: string;
@@ -465,6 +466,9 @@ function DatePlanWorkspace({
   onSaveDate: () => void;
   onResetDate: () => void;
   onUnlinkTemplate: () => void;
+  scopePathway: string; onScopePathwayChange: (value: string) => void;
+  scopeGrade: string; onScopeGradeChange: (value: string) => void;
+  onRemoveScope: (id: AdminWorkspace["scopedAssignments"][number]["id"]) => void;
 }) {
   const selectedDate = dateFromKey(dateKey);
   const [displayMonth, setDisplayMonth] = useState(selectedDate);
@@ -477,7 +481,7 @@ function DatePlanWorkspace({
     dateKey <= workspace.academicYearEndDateKey;
   const canAssign = isWeekday && isInAcademicYear && !workspace.setupRequired;
   const currentOverride = isDateLoading ? null : workspace.override;
-  const canAssignFriday = canAssign && weekday === 5 && !currentOverride;
+  const canAssignFriday = canAssign && weekday === 5;
   const dayDetail = useCallback((date: Date) => {
     const state = calendarDayState(workspace, date);
     const marker = DAY_PLAN_MARKERS.find(({ kind }) => kind === state.kind);
@@ -571,7 +575,15 @@ function DatePlanWorkspace({
                       </SelectGroup>
                     </SelectContent>
                 </Select>
-                <Tooltip content="Link this Friday to the selected template. Future template edits will update this date.">
+                <Select value={scopePathway} onValueChange={onScopePathwayChange}>
+                  <SelectTrigger aria-label="Pathway for this assignment" />
+                  <SelectContent>{[["ALL", "All pathways"], ["ENGINEERING", "Engineering"], ["HEALTH_SCIENCE", "Health Science"], ["INFORMATION_TECHNOLOGY", "Information Technology"]].map(([value, label], index) => <SelectItem key={value} index={index} value={value}>{label}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={scopeGrade} onValueChange={onScopeGradeChange}>
+                  <SelectTrigger aria-label="Grades for this assignment" />
+                  <SelectContent>{[["ALL", "All grades"], ["9", "Grade 9"], ["10-12", "Grades 10–12"], ["10", "Grade 10"], ["11", "Grade 11"], ["12", "Grade 12"]].map(([value, label], index) => <SelectItem key={value} index={index} value={value}>{label}</SelectItem>)}</SelectContent>
+                </Select>
+                <Tooltip content="Link the selected students on this date to this template. Future template edits update the assignment.">
                   <Button type="button" leadingIcon={CalendarPlus} aria-label="Assign selected template" disabled={!selectedApplyTemplate || pending !== null} loading={pending === "apply-date"} onClick={onApplyTemplate}>
                     Assign
                   </Button>
@@ -581,6 +593,14 @@ function DatePlanWorkspace({
           </header>
 
           <div className="flex flex-col gap-4 p-4 sm:p-5">
+            {!isDateLoading && workspace.scopedAssignments?.length ? <section aria-label="Grade and pathway assignments" className="space-y-2">
+              <p className="text-sm font-medium">Grade and pathway plans</p>
+              {workspace.scopedAssignments.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
+                <div><p>{item.name}</p><p className="text-muted-foreground">{item.pathway ? ({ ENGINEERING: "Engineering", HEALTH_SCIENCE: "Health Science", INFORMATION_TECHNOLOGY: "Information Technology" })[item.pathway] : "All pathways"} · {item.gradeLevels.length ? `Grades ${item.gradeLevels.join(", ")}` : "All grades"}</p></div>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${item.name} assignment for grades ${item.gradeLevels.join(", ") || "all"}`} disabled={pending !== null} onClick={() => onRemoveScope(item.id)}><Trash2 /></Button>
+              </div>)}
+              {currentOverride?.kind === "NO_SCHOOL" ? <p className="text-sm text-muted-foreground">The school-wide no-school plan takes priority over these plans.</p> : null}
+            </section> : null}
             {isDateLoading ? (
               <div className="h-48 animate-pulse rounded-lg bg-muted/30" aria-label="Loading selected date" />
             ) : !canAssign ? (
@@ -918,6 +938,10 @@ export function ManageBlocksPanel() {
     api.schedule.dayPlans.configureAcademicYear,
   );
   const applyTemplate = useMutation(api.schedule.dayPlans.applyTemplateToDate);
+  const applyScopedTemplate = useMutation(api.schedule.dayPlans.applyScopedTemplateToDate);
+  const removeScopedAssignment = useMutation(api.schedule.dayPlans.removeScopedAssignment);
+  const [scopePathway, setScopePathway] = useState("ALL");
+  const [scopeGrade, setScopeGrade] = useState("ALL");
   const unlinkDateTemplate = useMutation(
     api.schedule.dayPlans.unlinkDateTemplate,
   );
@@ -1161,8 +1185,19 @@ export function ManageBlocksPanel() {
                 dateBlocks={dateBlocks}
                 onDateBlocksChange={setDateBlocks}
                 regularTemplate={regularTemplate}
+                scopePathway={scopePathway} onScopePathwayChange={setScopePathway}
+                scopeGrade={scopeGrade} onScopeGradeChange={setScopeGrade}
+                onRemoveScope={(assignmentId) => void run("remove-scope", () => removeScopedAssignment({assignmentId}), "Scoped plan removed")}
                 onApplyTemplate={() => {
                   if (!selectedDateTemplate) return;
+                  if (scopePathway !== "ALL" || scopeGrade !== "ALL") {
+                    void run("apply-date", () => applyScopedTemplate({
+                      dateKey, templateId: selectedDateTemplate.id,
+                      gradeLevels: scopeGrade === "ALL" ? [] : scopeGrade === "10-12" ? [10, 11, 12] : [Number(scopeGrade)],
+                      ...(scopePathway !== "ALL" ? {pathway: scopePathway as NonNullable<FunctionArgs<typeof api.schedule.dayPlans.applyScopedTemplateToDate>["pathway"]>} : {}),
+                    }), "Grade/pathway template linked to date");
+                    return;
+                  }
                   void run(
                     "apply-date",
                     () =>

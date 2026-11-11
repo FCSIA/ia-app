@@ -8,6 +8,7 @@ import { logAuditEvent } from "../audit/_lib";
 import {
   schoolDayDatePlanModeValidator,
   schoolDayTemplateKindValidator,
+  pathwayValidator,
 } from "../validators";
 import { requireScheduleAdmin } from "./_lib";
 import {
@@ -78,6 +79,12 @@ const adminWorkspaceValidator = v.object({
   setupRequired: v.boolean(),
   templates: v.array(dayTemplateValidator),
   override: v.union(dateOverrideValidator, v.null()),
+  scopedAssignments: v.array(v.object({
+    id: v.id("schoolDayScopedAssignments"),
+    templateId: v.id("schoolDayTemplates"),
+    name: v.string(), gradeLevels: v.array(v.number()),
+    pathway: v.union(pathwayValidator, v.null()),
+  })),
   monthAssignments: v.array(v.object({
     id: v.id("schoolDayDateOverrides"),
     dateKey: v.string(),
@@ -286,7 +293,7 @@ async function replaceDateBlocks(
   }
 }
 
-export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
+export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string, user?: Doc<"users"> | null) {
   const dateKey = normalizeDateKey(rawDateKey);
   const settings = await ctx.db
     .query("schoolScheduleSettings")
@@ -312,10 +319,29 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
   }
 
   const override = await getOverrideByDate(ctx, dateKey);
+  const globalTemplate = override?.mode === "LINKED" && override.sourceTemplateId
+    ? await ctx.db.get(override.sourceTemplateId) : null;
+  // A school-wide closure takes precedence over every student-specific plan.
+  if (user?.isStudent && (globalTemplate?.kind ?? override?.kind) !== "NO_SCHOOL") {
+    const scoped = await ctx.db.query("schoolDayScopedAssignments")
+      .withIndex("by_dateKey", (q) => q.eq("dateKey", dateKey)).take(17);
+    if (scoped.length > 16) throw new ConvexError("Too many scoped assignments for this date.");
+    const matches = scoped.filter((item) =>
+      (!item.gradeLevels.length || (user.gradeLevel !== undefined && item.gradeLevels.includes(user.gradeLevel))) &&
+      (!item.pathway || user.major === item.pathway || user.minor === item.pathway));
+    if (matches.length > 1) throw new ConvexError("Conflicting scoped assignments for this student.");
+    if (matches[0]) {
+      const template = await ctx.db.get(matches[0].templateId);
+      if (!template) throw new ConvexError("Scoped schedule template is missing.");
+      const blocks = await getTemplateBlocks(ctx, template._id);
+      if (blocks.length > MAX_DAY_BLOCKS) throw new ConvexError("Scoped template has too many blocks.");
+      return { dateKey, source: "DATE_OVERRIDE" as const, sourceId: matches[0]._id,
+        sourceTemplateId: template._id, calendarSetupRequired: false, name: template.name,
+        blocks: blocks.map(({ label, periodNumber, startTime, endTime }) => ({ label, periodNumber: periodNumber ?? null, startTime, endTime })) };
+    }
+  }
   if (override) {
-    const linkedTemplate = override.mode === "LINKED" && override.sourceTemplateId
-      ? await ctx.db.get(override.sourceTemplateId)
-      : null;
+    const linkedTemplate = globalTemplate;
     const blocks = linkedTemplate
       ? await getTemplateBlocks(ctx, linkedTemplate._id)
       : await getDateBlocks(ctx, override._id);
@@ -434,6 +460,12 @@ export const getAdminWorkspace = query({
         templates.map((template) => serializeTemplate(ctx, template)),
       ),
       override: override ? await serializeOverride(ctx, override) : null,
+      scopedAssignments: await Promise.all((await ctx.db.query("schoolDayScopedAssignments")
+        .withIndex("by_dateKey", (q) => q.eq("dateKey", dateKey)).take(16)).map(async (item) => ({
+          id: item._id, templateId: item.templateId,
+          name: (await ctx.db.get(item.templateId))?.name ?? "Missing template",
+          gradeLevels: item.gradeLevels, pathway: item.pathway ?? null,
+        }))),
       monthAssignments: monthOverrides.map((assignment) => {
         const mode = assignment.mode ?? "CUSTOM";
         const source = assignment.sourceTemplateId
@@ -811,6 +843,9 @@ export const deleteTemplate = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     requireScheduleAdmin(user);
+    const scoped = await ctx.db.query("schoolDayScopedAssignments")
+      .withIndex("by_templateId", (q) => q.eq("templateId", args.templateId)).first();
+    if (scoped) throw new ConvexError("Remove the scoped date assignments before deleting this template.");
     const template = await ctx.db.get(args.templateId);
     if (!template) throw new ConvexError("Template not found.");
     const [settings, referenced] = await Promise.all([
@@ -842,5 +877,45 @@ export const deleteTemplate = mutation({
       meta: { name: template.name },
     });
     return { success: true };
+  },
+});
+
+
+export const applyScopedTemplateToDate = mutation({
+  args: { dateKey: v.string(), templateId: v.id("schoolDayTemplates"), gradeLevels: v.array(v.number()), pathway: v.optional(pathwayValidator) },
+  returns: v.id("schoolDayScopedAssignments"),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx); requireScheduleAdmin(user);
+    const dateKey = normalizeDateKey(args.dateKey);
+    const settings = await ctx.db.query("schoolScheduleSettings").withIndex("by_key", q => q.eq("key", SETTINGS_KEY)).unique();
+    assertAcademicDate(dateKey, settings);
+    if (args.gradeLevels.length > 4 || args.gradeLevels.some(grade => !Number.isInteger(grade) || grade < 9 || grade > 12)) throw new ConvexError("Choose grades 9 through 12.");
+    const gradeLevels = [...new Set(args.gradeLevels)].sort((a,b) => a-b);
+    if (!gradeLevels.length && !args.pathway) throw new ConvexError("Use a school-wide assignment for all students.");
+    if (!await ctx.db.get(args.templateId)) throw new ConvexError("Template not found.");
+    const existing = await ctx.db.query("schoolDayScopedAssignments").withIndex("by_dateKey", q => q.eq("dateKey", dateKey)).take(17);
+    const same = existing.find(item => item.pathway === args.pathway && JSON.stringify(item.gradeLevels) === JSON.stringify(gradeLevels));
+    const overlapping = existing.some(item => item._id !== same?._id &&
+      // Different pathways can still overlap through a student's major/minor.
+      (!item.gradeLevels.length || !gradeLevels.length || item.gradeLevels.some(grade => gradeLevels.includes(grade))));
+    if (overlapping) throw new ConvexError("These grades already have a scoped plan on this date; remove it before assigning another pathway.");
+    if (!same && existing.length >= 16) throw new ConvexError("This date has too many scoped assignments.");
+    const now = Date.now();
+    const id = same?._id ?? await ctx.db.insert("schoolDayScopedAssignments", { dateKey, templateId: args.templateId, gradeLevels, ...(args.pathway ? { pathway: args.pathway } : {}), createdById: user._id, createdAt: now, updatedAt: now });
+    if (same) await ctx.db.patch(same._id, { templateId: args.templateId, updatedAt: now });
+    await logAuditEvent(ctx, {actorId: user._id, action: "schoolDayScopedAssignment.assigned", entityType: "schoolDayScopedAssignment", entityId: id, meta: {dateKey, templateId: args.templateId, gradeLevels, pathway: args.pathway ?? null}});
+    return id;
+  },
+});
+
+export const removeScopedAssignment = mutation({
+  args: { assignmentId: v.id("schoolDayScopedAssignments") }, returns: v.null(),
+  handler: async (ctx, {assignmentId}) => {
+    const user = await getCurrentAppUser(ctx); requireScheduleAdmin(user);
+    const item = await ctx.db.get(assignmentId);
+    if (!item) throw new ConvexError("Assignment not found.");
+    await ctx.db.delete(assignmentId);
+    await logAuditEvent(ctx, {actorId: user._id, action: "schoolDayScopedAssignment.removed", entityType: "schoolDayScopedAssignment", entityId: assignmentId, meta: {dateKey:item.dateKey}});
+    return null;
   },
 });

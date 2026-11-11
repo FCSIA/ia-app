@@ -75,6 +75,7 @@ export const resolvedSchoolDayValidator = v.object({
   sourceId: v.union(
     v.id("schoolDayTemplates"),
     v.id("schoolDayDateOverrides"),
+    v.id("schoolDayScopedAssignments"),
     v.null(),
   ),
   sourceTemplateId: v.union(v.id("schoolDayTemplates"), v.null()),
