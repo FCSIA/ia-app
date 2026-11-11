@@ -93,6 +93,7 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   const submit = useMutation(api.dashboard.snake.submit);
   const lock = useClassLock();
   const locked = lock !== null;
+  const showClassLock = locked && view !== "leaderboard";
   const modeLabelId = useId();
   const instructionsId = useId();
   const score = game.snake.length - 3;
@@ -156,11 +157,11 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   useEffect(() => {
     const changedView = previousView.current !== view;
     previousView.current = view;
-    if (layoutEditing || locked) return;
+    if (layoutEditing || showClassLock) return;
     if (view === "game" && (changedView || game.status === "playing")) {
       board.current?.focus({ preventScroll: true });
     } else if (changedView) modePicker.current?.focus({ preventScroll: true });
-  }, [view, game.status, layoutEditing, locked]);
+  }, [view, game.status, layoutEditing, showClassLock]);
 
   useEffect(() => {
     const pause = () => setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
@@ -178,7 +179,7 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   }, [layoutEditing, locked]);
 
   const start = () => {
-    if (!mode || layoutEditing) return;
+    if (!mode || layoutEditing || locked) return;
     setSaveError(false);
     if (game.status === "paused") setGame(prev => ({ ...prev, status: "playing" }));
     else {
@@ -240,7 +241,7 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
     </div>
   );
   const startButton = (
-    <Button size="lg" leadingIcon={Play} disabled={layoutEditing || !mode} onClick={start}>
+    <Button size="lg" leadingIcon={Play} disabled={layoutEditing || !mode || locked} onClick={start}>
       {game.status === "paused" ? "Resume" : "Start"}
     </Button>
   );
@@ -253,15 +254,15 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
       <div className={cn(styles.widget, "relative")} onKeyDownCapture={() => setKeyboardUsed(true)}>
         <AnimatePresence initial={false} mode="popLayout">
         <motion.div
-          key={locked ? "locked" : view}
+          key={showClassLock ? "locked" : view}
           className="h-full"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: spring.moderate.exit }}
           transition={spring.moderate}
         >
-        {lock ? (
-          <ClassLockNotice lock={lock} gamePaused={game.status === "paused"} />
+        {lock && showClassLock ? (
+          <ClassLockNotice lock={lock} gamePaused={game.status === "paused"} layoutEditing={layoutEditing} onShowLeaderboard={showLeaderboard} />
         ) : view === "setup" ? (
           <div className="mx-auto flex h-full w-full max-w-xs flex-col justify-center gap-5">
             {modePickerField}
@@ -302,7 +303,7 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
                   setGame(prev => prev.status === "playing" ? { ...prev, status: "paused" } : prev);
                 }}
                 onKeyDown={event => {
-                  if (layoutEditing || event.altKey || event.ctrlKey || event.metaKey) return;
+                  if (layoutEditing || locked || event.altKey || event.ctrlKey || event.metaKey) return;
                   const direction = keys[event.key.toLowerCase()];
                   if (direction) {
                     event.preventDefault();
@@ -371,7 +372,12 @@ export function SnakeWidget({ layoutEditing = false }: { layoutEditing?: boolean
   );
 }
 
-function ClassLockNotice({ lock, gamePaused }: { lock: ClassLock; gamePaused: boolean }) {
+function ClassLockNotice({ lock, gamePaused, layoutEditing, onShowLeaderboard }: {
+  lock: ClassLock;
+  gamePaused: boolean;
+  layoutEditing: boolean;
+  onShowLeaderboard: () => void;
+}) {
   const user = useCurrentUser();
   return (
     <Empty className="h-full">
@@ -384,6 +390,7 @@ function ClassLockNotice({ lock, gamePaused }: { lock: ClassLock; gamePaused: bo
         Snake opens at {formatClockTime(lock.endTime, user?.use24HourTime ?? false)}
         {gamePaused ? " · Your game is paused" : ""}
       </p>
+      <Button size="lg" variant="ghost" leadingIcon={Trophy} disabled={layoutEditing} onClick={onShowLeaderboard}>Leaderboard</Button>
     </Empty>
   );
 }
