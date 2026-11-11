@@ -13,6 +13,7 @@ export function SidebarEditor({ options, savedLayout, ...props }: {
 }) {
   const update = useMutation(api.users.me.updateSidebarLayout);
   const available = options.map((item) => item.href);
+  const availableHrefs = new Set(available);
   return <NavigationLayoutEditor {...props}
     title="Desktop sidebar"
     description="Home and Settings stay in place. Uncheck destinations to move them to More. Drag a handle, or press Space and use the arrow keys, to reorder."
@@ -23,7 +24,7 @@ export function SidebarEditor({ options, savedLayout, ...props }: {
     onSave={(layout) => update({
       // Keep temporarily unavailable destinations in the account preference.
       layout: layout === undefined ? undefined : [
-        ...layout, ...(savedLayout ?? []).filter((href) => !available.includes(href)),
+        ...layout, ...(savedLayout ?? []).filter((href) => !availableHrefs.has(href)),
       ],
     })} />;
 }

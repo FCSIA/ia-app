@@ -6,28 +6,7 @@ import {
   type Ref,
 } from "react";
 import Link from "next/link";
-import {
-  Bell,
-  CalendarRange,
-  ClipboardList,
-  CalendarDays,
-  Home,
-  MessageSquareText,
-  Menu,
-  Megaphone,
-  Settings,
-  Shield,
-  Presentation,
-  LayoutTemplate,
-  MapPinned,
-  School,
-  Search,
-  Star,
-  Ticket,
-  UsersRound,
-  Waypoints,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, Home, Menu, LayoutTemplate, School, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
@@ -64,102 +43,19 @@ import { MobileTabEditor } from "./mobile-tab-editor";
 import { normalizeSidebarLayout } from "~/apps/shared/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { normalizeMobileTabLayout } from "./mobile-tab-layout";
+import { routePath, type MobileTabId } from "@/lib/routes";
 import {
-  navRoutes,
-  routePath,
-  type NavRouteId,
-  type MobileTabId,
-  type NavSection,
-} from "@/lib/routes";
-import { SCHEDULE_FRIENDS_HREF } from "~/apps/shared/routes";
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  mobileTabId?: MobileTabId;
-};
-
-export type AppPageNavigation = {
-  parentHref: string;
-  label: string;
-  items: Array<{
-    href: string;
-    label: string;
-    icon?: LucideIcon;
-    isActive: boolean;
-  }>;
-};
-
-const ROUTE_ICONS: Record<NavRouteId, LucideIcon> = {
-  home: Home,
-  announcements: Megaphone,
-  schedule: ClipboardList,
-  events: Ticket,
-  calendar: CalendarRange,
-  "flex-friday": Presentation,
-  "route-finder": MapPinned,
-  wrapped: Star,
-  clubs: Waypoints,
-  notifications: Bell,
-  report: MessageSquareText,
-  profile: Settings,
-  admin: Shield,
-};
-
-function navItems(section: NavSection): NavItem[] {
-  return navRoutes(section).map((route) => ({
-    href: route.path,
-    label: route.label,
-    icon: ROUTE_ICONS[route.id],
-    mobileTabId: "mobileTab" in route ? (route.id as MobileTabId) : undefined,
-  }));
-}
-
-const primaryNav = navItems("primary");
-const socialNav: NavItem[] = [
-  ...navItems("social"),
-  { href: SCHEDULE_FRIENDS_HREF, label: "Friends", icon: UsersRound },
-];
-const accountNav = navItems("account");
-const adminNav = navItems("admin");
+  primaryNav, socialNav, accountNav, adminNav,
+  getNavigationItems, getSocialItems, getMobileTabEditorItems, getSidebarEditorItems,
+  type NavItem, type AppPageNavigation, type AppShellNavigationProps,
+} from "./app-navigation-options";
+export type { AppPageNavigation } from "./app-navigation-options";
 
 const dayPlanNav: Array<NavItem> = [
   { href: "/schedule?tab=admin&section=dates", label: "Calendar dates", icon: CalendarDays },
   { href: "/schedule?tab=admin&section=templates", label: "Templates", icon: LayoutTemplate },
   { href: "/schedule?tab=admin&section=config", label: "School config", icon: School },
 ];
-
-type AppShellNavigationProps = {
-  pathname: string;
-  unreadBadge?: string;
-  showAdmin: boolean;
-  showSchedule: boolean;
-  showFriends?: boolean;
-  showDayPlans?: boolean;
-  /** The nav link the current page says it is showing, for routes with several nav entries. */
-  activeHref?: string;
-  pageNavigation?: AppPageNavigation;
-  showWrapped: boolean;
-  mobileTabLayout?: string[];
-  sidebarLayout?: string[];
-};
-
-function getNavigationItems({
-  showSchedule,
-  showWrapped,
-  showFriends,
-}: AppShellNavigationProps) {
-  return [...primaryNav, ...getSocialItems({ showFriends })].filter((item) => {
-    if (item.href === "/schedule" && !showSchedule) return false;
-    if (item.href === "/wrapped" && !showWrapped) return false;
-    return true;
-  });
-}
-
-function getSocialItems({ showFriends }: Pick<AppShellNavigationProps, "showFriends">) {
-  return socialNav.filter((item) => item.href === "/clubs" || showFriends);
-}
 
 function isActive(pathname: string, href: string, activeHref?: string) {
   const [target, query] = href.split("?");
@@ -260,14 +156,6 @@ function getPageNavigation(props: AppShellNavigationProps): AppPageNavigation[] 
   ];
 }
 
-function getSidebarEditorItems(props: AppShellNavigationProps) {
-  return [
-    ...getNavigationItems(props).filter((item) => item.href !== "/"),
-    ...accountNav.filter((item) => item.href !== "/profile"),
-    ...(props.showAdmin ? adminNav : []),
-  ];
-}
-
 function AppShellDesktopNavigation(props: AppShellNavigationProps & {
   commandHint: boolean;
 }) {
@@ -283,8 +171,10 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps & {
   const available = getSidebarEditorItems(props);
   const selected = normalizeSidebarLayout(props.sidebarLayout, available.map((item) => item.href));
   const customized = props.sidebarLayout !== undefined;
-  const ordered = selected.map((href) => available.find((item) => item.href === href)!);
-  const more = available.filter((item) => !selected.includes(item.href));
+  const availableByHref = new Map(available.map((item) => [item.href, item]));
+  const selectedHrefs = new Set(selected);
+  const ordered = selected.map((href) => availableByHref.get(href)!);
+  const more = available.filter((item) => !selectedHrefs.has(item.href));
   const renderItem = (item: NavItem) => (
     <DesktopNavLink key={item.href} item={item}
       active={isActive(props.pathname, item.href, props.activeHref)}
@@ -487,13 +377,6 @@ function AppShellMobileNavigation({
 type MobileTabItem =
   NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
 
-function getMobileTabEditorItems(props: AppShellNavigationProps) {
-  return getNavigationItems(props).filter(
-    (item): item is NavItem & { mobileTabId: MobileTabId } =>
-      item.mobileTabId !== undefined,
-  );
-}
-
 function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   const availableItems = getMobileTabEditorItems(props);
   const availableById = new Map(
@@ -621,6 +504,4 @@ export {
   AppShellDesktopNavigation,
   AppShellMobileNavigation,
   AppShellMobileTabBar,
-  getMobileTabEditorItems,
-  getSidebarEditorItems,
 };

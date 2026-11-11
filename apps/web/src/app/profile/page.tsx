@@ -14,7 +14,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { useSeenRelease } from '@/components/devlog/use-seen-release';
 import { MobileTabEditor } from '@/components/layout/mobile-tab-editor';
-import { getMobileTabEditorItems, getSidebarEditorItems } from '@/components/layout/app-shell-navigation';
+import { getMobileTabEditorItems, getSidebarEditorItems } from '@/components/layout/app-navigation-options';
 import { SidebarEditor } from '@/components/layout/sidebar-editor';
 import { wrappedAvailability } from '~/apps/shared/wrapped-window';
 import { Panel } from '@/components/layout/page-frame';

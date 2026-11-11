@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -53,16 +53,16 @@ function NavigationLayoutEditorForm({
   onSave,
 }: Props) {
   const [layout, setLayout] = useState(initialLayout);
-  const [reset, setReset] = useState(false);
+  const reset = useRef(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-  const unchecked = options.filter(
-    (item) => !layout.includes(item.id),
-  );
+  const selectedIds = new Set(layout);
+  const optionsById = new Map(options.map((item) => [item.id, item]));
+  const unchecked = options.filter((item) => !selectedIds.has(item.id));
   async function save() {
     setSaving(true);
     try {
-      await onSave(reset ? undefined : layout);
+      await onSave(reset.current ? undefined : layout);
       onOpenChange(false);
       toast({ title: `${title} updated` });
     } catch (error) {
@@ -89,12 +89,12 @@ function NavigationLayoutEditorForm({
       >
         <Sortable
           value={layout}
-          onValueChange={(value) => { setReset(false); setLayout(value); }}
+          onValueChange={(value) => { reset.current = false; setLayout(value); }}
           getItemValue={(id) => id}
           strategy="vertical"
         >
           {layout.map((id, index) => {
-            const item = options.find((option) => option.id === id)!;
+            const item = optionsById.get(id)!;
             return (
               <SortableItem
                 key={id}
@@ -110,7 +110,7 @@ function NavigationLayoutEditorForm({
                   disabled={
                     saving || layout.length <= minimum
                   }
-                  onToggle={() => { setReset(false);
+                  onToggle={() => { reset.current = false;
                     setLayout((current) =>
                       current.filter((value) => value !== id),
                     );
@@ -140,14 +140,14 @@ function NavigationLayoutEditorForm({
             label={item.label}
             checked={false}
             disabled={saving || layout.length >= maximum}
-            onToggle={() => { setReset(false);
+            onToggle={() => { reset.current = false;
               setLayout((current) => [...current, item.id]);
             }}
           />
         ))}
       </CheckboxGroup>
       <DialogFooter>
-        <Button variant="ghost" disabled={saving} onClick={() => { setReset(true); setLayout(defaultLayout); }}>
+        <Button variant="ghost" disabled={saving} onClick={() => { reset.current = true; setLayout(defaultLayout); }}>
           Reset
         </Button>
         <Button
