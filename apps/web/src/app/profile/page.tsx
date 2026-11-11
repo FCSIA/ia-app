@@ -1,7 +1,7 @@
 'use client';
 
 import { useMounted } from '@/hooks/use-mounted';
-import { hasAnyRole, MODERATION_ALERT_ROLES, SCHEDULE_ROLES } from '~/apps/shared/roles';
+import { hasAnyRole, isStaff, MODERATION_ALERT_ROLES, SCHEDULE_ROLES } from '~/apps/shared/roles';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from '@/lib/convex-react';
@@ -14,7 +14,8 @@ import { api } from '~/apps/convex/src/_generated/api';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { useSeenRelease } from '@/components/devlog/use-seen-release';
 import { MobileTabEditor } from '@/components/layout/mobile-tab-editor';
-import { getMobileTabEditorItems } from '@/components/layout/app-shell-navigation';
+import { getMobileTabEditorItems, getSidebarEditorItems } from '@/components/layout/app-navigation-options';
+import { SidebarEditor } from '@/components/layout/sidebar-editor';
 import { wrappedAvailability } from '~/apps/shared/wrapped-window';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
@@ -58,8 +59,16 @@ function ProfilePageContent() {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
   const [navigationOpen, setNavigationOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const showSchedule = hasAnyRole(user, SCHEDULE_ROLES);
   const navigationOptions = getMobileTabEditorItems({ pathname: '/profile', showAdmin: false, showSchedule, showWrapped: wrappedAvailability().open });
+  const sidebarOptions = getSidebarEditorItems({
+    pathname: '/profile',
+    showAdmin: isStaff(user) || Boolean(user?.canReviewFeedback),
+    showSchedule,
+    showFriends: hasAnyRole(user, ["STUDENT"]),
+    showWrapped: wrappedAvailability().open,
+  });
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -158,8 +167,12 @@ function ProfilePageContent() {
           ) : null}
           {visibleSection === 'navigation' ? (
             <Panel title="Navigation">
-              <p className="mb-4 text-sm text-muted-foreground">Choose the destinations in your mobile tab bar.</p>
-              <Button variant="tertiary" onClick={() => setNavigationOpen(true)}>Edit tab bar</Button>
+              <div className="flex flex-col items-start gap-4">
+                <p className="text-sm text-muted-foreground">Choose the order and which destinations appear in More. Desktop and mobile layouts are saved separately to your account.</p>
+                <Button variant="tertiary" disabled={!user} onClick={() => setSidebarOpen(true)}>Desktop sidebar</Button>
+                <Button variant="tertiary" disabled={!user} onClick={() => setNavigationOpen(true)}>Mobile bottom bar</Button>
+              </div>
+              <SidebarEditor open={sidebarOpen} onOpenChange={setSidebarOpen} options={sidebarOptions} savedLayout={user?.sidebarLayout} />
               <MobileTabEditor open={navigationOpen} onOpenChange={setNavigationOpen} options={navigationOptions} savedLayout={user?.mobileTabLayout} showSchedule={showSchedule} />
             </Panel>
           ) : null}

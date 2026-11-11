@@ -108,6 +108,7 @@ export const schema = defineSchema({
       body: v.string(),
     }))),
     mobileTabLayout: v.optional(v.array(v.string())),
+    sidebarLayout: v.optional(v.array(v.string())),
     use24HourTime: v.optional(v.boolean()),
     // The reaction a double tap on a chat message adds; 👍 when unset.
     chatDoubleTapReaction: v.optional(clubChannelReactionValidator),

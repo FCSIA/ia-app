@@ -53,9 +53,37 @@ test("RSA verification rejects extra nested DigestAlgorithm children (GHSA-86w9-
   }
 });
 
-test("upstream node-forge 1.4.2 retains Buffer PEM compatibility", () => {
-  assert.equal(require("node-forge/package.json").version, "1.4.2");
+test("upstream node-forge 1.4.3 retains Buffer PEM compatibility", () => {
+  assert.equal(require("node-forge/package.json").version, "1.4.3");
   assert.equal(forge.pki.privateKeyFromPem(Buffer.from(pem)).n.toString(), privateKey.n.toString());
+});
+
+test("Ed25519 rejects identity-key forgeries while retaining valid signatures (GHSA-6889-vf6x-f3g5)", () => {
+  const identity = Buffer.alloc(32);
+  identity[0] = 1;
+  const forgedSignature = Buffer.alloc(64);
+  forgedSignature[0] = 1;
+  for (const message of ["admin=true", "admin=false"]) {
+    assert.equal(forge.ed25519.verify({
+      message, encoding: "utf8", publicKey: identity, signature: forgedSignature,
+    }), false);
+  }
+  const keys = forge.ed25519.generateKeyPair({ seed: Buffer.alloc(32, 42) });
+  const signature = forge.ed25519.sign({ message: "original", encoding: "utf8", privateKey: keys.privateKey });
+  assert.equal(forge.ed25519.verify({ message: "original", encoding: "utf8", publicKey: keys.publicKey, signature }), true);
+  assert.equal(forge.ed25519.verify({ message: "tampered", encoding: "utf8", publicKey: keys.publicKey, signature }), false);
+});
+
+test("TLS ignores handshake records without a client session (GHSA-j8rw-jp99-435v)", () => {
+  const connection = forge.tls.createConnection({
+    server: false,
+    tlsDataReady() {},
+    closed() {},
+  });
+  assert.doesNotThrow(() => connection.process(forge.util.hexToBytes("160301000402000000")));
+  connection.handshake();
+  connection.close();
+  assert.doesNotThrow(() => connection.process(forge.util.hexToBytes("160301000402000000")));
 });
 
 test("Expo code signing round-trips certificates and produces valid manifest signatures", () => {
@@ -99,7 +127,7 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   // OSV ignores an advisory globally. Guard every instance, including nested
   // versions, so an update cannot silently inherit a reviewed exception.
   const scopes = {
-    "node-forge": ["1.4.2"],
+    "node-forge": ["1.4.3"],
     sandbox: ["4.4.0"],
     deepmerge: ["4.3.1"],
     zod: ["3.22.4", "3.25.76", "4.6.7"],
@@ -133,7 +161,7 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   }
   assert.doesNotMatch(config, /\[\[PackageOverrides\]\]/);
   const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(manifest.overrides["node-forge"], "1.4.2");
+  assert.equal(manifest.overrides["node-forge"], "1.4.3");
   assert.equal(manifest.patchedDependencies["node-forge@1.4.0"], undefined);
 });
 
