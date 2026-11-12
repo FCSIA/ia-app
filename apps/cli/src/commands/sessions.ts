@@ -5,6 +5,7 @@ import { connect, mutation, query, type Connection } from "../client/session";
 import { CliError } from "../core/errors";
 import { sanitizeRemoteText } from "../core/theme";
 import type { CommandContext, CommandSpec, GroupSpec } from "../registry/types";
+import { localTimestamp } from "./format";
 
 type SessionRow = Awaited<ReturnType<typeof listSessions>>[number];
 
@@ -20,13 +21,6 @@ async function listSessions(connection: Connection) {
     expiresAt: new Date(session.expiresAt).toISOString(),
     current: session.current,
   }));
-}
-
-// Local time without seconds: 2026-11-08 13:12.
-export function localTimestamp(iso: string) {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 const list: CommandSpec = {
