@@ -53,9 +53,23 @@ test("RSA verification rejects extra nested DigestAlgorithm children (GHSA-86w9-
   }
 });
 
-test("upstream node-forge 1.4.2 retains Buffer PEM compatibility", () => {
-  assert.equal(require("node-forge/package.json").version, "1.4.2");
+test("upstream node-forge 1.4.3 retains Buffer PEM compatibility", () => {
+  assert.equal(require("node-forge/package.json").version, "1.4.3");
   assert.equal(forge.pki.privateKeyFromPem(Buffer.from(pem)).n.toString(), privateKey.n.toString());
+});
+
+test("Ed25519 rejects a forged signature with an identity public key (GHSA-6889-vf6x-f3g5)", () => {
+  const message = Buffer.from("dependency security regression");
+  const publicKey = Buffer.alloc(32);
+  publicKey[0] = 1;
+  const signature = Buffer.alloc(64);
+  signature[0] = 1;
+  assert.equal(forge.ed25519.verify({ message, publicKey, signature }), false);
+
+  const keyPair = forge.ed25519.generateKeyPair({ seed: Buffer.alloc(32, 7) });
+  const validSignature = forge.ed25519.sign({ message, privateKey: keyPair.privateKey });
+  assert.equal(forge.ed25519.verify({ message, publicKey: keyPair.publicKey, signature: validSignature }), true);
+  assert.equal(forge.ed25519.verify({ message: Buffer.from("tampered"), publicKey: keyPair.publicKey, signature: validSignature }), false);
 });
 
 test("Expo code signing round-trips certificates and produces valid manifest signatures", () => {
@@ -99,7 +113,7 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   // OSV ignores an advisory globally. Guard every instance, including nested
   // versions, so an update cannot silently inherit a reviewed exception.
   const scopes = {
-    "node-forge": ["1.4.2"],
+    "node-forge": ["1.4.3"],
     sandbox: ["4.4.0"],
     deepmerge: ["4.3.1"],
     zod: ["3.22.4", "3.25.76", "4.6.7"],
@@ -133,7 +147,7 @@ test("audit exceptions expire and cover only the reviewed package versions", () 
   }
   assert.doesNotMatch(config, /\[\[PackageOverrides\]\]/);
   const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(manifest.overrides["node-forge"], "1.4.2");
+  assert.equal(manifest.overrides["node-forge"], "1.4.3");
   assert.equal(manifest.patchedDependencies["node-forge@1.4.0"], undefined);
 });
 
