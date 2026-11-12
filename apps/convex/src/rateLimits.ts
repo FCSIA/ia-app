@@ -74,3 +74,12 @@ export const contentRateLimiter = new RateLimiter(components.rateLimiter, {
     capacity: 10,
   },
 });
+
+// Device sign-in for the command-line client. Codes are cheap to request, so
+// limit who can mint them; a signed-in person who keeps entering wrong codes is
+// guessing, so limit lookups per account.
+export const cliSignInRateLimiter = new RateLimiter(components.rateLimiter, {
+  deviceCodesByIp: { kind: "fixed window", rate: 10, period: 10 * MINUTE },
+  deviceCodesGlobal: { kind: "fixed window", rate: 300, period: MINUTE },
+  deviceLookupsByUser: { kind: "fixed window", rate: 20, period: 10 * MINUTE },
+});

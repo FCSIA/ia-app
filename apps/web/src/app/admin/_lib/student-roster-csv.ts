@@ -1,6 +1,6 @@
 import type { FunctionArgs } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
-import { normalizeCsvHeader } from '@/lib/csv';
+import { normalizeCsvHeader } from '~/apps/shared/csv';
 import {
   reviewRosterCsv,
   rosterCell,

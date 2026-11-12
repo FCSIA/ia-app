@@ -1,4 +1,4 @@
-import { readCsvTable } from './csv';
+import { readCsvTable } from '~/apps/shared/csv';
 
 const IDENTIFIER_COLUMNS = ['uniqueid', 'studentid', 'userid', 'recipientid', 'id'];
 

@@ -528,6 +528,47 @@ async function getChannelMemberships(
     .collect();
 }
 
+/**
+ * One channel by its ID, for clients that hold only the channel reference —
+ * command-line clients reach channels from search results, not a club page.
+ * Unreadable and deactivated-club channels stay hidden, like the club listing.
+ */
+export const getById = query({
+  args: { channelId: v.id("clubChannels") },
+  returns: v.union(
+    v.object({
+      club: v.object({
+        _id: v.id("clubs"),
+        name: v.string(),
+      }),
+      channel: v.object({
+        _id: v.id("clubChannels"),
+        name: v.string(),
+        description: v.union(v.string(), v.null()),
+        visibility: clubChannelVisibilityValidator,
+      }),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const gate = await resolveChannel(ctx, user, args.channelId, {
+      requireActiveClub: true,
+    });
+    if (gate.status !== "resolved" || !gate.access.canView) return null;
+    return {
+      club: { _id: gate.club._id, name: gate.club.name },
+      channel: {
+        _id: gate.channel._id,
+        name: gate.channel.name,
+        description: gate.channel.description ?? null,
+        visibility: gate.channel.visibility,
+      },
+    };
+  },
+});
+
 export const list = query({
   args: { clubId: v.id("clubs") },
   returns: v.array(schema.doc("clubChannels")),

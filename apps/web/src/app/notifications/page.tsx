@@ -43,6 +43,7 @@ const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
   FEEDBACK: 'gray',
   FRIEND_REQUEST: 'cyan',
   FRIEND_SCHEDULE_CHANGE: 'orange',
+  ACCOUNT_SECURITY: 'red',
 };
 
 function NotificationListSkeleton() {

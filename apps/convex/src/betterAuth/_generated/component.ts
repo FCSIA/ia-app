@@ -49,6 +49,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               }
             | {
                 data: {
+                  clientId?: null | string;
                   createdAt: number;
                   expiresAt: number;
                   impersonatedBy?: null | string;
@@ -86,6 +87,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   value: string;
                 };
                 model: "verification";
+              }
+            | {
+                data: {
+                  clientId?: null | string;
+                  deviceCode: string;
+                  expiresAt: number;
+                  lastPolledAt?: null | number;
+                  pollingInterval?: null | number;
+                  scope?: null | string;
+                  status: string;
+                  userCode: string;
+                  userId?: null | string;
+                };
+                model: "deviceCode";
               }
             | {
                 data: {
@@ -161,6 +176,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -234,6 +250,43 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "expiresAt"
                     | "createdAt"
                     | "updatedAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "deviceCode";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "deviceCode"
+                    | "userCode"
+                    | "userId"
+                    | "expiresAt"
+                    | "status"
+                    | "lastPolledAt"
+                    | "pollingInterval"
+                    | "clientId"
+                    | "scope"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -361,6 +414,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -458,6 +512,43 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 }>;
               }
             | {
+                model: "deviceCode";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "deviceCode"
+                    | "userCode"
+                    | "userId"
+                    | "expiresAt"
+                    | "status"
+                    | "lastPolledAt"
+                    | "pollingInterval"
+                    | "clientId"
+                    | "scope"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
                 model: "jwks";
                 where?: Array<{
                   connector?: "AND" | "OR";
@@ -500,7 +591,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           join?: any;
           limit?: number;
-          model: "user" | "session" | "account" | "verification" | "jwks";
+          model:
+            | "user"
+            | "session"
+            | "account"
+            | "verification"
+            | "deviceCode"
+            | "jwks";
           offset?: number;
           paginationOpts: {
             cursor: string | null;
@@ -540,7 +637,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           join?: any;
-          model: "user" | "session" | "account" | "verification" | "jwks";
+          model:
+            | "user"
+            | "session"
+            | "account"
+            | "verification"
+            | "deviceCode"
+            | "jwks";
           select?: Array<string>;
           where?: Array<{
             connector?: "AND" | "OR";
@@ -629,6 +732,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "session";
                 update: {
+                  clientId?: null | string;
                   createdAt?: number;
                   expiresAt?: number;
                   impersonatedBy?: null | string;
@@ -649,6 +753,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -743,6 +848,54 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "expiresAt"
                     | "createdAt"
                     | "updatedAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "deviceCode";
+                update: {
+                  clientId?: null | string;
+                  deviceCode?: string;
+                  expiresAt?: number;
+                  lastPolledAt?: null | number;
+                  pollingInterval?: null | number;
+                  scope?: null | string;
+                  status?: string;
+                  userCode?: string;
+                  userId?: null | string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "deviceCode"
+                    | "userCode"
+                    | "userId"
+                    | "expiresAt"
+                    | "status"
+                    | "lastPolledAt"
+                    | "pollingInterval"
+                    | "clientId"
+                    | "scope"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -881,6 +1034,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "session";
                 update: {
+                  clientId?: null | string;
                   createdAt?: number;
                   expiresAt?: number;
                   impersonatedBy?: null | string;
@@ -901,6 +1055,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "clientId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -995,6 +1150,54 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "expiresAt"
                     | "createdAt"
                     | "updatedAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "deviceCode";
+                update: {
+                  clientId?: null | string;
+                  deviceCode?: string;
+                  expiresAt?: number;
+                  lastPolledAt?: null | number;
+                  pollingInterval?: null | number;
+                  scope?: null | string;
+                  status?: string;
+                  userCode?: string;
+                  userId?: null | string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "deviceCode"
+                    | "userCode"
+                    | "userId"
+                    | "expiresAt"
+                    | "status"
+                    | "lastPolledAt"
+                    | "pollingInterval"
+                    | "clientId"
+                    | "scope"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { LoadingFact } from '@/components/ui/loading-fact';
 import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { RETURN_PATH_PARAM, safeReturnPath } from '@/lib/return-path';
 import { LoginVisual } from './login-visual';
 
 export default function LoginPage() {
@@ -39,7 +40,10 @@ export default function LoginPage() {
       }
 
       toast({ title: 'Logged in successfully' });
-      router.replace('/');
+      const returnPath = safeReturnPath(
+        new URLSearchParams(window.location.search).get(RETURN_PATH_PARAM),
+      );
+      router.replace(returnPath ?? '/');
     } catch (err: unknown) {
       clearAuth();
       toast({

@@ -215,6 +215,9 @@ export function preferenceDeliveryDecision(
   category: NotificationCategory,
   preference: Awaited<ReturnType<typeof resolveNotificationPreference>>,
 ) {
+  // Security notices tell someone their account gained a new sign-in. No
+  // preference row, however it got there, may silence them.
+  if (category === "ACCOUNT_SECURITY") return { create: true, push: true };
   if (preference) {
     return {
       create: preferenceIsOn(preference),

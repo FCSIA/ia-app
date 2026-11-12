@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { RosterCsvPreview } from '../_lib/roster-csv';
-import { normalizeCsvHeader } from '@/lib/csv';
+import { normalizeCsvHeader } from '~/apps/shared/csv';
 import type {
   StudentBulkUpdateResult,
   StudentImportResult,

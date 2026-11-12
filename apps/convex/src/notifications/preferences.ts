@@ -46,6 +46,9 @@ export const upsert = mutation({
   returns: preferenceValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    if (args.category === "ACCOUNT_SECURITY") {
+      throw new ConvexError("Security notices can't be turned off.");
+    }
     const key = scopeKey(args);
     // `level` alone records the choice; turning a preference off is level OFF.
     const level = args.enabled ? (args.level ?? "PUSH") : "OFF";

@@ -38,7 +38,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getFixedBottomViewportOffset } from "@/components/layout/visual-viewport";
 import { cn } from "@/lib/utils";
 
-const SHELLLESS_ROUTES = new Set(["/login", "/logout", "/change-password", "/wrapped"]);
+const SHELLLESS_ROUTES = new Set(["/login", "/logout", "/change-password", "/wrapped", "/device"]);
 
 type Registration = { owner: symbol; config: AppFrameRouteConfig };
 

@@ -32,10 +32,18 @@ describe('dashboard root routing', () => {
     { path: '/change-password', signedIn: true, reset: true, destination: null },
     { path: '/logout', signedIn: false, reset: false, destination: null },
     { path: '/logout', signedIn: true, reset: true, destination: null },
-    { path: '/clubs', signedIn: false, reset: false, destination: '/login' },
-    { path: '/route-finder', signedIn: false, reset: false, destination: '/login' },
+    { path: '/clubs', signedIn: false, reset: false, destination: '/login?next=%2Fclubs' },
+    { path: '/route-finder', signedIn: false, reset: false, destination: '/login?next=%2Froute-finder' },
     { path: '/route-finder', signedIn: true, reset: false, destination: null },
     { path: '/route-finder', signedIn: true, reset: true, destination: '/change-password' },
+    {
+      path: '/device?user_code=ABCDEFGH',
+      signedIn: false,
+      reset: false,
+      destination: '/login?next=%2Fdevice%3Fuser_code%3DABCDEFGH',
+    },
+    { path: '/login?next=%2Fdevice', signedIn: true, reset: false, destination: '/device' },
+    { path: '/login?next=https%3A%2F%2Fevil.test', signedIn: true, reset: false, destination: '/' },
   ])('$path: signedIn=$signedIn, reset=$reset → $destination', async ({
     path, signedIn, reset, destination,
   }) => {

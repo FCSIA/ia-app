@@ -46,6 +46,7 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   FEEDBACK: MessageSquareText,
   FRIEND_REQUEST: Users,
   FRIEND_SCHEDULE_CHANGE: RefreshCcw,
+  ACCOUNT_SECURITY: ShieldAlert,
 };
 
 export function NotificationSettingsPanel() {

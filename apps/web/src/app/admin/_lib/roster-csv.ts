@@ -1,4 +1,4 @@
-import { normalizeCsvHeader, readCsv } from '@/lib/csv';
+import { normalizeCsvHeader, readCsv } from '~/apps/shared/csv';
 
 /** Local CSV review. No row is sent to the server until the whole preview is valid. */
 export type RosterCsvPreview<T> = {

@@ -22,6 +22,7 @@ import { useGifAutoplay } from '@/hooks/use-gif-autoplay';
 import type { AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { CliSignIns } from './CliSignIns';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { PreferredNameSettings } from './PreferredNameSettings';
@@ -300,6 +301,7 @@ export function AccountSettingsSection({
           </form>
         ) : null}
       </section>
+      <CliSignIns />
       <div className="border-t border-border/30 pt-4">
         <Button
           type="button"
