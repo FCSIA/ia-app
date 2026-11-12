@@ -1,3 +1,4 @@
+import { clubJoinBlockedReason } from "./joinRules";
 import {
   ADMIN_ROLES,
   type AppRole,
@@ -18,6 +19,7 @@ import { createDocLoader } from "../../lib/docLoader";
 import { adjustClubCounts } from "./counts";
 import {
   clubJoinPolicyValidator,
+  clubJoinRulesValidator,
   clubRolePermissionValidator,
 } from "../validators";
 import { deriveChannelVisibility } from "./channelPolicy";
@@ -119,12 +121,13 @@ export const update = mutation({
     overview: v.optional(v.string()),
     accentColor: v.optional(v.string()),
     joinPolicy: v.optional(clubJoinPolicyValidator),
+    joinRules: v.optional(v.union(clubJoinRulesValidator, v.null())),
     memberLimit: v.optional(v.union(v.number(), v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { clubId, memberLimit, ...updates } = args;
+    const { clubId, memberLimit, joinRules, ...updates } = args;
     const context = await getClubContext(ctx, clubId, user);
     if (!context.permissions.manageClubSettings) {
       throw new ConvexError("Not authorized to update this club");
@@ -161,6 +164,7 @@ export const update = mutation({
 
     await ctx.db.patch(clubId, {
       ...cleanUpdates,
+      ...(joinRules !== undefined ? { joinRules: joinRules ?? undefined } : {}),
       ...(memberLimit !== undefined
         ? { memberLimit: memberLimit ?? undefined }
         : {}),
@@ -807,6 +811,7 @@ export const listMyInvites = query({
   args: {},
   returns: v.array(v.object({
     _id: v.id("clubInvites"),
+    joinBlockedReason: v.union(v.string(), v.null()),
     club: v.object({ _id: v.id("clubs"), name: v.string(), description: v.union(v.string(), v.null()) }),
     sender: v.object({
       _id: v.id("users"),
@@ -837,6 +842,7 @@ export const listMyInvites = query({
         if (!club || !sender) return null;
         return {
           _id: invite._id,
+          joinBlockedReason: clubJoinBlockedReason(club.joinRules, user),
           club: {
             _id: club._id,
             name: club.name,

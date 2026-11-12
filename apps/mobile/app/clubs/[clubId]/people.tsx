@@ -242,9 +242,11 @@ export default function ClubPeopleScreen() {
                           </Txt>
                         </View>
                       </View>
+                      {request.joinBlockedReason ? <Txt tone="muted">{request.joinBlockedReason}</Txt> : null}
                       <View style={{ flexDirection: "row", gap: spacing.sm }}>
                         <Button
                           title="Approve"
+                          disabled={Boolean(request.joinBlockedReason)}
                           size="sm"
                           style={{ flex: 1 }}
                           onPress={() => {

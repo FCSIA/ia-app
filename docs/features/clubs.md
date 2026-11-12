@@ -26,6 +26,12 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   upload that leaves existing members unchanged. Also supports invitations,
   open joins, manager-approved join requests, invite-only clubs, and join
   codes.
+- Club settings managers can require a grade, major, or minor for new joins.
+  Students must meet every configured requirement. Existing club and unit
+  memberships stay in place. Eligibility is checked again when accepting an
+  invitation or approving a pending request, and also applies to join codes,
+  direct enrollment, bulk enrollment, and new unit self-joins. The four seeded
+  class government clubs start with their corresponding grade rule.
 - Lets club managers create reusable roles, assign them to members, rename
   them, remove them, and configure their permissions. Role removal explicitly
   confirms any affected channel rules and warns when a channel will become

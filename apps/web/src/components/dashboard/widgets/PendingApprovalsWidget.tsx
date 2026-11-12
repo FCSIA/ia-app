@@ -107,9 +107,10 @@ export function PendingApprovalsWidget() {
                 <CardDescription>
                   {labels[item.kind]} ·{" "}
                   {formatDistanceToNow(item.createdAt, { addSuffix: true })}
+                  {item.joinBlockedReason ? ` · ${item.joinBlockedReason}` : null}
                 </CardDescription>
               </CardHeader>
-              {["announcement", "event", "invite", "club-invite"].includes(
+              {!item.joinBlockedReason && ["announcement", "event", "invite", "club-invite"].includes(
                 item.kind,
               ) ? (
                 <CardFooter>
