@@ -60,7 +60,9 @@ every request from a sponsor who can still act is approved. When a sponsor is
 deactivated or deleted, their open requests are dropped. Events that others
 already approved then publish. Events nobody approved go to the club's other
 active sponsors, or are cancelled (audited as `NO_ACTIVE_SPONSOR`) if there are
-none.
+none. The author receives an event notification when a sponsor rejects the
+event or when it is cancelled because no active sponsor remains, subject to
+the author’s notification preferences.
 
 ## Side Effects
 

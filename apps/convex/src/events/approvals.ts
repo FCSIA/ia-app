@@ -1,3 +1,4 @@
+import { eventHref } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -6,6 +7,23 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializedEventValidator } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
 import { publishEvent } from "./_publish";
+import { deliverNotification } from "../notifications/delivery";
+
+async function notifyEventAuthor(
+  ctx: MutationCtx,
+  event: Doc<"events">,
+  title: string,
+  body: string,
+) {
+  await deliverNotification(ctx, {
+    userId: event.authorId,
+    category: "EVENT",
+    title,
+    body,
+    href: eventHref(event._id),
+    subject: { kind: "event", eventId: event._id, clubId: event.clubId },
+  });
+}
 
 /**
  * Remove the approvals still waiting on a decision once the event has left
@@ -102,6 +120,12 @@ export async function settlePendingEvent(
     entityType: "EVENT",
     meta: { reason: "NO_ACTIVE_SPONSOR" },
   });
+  await notifyEventAuthor(
+    ctx,
+    event,
+    "Event cancelled",
+    `“${event.title}” was cancelled because no active club sponsor was available to approve it.`,
+  );
   return false;
 }
 
@@ -244,6 +268,12 @@ export const rejectEvent = mutation({
       entityId: args.eventId,
       entityType: "EVENT",
     });
+    await notifyEventAuthor(
+      ctx,
+      event,
+      "Event rejected",
+      `A club sponsor rejected “${event.title}”.`,
+    );
     return null;
   },
 });

@@ -88,12 +88,16 @@ async function fixture({ sponsors = 2 } = {}) {
           .collect()
       ).length,
     }));
-  return { t, as, createPending, read, ...ids };
+  const authorNotifications = () =>
+    t.run((ctx) => ctx.db.query("notificationDeliveries")
+      .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", ids.authorId))
+      .collect());
+  return { t, as, createPending, read, authorNotifications, ...ids };
 }
 
 describe("event approval lifecycle", () => {
-  test("a rejected event cannot be published by another sponsor", async () => {
-    const { as, createPending, read, sponsorIds } = await fixture();
+  test("a rejection notifies the author and prevents another sponsor publishing", async () => {
+    const { as, createPending, read, sponsorIds, authorNotifications } = await fixture();
     const eventId = await createPending();
     expect((await read(eventId)).event?.isInactive).toBeUndefined();
 
@@ -106,6 +110,16 @@ describe("event approval lifecycle", () => {
       as(sponsorIds[1]).mutation(api.events.approvals.approveEvent, { eventId }),
     ).rejects.toThrow("Approval not found");
     expect((await read(eventId)).event?.status).toBe("CANCELLED");
+    await expect(
+      as(sponsorIds[0]).mutation(api.events.approvals.rejectEvent, { eventId }),
+    ).rejects.toThrow("Approval not found");
+    expect(await authorNotifications()).toMatchObject([{
+      category: "EVENT",
+      title: "Event rejected",
+      body: "A club sponsor rejected “Build night”.",
+      href: `/events/${eventId}`,
+      subject: { kind: "event", eventId },
+    }]);
   });
 
   test("approval rows left behind by an old cancellation cannot publish the event", async () => {
@@ -225,13 +239,25 @@ describe("event approvals when sponsors change", () => {
     expect((await read(eventId)).event?.status).toBe("PUBLISHED");
   });
 
-  test("an event no active sponsor can approve is cancelled instead of waiting forever", async () => {
-    const { t, as, adminId, createPending, read, sponsorIds } = await fixture({ sponsors: 1 });
+  test.each(["deactivate", "delete"] as const)("cancels and notifies when the last sponsor is removed by %s", async (operation) => {
+    const { t, as, adminId, createPending, read, sponsorIds, authorNotifications } = await fixture({ sponsors: 1 });
     const eventId = await createPending();
-    await as(adminId).mutation(api.users.admin.deleteUsers, { userIds: [sponsorIds[0]] });
+    if (operation === "deactivate") {
+      await t.run((ctx) => ctx.db.patch(sponsorIds[0], { authUserId: "sponsor-0" }));
+      await as(adminId).mutation(api.users.admin.deactivate, { userId: sponsorIds[0] });
+    } else {
+      await as(adminId).mutation(api.users.admin.deleteUsers, { userIds: [sponsorIds[0]] });
+    }
 
     expect(await read(eventId)).toMatchObject({ pendingApprovals: 0, calendarEntries: 0 });
     expect((await read(eventId)).event?.status).toBe("CANCELLED");
+    expect(await authorNotifications()).toMatchObject([{
+      category: "EVENT",
+      title: "Event cancelled",
+      body: "“Build night” was cancelled because no active club sponsor was available to approve it.",
+      href: `/events/${eventId}`,
+      subject: { kind: "event", eventId },
+    }]);
     const audit = await t.run((ctx) => ctx.db.query("auditEvents").collect());
     expect(audit.find((row) => row.action === "EVENT_CANCELLED")).toMatchObject({
       entityId: eventId,
