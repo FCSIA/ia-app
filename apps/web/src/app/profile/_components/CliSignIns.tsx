@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery } from '@/lib/convex-react';
+import { SCHOOL_TIME_ZONE } from '~/apps/shared/school-time';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { FunctionReturnType } from 'convex/server';
 
@@ -23,13 +24,17 @@ type CliSession = FunctionReturnType<typeof api.users.cliSessions.list>[number];
 
 const SECTION_ID = 'cli-sign-ins';
 
+// A fixed locale and the school clock keep server and client HTML identical.
+const sessionTime = new Intl.DateTimeFormat('en-US', {
+  timeZone: SCHOOL_TIME_ZONE,
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
 function when(timestamp: number) {
-  return new Date(timestamp).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return sessionTime.format(timestamp);
 }
 
 // Lists the command-line clients signed in as this person. Hidden when there
