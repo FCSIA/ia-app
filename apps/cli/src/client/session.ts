@@ -63,7 +63,7 @@ function convexMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-function translate(connection: Connection, error: unknown, kind: "query" | "mutation"): CliError {
+export function translateError(connection: Connection, error: unknown, kind: "query" | "mutation"): CliError {
   if (error instanceof CliError) return error;
   const message = convexMessage(error);
   if (/unauthenticated/i.test(message)) return rejected(connection.host, connection.hostSource, connection.credential);
@@ -106,7 +106,7 @@ export async function query<Query extends FunctionReference<"query">>(
       if (!(error instanceof TypeError)) break;
     }
   }
-  throw translate(connection, lastError, "query");
+  throw translateError(connection, lastError, "query");
 }
 
 // Mutations are never retried.
@@ -118,6 +118,6 @@ export async function mutation<Mutation extends FunctionReference<"mutation">>(
   try {
     return await connection.client.mutation(reference, args);
   } catch (error) {
-    throw translate(connection, error, "mutation");
+    throw translateError(connection, error, "mutation");
   }
 }

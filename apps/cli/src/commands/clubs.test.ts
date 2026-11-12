@@ -84,4 +84,11 @@ describe("clubs", () => {
     expect(restricted.code).toBe(1);
     expect(JSON.parse(restricted.stderr)).toMatchObject({ reason: "channel_not_found" });
   });
+
+  test("follow refuses a channel you can't read before opening a watch", async () => {
+    const { invoke } = await setup();
+    const result = await invoke(["clubs", "messages", "follow", "chan2", "--json"]);
+    expect(result.code).toBe(1);
+    expect(JSON.parse(result.stderr)).toMatchObject({ reason: "channel_not_found" });
+  });
 });

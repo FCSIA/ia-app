@@ -207,7 +207,7 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     { _id: "chan1", clubId: "club1", name: "builds", description: "Build talk.", visibility: "PUBLIC" },
     { _id: "chan2", clubId: "club1", name: "leaders", description: null, visibility: "RESTRICTED" },
   ];
-  const messages = [
+  const messages: Array<Record<string, unknown>> = [
     {
       _id: "msg1",
       _creationTime: 5,
@@ -268,6 +268,53 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     },
   ];
 
+  const flexSessions = [
+    {
+      _id: "sess1",
+      flexFridayId: "flex1",
+      title: "Session 1",
+      description: null,
+      startTime: "13:00",
+      endTime: "13:45",
+      sessionType: "WORKSHOP",
+      createdAt: Date.UTC(2026, 10, 2),
+      updatedAt: Date.UTC(2026, 10, 2),
+    },
+  ];
+  const workshopRows = [
+    {
+      _id: "ws1",
+      title: "Robot Drivetrain",
+      description: "Gears, motors, and testing.",
+      location: "Room 214",
+      capacity: 12,
+      teacherId: "user3",
+      createdAt: Date.UTC(2026, 10, 2),
+      updatedAt: Date.UTC(2026, 10, 2),
+    },
+  ];
+  const flexRegistrations: Array<{ _id: string; workshopId: string; studentId: string; createdAt: number }> = [];
+  const viewerId = String(profile?._id ?? "user1");
+  const workshopView = (workshopId: string) => {
+    const workshop = workshopRows.find((candidate) => candidate._id === workshopId);
+    if (!workshop) return null;
+    const registrations = flexRegistrations.filter((row) => row.workshopId === workshopId);
+    return {
+      ...workshop,
+      _count: { registrations: registrations.length },
+      registrations: registrations
+        .filter((row) => row.studentId === viewerId)
+        .map((row) => ({ _id: row._id })),
+      assignments: [],
+      linkedSessions: flexSessions.map((session) => ({
+        _id: session._id,
+        title: session.title,
+        startTime: session.startTime,
+        endTime: session.endTime,
+      })),
+    };
+  };
+
   const json = (body: unknown, status = 200) => Response.json(body, { status });
   const bearer = (request: Request) => request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
   const jwtToken = (jwt: string) => jwt.replace(/^jwt:/, "");
@@ -279,180 +326,267 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     if (!validTokens.has(token)) {
       return json({ status: "error", errorMessage: "Unauthenticated", errorData: "Unauthenticated", logLines: [] }, 560);
     }
-    const value = (() => {
-      if (path === "users/me:me") return profile;
-      if (path === "schedule/dashboard:getDay") {
-        const { dateKey } = (args[0] ?? {}) as { dateKey: string };
-        return {
-          dateKey,
-          weekday: "Wednesday",
-          calendarSetupRequired: false,
-          lunchPeriod: 5,
-          lunchNeedsResolution: false,
-          isSpecial: false,
-          name: "Regular day",
-          source: "REGULAR_TEMPLATE",
-          sourceId: "template1",
-          sourceTemplateId: "template1",
-          hasPersonalSchedule: true,
-          omittedPeriods: [],
-          blocks: [
-            {
-              key: "p1",
-              position: 1,
-              label: "Period 1",
-              displayLabel: "Period 1",
-              periodNumber: 1,
-              startTime: "08:30",
-              endTime: "09:20",
-              durationMinutes: 50,
-              kind: "PERIOD",
-              entry: {
-                id: "entry1",
-                weekday: "MONDAY",
+    let value: unknown;
+    try {
+      value = (() => {
+        if (path === "users/me:me") return profile;
+        if (path === "schedule/dashboard:getDay") {
+          const { dateKey } = (args[0] ?? {}) as { dateKey: string };
+          return {
+            dateKey,
+            weekday: "Wednesday",
+            calendarSetupRequired: false,
+            lunchPeriod: 5,
+            lunchNeedsResolution: false,
+            isSpecial: false,
+            name: "Regular day",
+            source: "REGULAR_TEMPLATE",
+            sourceId: "template1",
+            sourceTemplateId: "template1",
+            hasPersonalSchedule: true,
+            omittedPeriods: [],
+            blocks: [
+              {
+                key: "p1",
+                position: 1,
+                label: "Period 1",
+                displayLabel: "Period 1",
                 periodNumber: 1,
-                className: "Algebra II",
-                courseId: "course1",
-                course: null,
+                startTime: "08:30",
+                endTime: "09:20",
+                durationMinutes: 50,
+                kind: "PERIOD",
+                entry: {
+                  id: "entry1",
+                  weekday: "MONDAY",
+                  periodNumber: 1,
+                  className: "Algebra II",
+                  courseId: "course1",
+                  course: null,
+                },
               },
+              {
+                key: "p4",
+                position: 4,
+                label: "Period 4",
+                displayLabel: "Period 4",
+                periodNumber: 4,
+                startTime: "12:10",
+                endTime: "13:00",
+                durationMinutes: 50,
+                kind: "LUNCH",
+                entry: null,
+              },
+            ],
+          };
+        }
+        if (path === "announcements/feed:list") {
+          const { unreadOnly } = (args[0] ?? {}) as { unreadOnly?: boolean };
+          return announcements.filter((announcement) => !unreadOnly || !announcement.isRead);
+        }
+        if (path === "announcements/feed:get") {
+          const { announcementId } = (args[0] ?? {}) as { announcementId: string };
+          const announcement = announcements.find((item) => item._id === announcementId);
+          if (!announcement) return null;
+          return {
+            announcement,
+            comments: announcement._id === "ann1" ? comments : [],
+          };
+        }
+        if (path === "events/events:list") return events;
+        if (path === "events/events:get") {
+          const { eventId } = (args[0] ?? {}) as { eventId: string };
+          return events.find((event) => event._id === eventId) ?? null;
+        }
+        if (path === "flexFriday/fridays:list") return fridays;
+        if (path === "flexFriday/sessions:listByFriday") {
+          const { flexFridayId } = (args[0] ?? {}) as { flexFridayId: string };
+          return flexFridayId === "flex1" ? flexSessions : [];
+        }
+        if (path === "flexFriday/workshops:listBySession") {
+          const { sessionId } = (args[0] ?? {}) as { sessionId: string };
+          const workshop = sessionId === "sess1" ? workshopView("ws1") : null;
+          return workshop ? [workshop] : [];
+        }
+        if (path === "flexFriday/registration:getMyRegistrations") {
+          return flexRegistrations.map((registration) => {
+            const workshop = workshopView(registration.workshopId);
+            return {
+              ...registration,
+              workshop: workshop
+                ? {
+                    ...workshop,
+                    sessions: [{ session: { ...flexSessions[0], flexFriday: fridays[0] } }],
+                  }
+                : null,
+            };
+          });
+        }
+        if (path === "flexFriday/registration:register") {
+          const { workshopId } = (args[0] ?? {}) as { workshopId: string };
+          if (!workshopRows.some((workshop) => workshop._id === workshopId)) {
+            throw new Error("Workshop not found");
+          }
+          if (flexRegistrations.some((row) => row.workshopId === workshopId && row.studentId === viewerId)) {
+            throw new Error("Already registered for this workshop");
+          }
+          const id = `reg${flexRegistrations.length + 1}`;
+          flexRegistrations.push({ _id: id, workshopId, studentId: viewerId, createdAt: Date.now() });
+          return id;
+        }
+        if (path === "flexFriday/registration:unregister") {
+          const { workshopId } = (args[0] ?? {}) as { workshopId: string };
+          const index = flexRegistrations.findIndex(
+            (row) => row.workshopId === workshopId && row.studentId === viewerId,
+          );
+          if (index === -1) throw new Error("Registration not found");
+          flexRegistrations.splice(index, 1);
+          return null;
+        }
+        if (path === "notifications/inbox:list") {
+          const { limit, unreadOnly } = (args[0] ?? {}) as { limit?: number; unreadOnly?: boolean };
+          return notifications
+            .filter((notification) => !unreadOnly || !notification.isRead)
+            .slice(0, Math.min(Math.max(limit ?? 100, 1), 100));
+        }
+        if (path === "notifications/inbox:markRead") {
+          const { ids } = (args[0] ?? {}) as { ids: string[] };
+          for (const id of ids) {
+            const notification = notifications.find((candidate) => candidate.id === id);
+            if (notification) notification.isRead = true;
+          }
+          return { success: true };
+        }
+        if (path === "clubs/management:getMyClubs") {
+          return {
+            memberOf: [clubs[0]],
+            sponsoring: [],
+            clubs,
+          };
+        }
+        if (path === "clubs/detail:get") {
+          const { clubId } = (args[0] ?? {}) as { clubId: string };
+          const club = clubs.find((candidate) => candidate._id === clubId);
+          if (!club) return null;
+          return {
+            ...club,
+            members: [{ _id: "member1", user: profile, joinedAt: "2026-09-01", roles: [] }],
+            leaders: [{ _id: "member2", user: leader, joinedAt: "2026-09-01", roles: ["President"] }],
+            sponsors: [{ _id: "sponsor1", user: sponsor, joinedAt: "2026-09-01" }],
+            roles: [],
+            channels: [
+              { _id: "chan1", clubId, name: "builds", description: null, visibility: "PUBLIC" },
+              { _id: "chan2", clubId, name: "leaders", description: null, visibility: "RESTRICTED" },
+            ],
+            tags: [{ _id: "tag1", clubId, name: "robotics", slug: "robotics", createdById: "user2", createdAt: 0, members: [] }],
+            directory: [],
+            viewer: {
+              isMember: true,
+              hasClubRole: false,
+              isSponsor: false,
+              isAdmin: false,
+              canAccessWorkspace: true,
+              canManageChannels: false,
+              canManageMembership: false,
+              canApproveJoinRequests: false,
+              permissions: {},
+              hasPendingJoinRequest: false,
             },
-            {
-              key: "p4",
-              position: 4,
-              label: "Period 4",
-              displayLabel: "Period 4",
-              periodNumber: 4,
-              startTime: "12:10",
-              endTime: "13:00",
-              durationMinutes: 50,
-              kind: "LUNCH",
-              entry: null,
-            },
-          ],
-        };
-      }
-      if (path === "announcements/feed:list") {
-        const { unreadOnly } = (args[0] ?? {}) as { unreadOnly?: boolean };
-        return announcements.filter((announcement) => !unreadOnly || !announcement.isRead);
-      }
-      if (path === "announcements/feed:get") {
-        const { announcementId } = (args[0] ?? {}) as { announcementId: string };
-        const announcement = announcements.find((item) => item._id === announcementId);
-        if (!announcement) return null;
-        return {
-          announcement,
-          comments: announcement._id === "ann1" ? comments : [],
-        };
-      }
-      if (path === "events/events:list") return events;
-      if (path === "events/events:get") {
-        const { eventId } = (args[0] ?? {}) as { eventId: string };
-        return events.find((event) => event._id === eventId) ?? null;
-      }
-      if (path === "flexFriday/fridays:list") return fridays;
-      if (path === "notifications/inbox:list") {
-        const { limit, unreadOnly } = (args[0] ?? {}) as { limit?: number; unreadOnly?: boolean };
-        return notifications
-          .filter((notification) => !unreadOnly || !notification.isRead)
-          .slice(0, Math.min(Math.max(limit ?? 100, 1), 100));
-      }
-      if (path === "clubs/management:getMyClubs") {
-        return {
-          memberOf: [clubs[0]],
-          sponsoring: [],
-          clubs,
-        };
-      }
-      if (path === "clubs/detail:get") {
-        const { clubId } = (args[0] ?? {}) as { clubId: string };
-        const club = clubs.find((candidate) => candidate._id === clubId);
-        if (!club) return null;
-        return {
-          ...club,
-          members: [{ _id: "member1", user: profile, joinedAt: "2026-09-01", roles: [] }],
-          leaders: [{ _id: "member2", user: leader, joinedAt: "2026-09-01", roles: ["President"] }],
-          sponsors: [{ _id: "sponsor1", user: sponsor, joinedAt: "2026-09-01" }],
-          roles: [],
-          channels: [
-            { _id: "chan1", clubId, name: "builds", description: null, visibility: "PUBLIC" },
-            { _id: "chan2", clubId, name: "leaders", description: null, visibility: "RESTRICTED" },
-          ],
-          tags: [{ _id: "tag1", clubId, name: "robotics", slug: "robotics", createdById: "user2", createdAt: 0, members: [] }],
-          directory: [],
-          viewer: {
-            isMember: true,
-            hasClubRole: false,
-            isSponsor: false,
-            isAdmin: false,
-            canAccessWorkspace: true,
-            canManageChannels: false,
-            canManageMembership: false,
-            canApproveJoinRequests: false,
-            permissions: {},
-            hasPendingJoinRequest: false,
-          },
-          pendingJoinRequests: [],
-          activeJoinCode: null,
-        };
-      }
-      if (path === "clubs/channels:list") {
-        const { clubId } = (args[0] ?? {}) as { clubId: string };
-        return clubId === "club1" ? channels : [];
-      }
-      if (path === "clubs/channels:getById") {
-        const { channelId } = (args[0] ?? {}) as { channelId: string };
-        const channel = channels.find((candidate) => candidate._id === channelId);
-        // The leadership channel is restricted, so a plain member can't read it.
-        if (!channel || channelId === "chan2") return null;
-        return { club: { _id: "club1", name: clubName }, channel };
-      }
-      if (path === "clubs/channels:getMessagePage") {
-        const { channelId, paginationOpts } = (args[0] ?? {}) as {
-          channelId: string;
-          paginationOpts: { numItems: number; cursor: string | null };
-        };
-        if (channelId !== "chan1") return { page: [], isDone: true, continueCursor: "" };
-        const size = Math.min(Math.max(Math.trunc(paginationOpts?.numItems ?? 30), 1), 40);
-        const start = Number.parseInt(paginationOpts?.cursor ?? "0", 10) || 0;
-        const slice = messages.slice(start, start + size);
-        return {
-          page: slice,
-          isDone: start + size >= messages.length,
-          continueCursor: start + size < messages.length ? String(start + size) : "",
-          pageStatus: null,
-        };
-      }
-      if (path === "search/global:palette") {
-        const { search } = (args[0] ?? {}) as { search: string };
-        const text = search.trim().toLocaleLowerCase();
-        if (text.length < 2) return { people: [], channels: [] };
-        return {
-          people: text.includes("ada") ? [personResult] : [],
-          channels: text.includes("build") ? [{ ...channels[0], club: { _id: "club1", name: clubName } }] : [],
-        };
-      }
-      if (path === "users/cliSessions:list") {
-        return sessions.map((session) => ({
-          id: session.id,
-          client: "Command-line client 0.1.0 on macOS",
-          version: "0.1.0",
-          platform: "macOS arm64",
-          createdAt: Date.UTC(2026, 10, 8, 18),
-          lastUsedAt: Date.UTC(2026, 10, 8, 18, 5),
-          expiresAt: Date.UTC(2026, 10, 15, 18),
-          current: session.token === token,
-        }));
-      }
-      if (path === "users/cliSessions:revoke") {
-        const { sessionId } = (args[0] ?? {}) as { sessionId: string };
-        const index = sessions.findIndex((session) => session.id === sessionId);
-        if (index === -1) return { outcome: "unchanged" };
-        validTokens.delete(sessions[index]!.token);
-        sessions.splice(index, 1);
-        return { outcome: "revoked" };
-      }
-      throw new Error(`unexpected function ${path}`);
-    })();
+            pendingJoinRequests: [],
+            activeJoinCode: null,
+          };
+        }
+        if (path === "clubs/channels:list") {
+          const { clubId } = (args[0] ?? {}) as { clubId: string };
+          return clubId === "club1" ? channels : [];
+        }
+        if (path === "clubs/channels:getById") {
+          const { channelId } = (args[0] ?? {}) as { channelId: string };
+          const channel = channels.find((candidate) => candidate._id === channelId);
+          // The leadership channel is restricted, so a plain member can't read it.
+          if (!channel || channelId === "chan2") return null;
+          return { club: { _id: "club1", name: clubName }, channel };
+        }
+        if (path === "clubs/channels:getMessagePage") {
+          const { channelId, paginationOpts } = (args[0] ?? {}) as {
+            channelId: string;
+            paginationOpts: { numItems: number; cursor: string | null };
+          };
+          if (channelId !== "chan1") return { page: [], isDone: true, continueCursor: "" };
+          const size = Math.min(Math.max(Math.trunc(paginationOpts?.numItems ?? 30), 1), 40);
+          const start = Number.parseInt(paginationOpts?.cursor ?? "0", 10) || 0;
+          const slice = messages.slice(start, start + size);
+          return {
+            page: slice,
+            isDone: start + size >= messages.length,
+            continueCursor: start + size < messages.length ? String(start + size) : "",
+            pageStatus: null,
+          };
+        }
+        if (path === "clubs/channels:postMessage") {
+          const { channelId, body } = (args[0] ?? {}) as { channelId: string; body: string };
+          if (channelId !== "chan1") throw new Error("Cannot post in this channel");
+          const id = `msg${messages.length + 1}`;
+          messages.unshift({
+            _id: id,
+            _creationTime: Date.UTC(2026, 10, 9, 16),
+            channelId,
+            authorId: viewerId,
+            body,
+            isPinned: false,
+            isDeleted: false,
+            createdAt: new Date(Date.UTC(2026, 10, 9, 16)).toISOString(),
+            updatedAt: new Date(Date.UTC(2026, 10, 9, 16)).toISOString(),
+            author: { ...profile, clubRole: null },
+            mentions: [],
+            attachments: [],
+            attachmentsTruncated: false,
+            reactions: [],
+            reactionsTruncated: false,
+            replyCount: 0,
+            replyCountIsExact: true,
+            hasReplies: false,
+            latestReplyPreview: null,
+            replyPreview: null,
+            mentionsViewer: false,
+          });
+          return id;
+        }
+        if (path === "search/global:palette") {
+          const { search } = (args[0] ?? {}) as { search: string };
+          const text = search.trim().toLocaleLowerCase();
+          if (text.length < 2) return { people: [], channels: [] };
+          return {
+            people: text.includes("ada") ? [personResult] : [],
+            channels: text.includes("build") ? [{ ...channels[0], club: { _id: "club1", name: clubName } }] : [],
+          };
+        }
+        if (path === "users/cliSessions:list") {
+          return sessions.map((session) => ({
+            id: session.id,
+            client: "Command-line client 0.1.0 on macOS",
+            version: "0.1.0",
+            platform: "macOS arm64",
+            createdAt: Date.UTC(2026, 10, 8, 18),
+            lastUsedAt: Date.UTC(2026, 10, 8, 18, 5),
+            expiresAt: Date.UTC(2026, 10, 15, 18),
+            current: session.token === token,
+          }));
+        }
+        if (path === "users/cliSessions:revoke") {
+          const { sessionId } = (args[0] ?? {}) as { sessionId: string };
+          const index = sessions.findIndex((session) => session.id === sessionId);
+          if (index === -1) return { outcome: "unchanged" };
+          validTokens.delete(sessions[index]!.token);
+          sessions.splice(index, 1);
+          return { outcome: "revoked" };
+        }
+        throw new Error(`unexpected function ${path}`);
+      })();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return json({ status: "error", errorMessage: message, errorData: message, logLines: [] }, 560);
+    }
     return json({ status: "success", value, logLines: [] });
   }
 
@@ -510,5 +644,5 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     throw new TypeError(`fetch failed: ${where}`);
   }
 
-  return { handle, calls, validTokens, sessions, announcements, comments, events, fridays, notifications, clubs, channels, messages, profile };
+  return { handle, calls, validTokens, sessions, announcements, comments, events, fridays, notifications, clubs, channels, messages, profile, flexSessions, workshopRows, flexRegistrations };
 }

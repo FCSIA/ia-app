@@ -1,5 +1,6 @@
 import { api } from "../../../convex/src/_generated/api";
-import { connect, query } from "../client/session";
+import { asId } from "../client/ids";
+import { connect, mutation, query } from "../client/session";
 import { CliError } from "../core/errors";
 import { sanitizeRemoteText } from "../core/theme";
 import type { CommandContext, CommandSpec, GroupSpec } from "../registry/types";
@@ -68,14 +69,14 @@ const list: CommandSpec = {
 const read: CommandSpec = {
   kind: "command",
   name: "read",
-  summary: "Open a notification on the web",
+  summary: "Mark a notification read and get its link",
   json: true,
   arguments: [{ name: "notification", required: true, description: "Notification ID from notifications list" }],
   examples: [
-    { description: "Get a notification's link", argv: ["notifications", "read", "<NOTIFICATION>"] },
+    { description: "Mark one read", argv: ["notifications", "read", "<NOTIFICATION>"] },
   ],
   notes: [
-    "Reading happens on the web; the CLI prints the link and leaves the unread state to the app.",
+    "Marks the notification read, then prints its web link; the page itself opens on the web.",
   ],
   async run(context) {
     const { out } = context;
@@ -89,18 +90,24 @@ const read: CommandSpec = {
         next: [{ benefit: "See your notifications", argv: ["notifications", "list"] }],
       });
     }
+    if (!notification.isRead) {
+      await mutation(connection, api.notifications.inbox.markRead, {
+        ids: [asId<"notificationDeliveries">(notification.id)],
+      });
+    }
 
     const link = new URL(sanitizeRemoteText(notification.href), connection.host).toString();
     if (out.json) {
-      out.document({ notification: { id: notification.id, title: sanitizeRemoteText(notification.title), link } });
+      out.document({
+        notification: { id: notification.id, title: sanitizeRemoteText(notification.title), link },
+        markedRead: !notification.isRead,
+      });
       return;
     }
     out.print(link);
     out.blank();
     out.row("Title", sanitizeRemoteText(notification.title));
-    if (!notification.isRead) {
-      out.text("Mark it read in the web app, where notifications live.");
-    }
+    out.text(notification.isRead ? "It was already read." : "Marked it read.");
   },
 };
 

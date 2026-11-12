@@ -1,9 +1,11 @@
 import { api } from "../../../convex/src/_generated/api";
 import type { FunctionReturnType } from "convex/server";
+import type { Id } from "../../../convex/src/_generated/dataModel";
 import { hostArgv } from "../client/host";
-import { connect, query } from "../client/session";
 import { asId } from "../client/ids";
-import { CliError } from "../core/errors";
+import { watch } from "../client/live";
+import { connect, mutation, query, translateError, type Connection } from "../client/session";
+import { CliError, usageError } from "../core/errors";
 import { sanitizeRemoteText } from "../core/theme";
 import type { CommandContext, CommandSpec, GroupSpec } from "../registry/types";
 import { limitOption } from "./announcements";
@@ -193,6 +195,16 @@ function messageRow(message: Message) {
   };
 }
 
+async function resolveChannel(connection: Connection, channelId: Id<"clubChannels">) {
+  return query(connection, api.clubs.channels.getById, { channelId });
+}
+
+function channelNotFound(id: string, connection: Connection) {
+  return new CliError("not_found", "channel_not_found", `No readable channel has ID ${id}.`, {
+    next: [{ benefit: "See your clubs", argv: ["clubs", "list", ...hostArgv(connection.host, connection.hostSource)] }],
+  });
+}
+
 const messagesList: CommandSpec = {
   kind: "command",
   name: "list",
@@ -217,19 +229,13 @@ const messagesList: CommandSpec = {
   async run(context: CommandContext) {
     const { out } = context;
     const connection = await connect(context);
-    const channelId = context.args[0]!;
-    const found: Channel | null = await query(connection, api.clubs.channels.getById, {
-      channelId: asId<"clubChannels">(channelId),
-    });
-    if (!found) {
-      throw new CliError("not_found", "channel_not_found", `No readable channel has ID ${channelId}.`, {
-        next: [{ benefit: "See your clubs", argv: ["clubs", "list", ...hostArgv(connection.host, connection.hostSource)] }],
-      });
-    }
+    const channelId = asId<"clubChannels">(context.args[0]!);
+    const found: Channel | null = await resolveChannel(connection, channelId);
+    if (!found) throw channelNotFound(context.args[0]!, connection);
     const limit = limitOption(context, 30);
     const page = await query(connection, api.clubs.channels.getMessagePage, {
       clubId: found.club._id,
-      channelId: asId<"clubChannels">(channelId),
+      channelId,
       paginationOpts: { numItems: limit, cursor: null },
     });
     const messages = page.page.map(messageRow);
@@ -262,11 +268,134 @@ const messagesList: CommandSpec = {
   },
 };
 
+const send: CommandSpec = {
+  kind: "command",
+  name: "send",
+  summary: "Send a message to a club channel",
+  json: true,
+  arguments: [
+    { name: "channel", required: true, description: "Channel ID from clubs channels list" },
+    { name: "message", required: true, variadic: true, description: "Message text" },
+  ],
+  examples: [
+    {
+      description: "Send a message",
+      argv: ["clubs", "messages", "send", "<CHANNEL>", "Build", "night", "is", "moved", "to", "the", "shop."],
+    },
+  ],
+  notes: ["Sends plain text. Formatting, mentions, attachments, and replies stay in the web app."],
+  async run(context) {
+    const { out } = context;
+    const [channelRef, ...words] = context.args;
+    const body = words.join(" ").trim();
+    if (!body) throw usageError("missing_message", "Write the message text after the channel ID.");
+    const channelId = asId<"clubChannels">(channelRef!);
+    const connection = await connect(context);
+    const found: Channel | null = await resolveChannel(connection, channelId);
+    if (!found) throw channelNotFound(channelRef!, connection);
+    const messageId = await mutation(connection, api.clubs.channels.postMessage, { channelId, body });
+
+    if (out.json) {
+      out.document({
+        outcome: "sent",
+        message: {
+          id: messageId,
+          channel: { id: found.channel._id, name: sanitizeRemoteText(found.channel.name) },
+        },
+      });
+      return;
+    }
+    out.success("Sent", `#${sanitizeRemoteText(found.channel.name)}`);
+    out.identifier(messageId);
+  },
+};
+
+const follow: CommandSpec = {
+  kind: "command",
+  name: "follow",
+  summary: "Watch a club channel for new messages",
+  json: true,
+  arguments: [{ name: "channel", required: true, description: "Channel ID from clubs channels list" }],
+  examples: [
+    { description: "Watch a channel", argv: ["clubs", "messages", "follow", "<CHANNEL>"] },
+  ],
+  notes: [
+    "Shows the latest messages, then each new one until you press Ctrl-C. With --json, each message is its own document.",
+  ],
+  async run(context) {
+    const { out } = context;
+    const connection = await connect(context);
+    const channelId = asId<"clubChannels">(context.args[0]!);
+    const found: Channel | null = await resolveChannel(connection, channelId);
+    if (!found) throw channelNotFound(context.args[0]!, connection);
+    const page = await query(connection, api.clubs.channels.getMessagePage, {
+      clubId: found.club._id,
+      channelId,
+      paginationOpts: { numItems: 30, cursor: null },
+    });
+
+    const seen = new Set<Message["_id"]>();
+    const show = (message: Message) => {
+      seen.add(message._id);
+      const row = messageRow(message);
+      if (out.json) {
+        out.document({ message: row });
+        return;
+      }
+      out.print(`${row.when}  ${row.author}  ${row.body}`);
+    };
+
+    if (out.json) {
+      out.document({
+        channel: {
+          id: found.channel._id,
+          name: sanitizeRemoteText(found.channel.name),
+          club: { id: found.club._id, name: sanitizeRemoteText(found.club.name) },
+        },
+        messages: [...page.page].reverse().map(messageRow),
+      });
+      for (const message of page.page) seen.add(message._id);
+    } else {
+      out.text(
+        `Watching #${sanitizeRemoteText(found.channel.name)} in ${sanitizeRemoteText(found.club.name)}. Press Ctrl-C to stop.`,
+      );
+      for (const message of [...page.page].reverse()) show(message);
+    }
+
+    let failure: CliError | null = null;
+    let finish = () => {};
+    const finished = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const stop = () => finish();
+    context.runtime.signal.addEventListener("abort", stop, { once: true });
+    const watcher = watch(
+      context.runtime,
+      connection,
+      api.clubs.channels.getMessagePage,
+      { clubId: found.club._id, channelId, paginationOpts: { numItems: 30, cursor: null } },
+      (next) => {
+        for (const message of [...next.page].reverse()) {
+          if (!seen.has(message._id)) show(message);
+        }
+      },
+      (error) => {
+        failure = translateError(connection, error, "query");
+        finish();
+      },
+    );
+    await finished;
+    context.runtime.signal.removeEventListener("abort", stop);
+    await watcher.close();
+    if (failure) throw failure;
+  },
+};
+
 const messagesGroup: GroupSpec = {
   kind: "group",
   name: "messages",
-  summary: "Read a club channel's messages",
-  children: [messagesList],
+  summary: "Read, send, and watch a club channel's messages",
+  children: [messagesList, send, follow],
 };
 
 export const clubsGroup: GroupSpec = {
