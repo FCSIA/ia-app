@@ -3,6 +3,7 @@ import { accountCommands } from "./account";
 import { announcementsGroup } from "./announcements";
 import { auditGroup } from "./audit";
 import { cliGroup } from "./cli";
+import { completionCommands } from "./completion";
 import { eventsGroup } from "./events";
 import { feedbackGroup } from "./feedback";
 import { flexGroup } from "./flex";
@@ -13,6 +14,7 @@ import { scheduleGroup, todayCommand } from "./schedule";
 import { searchCommand } from "./search";
 import { clubsGroup } from "./clubs";
 import { sessionsGroup } from "./sessions";
+import { upgradeCommand } from "./upgrade";
 import { usersGroup } from "./users";
 
 export function createRootCommand(): GroupSpec {
@@ -36,6 +38,8 @@ export function createRootCommand(): GroupSpec {
       sessionsGroup,
       helpGroup,
       cliGroup,
+      ...completionCommands,
+      upgradeCommand,
       ...accountCommands,
     ],
   };

@@ -13,6 +13,9 @@ export interface FakeRuntimeOptions {
   compiled?: boolean;
   cwd?: string;
   homedir?: string;
+  platform?: NodeJS.Platform;
+  arch?: string;
+  execPath?: string;
   // Answers requests; unmatched requests fail like an unreachable network.
   fetch?: (request: Request) => Response | Promise<Response>;
   // null simulates a system without a credential store.
@@ -57,9 +60,9 @@ export function fakeRuntime(options: FakeRuntimeOptions = {}) {
     stdinIsTTY: options.stdinTTY ?? options.stderrTTY ?? false,
     cwd: options.cwd ?? "/",
     homedir: options.homedir ?? "/home/test",
-    platform: "darwin",
-    arch: "arm64",
-    execPath: "/usr/local/bin/fcsia",
+    platform: options.platform ?? "darwin",
+    arch: options.arch ?? "arm64",
+    execPath: options.execPath ?? "/usr/local/bin/fcsia",
     fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
       requests.push(request.clone());

@@ -16,6 +16,8 @@ same change.
   boundaries, maintainer review, and the Codex Security CLI enablement gate.
 - [Versioning and the devlog](reference/versioning.md) - what the version means,
   how a release is cut, and how commits become the changelog students read.
+- [Command-line client](reference/cli.md) - install and sign in to `fcsia`,
+  script against its JSON output, and find every command group.
 - [Architecture overview](architecture/overview.md) - how the web app, Convex
   backend, auth, storage, and deployment fit together.
 - [Azure portability review](architecture/azure-portability.md) - backend
