@@ -27,6 +27,10 @@ export interface Runtime {
   fetch: typeof fetch;
   // Resolves early, without throwing, when the signal aborts.
   sleep(milliseconds: number, signal?: AbortSignal): Promise<void>;
+  // Asks one yes/no question on the terminal. Only called when interactive.
+  confirm(question: string): Promise<boolean>;
+  // Reads all of standard input, for `-` file arguments.
+  readStdin(): Promise<string>;
   // Aborts on Ctrl-C so long waits, such as sign-in polling, stop promptly.
   signal: AbortSignal;
   // The operating system's credential store, or null where it's unavailable.
@@ -95,6 +99,23 @@ function openUrl(url: string) {
   });
 }
 
+async function readStdin() {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function ask(question: string) {
+  const { createInterface } = await import("node:readline/promises");
+  const terminal = createInterface({ input: process.stdin, output: process.stderr });
+  try {
+    const answer = await terminal.question(`${question} [y/N] `);
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    terminal.close();
+  }
+}
+
 function systemSecrets(): SecretStore | null {
   const secrets = (globalThis as { Bun?: { secrets?: SecretStore } }).Bun?.secrets;
   if (!secrets) return null;
@@ -122,6 +143,8 @@ export function processRuntime(signal: AbortSignal = new AbortController().signa
     execPath: process.execPath,
     fetch: globalThis.fetch.bind(globalThis),
     sleep,
+    confirm: ask,
+    readStdin,
     signal,
     // FCSIA_CREDENTIAL_STORE=file skips the system store, for containers and
     // CI where a keyring prompt would hang.

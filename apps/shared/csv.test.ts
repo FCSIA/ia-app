@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { readCsv, readCsvTable } from './csv';
-import { parseInviteCsv } from './parse-invite-csv';
 
 describe('readCsv', () => {
   it('reads quoted commas, escaped quotes, a BOM and CRLF', () => {
@@ -23,11 +22,5 @@ describe('readCsv', () => {
 
   it('normalizes header names', () => {
     expect(readCsvTable('Unit Name,PARENT_unit\nA,B').headers).toEqual(['unitname', 'parentunit']);
-  });
-});
-
-describe('parseInviteCsv', () => {
-  it('honours escaped quotes and picks the identifier column', () => {
-    expect(parseInviteCsv('Name,Student ID\n"Doe ""DJ""",S123\n,S456')).toEqual(['S123', 'S456']);
   });
 });

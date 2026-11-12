@@ -3,7 +3,7 @@ import type { FunctionReturnType } from "convex/server";
 import { PATHWAY_LABELS, isPathway } from "../../../shared/labels";
 import { asId } from "../client/ids";
 import { hostArgv } from "../client/host";
-import { connect, mutation, query, type Connection } from "../client/session";
+import { connect, mutation, query, refine, type Connection } from "../client/session";
 import { CliError } from "../core/errors";
 import { sanitizeRemoteText } from "../core/theme";
 import type { CommandSpec, GroupSpec } from "../registry/types";
@@ -198,37 +198,47 @@ function registrationRow(registration: Registration) {
 }
 
 function registrationError(error: unknown, connection: Connection): never {
-  if (error instanceof CliError && error.reason === "request_failed") {
-    const next = [
-      {
-        benefit: "See your registrations",
-        argv: ["flex", "registrations", "list", ...hostArgv(connection.host, connection.hostSource)],
-      },
-    ];
-    if (/Already registered/.test(error.message)) {
-      throw new CliError(
-        "conflict",
-        "already_registered",
-        "You're already in a workshop for that session.",
-        { next },
-      );
-    }
-    if (/full capacity/.test(error.message)) {
-      throw new CliError("limit", "workshop_full", "That workshop is full.", { next });
-    }
-    if (/Workshop not found/.test(error.message)) {
-      throw new CliError("not_found", "workshop_not_found", "No workshop has that ID.", {
-        next: [{ benefit: "Browse workshops", argv: ["flex", "workshops", "list", ...hostArgv(connection.host, connection.hostSource)] }],
-      });
-    }
-    if (/Only students/.test(error.message)) {
-      throw new CliError("permission", "students_only", "Only students register for workshops.");
-    }
-    if (/Registration not found/.test(error.message)) {
-      throw new CliError("not_found", "registration_not_found", "You aren't registered for that workshop.", { next });
-    }
-  }
-  throw error;
+  const next = [
+    {
+      benefit: "See your registrations",
+      argv: ["flex", "registrations", "list", ...hostArgv(connection.host, connection.hostSource)],
+    },
+  ];
+  refine(error, [
+    {
+      match: /Already registered/,
+      kind: "conflict",
+      reason: "already_registered",
+      message: "You're already in a workshop for that session.",
+      next,
+    },
+    { match: /full capacity/, kind: "limit", reason: "workshop_full", message: "That workshop is full.", next },
+    {
+      match: /Workshop not found/,
+      kind: "not_found",
+      reason: "workshop_not_found",
+      message: "No workshop has that ID.",
+      next: [
+        {
+          benefit: "Browse workshops",
+          argv: ["flex", "workshops", "list", ...hostArgv(connection.host, connection.hostSource)],
+        },
+      ],
+    },
+    {
+      match: /Only students/,
+      kind: "permission",
+      reason: "students_only",
+      message: "Only students register for workshops.",
+    },
+    {
+      match: /Registration not found/,
+      kind: "not_found",
+      reason: "registration_not_found",
+      message: "You aren't registered for that workshop.",
+      next,
+    },
+  ]);
 }
 
 const registrationsList: CommandSpec = {

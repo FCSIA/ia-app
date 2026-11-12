@@ -2,7 +2,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { ConvexError } from "convex/values";
 import type { FunctionArgs, FunctionReference, FunctionReturnType } from "convex/server";
 import type { CliDiscoveryDocument } from "../../../shared/cli";
-import { CliError } from "../core/errors";
+import { CliError, type CliErrorOptions } from "../core/errors";
 import type { CommandContext } from "../registry/types";
 import { exchangeForJwt } from "./auth";
 import { loadCredential, type Credential } from "./credentials";
@@ -89,6 +89,30 @@ export function translateError(connection: Connection, error: unknown, kind: "qu
   return new CliError("platform", "request_failed", message);
 }
 
+export interface ErrorRule {
+  match: RegExp;
+  reason: string;
+  kind: CliError["kind"];
+  message: string;
+  next?: CliErrorOptions["next"];
+}
+
+/**
+ * Turns a backend message into a stable reason. The backend still throws
+ * plain messages; until it carries codes, commands keep the mapping for the
+ * failures people act on. Anything unmatched stays as it was.
+ */
+export function refine(error: unknown, rules: ErrorRule[]): never {
+  if (error instanceof CliError && error.reason === "request_failed") {
+    for (const rule of rules) {
+      if (rule.match.test(error.message)) {
+        throw new CliError(rule.kind, rule.reason, rule.message, { next: rule.next });
+      }
+    }
+  }
+  throw error;
+}
+
 const QUERY_ATTEMPTS = 2;
 
 // Queries are safe to repeat, so one network failure is retried.
@@ -117,6 +141,19 @@ export async function mutation<Mutation extends FunctionReference<"mutation">>(
 ): Promise<FunctionReturnType<Mutation>> {
   try {
     return await connection.client.mutation(reference, args);
+  } catch (error) {
+    throw translateError(connection, error, "mutation");
+  }
+}
+
+// Actions can write, so they get the same never-retry handling as mutations.
+export async function action<Action extends FunctionReference<"action">>(
+  connection: Connection,
+  reference: Action,
+  args: FunctionArgs<Action>,
+): Promise<FunctionReturnType<Action>> {
+  try {
+    return await connection.client.action(reference, args);
   } catch (error) {
     throw translateError(connection, error, "mutation");
   }

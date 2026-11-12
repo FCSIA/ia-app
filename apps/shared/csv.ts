@@ -70,3 +70,17 @@ export function readCsvTable(text: string) {
   const [header, ...rows] = readCsv(text);
   return { headers: (header?.cells ?? []).map(normalizeCsvHeader), rows };
 }
+
+/** A CSV cell quoted only where a comma, quote, or line break needs it. */
+export function csvCell(value: string | number | null | undefined) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** A CSV document with one header row and a trailing newline. */
+export function writeCsv(
+  columns: readonly string[],
+  rows: ReadonlyArray<ReadonlyArray<string | number | null | undefined>>,
+) {
+  return [columns, ...rows].map((row) => row.map(csvCell).join(',')).join('\n') + '\n';
+}

@@ -20,6 +20,49 @@ export interface FakeBackendOptions {
   discoveryStatus?: number;
 }
 
+interface FakeUserRow {
+  _id: string;
+  uniqueId: string;
+  firstName: string;
+  lastName: string;
+  preferredName: string | null;
+  roles: string[];
+  gradeLevel: number | null;
+  major: string | null;
+  minor: string | null;
+  email: string;
+  isActive: boolean;
+  avatarUrl: string | null;
+  isDeveloper: boolean;
+}
+
+interface FakeReportRow {
+  _id: string;
+  submitterId: string;
+  contentType: string;
+  contentId: string;
+  clubId: string | null;
+  reportedUserId: string | null;
+  reason: string;
+  status: string;
+  isEscalated: boolean;
+  appVersion?: string;
+  createdAt: number;
+  reviewedAt?: number;
+  reviewNote?: string;
+  githubIssueUrl?: string;
+  submitter: Record<string, unknown> | null;
+  reportedUser: Record<string, unknown> | null;
+  club: { _id: string; name: string } | null;
+  images: unknown[];
+  responses: Array<{
+    _id: string;
+    body: string;
+    createdAt: number;
+    author: { firstName: string; lastName: string; preferredName: string | null };
+  }>;
+}
+
 export function fakeBackend(options: FakeBackendOptions = {}) {
   const validTokens = new Set(options.validTokens ?? []);
   const pending = [...(options.pendingPolls ?? [])];
@@ -28,7 +71,10 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     token,
   }));
   const calls: string[] = [];
+  const invocations: Array<{ path: string; args: unknown[] }> = [];
   let issued = 0;
+  let createdCount = 0;
+  const pendingApprovals = new Map<string, string>([["ann3", "Chipotle fundraiser"]]);
   const profile =
     options.profile === undefined
       ? { _id: "user1", uniqueId: "STU050", firstName: "David", lastName: "Jones", roles: ["STUDENT"] }
@@ -268,6 +314,188 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     },
   ];
 
+  const userRows: FakeUserRow[] = [
+    {
+      _id: "user1",
+      uniqueId: "STU050",
+      firstName: "David",
+      lastName: "Jones",
+      preferredName: null,
+      roles: ["STUDENT"],
+      gradeLevel: 11,
+      major: "ENGINEERING",
+      minor: null,
+      email: "david.jones@example.com",
+      isActive: true,
+      avatarUrl: null,
+      isDeveloper: false,
+    },
+    {
+      _id: "user2",
+      uniqueId: "STU011",
+      firstName: "Ada",
+      lastName: "Byron",
+      preferredName: "Ada",
+      roles: ["STUDENT", "STUDENT_LEADER"],
+      gradeLevel: 12,
+      major: "INFORMATION_TECHNOLOGY",
+      minor: "ENGINEERING",
+      email: "ada.byron@example.com",
+      isActive: true,
+      avatarUrl: null,
+      isDeveloper: false,
+    },
+    {
+      _id: "user3",
+      uniqueId: "TCH001",
+      firstName: "Grace",
+      lastName: "Hopper",
+      preferredName: null,
+      roles: ["TEACHER", "SPONSOR"],
+      gradeLevel: null,
+      major: null,
+      minor: null,
+      email: "grace.hopper@example.com",
+      isActive: true,
+      avatarUrl: null,
+      isDeveloper: false,
+    },
+    {
+      _id: "user4",
+      uniqueId: "STU002",
+      firstName: "Katherine",
+      lastName: "Johnson",
+      preferredName: null,
+      roles: ["STUDENT"],
+      gradeLevel: 10,
+      major: "HEALTH_SCIENCE",
+      minor: null,
+      email: "katherine.johnson@example.com",
+      isActive: false,
+      avatarUrl: null,
+      isDeveloper: false,
+    },
+  ];
+  const auditEvents = [
+    {
+      id: "audit1",
+      action: "user.deactivated",
+      entityType: "user",
+      entityId: "user4",
+      createdAt: new Date(Date.UTC(2026, 10, 10, 14)).toISOString(),
+      meta: { reason: "Transferred to another school" },
+      actorId: "user3",
+      actor: { id: "user3", firstName: "Grace", lastName: "Hopper", preferredName: null, uniqueId: "TCH001" },
+      context: {
+        title: "Deactivated Katherine Johnson",
+        subtitle: "user4",
+        links: [],
+        references: [],
+        deleted: false,
+      },
+    },
+    {
+      id: "audit2",
+      action: "user.roles_assigned",
+      entityType: "user",
+      entityId: "user2",
+      createdAt: new Date(Date.UTC(2026, 10, 9, 14)).toISOString(),
+      meta: { roles: ["STUDENT", "STUDENT_LEADER"] },
+      actorId: "user3",
+      actor: { id: "user3", firstName: "Grace", lastName: "Hopper", preferredName: null, uniqueId: "TCH001" },
+      context: {
+        title: "Made Ada Byron a student leader",
+        subtitle: "user2",
+        links: [],
+        references: [],
+        deleted: false,
+      },
+    },
+  ];
+  const reportRows: FakeReportRow[] = [
+    {
+      _id: "report1",
+      submitterId: "user2",
+      contentType: "CLUB_CHANNEL_MESSAGE",
+      contentId: "msg1",
+      clubId: "club1",
+      reportedUserId: "user1",
+      reason: "Says something unkind about another member.",
+      status: "PENDING",
+      isEscalated: true,
+      createdAt: Date.UTC(2026, 10, 10, 15),
+      submitter: { _id: "user2", uniqueId: "STU011", firstName: "Ada", lastName: "Byron", preferredName: "Ada" },
+      reportedUser: { _id: "user1", uniqueId: "STU050", firstName: "David", lastName: "Jones", preferredName: null },
+      club: { _id: "club1", name: clubName },
+      images: [],
+      responses: [],
+    },
+    {
+      _id: "report2",
+      submitterId: "user1",
+      contentType: "ANNOUNCEMENT",
+      contentId: "ann2",
+      clubId: "club1",
+      reportedUserId: null,
+      reason: "The date is wrong.",
+      status: "RESOLVED",
+      isEscalated: false,
+      createdAt: Date.UTC(2026, 10, 8, 15),
+      reviewNote: "Fixed the date.",
+      submitter: { _id: "user1", uniqueId: "STU050", firstName: "David", lastName: "Jones", preferredName: null },
+      reportedUser: null,
+      club: { _id: "club1", name: clubName },
+      images: [],
+      responses: [],
+    },
+    {
+      _id: "fb1",
+      submitterId: "user1",
+      contentType: "GENERAL",
+      contentId: "feedback1",
+      clubId: null,
+      reportedUserId: null,
+      reason: "The bell schedule disappears on Fridays.",
+      status: "PENDING",
+      isEscalated: false,
+      appVersion: "1.4.0",
+      createdAt: Date.UTC(2026, 10, 10, 16),
+      githubIssueUrl: "https://github.com/FCSIA/ia-app/issues/100",
+      submitter: { _id: "user1", uniqueId: "STU050", firstName: "David", lastName: "Jones", preferredName: null },
+      reportedUser: null,
+      club: null,
+      images: [],
+      responses: [],
+    },
+    {
+      _id: "fb2",
+      submitterId: "user2",
+      contentType: "GENERAL",
+      contentId: "feedback2",
+      clubId: null,
+      reportedUserId: null,
+      reason: "Could the club page show meeting times?",
+      status: "RESOLVED",
+      isEscalated: false,
+      appVersion: "1.3.0",
+      createdAt: Date.UTC(2026, 10, 5, 16),
+      reviewNote: "Meeting times are on the calendar now.",
+      reviewedAt: Date.UTC(2026, 10, 6, 16),
+      submitter: { _id: "user2", uniqueId: "STU011", firstName: "Ada", lastName: "Byron", preferredName: "Ada" },
+      reportedUser: null,
+      club: null,
+      images: [],
+      responses: [
+        {
+          _id: "response1",
+          body: "This is in the works.",
+          createdAt: Date.UTC(2026, 10, 5, 18),
+          author: { firstName: "Grace", lastName: "Hopper", preferredName: null },
+        },
+      ],
+    },
+  ];
+
   const flexSessions = [
     {
       _id: "sess1",
@@ -319,9 +547,10 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
   const bearer = (request: Request) => request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
   const jwtToken = (jwt: string) => jwt.replace(/^jwt:/, "");
 
-  async function convex(request: Request, kind: "query" | "mutation") {
+  async function convex(request: Request, kind: "query" | "mutation" | "action") {
     const { path, args } = (await request.json()) as { path: string; args: unknown[] };
     calls.push(`${kind} ${path}`);
+    invocations.push({ path, args });
     const token = jwtToken(bearer(request));
     if (!validTokens.has(token)) {
       return json({ status: "error", errorMessage: "Unauthenticated", errorData: "Unauthenticated", logLines: [] }, 560);
@@ -552,6 +781,233 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
           });
           return id;
         }
+        if (path === "users/admin:list") {
+          const { paginationOpts, search, userId, roleGroup } = (args[0] ?? {}) as {
+            paginationOpts: { numItems: number; cursor: string | null };
+            search?: string;
+            userId?: string;
+            roleGroup?: string;
+          };
+          if (userId !== undefined) {
+            const target = userRows.find((user) => user._id === userId);
+            return { page: target ? [target] : [], isDone: true, continueCursor: "" };
+          }
+          const text = search?.trim().toLowerCase();
+          const group = roleGroup ?? "all";
+          const filtered = userRows.filter((user) => {
+            const isStudentAccount = user.roles.some((role) => role.startsWith("STUDENT"));
+            const isTeacher = user.roles.includes("TEACHER") || user.roles.includes("SPONSOR");
+            const inGroup =
+              group === "students"
+                ? isStudentAccount && !user.roles.includes("STUDENT_ADMIN")
+                : group === "student-admin"
+                  ? user.roles.includes("STUDENT_ADMIN")
+                  : group === "teachers"
+                    ? isTeacher
+                    : group === "other"
+                      ? !isStudentAccount && !isTeacher
+                      : true;
+            if (!inGroup) return false;
+            if (!text) return true;
+            return [user.uniqueId, user.firstName, user.lastName, user.preferredName ?? "", user.email].some(
+              (value) => value.toLowerCase().includes(text),
+            );
+          });
+          const size = Math.min(Math.max(Math.trunc(paginationOpts?.numItems ?? 25), 1), 100);
+          const start = Number.parseInt(paginationOpts?.cursor ?? "0", 10) || 0;
+          return {
+            page: filtered.slice(start, start + size),
+            isDone: start + size >= filtered.length,
+            continueCursor: start + size < filtered.length ? String(start + size) : "",
+          };
+        }
+        if (path === "users/admin:activate" || path === "users/admin:deactivate") {
+          const { userId } = (args[0] ?? {}) as { userId: string };
+          const target = userRows.find((user) => user._id === userId);
+          if (!target) throw new Error("User not found.");
+          target.isActive = path === "users/admin:activate";
+          return target;
+        }
+        if (path === "users/admin:deleteUsers") {
+          const { userIds } = (args[0] ?? {}) as { userIds: string[] };
+          let deleted = 0;
+          for (const userId of userIds) {
+            const index = userRows.findIndex((user) => user._id === userId);
+            if (index === -1) throw new Error("One or more selected users no longer exist.");
+            userRows.splice(index, 1);
+            deleted += 1;
+          }
+          return { deleted };
+        }
+        if (path === "users/admin:assignRoles") {
+          const { userId, roles } = (args[0] ?? {}) as { userId: string; roles: string[] };
+          const target = userRows.find((user) => user._id === userId);
+          if (!target) throw new Error("User not found.");
+          target.roles = roles;
+          return target;
+        }
+        if (path === "users/admin:resetPassword") {
+          const { userId } = (args[0] ?? {}) as { userId: string };
+          if (!userRows.some((user) => user._id === userId)) throw new Error("User not found.");
+          return { temporaryPassword: "Temp-pass-4821" };
+        }
+        if (path === "users/admin:exportStudents") {
+          return userRows
+            .filter((user) => user.roles.some((role) => role.startsWith("STUDENT")))
+            .map((user) => ({
+              firstName: user.firstName,
+              lastName: user.lastName,
+              uniqueId: user.uniqueId,
+              email: user.email,
+              gradeLevel: user.gradeLevel,
+              major: user.major,
+              minor: user.minor,
+            }));
+        }
+        if (path === "users/admin:importStudents") {
+          const { rows } = (args[0] ?? {}) as {
+            rows: Array<{ uniqueId: string; firstName: string; lastName: string; email?: string }>;
+          };
+          const errors: string[] = [];
+          const generatedCredentials: Array<Record<string, string>> = [];
+          let created = 0;
+          let skipped = 0;
+          for (const row of rows) {
+            if (userRows.some((user) => user.uniqueId.toLowerCase() === row.uniqueId.toLowerCase())) {
+              skipped += 1;
+              errors.push(`${row.uniqueId}: already exists.`);
+              continue;
+            }
+            const email = row.email ?? `${row.uniqueId.toLowerCase()}@example.com`;
+            userRows.push({
+              _id: `user${userRows.length + 1}`,
+              uniqueId: row.uniqueId,
+              firstName: row.firstName,
+              lastName: row.lastName,
+              preferredName: null,
+              roles: ["STUDENT"],
+              gradeLevel: 9,
+              major: null,
+              minor: null,
+              email,
+              isActive: true,
+              avatarUrl: null,
+              isDeveloper: false,
+            });
+            generatedCredentials.push({
+              firstName: row.firstName,
+              lastName: row.lastName,
+              uniqueId: row.uniqueId,
+              email,
+              temporaryPassword: `Temp-${row.uniqueId}`,
+            });
+            created += 1;
+          }
+          return { created, skipped, errors, generatedCredentials };
+        }
+        if (path === "audit/events:list") {
+          const filters = (args[0] ?? {}) as {
+            limit?: number;
+            query?: string;
+            action?: string;
+            entityType?: string;
+            startDate?: string;
+            endDate?: string;
+          };
+          const text = filters.query?.trim().toLowerCase();
+          return auditEvents
+            .filter((event) => !filters.action || event.action === filters.action)
+            .filter((event) => !filters.entityType || event.entityType === filters.entityType)
+            .filter((event) => !filters.startDate || event.createdAt.slice(0, 10) >= filters.startDate)
+            .filter((event) => !filters.endDate || event.createdAt.slice(0, 10) <= filters.endDate)
+            .filter(
+              (event) =>
+                !text ||
+                `${event.action} ${event.context.title} ${event.context.subtitle}`.toLowerCase().includes(text),
+            )
+            .slice(0, Math.min(Math.max(filters.limit ?? 100, 1), 500));
+        }
+        if (path === "audit/events:get") {
+          const { auditEventId } = (args[0] ?? {}) as { auditEventId: string };
+          return auditEvents.find((event) => event.id === auditEventId) ?? null;
+        }
+        if (path === "moderation/reports:list") {
+          const { status, clubId, isEscalated } = (args[0] ?? {}) as {
+            status?: string;
+            clubId?: string;
+            isEscalated?: boolean;
+          };
+          return reportRows
+            .filter((report) => report.contentType !== "GENERAL")
+            .filter((report) => !status || report.status === status)
+            .filter((report) => !clubId || report.clubId === clubId)
+            .filter((report) => isEscalated === undefined || report.isEscalated === isEscalated);
+        }
+        if (path === "moderation/reports:listFeedback") {
+          return reportRows.filter((report) => report.contentType === "GENERAL");
+        }
+        if (path === "moderation/reports:getFeedback") {
+          const { reportId } = (args[0] ?? {}) as { reportId: string };
+          return (
+            reportRows.find((report) => report._id === reportId && report.contentType === "GENERAL") ?? null
+          );
+        }
+        if (path === "moderation/reports:addFeedbackResponse") {
+          const { reportId, body } = (args[0] ?? {}) as { reportId: string; body: string };
+          const report = reportRows.find((candidate) => candidate._id === reportId);
+          if (!report) throw new Error("Report not found");
+          const id = `response${report.responses.length + 2}`;
+          report.responses.push({
+            _id: id,
+            body,
+            createdAt: Date.now(),
+            author: { firstName: "Grace", lastName: "Hopper", preferredName: null },
+          });
+          return id;
+        }
+        if (path === "moderation/reports:update") {
+          const { reportId, status, reviewNote, expectedStatus } = (args[0] ?? {}) as {
+            reportId: string;
+            status: string;
+            reviewNote: string;
+            expectedStatus?: string;
+          };
+          const report = reportRows.find((candidate) => candidate._id === reportId);
+          if (!report) throw new Error("Report not found");
+          if (report.contentType !== "GENERAL" && status === "IN_REVIEW") {
+            throw new Error("Only feedback can be marked in review");
+          }
+          if (expectedStatus !== undefined && expectedStatus !== report.status) {
+            throw new Error("This item was updated by someone else. Check its latest status and try again.");
+          }
+          report.status = status;
+          report.reviewNote = reviewNote;
+          return { success: true };
+        }
+        if (path === "announcements/feed:create") {
+          const created = args[0] as { title: string };
+          createdCount += 1;
+          const id = `ann-created-${createdCount}`;
+          pendingApprovals.set(id, created.title);
+          return id;
+        }
+        if (path === "announcements/feed:approve" || path === "announcements/feed:reject") {
+          const { announcementId } = (args[0] ?? {}) as { announcementId: string };
+          if (!pendingApprovals.has(announcementId) && !announcements.some((item) => item._id === announcementId)) {
+            throw new Error("Announcement not found");
+          }
+          if (!pendingApprovals.delete(announcementId)) {
+            throw new Error("This announcement is no longer waiting for approval");
+          }
+          return null;
+        }
+        if (path === "events/events:cancel") {
+          const { eventId } = (args[0] ?? {}) as { eventId: string };
+          const event = events.find((candidate) => candidate._id === eventId);
+          if (!event) throw new Error("Event not found");
+          event.status = "CANCELLED";
+          return null;
+        }
         if (path === "search/global:palette") {
           const { search } = (args[0] ?? {}) as { search: string };
           const text = search.trim().toLocaleLowerCase();
@@ -641,8 +1097,9 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     }
     if (where === `${CONVEX_URL}/api/query`) return convex(request, "query");
     if (where === `${CONVEX_URL}/api/mutation`) return convex(request, "mutation");
+    if (where === `${CONVEX_URL}/api/action`) return convex(request, "action");
     throw new TypeError(`fetch failed: ${where}`);
   }
 
-  return { handle, calls, validTokens, sessions, announcements, comments, events, fridays, notifications, clubs, channels, messages, profile, flexSessions, workshopRows, flexRegistrations };
+  return { handle, calls, invocations, validTokens, sessions, announcements, comments, events, fridays, notifications, clubs, channels, messages, profile, flexSessions, workshopRows, flexRegistrations, userRows, auditEvents, reportRows };
 }

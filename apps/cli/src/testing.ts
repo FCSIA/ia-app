@@ -18,6 +18,10 @@ export interface FakeRuntimeOptions {
   // null simulates a system without a credential store.
   secrets?: Map<string, string> | null;
   openUrl?: (url: string) => boolean;
+  // Answers terminal prompts; default is to decline.
+  confirm?: (question: string) => boolean | Promise<boolean>;
+  // What standard input holds, for `-` file arguments.
+  stdin?: string;
 }
 
 export function memorySecrets(store: Map<string, string>): SecretStore {
@@ -34,6 +38,7 @@ export function fakeRuntime(options: FakeRuntimeOptions = {}) {
   let stderr = "";
   const requests: Request[] = [];
   const opened: string[] = [];
+  const asked: string[] = [];
   const secrets = options.secrets === undefined ? new Map<string, string>() : options.secrets;
   const runtime: Runtime = {
     argv: options.argv ?? [],
@@ -62,6 +67,11 @@ export function fakeRuntime(options: FakeRuntimeOptions = {}) {
       return options.fetch(request);
     }) as typeof fetch,
     sleep: async () => {},
+    confirm: async (question) => {
+      asked.push(question);
+      return options.confirm?.(question) ?? false;
+    },
+    readStdin: async () => options.stdin ?? "",
     signal: new AbortController().signal,
     secrets: secrets ? memorySecrets(secrets) : null,
     openUrl: async (url) => {
@@ -76,6 +86,7 @@ export function fakeRuntime(options: FakeRuntimeOptions = {}) {
     stderr: () => stderr,
     requests,
     opened,
+    asked,
     secrets,
   };
 }
@@ -90,6 +101,7 @@ export async function run(argv: string[], options: FakeRuntimeOptions = {}, root
     runtime: fake.runtime,
     requests: fake.requests,
     opened: fake.opened,
+    asked: fake.asked,
     secrets: fake.secrets,
   };
 }

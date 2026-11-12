@@ -30,6 +30,12 @@ export const GLOBAL_OPTIONS: OptionSpec[] = [
     valueHint: "TOKEN",
     description: "Session token to use; prefer the FCSIA_TOKEN variable",
   },
+  {
+    name: "yes",
+    short: "y",
+    type: "boolean",
+    description: "Approve a destructive action without asking",
+  },
 ];
 
 // Commands that support --json declare it with this shared option.

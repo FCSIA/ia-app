@@ -2,7 +2,8 @@ import { api } from "../../../convex/src/_generated/api";
 import type { FunctionReturnType } from "convex/server";
 import { asId } from "../client/ids";
 import { hostArgv } from "../client/host";
-import { connect, query, type Connection } from "../client/session";
+import { connect, mutation, query, refine, type Connection } from "../client/session";
+import { confirmDestructive } from "../core/consent";
 import { CliError } from "../core/errors";
 import { sanitizeRemoteText } from "../core/theme";
 import type { CommandContext, CommandSpec, GroupSpec } from "../registry/types";
@@ -131,10 +132,56 @@ const inspect: CommandSpec = {
   },
 };
 
+const cancel: CommandSpec = {
+  kind: "command",
+  name: "cancel",
+  summary: "Cancel an event",
+  json: true,
+  arguments: [{ name: "event", required: true, description: "Event ID from events list" }],
+  examples: [{ description: "Cancel one", argv: ["events", "cancel", "<EVENT>"] }],
+  notes: ["Removes it from everyone's calendar and marks it cancelled."],
+  async run(context) {
+    const { out } = context;
+    const id = context.args[0]!;
+    const connection = await connect(context);
+    const event = await query(connection, api.events.events.get, { eventId: asId<"events">(id) });
+    if (!event) throw missing(id, connection);
+    await confirmDestructive(context, {
+      summary: `Cancel ${sanitizeRemoteText(event.title)}`,
+      consequence: "This removes it from everyone's calendar and can't be undone.",
+    });
+    try {
+      await mutation(connection, api.events.events.cancel, { eventId: event._id });
+    } catch (error) {
+      refine(error, [
+        {
+          match: /Event not found/,
+          kind: "not_found",
+          reason: "event_not_found",
+          message: "That event no longer exists.",
+          next: [{ benefit: "See events", argv: ["events", "list", ...hostArgv(connection.host, connection.hostSource)] }],
+        },
+        {
+          match: /Cannot cancel this event/,
+          kind: "permission",
+          reason: "event_not_yours",
+          message: "Only the author or an admin can cancel that event.",
+        },
+      ]);
+    }
+
+    if (out.json) {
+      out.document({ outcome: "cancelled", event: id });
+      return;
+    }
+    out.success("Cancelled", sanitizeRemoteText(event.title));
+  },
+};
+
 export const eventsGroup: GroupSpec = {
   kind: "group",
   name: "events",
   summary: "See school and club events",
   section: "Community",
-  children: [list, inspect],
+  children: [list, inspect, cancel],
 };
