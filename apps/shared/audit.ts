@@ -52,6 +52,9 @@ type AuditActionInfo = {
 };
 /** Every action the backend writes; `logAuditEvent` accepts only these keys. */
 export const AUDIT_ACTIONS = {
+  "BUG_REPORT_APPROVED": { label: "Approved bug report", category: "moderation" },
+  "BUG_REPORT_CLASSIFIED": { label: "Classified bug report", category: "moderation" },
+  "BUG_REPORT_APPROVAL_REVOKED": { label: "Revoked bug report credit", category: "moderation", destructive: true },
   "ADMINISTRATOR_CSV_IMPORT": { label: "Imported administrators from CSV", category: "people-access" },
   "ANNOUNCEMENT_APPROVED": { label: "Approved announcement", category: "announcements" },
   "ANNOUNCEMENT_ARCHIVED": { label: "Archived announcement", category: "announcements" },

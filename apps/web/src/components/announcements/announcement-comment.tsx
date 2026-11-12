@@ -6,6 +6,7 @@ import type { UserProfilePerson } from '@/components/users/user-profile-dialog';
 import { PersonTrigger } from '@/components/users/person-trigger';
 import { Button } from '@/components/ui/button';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import {
   DropdownContent,
   DropdownMenu,
@@ -88,6 +89,7 @@ export function AnnouncementComment({
             <span className="font-semibold text-foreground">{name}</span>
           )}
           <DeveloperBadge user={author} size={12} />
+          <BugHunterTag user={author} />
           <Tooltip content={formatMessageTime(createdAt, 'full')}>
             <time dateTime={new Date(createdAt).toISOString()}>
               {formatMessageTime(createdAt)}

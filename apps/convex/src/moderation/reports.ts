@@ -87,6 +87,8 @@ const reportValidator = schema.doc("moderationReports").extend({
 const myFeedbackValidator = v.object({
   _id: v.id("moderationReports"),
   reason: v.string(),
+  feedbackKind: v.optional(v.union(v.literal("BUG"), v.literal("OTHER"))),
+  bugApprovedAt: v.optional(v.number()),
   status: moderationReportStatusValidator,
   reviewNote: v.optional(v.string()),
   reviewedAt: v.optional(v.number()),
@@ -169,6 +171,7 @@ async function createReport(
     contentType: "GENERAL" | "ANNOUNCEMENT" | "EVENT" | "CLUB_CHANNEL_MESSAGE";
     contentId: string;
     reason: string;
+    feedbackKind?: "BUG" | "OTHER";
     appVersion?: string;
     clientMetadata?: FeedbackMetadata;
     reportedUserId?: Id<"users">;
@@ -185,6 +188,7 @@ async function createReport(
     contentType: input.contentType,
     contentId: input.contentId,
     reason: input.reason,
+    ...(input.feedbackKind ? { feedbackKind: input.feedbackKind } : {}),
     ...(input.appVersion ? { appVersion: input.appVersion } : {}),
     ...(input.clientMetadata ? { clientMetadata: input.clientMetadata } : {}),
     reportedUserId: input.reportedUserId,
@@ -349,6 +353,8 @@ export const listMyFeedback = query({
       reports.map(async (report) => ({
         _id: report._id,
         reason: report.reason,
+        feedbackKind: report.feedbackKind,
+        bugApprovedAt: report.bugApprovedAt,
         status: report.status,
         reviewNote: report.reviewNote,
         reviewedAt: report.reviewedAt,
@@ -370,6 +376,7 @@ export const submit = mutation({
     contentType: genericReportContentTypeValidator,
     contentId: v.string(),
     reason: v.string(),
+    feedbackKind: v.optional(v.union(v.literal("BUG"), v.literal("OTHER"))),
     reportedUserId: v.optional(v.id("users")),
     clubId: v.optional(v.id("clubs")),
     imageUploadIds: v.optional(v.array(v.id("feedbackImageUploads"))),

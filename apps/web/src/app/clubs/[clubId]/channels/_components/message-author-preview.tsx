@@ -10,6 +10,7 @@ import {
   useMemberPresence,
 } from '@/components/presence/club-presence';
 import { PersonTrigger } from '@/components/users/person-trigger';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ export function MessageAuthorPreview({
       >
         <span className="truncate">{name}</span>
         <DeveloperBadge user={author} size={13} />
+        <BugHunterTag user={author} />
       </button>
     ) : (
       <button

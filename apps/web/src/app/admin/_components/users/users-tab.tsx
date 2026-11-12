@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { BugHunterTag } from '@/components/recognition/bug-hunter-tag';
 import { DataTableCount, DataTableSection, PINNED_TABLE_HEADER } from '@/components/data/data-table-section';
 import { Card, CardDescription, CardFooter, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
 import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
@@ -479,6 +480,7 @@ function UserTableSection({
                   <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
                     <span className="min-w-0 truncate" title={displayName(user)}>{displayName(user)}</span>
                     <DeveloperBadge user={user} size={13} />
+                    <BugHunterTag user={user} />
                   </span>
                 </TableCell>
                 <TableCell>
@@ -525,6 +527,7 @@ function UserTableSection({
                       <span className="flex min-w-0 items-center gap-1">
                         <span className="truncate">{displayName(user)}</span>
                         <DeveloperBadge user={user} size={13} />
+                        <BugHunterTag user={user} />
                       </span>
                       <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
                         {user.isActive ? 'Active' : 'Inactive'}

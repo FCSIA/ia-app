@@ -1,0 +1,8 @@
+.tag { position: relative; overflow: hidden; isolation: isolate; }
+.paint { position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, var(--tag-first), var(--tag-second) 50%, var(--tag-third)); background-size: 220% 100%; }
+.drift { animation: drift 6s ease-in-out infinite alternate; }
+.shimmer { background-image: linear-gradient(110deg, var(--tag-first), var(--tag-second) 35%, hsl(var(--foreground) / .12) 50%, var(--tag-third) 65%); animation: drift 3s linear infinite alternate; }
+.breathe { animation: breathe 4s ease-in-out infinite; }
+@keyframes drift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@keyframes breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .paint { animation: none; } }

@@ -29,6 +29,8 @@ export const APP_ROUTES = [
   { id: 'profile', path: '/profile', label: 'Profile & Settings', nav: 'account' },
   { id: 'admin', path: '/admin', label: 'Admin Panel', nav: 'admin' },
   { id: 'courses', path: '/courses' },
+  { id: 'hall-of-finders', path: '/hall-of-finders' },
+  { id: 'hall-of-founders', path: '/hall-of-founders' },
   { id: 'change-password', path: '/change-password' },
   { id: 'device', path: '/device' },
 ] as const satisfies ReadonlyArray<{
@@ -45,7 +47,7 @@ export type AppRouteId = AppRoute['id'];
 export type NavRouteId = Extract<AppRoute, { nav: NavSection }>['id'];
 
 /** Pages under `app/` that are reachable without signing in. */
-export const PUBLIC_ROUTE_PATHS = ['/login', '/logout'] as const;
+export const PUBLIC_ROUTE_PATHS = ['/login', '/logout', '/local-bug-tags'] as const;
 
 type MobileTabRoute = Extract<AppRoute, { mobileTab: true }>;
 export type MobileTabId = MobileTabRoute['id'];

@@ -17,6 +17,7 @@ import type { FunctionReturnType } from 'convex/server';
 import { addDays, differenceInCalendarDays, format, isValid } from 'date-fns';
 import {
   Mail,
+  Egg,
   MoreHorizontal,
   Plus,
   SlidersHorizontal,
@@ -96,6 +97,12 @@ import { useMounted } from '@/hooks/use-mounted';
 import { useToast } from '@/hooks/use-toast';
 import { ALL_CALENDAR_SOURCES, calendarListArgs, defaultCalendarRange } from '@/lib/calendar-range';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { createEasterEggTapMatcher } from '@/lib/phoenix-easter-egg';
+import { useFoundersQuest, useRecordQuestKey, useRecordBonusEgg } from '@/hooks/use-founders-quest';
+
+function isMarchSecond(day: Date) {
+  return day.getMonth() === 2 && day.getDate() === 2 && day.getFullYear() === new Date().getFullYear();
+}
 
 type CalendarEntry = FunctionReturnType<
   typeof api.events.calendar.list
@@ -213,9 +220,11 @@ function CalendarInvites() {
 function PeriodHeader({
   isMobile,
   view,
+  onTodayTap,
 }: {
   isMobile: boolean;
   view: CalendarView;
+  onTodayTap: () => void;
 }) {
   const { title, date, activeRange } = useEventCalendarNavigation();
   const lastDay = calendarDate(activeRange.end.getTime() - 1);
@@ -240,7 +249,7 @@ function PeriodHeader({
         </EventCalendarDatePicker>
       </h1>
       <span className="hidden sm:contents">
-        <EventCalendarNavToday />
+        <EventCalendarNavToday onClickCapture={onTodayTap} />
       </span>
     </div>
   );
@@ -281,6 +290,43 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
   const router = useRouter();
   const user = useCurrentUser();
   const { toast } = useToast();
+  const { progress: questProgress } = useFoundersQuest();
+  const recordQuestKey = useRecordQuestKey();
+  const recordBonusEgg = useRecordBonusEgg();
+  const todayTapMatcher = useRef<ReturnType<typeof createEasterEggTapMatcher> | null>(null);
+  const jadeTaps = useRef(0);
+  const lastJadeTapAt = useRef(0);
+  const jadeSaving = useRef(false);
+  const [jadeReveal, setJadeReveal] = useState(false);
+  const jadeAvailable = Boolean(user?.roles.some((role) => role === 'STUDENT' || role === 'STUDENT_LEADER') && questProgress?.keys.includes('copper') && !questProgress.keys.includes('jade'));
+  useEffect(() => {
+    if (!jadeReveal) return;
+    const timer = window.setTimeout(() => setJadeReveal(false), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [jadeReveal]);
+  async function claimJade() {
+    if (jadeSaving.current || !jadeAvailable) return;
+    const now = Date.now();
+    jadeTaps.current = now - lastJadeTapAt.current > 1500 ? 1 : jadeTaps.current + 1;
+    lastJadeTapAt.current = now;
+    if (jadeTaps.current < 5) {
+      toast({ title: jadeTaps.current === 1 ? 'Something moved inside the egg…' : 'The shell is almost open…', duration: 1_500 });
+      return;
+    }
+    jadeTaps.current = 0;
+    jadeSaving.current = true;
+    try {
+      if (await recordQuestKey('jade')) {
+        setJadeReveal(true);
+        toast({ title: 'Jade Key found: 2 of 3', description: 'Your next clue is on your profile.' });
+      }
+    } finally { jadeSaving.current = false; }
+  }
+  function recordTodayTap() {
+    if (!user?.roles.some((role) => role === 'STUDENT' || role === 'STUDENT_LEADER')) return;
+    todayTapMatcher.current ??= createEasterEggTapMatcher();
+    if (todayTapMatcher.current(Date.now())) void recordBonusEgg('today');
+  }
   const reschedule = useMutation(api.events.calendar.reschedule).withOptimisticUpdate(
     (store, args) => {
       for (const query of store.getAllQueries(api.events.calendar.list)) {
@@ -518,6 +564,9 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
       renderDayColumnBackground={(props) => (
         <CalendarSchoolDayBands {...props} />
       )}
+      renderMonthCell={({ day, defaultContent }) => jadeAvailable && isMarchSecond(day) ? (
+        <>{defaultContent}<Button type="button" size="icon-sm" variant="ghost" className="absolute left-1 top-1 z-10" aria-label="Tap the Phoenix egg on March 2" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); void claimJade(); }}><Egg aria-hidden /></Button></>
+      ) : defaultContent}
       renderNoEvents={() => empty}
       // On wide screens the Day rail lists all-day items, so the lane would
       // only repeat them.
@@ -529,7 +578,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
         className="flex min-h-0 flex-1 flex-col"
       >
       <AppShell
-        headerSlot={<PeriodHeader isMobile={isMobile} view={view} />}
+        headerSlot={<PeriodHeader isMobile={isMobile} view={view} onTodayTap={recordTodayTap} />}
         mainClassName={FILL_MAIN_CLASS}
         pageTransitionClassName="flex min-h-0 flex-1 flex-col"
         viewportMode="visual"
@@ -540,6 +589,8 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
           className={`flex min-h-0 flex-1 flex-col bg-card md:overflow-hidden md:rounded-xl md:border md:border-border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}
         >
             <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 px-2 py-2 sm:px-3">
+              {isMobile && jadeAvailable && isMarchSecond(date) ? <Button type="button" size="sm" variant="ghost" leadingIcon={Egg} onClick={() => void claimJade()}>A Phoenix egg</Button> : null}
+              {jadeReveal ? <p className="text-sm font-medium text-primary" role="status">Jade Key saved. The egg has faded from the calendar.</p> : null}
               <TabsList aria-label="Calendar view">
                 {availableViews.map((item) => (
                   <TabItem key={item} value={item} label={VIEW_LABELS[item] ?? item} />
@@ -610,7 +661,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                     <MenuItem
                       index={1}
                       label="Go to today"
-                      onSelect={() => navigate(view, new Date())}
+                      onSelect={() => { recordTodayTap(); navigate(view, new Date()); }}
                     />
                   </DropdownContent>
                 </DropdownMenu>

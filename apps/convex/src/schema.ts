@@ -98,6 +98,8 @@ export const schema = defineSchema({
     // Developer designation: shows a wrench badge beside the user's name.
     // Only editable via `users.admin.setDeveloper` (SUPER_ADMIN).
     isDeveloper: v.optional(v.boolean()),
+    approvedBugCount: v.optional(v.number()),
+    bugTagColor: v.optional(v.union(v.literal("amber"), v.literal("blue"), v.literal("emerald"), v.literal("pink"), v.literal("purple"), v.literal("red"))),
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
@@ -160,6 +162,17 @@ export const schema = defineSchema({
         "isOtherRole",
       ],
     }),
+
+  easterEggFinders: defineTable({
+    userId: v.id("users"),
+    eggIds: v.array(v.union(v.literal("copper"), v.literal("jade"), v.literal("crystal"))),
+    bonusEggIds: v.optional(v.array(v.union(v.literal("phoenix"), v.literal("today"), v.literal("funFact")))),
+    firstFoundAt: v.number(),
+    completedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_completedAt", ["completedAt"]),
 
   auditEvents: defineTable({
     actorId: v.optional(v.id("users")),
@@ -1462,6 +1475,9 @@ export const schema = defineSchema({
 
   moderationReports: defineTable({
     submitterId: v.id("users"),
+    feedbackKind: v.optional(v.union(v.literal("BUG"), v.literal("OTHER"))),
+    bugApprovedAt: v.optional(v.number()),
+    bugApprovedById: v.optional(v.id("users")),
     contentType: v.string(),
     contentId: v.string(),
     clubId: v.optional(v.id("clubs")),

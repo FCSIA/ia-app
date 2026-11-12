@@ -84,6 +84,8 @@ The backend must still reject unauthorized queries or mutations.
 | `/admin` | Admin panel |
 | `/schedule` | Student schedule and admin blocks |
 | `/wrapped` | Yearly student summary |
+| `/hall-of-finders` | Students who completed the Founders’ Quest |
+| `/hall-of-founders` | Founder plaques and first contributions |
 
 ## Related
 

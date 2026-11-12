@@ -32,7 +32,7 @@ function storageUrl(ctx: QueryCtx, scope: SerializeScope, storageId: Id<"_storag
 function serializeAuthor(author: Doc<"users"> | null) {
   return author
     ? {
-        ...userSummary(author, "roles", "isDeveloper"),
+        ...userSummary(author, "roles", "isDeveloper", "approvedBugCount", "bugTagColor"),
         avatarUrl: author.avatarUrl ?? null,
       }
     : null;

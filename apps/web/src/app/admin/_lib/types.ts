@@ -70,6 +70,8 @@ export type AdminUserRecord = {
   avatarUrl?: string;
   isActive?: boolean;
   isDeveloper?: boolean;
+  approvedBugCount?: number;
+  bugTagColor?: string;
 };
 
 export type AdminUserRoleGroup = 'students' | 'teachers' | 'other' | 'student-admin' | 'all';

@@ -36,6 +36,8 @@ export const adminUserProfileValidator = schema
     "isActive",
     "avatarUrl",
     "isDeveloper",
+    "approvedBugCount",
+    "bugTagColor",
   );
 
 export const userSelfProfileValidator = adminUserProfileValidator.extend(

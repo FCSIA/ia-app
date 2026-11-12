@@ -18,6 +18,8 @@ const authorValidator = v.union(
     avatarUrl: v.union(v.string(), v.null()),
     roles: v.array(v.string()),
     isDeveloper: v.optional(v.boolean()),
+    approvedBugCount: v.optional(v.number()),
+    bugTagColor: v.optional(v.string()),
   }),
   v.null(),
 );
