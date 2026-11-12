@@ -85,7 +85,11 @@ export const revoke = mutation({
     if (!report.bugApprovedAt) return submitter.approvedBugCount ?? 0;
     const approvedCount = Math.max(0, (submitter.approvedBugCount ?? 0) - 1);
     await ctx.db.patch(reportId, { bugApprovedAt: undefined, bugApprovedById: undefined });
-    await ctx.db.patch(submitter._id, { approvedBugCount: approvedCount, updatedAt: Date.now() });
+    await ctx.db.patch(submitter._id, {
+      approvedBugCount: approvedCount,
+      bugTagColor: approvedCount < 5 ? undefined : submitter.bugTagColor,
+      updatedAt: Date.now(),
+    });
     await logAuditEvent(ctx, { actorId: reviewer._id, action: "BUG_REPORT_APPROVAL_REVOKED", entityType: "Report", entityId: reportId, meta: { submitterId: submitter._id, approvedCount } });
     return approvedCount;
   },

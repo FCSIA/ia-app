@@ -117,4 +117,14 @@ describe("developer-approved bug rewards", () => {
     expect(await student.query(api.moderation.bugRewards.myReward, {})).toEqual({ approvedCount: 5, color: "purple" });
   });
 
+  it("clears a saved color when a revocation drops the student below five", async () => {
+    const { t, studentId, reviewerId, reportId } = await fixture();
+    const student = t.withIdentity({ subject: studentId });
+    const developer = t.withIdentity({ subject: reviewerId });
+    await developer.mutation(api.moderation.bugRewards.approve, { reportId });
+    await t.run((ctx) => ctx.db.patch(studentId, { approvedBugCount: 5, bugTagColor: "purple" }));
+    expect(await developer.mutation(api.moderation.bugRewards.revoke, { reportId })).toBe(4);
+    expect(await student.query(api.moderation.bugRewards.myReward, {})).toEqual({ approvedCount: 4, color: null });
+  });
+
 });
