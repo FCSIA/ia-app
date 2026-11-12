@@ -11,7 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { getClubContext, getChannelViewerContext } from "./access";
+import { getChannelViewerContext, getClubContext, getViewerContext } from "./access";
 import { getChannelAccessForChannels } from "./channelAccess";
 import { clubSummaryValidator, clubSummaryWithCounts } from "./serialize";
 import { createDocLoader } from "../../lib/docLoader";
@@ -391,7 +391,9 @@ export const listRoles = query({
   returns: v.array(clubRoleSummaryValidator),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    await getClubContext(ctx, args.clubId, user);
+    const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return [];
+
     const roles = await listClubRoles(ctx, args.clubId);
     return roles
       .filter((role) => role.position !== undefined)
