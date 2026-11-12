@@ -139,6 +139,8 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
     { _id: "comment1", announcementId: "ann1", authorId: "user2", body: "See you there.", createdAt: Date.UTC(2026, 10, 9, 14), author: { ...leader, preferredName: null, avatarUrl: null, isDeveloper: false } },
     { _id: "comment2", announcementId: "ann1", authorId: "user1", body: "What time?", createdAt: Date.UTC(2026, 10, 9, 15), author: { ...profile, preferredName: null, avatarUrl: null, isDeveloper: false } },
   ];
+  // Relative to now so "upcoming" stays upcoming however long this fixture lives.
+  const upcomingStart = Date.now() + 24 * 60 * 60 * 1000;
   const events = [
     {
       _id: "event1",
@@ -152,8 +154,8 @@ export function fakeBackend(options: FakeBackendOptions = {}) {
       description: "Meet in the media center.",
       location: "Media center",
       flyerUrl: null,
-      startAt: Date.UTC(2026, 10, 12, 15),
-      endAt: Date.UTC(2026, 10, 12, 16),
+      startAt: upcomingStart,
+      endAt: upcomingStart + 60 * 60 * 1000,
       registrationOpensAt: null,
       registrationClosesAt: null,
       author: { _id: "user3", firstName: "Grace", lastName: "Hopper", preferredName: null },
