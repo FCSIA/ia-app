@@ -334,7 +334,13 @@ test("Better Auth audit exceptions remain limited to the pinned unused feature c
   assert.ok(ts.isArrayLiteralExpression(plugins));
   assert.ok(plugins.elements.every(ts.isCallExpression));
   assert.deepEqual(plugins.elements.map((plugin) => plugin.expression.getText(ast)), [
-    "createLoginRateLimitPlugin", "username", "admin", "expo", "convex",
+    "createLoginRateLimitPlugin",
+    "username",
+    "admin",
+    "createCliSignInPlugin",
+    "createCliDeviceAuthorization",
+    "expo",
+    "convex",
   ]);
   assert.doesNotMatch(source, /(?:magicLink|genericOAuth|oauthProxy|deviceAuthorization|drizzleAdapter|kyselyAdapter)\s*\(/);
 });
