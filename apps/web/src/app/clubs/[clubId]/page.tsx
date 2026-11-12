@@ -410,7 +410,9 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 </div>
                 <MemberLimitMeter club={club} />
                 <div className="flex flex-wrap items-center gap-2">
-                  {club.joinPolicy === "OPEN" ? (
+                  {club.joinBlockedReason ? (
+                    <p className="text-sm text-muted-foreground">{club.joinBlockedReason}</p>
+                  ) : club.joinPolicy === "OPEN" ? (
                     <Button
                       leadingIcon={UserPlus}
                       onClick={() => {
@@ -430,7 +432,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                                       : "Joined club",
                                 },
                           ),
-                        );
+                        ).catch((error: unknown) => toast({
+                          title: error instanceof Error ? error.message : "Could not join club",
+                          variant: "destructive",
+                        }));
                       }}
                       disabled={isFull}
                     >
@@ -442,7 +447,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                       onClick={() =>
                         void requestToJoin({ clubId }).then(() =>
                           toast({ title: "Join request sent" }),
-                        )
+                        ).catch((error: unknown) => toast({
+                          title: error instanceof Error ? error.message : "Could not request to join",
+                          variant: "destructive",
+                        }))
                       }
                       disabled={isFull || club.viewer.hasPendingJoinRequest}
                     >
@@ -453,7 +461,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                           : "Request to join"}
                     </Button>
                   ) : null}
-                  <RedeemJoinCodePanel club={club} />
+                  {!club.joinBlockedReason ? <RedeemJoinCodePanel club={club} /> : null}
                 </div>
               </div>
             </section>
@@ -576,6 +584,7 @@ export default function ClubOverviewPage() {
       normalizedCode &&
       club &&
       !club.viewer.canAccessWorkspace &&
+      !club.joinBlockedReason &&
       !getMemberLimitState(club).isFull &&
       redeemedClubJoinRef.current !== normalizedCode
     ) {
@@ -619,6 +628,10 @@ export default function ClubOverviewPage() {
     }
 
     redeemedUnitJoinRef.current = redemptionKey;
+    if (club.joinBlockedReason) {
+      toast({ title: club.joinBlockedReason, variant: "destructive" });
+      return;
+    }
     void joinUnit({ clubId, unitId, code: unitCode.trim().toUpperCase() })
       .then(() => toast({ title: "Joined club group" }))
       .catch((error: unknown) => {
@@ -631,7 +644,7 @@ export default function ClubOverviewPage() {
           variant: "destructive",
         });
       });
-  }, [club?.viewer.canAccessWorkspace, clubId, joinUnit, searchParams, toast]);
+  }, [club, clubId, joinUnit, searchParams, toast]);
 
   const announcements =
     useQuery(
