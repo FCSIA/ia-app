@@ -9,7 +9,7 @@ import {
   Pin,
   Play,
 } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { Component, useId, useState, type ReactNode } from 'react';
 import type { ChannelVisibility } from '~/apps/shared/chat/protocol';
 import { formatWebAttachmentListSize } from '~/apps/shared/chat/attachments';
 
@@ -41,7 +41,7 @@ import {
   TabsSubtleItem,
   TabsSubtlePanel,
 } from '@/components/ui/tabs-subtle';
-import { useQuery } from '@/lib/convex-react';
+import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import { formatMessageTime } from '@/lib/message-time';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 import { pinnedMessagePreview } from './pinned-messages';
@@ -89,12 +89,12 @@ export function ChannelDetailsSheet({
     api.clubs.channels.getMentionContext,
     open ? { clubId, channelId } : 'skip',
   )?.members;
-  const library = useQuery(
-    api.clubs.channels.getChannelLibrary,
-    open ? { clubId, channelId } : 'skip',
-  );
   const tabsId = useId();
   const [tab, setTab] = useState(0);
+  const library = useQuery(
+    api.clubs.channels.getChannelLibrary,
+    open && tab === 4 ? { clubId, channelId } : 'skip',
+  );
   const jump = (
     messageId: Id<'clubChannelMessages'>,
     threadId?: Id<'clubChannelMessages'>,
@@ -235,74 +235,27 @@ export function ChannelDetailsSheet({
             </TabsSubtlePanel>
 
             <TabsSubtlePanel index={2} selectedIndex={tab} idPrefix={tabsId}>
-              {library === undefined ? (
-                <div className="grid grid-cols-3 gap-1">
-                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                    <Skeleton key={index} className="aspect-square" />
-                  ))}
-                </div>
-              ) : library.media.length === 0 ? (
-                <Empty icon={<Play />}>
-                  No photos or videos shared recently.
-                </Empty>
-              ) : (
-                <div className="grid grid-cols-3 gap-1">
-                  {library.media.map((item) => (
-                    <button
-                      key={item._id}
-                      type="button"
-                      aria-label={`Jump to ${item.fileName}`}
-                      className="relative aspect-square overflow-hidden rounded-md bg-muted transition-opacity duration-150 active:opacity-60 active:duration-0"
-                      onClick={() => jump(item.messageId, item.threadRootId)}
-                    >
-                      {item.mimeType?.startsWith('video/') ? (
-                        <span className="flex size-full items-center justify-center text-muted-foreground">
-                          <Play className="size-6" />
-                        </span>
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.fileUrl}
-                          alt=""
-                          loading="lazy"
-                          className="size-full object-cover"
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <AttachmentBoundary key={`${channelId}:media`}>
+                <ChannelAttachments
+                  clubId={clubId}
+                  channelId={channelId}
+                  enabled={open}
+                  kind="media"
+                  onJump={jump}
+                />
+              </AttachmentBoundary>
             </TabsSubtlePanel>
 
             <TabsSubtlePanel index={3} selectedIndex={tab} idPrefix={tabsId}>
-              {library === undefined ? (
-                <ListSkeleton />
-              ) : library.files.length === 0 ? (
-                <Empty icon={<FileText />}>No files shared recently.</Empty>
-              ) : (
-                <List>
-                  {library.files.map((item, index) => (
-                    <Card
-                      key={item._id}
-                      index={index}
-                      label={`Jump to ${item.fileName}`}
-                      onClick={() => jump(item.messageId, item.threadRootId)}
-                    >
-                      <FileText className="size-4 shrink-0 text-muted-foreground" />
-                      <CardHeader>
-                        <CardTitle className="min-w-0 truncate">
-                          {item.fileName}
-                        </CardTitle>
-                        <CardDescription>
-                          {[formatWebAttachmentListSize(item.size), formatMessageTime(item.createdAt)]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  ))}
-                </List>
-              )}
+              <AttachmentBoundary key={`${channelId}:files`}>
+                <ChannelAttachments
+                  clubId={clubId}
+                  channelId={channelId}
+                  enabled={open}
+                  kind="files"
+                  onJump={jump}
+                />
+              </AttachmentBoundary>
             </TabsSubtlePanel>
 
             <TabsSubtlePanel index={4} selectedIndex={tab} idPrefix={tabsId}>
@@ -335,7 +288,7 @@ export function ChannelDetailsSheet({
               )}
             </TabsSubtlePanel>
 
-            {library && !library.scannedAll ? (
+            {tab === 4 && library && !library.scannedAll ? (
               <p className="pt-3 text-center text-xs text-muted-foreground">
                 Showing what was shared in the latest messages.
               </p>
@@ -345,6 +298,142 @@ export function ChannelDetailsSheet({
       </DrawerContent>
     </Drawer>
   );
+}
+
+/** Pages channel messages, including replies, rather than stopping at the
+ * recent-library cap. A page may contain no attachments of the selected kind;
+ * keep the continuation reachable until the message scan is exhausted. */
+function ChannelAttachments({
+  clubId,
+  channelId,
+  enabled,
+  kind,
+  onJump,
+}: {
+  clubId: Id<'clubs'>;
+  channelId: Id<'clubChannels'>;
+  enabled: boolean;
+  kind: 'media' | 'files';
+  onJump: (
+    messageId: Id<'clubChannelMessages'>,
+    threadId?: Id<'clubChannelMessages'>,
+  ) => void;
+}) {
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.clubs.shared.listChannelAttachments,
+    enabled ? { clubId, channelId } : 'skip',
+    { initialNumItems: 30 },
+  );
+  const items = results.filter((item) =>
+    /^(image|video)\//.test(item.mimeType ?? '') === (kind === 'media'),
+  );
+  if (status === 'LoadingFirstPage') return <ListSkeleton />;
+  const done = status === 'Exhausted';
+  return (
+    <div className="flex flex-col gap-3">
+      {items.length === 0 ? (
+        <Empty icon={kind === 'media' ? <Play /> : <FileText />}>
+          {done
+            ? kind === 'media'
+              ? 'No photos or videos shared yet.'
+              : 'No files shared yet.'
+            : kind === 'media'
+              ? 'No photos or videos in these messages.'
+              : 'No files in these messages.'}
+        </Empty>
+      ) : kind === 'media' ? (
+        <div className="grid grid-cols-3 gap-1">
+          {items.map((item) => (
+            <button
+              key={item._id}
+              type="button"
+              aria-label={`Jump to ${item.fileName}`}
+              className="relative aspect-square overflow-hidden rounded-md bg-muted transition-opacity duration-150 active:opacity-60 active:duration-0"
+              onClick={() => onJump(item.messageId, item.threadRootId)}
+            >
+              {item.mimeType?.startsWith('video/') ? (
+                <span className="flex size-full items-center justify-center text-muted-foreground">
+                  <Play className="size-6" />
+                </span>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.fileUrl}
+                  alt=""
+                  loading="lazy"
+                  className="size-full object-cover"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <List>
+          {items.map((item, index) => (
+            <Card
+              key={item._id}
+              index={index}
+              label={`Jump to ${item.fileName}`}
+              onClick={() => onJump(item.messageId, item.threadRootId)}
+            >
+              <FileText className="size-4 shrink-0 text-muted-foreground" />
+              <CardHeader>
+                <CardTitle className="min-w-0 truncate">{item.fileName}</CardTitle>
+                <CardDescription>
+                  {[formatWebAttachmentListSize(item.size), formatMessageTime(item.createdAt)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </List>
+      )}
+      {!done ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="tertiary"
+          loading={status === 'LoadingMore'}
+          disabled={status !== 'CanLoadMore'}
+          onClick={() => loadMore(30)}
+        >
+          Load older messages
+        </Button>
+      ) : items.length > 0 ? (
+        <p role="status" className="text-center text-xs text-muted-foreground">
+          All {kind === 'media' ? 'photos and videos' : 'files'} loaded.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+class AttachmentBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="flex flex-col items-center gap-3 py-6">
+        <p role="alert" className="text-sm text-muted-foreground">
+          Could not load shared files.
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          variant="tertiary"
+          onClick={() => this.setState({ failed: false })}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 }
 
 /** One record list: the shared inline CardGroup owns rows, dividers, and

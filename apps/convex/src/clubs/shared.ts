@@ -20,6 +20,7 @@ const channelAttachmentValidator = v.object({
   size: v.optional(v.number()),
   createdAt: v.string(),
   messageId: v.id("clubChannelMessages"),
+  threadRootId: v.optional(v.id("clubChannelMessages")),
   messagePreview: v.string(),
   // Reuse the serializer's own validator so new user fields can't drift.
   author: v.union(clubUserRefValidator, v.null()),
@@ -72,6 +73,7 @@ export const listChannelAttachments = query({
           _id: attachment._id,
           ...attachmentFileFields(attachment),
           messageId: message._id,
+          threadRootId: message.parentMessageId,
           messagePreview: message.body.slice(0, REPLY_PREVIEW_CHARACTERS),
           author: author ? toClubUserRef(author) : null,
         }));

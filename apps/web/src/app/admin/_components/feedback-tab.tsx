@@ -25,7 +25,6 @@ import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   DataTableCount,
   DataTableSection,
-  PINNED_TABLE_HEADER,
 } from '@/components/data/data-table-section';
 import {
   Accordion,
@@ -42,7 +41,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
+import { SearchToolbarRow } from '@/components/ui/search';
 import {
   Sheet,
   SheetContent,
@@ -52,13 +51,14 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  useDataTable,
+  DataTable,
+  DataTableColumnHeader,
+  DataTableSearch,
+  DataTableViewOptions,
+  DataTablePagination,
+  type ColumnDef,
+} from '@/components/ui/data-table';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -151,7 +151,6 @@ export function FeedbackTab({ canUpdateFeedback = true }: { canUpdateFeedback?: 
     ]),
   ) as Record<(typeof VIEWS)[number]['value'], typeof filteredReports>;
   const reports = byStatus[view];
-  const columns = canUpdateFeedback ? 5 : 4;
 
   const close = () => {
     if (openId === focusedReport?._id) onFocusedReportClose();
@@ -169,6 +168,104 @@ export function FeedbackTab({ canUpdateFeedback = true }: { canUpdateFeedback?: 
     />
   );
 
+  const columns: ColumnDef<FeedbackReport>[] = [
+    {
+      id: 'feedback',
+      accessorFn: (report) => report.reason,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Feedback" />
+      ),
+      cell: ({ row }) => (
+        <>
+          <p className="truncate text-foreground" title={row.original.reason}>
+            {row.original.reason}
+          </p>
+          <FeedbackRowMeta report={row.original} />
+        </>
+      ),
+      meta: { label: 'Feedback' },
+    },
+    {
+      id: 'submitted-by',
+      accessorFn: (report) => displayName(report.submitter),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Submitted by" />
+      ),
+      cell: ({ row }) => (
+        <span className="block truncate">
+          {displayName(row.original.submitter)}
+        </span>
+      ),
+      meta: { label: 'Submitted by' },
+    },
+    {
+      id: 'submitted',
+      accessorFn: (report) => report._creationTime,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Submitted" />
+      ),
+      cell: ({ row }) => (
+        <time
+          className="whitespace-nowrap tabular-nums"
+          dateTime={new Date(row.original._creationTime).toISOString()}
+          title={formatDateTime(row.original._creationTime)}
+        >
+          {formatShortDate(row.original._creationTime)}
+        </time>
+      ),
+      meta: { label: 'Submitted' },
+    },
+    ...(canUpdateFeedback
+      ? [
+          {
+            id: 'actions',
+            header: () => <span className="sr-only">Status actions</span>,
+            enableSorting: false,
+            enableHiding: false,
+            cell: ({ row }) => (
+              <div className="flex justify-end">
+                <FeedbackStatusActions
+                  report={row.original}
+                  reportMutation={reportMutation}
+                />
+              </div>
+            ),
+            meta: { label: 'Status actions' },
+          } satisfies ColumnDef<FeedbackReport>,
+        ]
+      : []),
+    {
+      id: 'details',
+      header: () => <span className="sr-only">Details</span>,
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-compact"
+          aria-label={`Details: feedback from ${displayName(row.original.submitter)}`}
+          onClick={() => setSelectedId(row.original._id)}
+        >
+          <ChevronRight />
+        </Button>
+      ),
+      meta: { label: 'Details' },
+    },
+  ];
+  const table = useDataTable({
+    data: reports,
+    columns,
+    pageSize: 20,
+    getRowId: (report) => report._id,
+    manualFiltering: true,
+    state: { globalFilter: feedbackSearch },
+    onGlobalFilterChange: (update) =>
+      setFeedbackSearch(
+        typeof update === 'function' ? update(feedbackSearch) : update,
+      ),
+  });
+
   return (
     <>
       {reportId && focusedQuery === undefined ? <AdminNotice message="Loading feedback report…" /> : null}
@@ -178,19 +275,16 @@ export function FeedbackTab({ canUpdateFeedback = true }: { canUpdateFeedback?: 
           label="Feedback"
           toolbar={
             <>
-              <SearchToolbarRow className="flex-row items-center gap-2">
-                <SearchInput
-                  className="min-w-0 flex-1"
-                  aria-label="Search feedback"
-                  value={feedbackSearch}
-                  onValueChange={setFeedbackSearch}
-                  placeholder="Search feedback…"
-                />
-                <DataTableCount>
+              <SearchToolbarRow className="flex-row flex-wrap items-center gap-2">
+                <DataTableSearch table={table} placeholder="Search feedback…" />
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <DataTableViewOptions table={table} className="hidden md:inline-flex" />
+                  <DataTableCount>
                   {isLoading
                     ? '—'
                     : `${filteredReports.length} ${deferredFeedbackSearch ? (filteredReports.length === 1 ? 'match' : 'matches') : 'items'}`}
                 </DataTableCount>
+                </div>
               </SearchToolbarRow>
               <TabsList aria-label="Feedback views">
                 {VIEWS.map((item) => (
@@ -206,100 +300,20 @@ export function FeedbackTab({ canUpdateFeedback = true }: { canUpdateFeedback?: 
           }
         >
           <TabPanel value={view}>
-            <div className="hidden md:block">
-              <Table className="table-fixed" aria-label="Feedback queue" aria-busy={reportMutation.isPending}>
-                <colgroup>
-                  <col />
-                  <col className="w-[11rem]" />
-                  <col className="w-[5.5rem]" />
-                  {canUpdateFeedback ? <col className="w-[11.5rem]" /> : null}
-                  <col className="w-11" />
-                </colgroup>
-                <TableHeader className={PINNED_TABLE_HEADER}>
-                  <TableRow>
-                    <TableHead scope="col">Feedback</TableHead>
-                    <TableHead scope="col">Submitted by</TableHead>
-                    <TableHead scope="col">Submitted</TableHead>
-                    {canUpdateFeedback ? (
-                      <TableHead scope="col">
-                        <span className="sr-only">Status actions</span>
-                      </TableHead>
-                    ) : null}
-                    <TableHead scope="col">
-                      <span className="sr-only">Details</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 6 }, (_, index) => (
-                      <TableRow key={index}>
-                        <TableCell colSpan={columns}>
-                          <Skeleton className="h-5 w-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : reports.length ? (
-                    reports.map((report, index) => (
-                      <TableRow
-                        key={report._id}
-                        index={index}
-                        interactive
-                        selected={report._id === openId}
-                        onClick={(click) => {
-                          const target = click.target;
-                          if (
-                            !(target instanceof Element) ||
-                            target.closest('button,a,input,textarea,[role="button"],[role="menuitem"]')
-                          )
-                            return;
-                          setSelectedId(report._id);
-                        }}
-                      >
-                        <TableCell className="py-2">
-                          <p className="truncate text-foreground" title={report.reason}>
-                            {report.reason}
-                          </p>
-                          <FeedbackRowMeta report={report} />
-                        </TableCell>
-                        <TableCell>
-                          <span className="block truncate">{displayName(report.submitter)}</span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap tabular-nums">
-                          <time
-                            dateTime={new Date(report._creationTime).toISOString()}
-                            title={formatDateTime(report._creationTime)}
-                          >
-                            {formatShortDate(report._creationTime)}
-                          </time>
-                        </TableCell>
-                        {canUpdateFeedback ? (
-                          <TableCell>
-                            <div className="flex justify-end">
-                              <FeedbackStatusActions report={report} reportMutation={reportMutation} />
-                            </div>
-                          </TableCell>
-                        ) : null}
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-compact"
-                            aria-label={`Details: feedback from ${displayName(report.submitter)}`}
-                            onClick={() => setSelectedId(report._id)}
-                          >
-                            <ChevronRight />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={columns}>{empty}</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+            <div className="hidden min-w-0 md:block" aria-busy={reportMutation.isPending}>
+              <DataTable
+                table={table}
+                loading={isLoading}
+                empty={{
+                  title: deferredFeedbackSearch
+                    ? 'No feedback in this view matches your search.'
+                    : 'No feedback in this view.',
+                }}
+                onRowClick={(row) => setSelectedId(row.original._id)}
+              />
+              <div className="pt-3">
+                <DataTablePagination table={table} />
+              </div>
             </div>
             <div className="md:hidden">
               {isLoading ? (

@@ -47,8 +47,8 @@ export default async function RootLayout({
 }) {
   const defaultSidebarOpen = (await cookies()).get('sidebar_state')?.value !== 'false';
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${workSans.variable} font-sans`} suppressHydrationWarning>
+    <html lang="en" className={workSans.variable} suppressHydrationWarning>
+      <body className="font-sans" suppressHydrationWarning>
         <Providers defaultSidebarOpen={defaultSidebarOpen}>{children}</Providers>
         <Toaster />
         <ServiceWorkerRegistrar />

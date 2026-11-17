@@ -277,7 +277,6 @@ function PersonRow({
                 index={1}
                 icon={UserMinus}
                 label="Remove friend"
-                destructive
                 onSelect={onRemoveFriend}
               />
             )}
@@ -406,7 +405,6 @@ function GroupMenu({
             index={1}
             icon={Trash2}
             label="Delete group"
-            destructive
             onSelect={() => setDeleteOpen(true)}
           />
         </DropdownContent>

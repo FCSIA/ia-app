@@ -2,6 +2,7 @@
 
 import { parseClubJoinLink } from "~/apps/shared/routes";
 import { ADMIN_ROLES, hasAnyRole } from "~/apps/shared/roles";
+import { UnreadChannels } from "@/components/clubs/unread-channels";
 import {
   useDeferredValue,
   useEffect,
@@ -709,6 +710,8 @@ export default function ClubOverviewPage() {
           club={club}
           canEdit={club.viewer.permissions.manageClubSettings}
         />
+
+        <UnreadChannels clubId={clubId as Id<"clubs">} />
 
         <CardGroup
           border="outlined"

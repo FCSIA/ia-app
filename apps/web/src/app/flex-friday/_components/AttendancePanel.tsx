@@ -23,7 +23,7 @@ interface Props {
   error: Error | null;
   onMark: (studentId: Id<'users'>, status: AttendanceStatus) => void;
   onClear: (studentId: Id<'users'>) => void;
-  isMarking: boolean;
+  actionPending: string | null;
 }
 
 export function AttendancePanel({
@@ -32,7 +32,7 @@ export function AttendancePanel({
   error,
   onMark,
   onClear,
-  isMarking,
+  actionPending,
 }: Props) {
   if (isLoading) {
     return (
@@ -111,8 +111,9 @@ export function AttendancePanel({
                   )}
                   aria-label={`${status === 'PRESENT' ? 'Clear present status for' : 'Mark present:'} ${displayName(student)}`}
                   aria-pressed={status === 'PRESENT'}
+                  loading={actionPending === `attendance:${student._id}:PRESENT` || (status === 'PRESENT' && actionPending === `attendance-clear:${student._id}`)}
                   onClick={() => status === 'PRESENT' ? onClear(student._id) : onMark(student._id, 'PRESENT')}
-                  disabled={isMarking}
+                  disabled={actionPending !== null}
                 >
                   <Check />
                 </Button>
@@ -124,8 +125,9 @@ export function AttendancePanel({
                   )}
                   aria-label={`${status === 'ABSENT' ? 'Clear absent status for' : 'Mark absent:'} ${displayName(student)}`}
                   aria-pressed={status === 'ABSENT'}
+                  loading={actionPending === `attendance:${student._id}:ABSENT` || (status === 'ABSENT' && actionPending === `attendance-clear:${student._id}`)}
                   onClick={() => status === 'ABSENT' ? onClear(student._id) : onMark(student._id, 'ABSENT')}
-                  disabled={isMarking}
+                  disabled={actionPending !== null}
                 >
                   <X />
                 </Button>
@@ -137,8 +139,9 @@ export function AttendancePanel({
                   )}
                   aria-label={`${status === 'TARDY' ? 'Clear tardy status for' : 'Mark tardy:'} ${displayName(student)}`}
                   aria-pressed={status === 'TARDY'}
+                  loading={actionPending === `attendance:${student._id}:TARDY` || (status === 'TARDY' && actionPending === `attendance-clear:${student._id}`)}
                   onClick={() => status === 'TARDY' ? onClear(student._id) : onMark(student._id, 'TARDY')}
-                  disabled={isMarking}
+                  disabled={actionPending !== null}
                 >
                   <Clock />
                 </Button>
@@ -150,8 +153,9 @@ export function AttendancePanel({
                   )}
                   aria-label={`${status === 'EXCUSED' ? 'Clear excused status for' : 'Mark excused:'} ${displayName(student)}`}
                   aria-pressed={status === 'EXCUSED'}
+                  loading={actionPending === `attendance:${student._id}:EXCUSED` || (status === 'EXCUSED' && actionPending === `attendance-clear:${student._id}`)}
                   onClick={() => status === 'EXCUSED' ? onClear(student._id) : onMark(student._id, 'EXCUSED')}
-                  disabled={isMarking}
+                  disabled={actionPending !== null}
                 >
                   <Minus />
                 </Button>

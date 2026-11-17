@@ -418,13 +418,13 @@ export default function ClubChannelSettingsPage() {
             <CardContent className="flex flex-col gap-0 pb-4 pt-2">
               <Field orientation="horizontal" className="min-h-14 items-center border-b border-border/60 py-2.5">
                 <FieldContent>
-                  <FieldTitle>New units</FieldTitle>
                   <FieldDescription>Create a restricted channel automatically.</FieldDescription>
                 </FieldContent>
                 <Switch
-                  checked={club?.autoCreateUnitChannels ?? false}
+                  checked={Boolean(club?.autoCreateUnitChannels ?? false)}
                   aria-label="Create a channel for every new unit"
-                  onCheckedChange={(enabled) =>
+                  onToggle={() => {
+                    const enabled = !club?.autoCreateUnitChannels;
                     void setAutoCreate({ clubId, enabled }).catch((error) =>
                       toast({
                         title:
@@ -433,8 +433,9 @@ export default function ClubChannelSettingsPage() {
                             : "Could not update channel default",
                         variant: "destructive",
                       }),
-                    )
-                  }
+                    );
+                  }}
+                  label="Create a channel for every new unit"
                 />
               </Field>
               <Field orientation="horizontal" className="min-h-14 items-center py-2.5">

@@ -111,7 +111,6 @@ import type * as notifications__lib from "../notifications/_lib.js";
 import type * as notifications__pushActivation from "../notifications/_pushActivation.js";
 import type * as notifications__pushDevices from "../notifications/_pushDevices.js";
 import type * as notifications__pushOwnership from "../notifications/_pushOwnership.js";
-import type * as notifications__pushShapes from "../notifications/_pushShapes.js";
 import type * as notifications__pushTransport from "../notifications/_pushTransport.js";
 import type * as notifications__subscriptionPruning from "../notifications/_subscriptionPruning.js";
 import type * as notifications_delivery from "../notifications/delivery.js";
@@ -280,7 +279,6 @@ declare const fullApi: ApiFromModules<{
   "notifications/_pushActivation": typeof notifications__pushActivation;
   "notifications/_pushDevices": typeof notifications__pushDevices;
   "notifications/_pushOwnership": typeof notifications__pushOwnership;
-  "notifications/_pushShapes": typeof notifications__pushShapes;
   "notifications/_pushTransport": typeof notifications__pushTransport;
   "notifications/_subscriptionPruning": typeof notifications__subscriptionPruning;
   "notifications/delivery": typeof notifications_delivery;

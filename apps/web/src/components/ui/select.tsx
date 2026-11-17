@@ -12,24 +12,31 @@ import {
   type ReactNode,
   type HTMLAttributes,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
-import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useProximityHover } from "@/hooks/use-proximity-hover";
 import {
-  FluidHoverHighlight,
-  resolveHighlightTransition,
-  toTarget,
-} from "@/components/ui/fluid-hover-highlight";
-import { useShape } from "@/lib/shape-context";
-import { popupShape } from "@/components/ui/popup-shape";
-import { popupMotionClass } from "@/lib/popup";
-import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
+  useFluidHover,
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
+import { useShape, usePopupShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
+import {
+  popupMotionClass,
+  popupScrollAreaClass,
+  popupViewportClass,
+  isDisabledRow,
+} from "@/lib/popup";
+import { useKeyboardNavGate } from "@/hooks/use-keyboard-nav-gate";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+
 
 // ---------------------------------------------------------------------------
 // Select context
@@ -37,7 +44,7 @@ import { Elevated } from "@/lib/elevated";
 // Built on Radix Select, which owns positioning (popper collision flipping),
 // dismissal (outside press, Escape), list keyboard navigation + typeahead
 // (open and closed), combobox ARIA, and the hidden native <select> for forms.
-// This layer keeps the proximity-hover overlays, the
+// This layer keeps the fluid-hover overlays, the
 // spring open/close animation, and the animated checkmark.
 //
 // Radix-specific notes (verified against @radix-ui/react-select 2.2.6 dist):
@@ -62,11 +69,10 @@ import { Elevated } from "@/lib/elevated";
 //   tween finishes).
 //
 // - Radix Select is modal-ish: it scroll-locks the page and disables outside
-//   pointer events while open. The Viewport's injected
-//   stylesheet hides its own scrollbar, which would leave long lists with no
-//   scroll affordance at all (the scroll buttons aren't rendered either) —
-//   overridden with `![scrollbar-width:thin]` on the viewport, which also
-//   makes Chromium/Safari ignore the ::-webkit-scrollbar{display:none} rule.
+//   pointer events while open. The Viewport's injected stylesheet hides its
+//   own scrollbar and the scroll buttons are never rendered, so the rows sit
+//   inside a ScrollArea instead — its thumb is the scroll affordance for long
+//   lists.
 // ---------------------------------------------------------------------------
 
 // How long a selection holds the popup open before closing, so the
@@ -90,10 +96,10 @@ function useSelectContext() {
   return ctx;
 }
 
-// Content context for proximity hover
+// Content context for fluid hover
 interface SelectContentContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  activeStore: FluidHoverActiveStore;
   checkedIndex?: number;
 }
 
@@ -220,10 +226,12 @@ Select.displayName = "Select";
 const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between outline-none cursor-pointer",
-    "touch-manipulation touch-target",
-    "transition-[color,background-color,border-color,box-shadow] duration-80",
+    // Listed, never `all`: a size change snaps instead of easing the
+    // trigger's height and padding.
+    "transition-[color,background-color,border-radius,box-shadow,opacity] duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
-    "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+    // data-pointer-focus: focus handed back after a pick with the pointer.
+    "focus-visible:not-data-[pointer-focus]:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
   ],
   {
     variants: {
@@ -321,7 +329,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
           </SelectPrimitive.Icon>
         </SelectPrimitive.Trigger>
         {error && (
-          <span className="text-[12px] text-destructive pl-3">{error}</span>
+          <span className="text-[length:var(--fs-caption,12px)] leading-[var(--lh-caption,16px)] text-destructive pl-3">{error}</span>
         )}
       </div>
     );
@@ -342,24 +350,28 @@ interface SelectContentProps {
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
   ({ className, children }, ref) => {
     const { open, value, unmount } = useSelectContext();
-    // Triggers follow the global shape; popup rows keep their concentric
-    // 8px curves inside a 12px shell with a 4px inset.
-    const shape = popupShape;
-    const shouldReduceMotion = useReducedMotion();
+    const shape = usePopupShape();
     const containerRef = useRef<HTMLDivElement>(null);
+    // The popup's id, which the trigger points at with aria-controls. Read
+    // while mounted: by the time focus goes back, the popup is gone.
+    const contentId = useRef<string | undefined>(undefined);
 
+    const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       isMeasured,
-      sessionRef,
       handlers,
       registerItem,
       remeasure,
-    } = useProximityHover(containerRef);
+    } = hover;
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+    // Keyboard focus ring gate: seeded from the trigger's :focus-visible at
+    // open, earned by navigation keys inside the popup.
+    const { keyboardNavRef, trackKeyboardNav } = useKeyboardNavGate(open);
     const [checkedIndex, setCheckedIndex] = useState<number | undefined>(
       undefined
     );
@@ -400,7 +412,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           const container = containerRef.current;
           if (container) {
             const items = Array.from(
-              container.querySelectorAll("[data-proximity-index]")
+              container.querySelectorAll("[data-fluid-hover-index]")
             ) as HTMLElement[];
             const idx = items.findIndex(
               (el) => el.getAttribute("data-value") === value
@@ -425,26 +437,28 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     // close begins, in lockstep with the measure effect above that stops
     // syncing checkedIndex. `radixOpen` would fire later, only after Radix's
     // deferred unmount.
-    useEffect(() => {
-      if (open) return;
-      setCheckedIndex(undefined);
-      setActiveIndex(null);
-      setFocusedIndex(null);
-    }, [open, setActiveIndex]);
+    // Done during the render that closes it.
+    const [overlaysOpen, setOverlaysOpen] = useState(open);
+    if (overlaysOpen !== open) {
+      setOverlaysOpen(open);
+      if (!open) {
+        setCheckedIndex(undefined);
+        setActiveIndex(null);
+        setFocusedIndex(null);
+      }
+    }
 
     // Overlays read rects only once the hook reports the item set fully
     // measured. Positioning one from an incomplete pass mounts it at the wrong
     // row, and the correcting pass then springs it across the list.
-    const activeRect =
-      isMeasured && activeIndex !== null ? itemRects[activeIndex] : null;
     const checkedRect =
       isMeasured && checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect =
       isMeasured && focusedIndex !== null ? itemRects[focusedIndex] : null;
 
     const contentCtx = useMemo(
-      () => ({ registerItem, activeIndex, checkedIndex }),
-      [registerItem, activeIndex, checkedIndex]
+      () => ({ registerItem, activeStore, checkedIndex }),
+      [registerItem, activeStore, checkedIndex]
     );
 
     // Rendered unconditionally: while closed, Radix parks these children in a
@@ -454,15 +468,38 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     return (
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
+          ref={(node: HTMLDivElement | null) => {
+            if (node) contentId.current = node.id;
+          }}
           position="popper"
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-50"
+          className="z-[var(--z-popover,60)]"
+          // Radix hands focus back to the trigger with focus(), which the
+          // browser may report as :focus-visible even after a pick with the
+          // pointer. Without keyboard navigation in the popup, the trigger
+          // takes focus marked, and its ring waits for the next key.
+          onCloseAutoFocus={(e) => {
+            if (keyboardNavRef.current) return;
+            const id = contentId.current;
+            const trigger = id
+              ? document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(id)}"]`)
+              : null;
+            if (!trigger) return;
+            e.preventDefault();
+            trigger.dataset.pointerFocus = "";
+            const clear = () => {
+              delete trigger.dataset.pointerFocus;
+              trigger.removeEventListener("keydown", clear);
+              trigger.removeEventListener("blur", clear);
+            };
+            trigger.addEventListener("keydown", clear);
+            trigger.addEventListener("blur", clear);
+            trigger.focus({ preventScroll: true });
+          }}
         >
           <motion.div
-            // popupMotionClass reads the resolved (post-flip) data-side on
-            // Content, so a list that flips above its trigger grows from it.
             className={popupMotionClass}
             initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
             animate={
@@ -470,7 +507,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                 ? { opacity: 1, y: 0, scaleY: 1 }
                 : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
             }
-            transition={shouldReduceMotion ? { duration: 0 } : open ? spring.fast : spring.fast.exit}
+            transition={open ? spring.fast : spring.fast.exit}
             // Radix unmounts the popup the moment its open state flips, so
             // that flip is held back (radixOpen in the root) until the exit
             // spring has finished.
@@ -480,44 +517,42 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           >
             <SelectContentContext.Provider value={contentCtx}>
               {/* The Viewport is the scroll container and, via its inline
-                  position: relative, the offsetParent the proximity overlay
+                  position: relative, the offsetParent the fluid hover overlay
                   rects anchor to. */}
               <SelectPrimitive.Viewport asChild>
                 <Elevated
                   offset={2}
                   shadowLevel={3}
-                  ref={(node: HTMLDivElement | null) => {
-                    (
-                      containerRef as React.MutableRefObject<HTMLDivElement | null>
-                    ).current = node;
-                    if (typeof ref === "function") ref(node);
-                    else if (ref)
-                      (
-                        ref as React.MutableRefObject<HTMLDivElement | null>
-                      ).current = node;
-                  }}
+                  ref={ref}
+                  // Capture phase: the primitive moves focus during its own
+                  // keydown handling, so the nav flag must be set before then.
+                  onKeyDownCapture={trackKeyboardNav}
                   onMouseEnter={() => {
                     handlers.onMouseEnter();
                     setFocusedIndex(null);
                   }}
                   onMouseMove={handlers.onMouseMove}
                   onMouseLeave={handlers.onMouseLeave}
+                  onClick={handlers.onClick}
                   onFocus={(e) => {
                     const indexAttr = (e.target as HTMLElement)
-                      .closest("[data-proximity-index]")
-                      ?.getAttribute("data-proximity-index");
+                      .closest("[data-fluid-hover-index]")
+                      ?.getAttribute("data-fluid-hover-index");
                     if (indexAttr != null) {
                       const idx = Number(indexAttr);
                       setActiveIndex(idx);
                       setFocusedIndex(
-                        (e.target as HTMLElement).matches(":focus-visible")
+                        keyboardNavRef.current &&
+                          (e.target as HTMLElement).matches(":focus-visible")
                           ? idx
                           : null
                       );
                     }
                   }}
                   onBlur={(e) => {
-                    if (containerRef.current?.contains(e.relatedTarget as Node))
+                    // The popup itself takes focus when the pointer leaves a row; only a
+                  // departure from the whole popup ends the hover session.
+                  if (e.currentTarget.contains(e.relatedTarget as Node))
                       return;
                     setFocusedIndex(null);
                     setActiveIndex(null);
@@ -525,14 +560,17 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                   className={cn(
                     // min-w tracks the trigger via Radix's popper-provided
                     // vars.
-                    // ![scrollbar-width:thin] undoes Radix's injected
-                    // scrollbar-hiding stylesheet (see header comment) so
-                    // long lists keep a visible scrollbar.
-                    `relative flex flex-col gap-0.5 min-w-[var(--radix-select-trigger-width)] max-h-[min(300px,var(--radix-select-content-available-height))] overflow-y-auto ![scrollbar-width:thin] ${shape.container} p-1 select-none outline-none`,
-                    POPOVER_SURFACE_FOREGROUND,
+                    `flex flex-col min-w-[var(--radix-select-trigger-width)] max-h-[min(300px,var(--radix-select-content-available-height))] overflow-hidden ${shape.container} select-none outline-none`,
                     className
                   )}
                 >
+                  {/* The list scrolls inside a ScrollArea; this wrapper is the rows'
+                      offsetParent, so the overlays scroll with them. */}
+                  <ScrollArea className={popupScrollAreaClass} viewportClassName={cn(popupViewportClass, "scroll-fade")}>
+                    <div
+                      ref={containerRef}
+                      className="relative flex flex-col p-1"
+                    >
                   {/* The three overlays are torn down as the close begins rather
                       than exit-animated, because an overlay still mounted when the
                       popup reopens is one AnimatePresence re-adopts under its old
@@ -544,7 +582,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     <AnimatePresence>
                       {checkedRect && (
                         <motion.div
-                          className={`absolute left-0 top-0 ${shape.bg} bg-active pointer-events-none`}
+                          className={`absolute ${shape.bg} bg-active pointer-events-none`}
                           // Position lives in `animate` so an in-session value
                           // change springs the marker to the picked row (the
                           // selection acknowledgment). Safe against the reopen
@@ -552,47 +590,56 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                           // survives a close, and a fresh mount with
                           // initial={false} renders snapped at these values.
                           initial={false}
-                          // Travels on a transform, not top/left; reduced
-                          // motion keeps the fade and drops the travel.
-                          animate={{ ...toTarget(checkedRect), opacity: 1 }}
-                          exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.moderate.exit }}
-                          transition={resolveHighlightTransition(spring.moderate, !!shouldReduceMotion)}
+                          animate={{
+                            top: checkedRect.top,
+                            left: checkedRect.left,
+                            width: checkedRect.width,
+                            height: checkedRect.height,
+                            opacity: 1,
+                          }}
+                          exit={{ opacity: 0, transition: spring.moderate.exit }}
+                          transition={{
+                            ...spring.moderate,
+                            opacity: { duration: 0.08 },
+                          }}
                         />
                       )}
                     </AnimatePresence>
                   )}
 
-                  {/* Hover background — the shared transform-based
-                      highlight (unmounted with the popup, as before). */}
-                  {open && (
-                    <FluidHoverHighlight
-                      rect={activeRect ?? null}
-                      session={sessionRef.current}
-                      className={shape.bg}
-                    />
-                  )}
+                  {/* Hover background */}
+                  <FluidHoverHighlight
+                    hover={hover}
+                    hidden={!open}
+                    className={shape.bg}
+                  />
 
                   {/* Focus ring */}
                   {open && (
                     <AnimatePresence>
                       {focusRect && (
                         <motion.div
-                          className={`absolute left-0 top-0 ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+                          className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
                           initial={false}
                           animate={{
-                            x: focusRect.left - 2,
-                            y: focusRect.top - 2,
+                            left: focusRect.left - 2,
+                            top: focusRect.top - 2,
                             width: focusRect.width + 4,
                             height: focusRect.height + 4,
                           }}
-                          exit={{ opacity: 0, transition: shouldReduceMotion ? { duration: 0 } : spring.fast.exit }}
-                          transition={resolveHighlightTransition(spring.fast, !!shouldReduceMotion)}
+                          exit={{ opacity: 0, transition: spring.fast.exit }}
+                          transition={{
+                            ...spring.fast,
+                            opacity: { duration: 0.08 },
+                          }}
                         />
                       )}
                     </AnimatePresence>
                   )}
 
                   {children}
+                    </div>
+                  </ScrollArea>
                 </Elevated>
               </SelectPrimitive.Viewport>
             </SelectContentContext.Provider>
@@ -632,31 +679,20 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const selectCtx = useSelectContext();
     const contentCtx = useContext(SelectContentContext);
     const internalRef = useRef<HTMLDivElement>(null);
-    const shape = popupShape;
-    const shouldReduceMotion = useReducedMotion();
+    const shape = usePopupShape();
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
-    const hasMounted = useRef(false);
 
-    useEffect(() => {
-      hasMounted.current = true;
-    }, []);
-
-    // Register with proximity hover. Depends on the (stable) registerItem
+    // Register with fluid hover. Depends on the (stable) registerItem
     // rather than the content context, which is rebuilt on every activeIndex
     // change: keying the effect to the whole context re-ran it per mousemove,
     // unregistering and re-registering every row and so keeping the hook's
     // measurement permanently unsettled while the pointer moved.
     const registerItem = contentCtx?.registerItem;
-    useEffect(() => {
-      if (!registerItem) return;
-      registerItem(index, internalRef.current);
-      return () => registerItem(index, null);
-    }, [index, registerItem]);
+    useRegisterFluidHoverItem(registerItem, index, internalRef);
 
-    const isActive = contentCtx?.activeIndex === index;
+    const isActive = useFluidHoverSelect(contentCtx?.activeStore, (i) => i === index);
     const isChecked = selectCtx.value === value;
-    const skipAnimation = !hasMounted.current || shouldReduceMotion;
 
     return (
       <SelectPrimitive.Item
@@ -672,14 +708,14 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
             (ref as React.MutableRefObject<HTMLDivElement | null>).current =
               node;
         }}
-        data-proximity-index={index}
+        data-fluid-hover-index={index}
         data-value={value}
         className={cn(
           // Fixed height (was py-2 around a 19.5px line box ≈ 35.5px) so
           // the text-box trim on the item text doesn't shrink the row.
           // shrink-0: the popup is a max-height flex column, so without it
           // a long list compresses rows to fit instead of scrolling.
-          `relative z-10 flex ${sizeClasses.control} shrink-0 touch-manipulation items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} ${sizeClasses.text} cursor-pointer outline-none select-none`,
+          `relative z-10 flex ${sizeClasses.control} shrink-0 items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} ${sizeClasses.text} cursor-pointer outline-none select-none`,
           "transition-[color] duration-80",
           isActive || isChecked
             ? "text-foreground"
@@ -714,7 +750,10 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           aria-hidden
           className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-4 h-4")}
         >
-          <AnimatePresence>
+          {/* initial={false}: a row checked at mount shows the finished
+              check instead of drawing it, so default selections don't
+              animate on page load. */}
+          <AnimatePresence initial={false}>
             {isChecked && (
               <motion.svg
                 key="check"
@@ -733,14 +772,14 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
               >
                 <motion.path
                   d="M4 12L9 17L20 6"
-                  initial={{ pathLength: skipAnimation ? 1 : 0 }}
+                  initial={{ pathLength: 0 }}
                   animate={{
                     pathLength: 1,
-                    transition: { duration: shouldReduceMotion ? 0 : 0.08, ease: "easeOut" },
+                    transition: { duration: 0.08, ease: "easeOut" },
                   }}
                   exit={{
                     pathLength: 0,
-                    transition: { duration: shouldReduceMotion ? 0 : 0.04, ease: "easeOut" },
+                    transition: { duration: 0.04, ease: "easeIn" },
                   }}
                 />
               </motion.svg>
@@ -784,7 +823,7 @@ const SelectLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
       ref={ref}
       className={cn(
         "px-2 py-1.5 shrink-0 text-muted-foreground",
-        compact ? "text-[11px]" : "text-[12px]",
+        typeClass("caption", compact ? "compact" : "default"),
         className
       )}
       {...props}

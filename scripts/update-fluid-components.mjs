@@ -27,6 +27,7 @@ const adaptedComponents = new Set([
   "color-picker",
   "dialog",
   "dropdown",
+  "file-thumbnail",
   "input-copy",
   "radio-group",
   "scroll-area",

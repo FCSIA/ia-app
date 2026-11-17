@@ -12,16 +12,16 @@ import {
   type ReactNode,
 } from "react";
 import type { IconComponent } from "@/lib/icon-context";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
-import { popupShape } from "@/components/ui/popup-shape";
+import { usePopupShape } from "@/lib/shape-context";
 import { useSize } from "@/lib/size-context";
-import { useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
-
-// MenuItem is only used inside Dropdown, which opts out of the global pill
-// shape — see dropdown.tsx for the rationale.
-const shape = popupShape;
+import {
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
 
 // ---------------------------------------------------------------------------
 // Dropdown context — the single shared context for every Dropdown build.
@@ -62,7 +62,9 @@ export interface MenuItemRenderOptions {
 
 export interface DropdownContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  /** The highlighted row, read per row with `useFluidHoverSelect` so a
+   *  highlight change re-renders two rows instead of the whole menu. */
+  activeStore: FluidHoverActiveStore;
   checkedIndex?: number;
   /** Multiple selection (`checkedIndices` on the dropdown): rows are
    *  checkbox items and activating one keeps the menu open by default. */
@@ -133,9 +135,9 @@ export interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   /** Popup-only (inside DropdownContent): whether activating the item closes
    *  the menu. Ignored in the inline Dropdown panel. @default true */
   closeOnClick?: boolean;
-  /** Destructive action (remove, delete): label and icon in the destructive
-   *  colour instead of the muted/foreground pair. */
-  destructive?: boolean;
+  /** Content before the icon, e.g. a drag handle. Its clicks are its own:
+   *  they don't activate the item. */
+  leading?: ReactNode;
 }
 
 const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
@@ -148,17 +150,18 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       onSelect,
       disabled,
       closeOnClick,
-      destructive = false,
+      leading,
       className,
       onClick,
       ...props
     },
     ref
   ) => {
+    const shape = usePopupShape();
     const internalRef = useRef<HTMLDivElement>(null);
     const {
       registerItem,
-      activeIndex,
+      activeStore,
       checkedIndex,
       multiple,
       checkedIndices,
@@ -168,7 +171,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     useRegisterFluidHoverItem(registerItem, index, internalRef);
 
-    const isActive = activeIndex === index;
+    const isActive = useFluidHoverSelect(activeStore, (i) => i === index);
     const sizeClasses = useSize();
 
     const mergeRef = (node: HTMLDivElement | null) => {
@@ -196,8 +199,16 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     const content = (
       <>
+        {leading && (
+          <span
+            className="flex shrink-0 items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {leading}
+          </span>
+        )}
         {Icon && (
-          <span className="inline-grid">
+          <span className="inline-grid shrink-0">
             <span className="col-start-1 row-start-1 invisible">
               <Icon size={sizeClasses.icon} strokeWidth={2} />
             </span>
@@ -206,20 +217,19 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
               strokeWidth={isActive || checked ? 2 : 1.5}
               className={cn(
                 "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
-                destructive
-                  ? "text-destructive"
-                  : isActive || checked
-                    ? "text-foreground"
-                    : "text-muted-foreground"
+                isActive || checked
+                  ? "text-foreground"
+                  : "text-muted-foreground"
               )}
             />
           </span>
         )}
-        {/* Both stacked spans carry the text-box trim so the invisible bold
-            sizer and the visible label keep identical boxes. */}
-        <span className={cn("inline-grid flex-1", sizeClasses.text)}>
+        {/* Stacked regular/bold labels reserve weight changes without shifting
+            layout. Keep the normal line box inside truncation: cap/alphabetic
+            trim can clip font-dependent descenders at the overflow edge. */}
+        <span className={cn("inline-grid min-w-0 flex-1", sizeClasses.text)}>
           <span
-            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
+            className="col-start-1 row-start-1 invisible truncate"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -227,12 +237,10 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
-              destructive
-                ? "text-destructive"
-                : isActive || checked
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+              "col-start-1 row-start-1 truncate transition-[color,font-variation-settings] duration-80",
+              isActive || checked
+                ? "text-foreground"
+                : "text-muted-foreground"
             )}
             style={{
               fontVariationSettings: checked

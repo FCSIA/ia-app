@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
+import { Meter } from '@/components/ui/meter';
 import { Plus, Pencil, Trash2, MapPin, Users, Ticket, CheckCircle } from 'lucide-react';
 import { formatTimeRange } from '../_utils';
 import { workshopDetailHref } from '@/lib/routes';
@@ -99,6 +100,8 @@ export function WorkshopPanel({
               workshops.map((w) => {
                 const isRegistered = myRegWorkshopIds.has(w._id);
                 const isFull = !!w.capacity && w._count?.registrations >= w.capacity;
+                const registrations = w._count?.registrations ?? 0;
+                const spotsLeft = w.capacity ? Math.max(0, w.capacity - registrations) : null;
                 const linkedSessions = w.linkedSessions || [];
                 const spansMultiple = linkedSessions.length > 1;
 
@@ -137,13 +140,25 @@ export function WorkshopPanel({
                               </span>
                             )}
                             <span className={cn(
-                              'flex items-center gap-1.5 rounded-md bg-muted px-2 py-1',
+                              'flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 tabular-nums',
                               isFull && 'text-destructive',
                             )}>
                               <Users className="size-3.5" />
-                              {w._count?.registrations}{w.capacity ? `/${w.capacity}` : ''} registered
+                              {registrations}{w.capacity ? `/${w.capacity}` : ''} registered
                             </span>
                           </div>
+
+                          {w.capacity && spotsLeft !== null ? (
+                            <div className="mt-3 max-w-xs">
+                              <Meter
+                                min={0}
+                                max={w.capacity}
+                                value={Math.min(registrations, w.capacity)}
+                                label="Availability"
+                                valueText={spotsLeft === 0 ? 'Full' : `${spotsLeft} ${spotsLeft === 1 ? 'spot' : 'spots'} left`}
+                              />
+                            </div>
+                          ) : null}
 
                           {spansMultiple && (
                             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
@@ -162,7 +177,7 @@ export function WorkshopPanel({
                               size="sm"
                               variant={isRegistered ? 'tertiary' : 'primary'}
                               leadingIcon={isRegistered ? CheckCircle : Ticket}
-                              loading={actionPending != null}
+                              loading={actionPending === `register:${w._id}` || actionPending === `unregister:${w._id}`}
                               disabled={(!isRegistered && isFull) || actionPending != null}
                               onClick={() => isRegistered ? onUnregister(w._id) : onRegister(w._id)}
                             >

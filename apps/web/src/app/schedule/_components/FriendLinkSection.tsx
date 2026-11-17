@@ -142,8 +142,8 @@ export function FriendLinkSection() {
           <Switch
             label="Require approval"
             checked={shareMode === "REQUEST"}
-            onCheckedChange={(checked) =>
-              setShareMode(checked ? "REQUEST" : "AUTO_ACCEPT")
+            onToggle={() =>
+              setShareMode(shareMode === "REQUEST" ? "AUTO_ACCEPT" : "REQUEST")
             }
           />
           <Button

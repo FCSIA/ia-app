@@ -366,26 +366,22 @@ export function AppearanceSection({
 
       {theme === 'custom' ? <CustomThemeEditor /> : null}
 
-      <div className="flex items-center justify-between gap-4 border-t border-border/30 pt-4">
+      <div className="flex flex-col gap-2 border-t border-border/30 pt-4">
         <div>
-          <p className="text-sm font-medium text-foreground">Autoplay GIFs</p>
           <p className="text-xs text-muted-foreground">Start GIFs automatically in this browser. Reduced motion starts them paused.</p>
         </div>
-        <Switch checked={autoplay} aria-label="Autoplay GIFs" onCheckedChange={(next) => {
-          try { setAutoplay(next); } catch { toast({ title: 'Could not save playback preference', variant: 'destructive' }); }
-        }} />
+        <Switch checked={Boolean(autoplay)} aria-label="Autoplay GIFs" onToggle={() => { const next = !Boolean(autoplay); try { setAutoplay(next); } catch { toast({ title: 'Could not save playback preference', variant: 'destructive' }); } }} label="Autoplay GIFs" />
       </div>
 
-      <div className="flex items-center justify-between gap-4 border-t border-border/30 pt-4">
+      <div className="flex flex-col gap-2 border-t border-border/30 pt-4">
         <div>
-          <p className="text-sm font-medium text-foreground">Use 24-hour time</p>
           <p className="text-xs text-muted-foreground">Show times like 13:45 instead of 1:45 PM.</p>
         </div>
         <Switch
-          checked={use24HourTime}
+          checked={Boolean(use24HourTime)}
           disabled={savingTimeFormat}
-          onCheckedChange={onUse24HourTimeChange}
-          aria-label="Use 24-hour time"
+          onToggle={() => onUse24HourTimeChange(!Boolean(use24HourTime))}
+          aria-label="Use 24-hour time" label="Use 24-hour time"
         />
       </div>
     </section>

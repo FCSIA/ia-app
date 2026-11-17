@@ -526,6 +526,7 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
   const [fileKey, setFileKey] = useState(0);
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [preview, setPreview] = useState<UnitAssignmentPreview[]>([]);
+  const [previewFilter, setPreviewFilter] = useState("All");
   const [isApplying, setIsApplying] = useState(false);
   const hierarchy = useQuery(
     api.clubs.hierarchy.list,
@@ -616,7 +617,6 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
         }),
       );
     } catch (error) {
-      setPreview([]);
       toast({
         title: error instanceof Error ? error.message : "Could not read CSV",
         variant: "destructive",
@@ -701,7 +701,7 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                 accept=".csv,text/csv"
                 onChange={(event) => {
                   setFile(event.target.files?.[0] ?? null);
-                  setPreview([]);
+
                 }}
               />
             </div>
@@ -751,6 +751,15 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                   </p>
                 ) : null}
               </div>
+              <div className="flex flex-wrap gap-2" aria-label="Preview filters">
+                {["All", "Needs attention", "Skipped", "Ready"].map((filter) => (
+                  <Button key={filter} type="button" size="sm" variant="tertiary" aria-pressed={previewFilter === filter} onClick={() => setPreviewFilter(filter)}>{filter}</Button>
+                ))}
+                <Button type="button" size="sm" variant="tertiary" disabled={!previewSummary.blocked} onClick={() => {
+                  setPreviewFilter("Needs attention");
+                  requestAnimationFrame(() => document.getElementById("assignment-first-error")?.focus());
+                }}>Jump to first error</Button>
+              </div>
               <ScrollArea className="h-72 rounded-md border border-border/70">
                 <Table>
                   <TableHeader>
@@ -763,10 +772,12 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {preview.map((row, index) => (
+                    {preview.filter((row) => previewFilter === "All" || (previewFilter === "Skipped" ? row.skipped : previewFilter === "Ready" ? !row.issue : !!row.issue && !row.skipped)).map((row, index) => (
                       <TableRow
                         key={`${row.line}-${row.name}-${row.unit}`}
                         index={index}
+                        id={row === preview.find((entry) => entry.issue && !entry.skipped) ? "assignment-first-error" : undefined}
+                        tabIndex={-1}
                       >
                         <TableCell>{row.line}</TableCell>
                         <TableCell className="text-foreground">

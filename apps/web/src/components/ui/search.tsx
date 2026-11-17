@@ -65,7 +65,7 @@ function SearchInput({
     <div className={cn("relative flex items-center", styles.group, className)}>
       <Search className={cn("pointer-events-none absolute left-3 text-muted-foreground", styles.icon)} />
       <Input
-        size={size === "default" ? "md" : size}
+        size={size === "sm" ? "compact" : "default"}
         type="text"
         value={value}
         onChange={(event) => onValueChange(event.target.value)}

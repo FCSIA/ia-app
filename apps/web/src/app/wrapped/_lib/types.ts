@@ -1,3 +1,4 @@
+import type { DailyActivity } from '@/components/ui/activity-heatmap-utils';
 import type { LucideIcon } from 'lucide-react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -8,6 +9,8 @@ type SlideKind = 'intro' | 'stat' | 'name' | 'outro' | 'pathway' | 'word' | 'emo
 export type GraphicKind = 'orbs' | 'grid' | 'rings' | 'blobs' | 'confetti' | 'stars' | 'waves';
 
 export type Slide = {
+  activity?: { start: string; end: string; days: DailyActivity[] };
+  highlights?: { date: string; label: string }[];
   key: string;
   kind: SlideKind;
   eyebrow: string;

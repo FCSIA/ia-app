@@ -206,7 +206,7 @@ function CustomBackgroundPanel() {
               label="Surface tint"
               checked={Boolean(selectedTint)}
               disabled={pendingTint !== undefined || (!selectedTint && palette.length === 0)}
-              onCheckedChange={(enabled) => void handleTint(enabled ? palette[0] : null)}
+              onToggle={() => void handleTint(selectedTint ? null : palette[0])}
             />
             <p className="text-xs text-muted-foreground">
               Choose an image color for cards and menus, or turn off tint to use your usual surface colors.

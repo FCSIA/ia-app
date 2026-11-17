@@ -103,3 +103,4 @@ apps/web/next-env.d.ts
 apps/web/public/excalidraw-assets/
 # Generated from the installed Tesseract packages for local schedule OCR.
 apps/web/public/schedule-ocr-assets/
+apps/web/public/pdf-assets/

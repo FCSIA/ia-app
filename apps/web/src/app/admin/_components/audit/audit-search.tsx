@@ -8,11 +8,13 @@ import { displayName } from '~/apps/shared/user-name';
 import { useQuery } from '@/lib/convex-react';
 import { Command, CommandInputSlot, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
-import { SearchInput } from '@/components/ui/search';
+import { DataTableSearch, DataTableSearchInput } from '@/components/ui/data-table';
+import type { Table } from '@tanstack/react-table';
+import type { AuditEventRecord } from '../../_lib/types';
 import type { useAdminAudit } from '../../_hooks/use-admin-audit';
 
 type Suggestion = { value: string; label: string };
-export function AuditSearch({ audit }: { audit: ReturnType<typeof useAdminAudit> }) {
+export function AuditSearch({ audit, table }: { audit: ReturnType<typeof useAdminAudit>; table: Table<AuditEventRecord> }) {
   const [active, setActive] = useState(false);
   const match = audit.auditSearch.match(/(?:^|\s)(-?)(person|action|type|record|source|after|before):(?:"([^"\n]*)|([^\s"]*))$/i);
   const field = match?.[2]?.toLowerCase();
@@ -32,11 +34,11 @@ export function AuditSearch({ audit }: { audit: ReturnType<typeof useAdminAudit>
   return <Popover open={open} onOpenChange={setActive}>
     <Command surface="inherit" shouldFilter={false} loop className="h-auto min-w-0 flex-1 overflow-visible">
       <PopoverAnchor asChild>
-        <div className="min-w-0">
-          <CommandInputSlot asChild value={audit.auditSearch} onValueChange={(value) => { setActive(true); audit.setAuditSearch(value); }}>
-            <SearchInput aria-label="Search audit activity" aria-expanded={open} aria-invalid={!!audit.advancedError} aria-describedby={audit.advancedError ? 'audit-query-error' : undefined} value={audit.auditSearch} onValueChange={audit.setAuditSearch} onFocus={() => setActive(true)} placeholder={'Search… or person:"Alex" action:deleted'} />
+        <DataTableSearch table={table} placeholder={'Search… or person:"Alex" action:deleted'}>
+          <CommandInputSlot asChild value={audit.auditSearch}>
+            <DataTableSearchInput aria-label="Search audit activity" aria-expanded={open} aria-invalid={!!audit.advancedError} aria-describedby={audit.advancedError ? 'audit-query-error' : undefined} onFocus={() => setActive(true)} onChange={() => setActive(true)} />
           </CommandInputSlot>
-        </div>
+        </DataTableSearch>
       </PopoverAnchor>
       <PopoverContent align="start" className="w-[min(32rem,calc(100vw-2rem))] p-0" onOpenAutoFocus={(event) => event.preventDefault()} onCloseAutoFocus={(event) => event.preventDefault()}>
         <CommandList aria-label={`${field} suggestions`}>

@@ -115,12 +115,13 @@ export function NotificationScopeSwitch({
     >
       {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Required notification" /> : null}
       <Switch
-        label={compact ? undefined : label}
+        label={compact ? <span className="sr-only">{label}</span> : label}
         aria-label={`${label}: ${enabled ? 'on' : 'off'}`}
+        size={compact ? "compact" : undefined}
         checked={enabled}
-        onCheckedChange={(nextEnabled) => void togglePreference(nextEnabled)}
+        onToggle={() => void togglePreference(!enabled)}
         disabled={disabled}
-        wrapperClassName="min-w-0 flex-1"
+        className="min-w-0 flex-1"
       />
     </div>
   );

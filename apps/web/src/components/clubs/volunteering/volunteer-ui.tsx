@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { format } from "date-fns";
+import { Timeline } from "@/components/ui/timeline";
+import { volunteerTimeline } from "./volunteer-timeline";
 import { durationLabel, serviceDateLabel } from "./volunteer-format";
 import type { FunctionReturnType } from "convex/server";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
@@ -381,12 +382,7 @@ export function VolunteerLogDialog({
         ) : (
           <>
             <div className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <VolunteerStatus status={log.status} />
-                <span className="text-xs text-muted-foreground">
-                  Submitted {format(log.submittedAt, "MMM d, yyyy 'at' h:mm a")}
-                </span>
-              </div>
+              <Timeline label="Volunteer submission timeline" events={volunteerTimeline(log)} />
               {log.notes ? (
                 <p className="whitespace-pre-wrap break-words text-sm">
                   {log.notes}
@@ -401,19 +397,8 @@ export function VolunteerLogDialog({
               ) : (
                 <VolunteerEmpty title="Proof photo unavailable" />
               )}
-              {log.reviewedAt ? (
-                <div className="flex flex-col gap-1 text-sm">
-                  <p className="text-muted-foreground">
-                    {log.status === "APPROVED" ? "Approved" : "Declined"} by{" "}
-                    {log.reviewerName ?? "Former reviewer"} ·{" "}
-                    {format(log.reviewedAt, "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                  {log.reviewerNote ? (
-                    <p className="whitespace-pre-wrap break-words">
-                      {log.reviewerNote}
-                    </p>
-                  ) : null}
-                </div>
+              {log.reviewerNote ? (
+                <p className="whitespace-pre-wrap break-words text-sm">{log.reviewerNote}</p>
               ) : null}
               {reviewable ? (
                 <Field data-invalid={!!error}>

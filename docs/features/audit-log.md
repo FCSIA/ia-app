@@ -18,7 +18,7 @@ and a section picker on smaller screens. Audit filters remain in the URL when
 switching sections.
 
 The desktop table separates When, Person, Action, Record, and Where. Events use a
-single line, minute-level times, day headings, and full timestamps in Details.
+single line, minute-level times, and full timestamps in Details.
 Neutral category icons identify six domains: People & access, Clubs & chat,
 Announcements, Moderation, Schedules, and Flex & events. Destructive action text
 uses the destructive token. Selecting a row or its keyboard-accessible Details
@@ -33,11 +33,10 @@ Technical details section. Meaningful message changes, CSV counts, role changes,
 and other allowlisted metadata are shown outside that section. Whiteboard
 snapshots remain available.
 
-On phones, the log uses two-line interactive Cards and filters open in a bottom
-Drawer with a persistent Show events footer. The Cards retain the existing
-primitive geometry; the October 22 fixture measured 72.25px per item. Material
-visual changes await design-owner review; the audit's 56px/ten-visible-item
-proposal is not implemented. See the repair ledger for all remaining scope.
+On phones, the same native DataTable keeps its column semantics and horizontal
+scrolling. Filters open in a phone-only Drawer; desktop controls stay beside
+their headers. Native pagination covers explicitly labeled loaded records; Load
+older activity retrieves another server batch. Material visuals await owner review.
 
 ## Filters and search
 

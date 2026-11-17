@@ -1,0 +1,20 @@
+{
+  "kind": "Isolated minified browser fixture; React external. Not route transfer bytes.",
+  "fixtures": {
+    "imagePreview": {
+      "raw": 30427,
+      "gzip": 9817,
+      "brotli": 8592
+    },
+    "pdfPreview": {
+      "raw": 470260,
+      "gzip": 143863,
+      "brotli": 117048
+    },
+    "defaultIcons": {
+      "raw": 12509,
+      "gzip": 5089,
+      "brotli": 4352
+    }
+  }
+}

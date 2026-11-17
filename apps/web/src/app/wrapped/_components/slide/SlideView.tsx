@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import { ActivityHeatmap } from '@/components/ui/activity-heatmap';
 import gsap from 'gsap';
 import type { Slide } from '../../_lib/types';
 import { prefersReducedMotion } from '../../_lib/motion';
@@ -134,9 +135,9 @@ export function SlideView({ slide, direction }: SlideViewProps) {
   return (
     <div
       ref={rootRef}
-      className={`absolute inset-0 flex flex-col items-start justify-center px-6 py-20 sm:px-14 md:px-20 lg:px-28 bg-gradient-to-br ${slide.gradient} text-white overflow-hidden`}
+      className={`absolute inset-0 flex flex-col items-start justify-center px-6 py-20 sm:px-14 md:px-20 lg:px-28 bg-gradient-to-br ${slide.gradient} text-white overflow-y-auto`}
     >
-      <Graphic kind={slide.graphic} />
+      {!slide.activity && !slide.highlights && <Graphic kind={slide.graphic} />}
       <ScatterIcons icons={slide.scatterIcons} />
 
       <div className="relative z-10 flex flex-col items-start gap-6 max-w-4xl w-full">
@@ -178,6 +179,8 @@ export function SlideView({ slide, direction }: SlideViewProps) {
           </div>
         )}
 
+        {slide.activity && <ActivityHeatmap start={slide.activity.start} end={slide.activity.end} activity={slide.activity.days} />}
+        {slide.highlights && <ol className="space-y-3 text-base">{slide.highlights.map((event) => <li key={`${event.date}-${event.label}`}><time dateTime={event.date}>{event.date}</time><p>{event.label}</p></li>)}</ol>}
         {slide.chips && slide.chips.length > 0 && (
           <div className="slide-chips flex flex-wrap gap-2 pt-1">
             {slide.chips.map((chip) => (

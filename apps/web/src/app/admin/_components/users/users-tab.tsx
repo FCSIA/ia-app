@@ -9,13 +9,17 @@ import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
-import { DataTableCount, DataTableSection, PINNED_TABLE_HEADER } from '@/components/data/data-table-section';
+import {
+  useDataTable,
+  DataTableColumnHeader,
+  DataTableControls,
+  selectColumn,
+  type ColumnDef,
+} from '@/components/ui/data-table';
+import { AdminDataTable } from '../admin-data-table';
 import { Card, CardDescription, CardFooter, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
-import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -38,7 +42,6 @@ import { InputCopy } from '@/components/ui/input-copy';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ROLE_BADGE_LIMIT = 2;
-const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Major', 'Minor', 'Roles', 'Status', 'Actions'] as const;
 
 function PathwayCell({ value }: { value?: string | null }) {
   const label = formatPathwayLabel(value);
@@ -262,36 +265,7 @@ function UserTableSection({
   loadPreviousPage: () => void;
 }) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
-  const selectableUsers = canDeleteUsers ? users.filter((user) => user._id !== currentUserId) : [];
   const selectedCount = selectedUserIds.size;
-  const selectedVisibleCount = selectableUsers.filter((user) => selectedUserIds.has(user._id)).length;
-  const areAllVisibleUsersSelected = selectableUsers.length > 0 && selectedVisibleCount === selectableUsers.length;
-
-  const toggleUser = (userId: string, selected: boolean) => {
-    setSelectedUserIds((current) => {
-      const next = new Set(current);
-      if (selected) {
-        next.add(userId);
-      } else {
-        next.delete(userId);
-      }
-      return next;
-    });
-  };
-
-  const toggleVisibleUsers = (selected: boolean) => {
-    setSelectedUserIds((current) => {
-      const next = new Set(current);
-      for (const user of selectableUsers) {
-        if (selected) {
-          next.add(user._id);
-        } else {
-          next.delete(user._id);
-        }
-      }
-      return next;
-    });
-  };
 
   const clearSelection = () => setSelectedUserIds(new Set());
 
@@ -352,17 +326,8 @@ function UserTableSection({
       : typeof totalCount === 'number'
         ? `${users.length.toLocaleString()}/${totalCount.toLocaleString()} ${totalCount === 1 ? 'user' : 'users'}`
         : `${users.length} ${users.length === 1 ? 'user' : 'users'}`;
-  const toolbar = (
-    <>
-      <SearchToolbarRow className="flex-row flex-wrap items-center gap-2">
-        <SearchInput
-          className="min-w-0 basis-full sm:basis-0 sm:flex-1"
-          placeholder="Search users…"
-          aria-label="Search users"
-          value={search}
-          onValueChange={onSearchChange}
-        />
-        <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
+  const roleFilter = (
+      <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
           <SelectTrigger className="w-44 shrink-0" placeholder="Filter by role" aria-label="Filter users by role" />
           <SelectContent>
             <SelectItem index={0} value="students">Students</SelectItem>
@@ -372,9 +337,8 @@ function UserTableSection({
             <SelectItem index={4} value="all">All Users</SelectItem>
           </SelectContent>
         </Select>
-        <DataTableCount>{countLabel}</DataTableCount>
-      </SearchToolbarRow>
-      {canDeleteUsers && selectedCount > 0 ? (
+  );
+  const selectionBar = canDeleteUsers && selectedCount > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="whitespace-nowrap text-xs text-muted-foreground">
             {selectedCount} selected
@@ -394,9 +358,7 @@ function UserTableSection({
             onDelete={deleteSelectedUsers}
           />
         </div>
-      ) : null}
-    </>
-  );
+  ) : null;
 
   // The toolbar owns the count; the list end only pages.
   const pagination = isLoading || (!canLoadPrevious && status === 'Exhausted') ? null : (
@@ -425,91 +387,105 @@ function UserTableSection({
     </div>
   );
 
+  const columns: ColumnDef<AdminUserRecord>[] = [
+    selectColumn<AdminUserRecord>(),
+    {
+      id: 'name',
+      accessorFn: (user) => displayName(user),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+      cell: ({ row }) => (
+        <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
+          <span className="min-w-0 truncate" title={displayName(row.original)}>{displayName(row.original)}</span>
+          <DeveloperBadge user={row.original} size={13} />
+        </span>
+      ),
+      meta: { label: 'Name' },
+    },
+    {
+      id: 'grade',
+      accessorFn: (user) => user.gradeLevel,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Grade" />,
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.gradeLevel || '-'}</span>,
+      meta: { label: 'Grade' },
+    },
+    {
+      id: 'major',
+      accessorFn: (user) => user.major,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Major" />,
+      cell: ({ row }) => <PathwayCell value={row.original.major} />,
+      meta: { label: 'Major' },
+    },
+    {
+      id: 'minor',
+      accessorFn: (user) => user.minor,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Minor" />,
+      cell: ({ row }) => <PathwayCell value={row.original.minor} />,
+      meta: { label: 'Minor' },
+    },
+    {
+      id: 'roles',
+      accessorFn: (user) => (user.roles ?? []).join(', '),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Roles" />,
+      cell: ({ row }) => <RoleSummary roles={row.original.roles ?? []} />,
+      meta: { label: 'Roles' },
+    },
+    {
+      id: 'status',
+      accessorFn: (user) => (user.isActive ? 'Active' : 'Inactive'),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+      cell: ({ row }) => (
+        <Badge variant="solid" color={row.original.isActive ? 'emerald' : 'red'} size="sm">
+          {row.original.isActive ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+      meta: { label: 'Status' },
+    },
+    {
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => (
+        <DataTableControls className="justify-end">{userActions(row.original)}</DataTableControls>
+      ),
+      meta: { label: 'Actions' },
+    },
+  ];
+  const table = useDataTable({
+    data: users,
+    columns,
+    pageSize: 20,
+    getRowId: (user) => user._id,
+    manualFiltering: true,
+    manualPagination: true,
+    enableSorting: false,
+    state: {
+      globalFilter: search,
+      rowSelection: Object.fromEntries([...selectedUserIds].map((id) => [id, true])),
+    },
+    onGlobalFilterChange: (update) => onSearchChange(typeof update === 'function' ? update(search) : update),
+    enableRowSelection: (row) => canDeleteUsers && row.original._id !== currentUserId && !isDeleteUsersPending,
+    onRowSelectionChange: (update) =>
+      setSelectedUserIds((current) => {
+        const previous = Object.fromEntries([...current].map((id) => [id, true]));
+        const next = typeof update === 'function' ? update(previous) : update;
+        return new Set(Object.keys(next).filter((id) => next[id]));
+      }),
+  });
+
   return (
-    <DataTableSection label={title} toolbar={toolbar}>
-      <div className="hidden md:block">
-        <Table aria-label={title} aria-busy={isLoading || status === 'LoadingMore'} className="table-fixed">
-          <colgroup>
-            <col className="w-10" />
-            <col />
-            <col className="w-14" />
-            <col className="hidden w-16 xl:table-column" />
-            <col className="hidden w-16 xl:table-column" />
-            <col className="w-[22%]" />
-            <col className="w-[5.5rem]" />
-            <col className="w-[9.5rem]" />
-          </colgroup>
-          <TableHeader className={PINNED_TABLE_HEADER}>
-            <TableRow>
-              <TableHead scope="col">
-                <Checkbox
-                  checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
-                  onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
-                  disabled={selectableUsers.length === 0 || isDeleteUsersPending}
-                  aria-label="Select all users shown on this page"
-                />
-              </TableHead>
-              {USER_TABLE_HEADERS.slice(1).map((header) => (
-                <TableHead
-                  key={header}
-                  scope="col"
-                  className={header === 'Major' || header === 'Minor' ? 'hidden xl:table-cell' : undefined}
-                >
-                  {header === 'Actions' ? <span className="sr-only">Actions</span> : header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? Array.from({ length: 8 }, (_, index) => (
-              <TableRow key={index}><TableCell colSpan={8}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
-            )) : users.length === 0 ? (
-              <TableRow><TableCell colSpan={8}><AdminNotice message={emptyMessage} /></TableCell></TableRow>
-            ) : users.map((user, index) => (
-              <TableRow key={user._id} index={index} className="group">
-                <TableCell>
-                  <Checkbox
-                    checked={selectedUserIds.has(user._id)}
-                    onCheckedChange={(checked) => toggleUser(user._id, checked === true)}
-                    disabled={!canDeleteUsers || user._id === currentUserId || isDeleteUsersPending}
-                    aria-label={`Select ${displayName(user)}`}
-                  />
-                </TableCell>
-                <TableCell className="min-w-0 overflow-hidden">
-                  <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
-                    <span className="min-w-0 truncate" title={displayName(user)}>{displayName(user)}</span>
-                    <DeveloperBadge user={user} size={13} />
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
-                </TableCell>
-                <TableCell className="hidden min-w-0 overflow-hidden xl:table-cell">
-                  <PathwayCell value={user.major} />
-                </TableCell>
-                <TableCell className="hidden min-w-0 overflow-hidden xl:table-cell">
-                  <PathwayCell value={user.minor} />
-                </TableCell>
-                <TableCell className="min-w-0 overflow-hidden">
-                  <RoleSummary roles={(user.roles ?? [])} />
-                </TableCell>
-                <TableCell>
-                  <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
-                    {user.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="overflow-hidden">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
-                    {userActions(user)}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="md:hidden">
-        {isLoading ? (
+    <AdminDataTable
+      label={title}
+      table={table}
+      loading={isLoading}
+      empty={emptyMessage}
+      searchPlaceholder="Search users…"
+      controls={roleFilter}
+      count={countLabel}
+      toolbarBelow={selectionBar}
+      footer={pagination}
+      mobile={
+        isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2, 3].map((index) => <Skeleton key={index} className="h-16 w-full" />)}
           </div>
@@ -543,10 +519,9 @@ function UserTableSection({
               </Card>
             ))}
           </CardGroup>
-        )}
-      </div>
-      {pagination}
-    </DataTableSection>
+        )
+      }
+    />
   );
 }
 

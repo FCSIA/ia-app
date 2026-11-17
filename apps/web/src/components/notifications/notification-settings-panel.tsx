@@ -1,6 +1,7 @@
 'use client';
 
 import { hasAnyRole, isSuperAdmin, MODERATION_ALERT_ROLES } from '~/apps/shared/roles';
+import { isMuteActive } from '~/apps/shared/notification-mute';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -106,6 +107,7 @@ export function NotificationSettingsPanel() {
             return (
               <div
                 key={setting.key}
+                id={`notification-global-${setting.key}`}
                 className="flex min-w-0 items-center justify-between gap-3 px-3 py-2.5"
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -168,11 +170,17 @@ export function NotificationSettingsPanel() {
 type ClubNavigation = NonNullable<FunctionReturnType<typeof api.clubs.detail.getWorkspaceNavigation>>;
 type Channel = ClubNavigation['channels'][number];
 type Unit = ClubNavigation['units'][number];
+type Preferences = FunctionReturnType<typeof api.notifications.preferences.list> | undefined;
 
 function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; clubName: string }) {
   const shape = useShape();
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
   const preferences = useQuery(api.notifications.preferences.list);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [optimisticClubEnabled, setOptimisticClubEnabled] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
   const tree = useMemo(
@@ -184,7 +192,7 @@ function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; c
   ) ?? preferences?.find(
     (preference) => preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === GLOBAL_SCOPE_KEY,
   );
-  const storedClubEnabled = clubPreference?.enabled !== false;
+  const storedClubEnabled = clubPreference?.enabled !== false && clubPreference?.level !== 'OFF';
   const clubEnabled = optimisticClubEnabled ?? storedClubEnabled;
 
   useEffect(() => {
@@ -196,7 +204,7 @@ function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; c
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className={cn('overflow-hidden border border-border/50 bg-card', shape.mergedBg)}>
-        <div className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2">
+        <div id={`notification-club-${clubId}`} className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2">
           <Megaphone className={cn('size-4 shrink-0', clubEnabled ? 'text-primary' : 'text-muted-foreground')} aria-hidden />
           <h3 className="min-w-0 flex-1 truncate text-sm font-semibold" title={clubName}>{clubName}</h3>
           <CollapsibleTrigger asChild>
@@ -223,11 +231,14 @@ function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; c
             onOptimisticChange={setOptimisticClubEnabled}
           />
         </div>
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+          {clubPreference?.scopeKey === 'global' ? <>Club alerts inherit <a className="underline" href="#notification-global-CLUB_ANNOUNCEMENT">global club announcements</a>.</> : 'The club toggle controls alerts for this club.'} An off club pauses channel alerts without erasing their preferences.
+        </p>
         <CollapsibleContent className="border-t border-border/30 px-3 pb-2">
           {navigation === undefined ? (
             <p className="py-3 text-xs text-muted-foreground" role="status">Loading channels…</p>
           ) : tree.length ? (
-            <NotificationChannelBranches nodes={tree} clubId={clubId} clubEnabled={clubEnabled} />
+            <NotificationChannelBranches nodes={tree} clubId={clubId} clubEnabled={clubEnabled} preferences={preferences} now={now} />
           ) : (
             <p className="py-3 text-xs text-muted-foreground">No channels available.</p>
           )}
@@ -237,10 +248,12 @@ function ClubNotificationChannels({ clubId, clubName }: { clubId: Id<'clubs'>; c
   );
 }
 
-function NotificationChannelBranches({ nodes, clubId, clubEnabled }: {
+function NotificationChannelBranches({ nodes, clubId, clubEnabled, preferences, now }: {
   nodes: NotificationChannelNode<Unit, Channel>[];
   clubId: Id<'clubs'>;
   clubEnabled: boolean;
+  preferences: Preferences;
+  now: number;
 }) {
   return (
     <ul className="ml-2">
@@ -255,10 +268,10 @@ function NotificationChannelBranches({ nodes, clubId, clubEnabled }: {
                 <FolderOpen className="size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 truncate text-sm font-medium" title={node.unit.name}>{node.unit.name}</span>
               </div>
-              <NotificationChannelBranches nodes={node.children} clubId={clubId} clubEnabled={clubEnabled} />
+              <NotificationChannelBranches nodes={node.children} clubId={clubId} clubEnabled={clubEnabled} preferences={preferences} now={now} />
             </>
           ) : (
-            <ChannelNotificationRow channel={node.channel} clubId={clubId} clubEnabled={clubEnabled} />
+            <ChannelNotificationRow channel={node.channel} clubId={clubId} clubEnabled={clubEnabled} preferences={preferences} now={now} />
           )}
         </li>
       ))}
@@ -266,12 +279,20 @@ function NotificationChannelBranches({ nodes, clubId, clubEnabled }: {
   );
 }
 
-function ChannelNotificationRow({ channel, clubId, clubEnabled }: {
+function ChannelNotificationRow({ channel, clubId, clubEnabled, preferences, now }: {
   channel: Channel;
   clubId: Id<'clubs'>;
   clubEnabled: boolean;
+  preferences: Preferences;
+  now: number;
 }) {
+  const mention = preferences?.find((p) => p.category === 'CLUB_CHANNEL_MENTION' && p.scopeKey === `channel:${channel._id}`);
+  const global = preferences?.find((p) => p.category === 'CLUB_CHANNEL_MENTION' && p.scopeKey === 'global');
+  const preference = mention ?? global;
+  const muted = isMuteActive(preferences?.find((p) => p.category === 'CLUB_CHANNEL_MESSAGE' && p.scopeKey === `mute:channel:${channel._id}`), now);
+  const enabled = !preference || (preference.enabled !== false && preference.level !== 'OFF');
   return (
+    <div>
     <div className="flex min-h-10 min-w-0 items-center justify-between gap-3 py-2">
       <div className="flex min-w-0 items-center gap-2">
         <Hash className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -284,8 +305,17 @@ function ChannelNotificationRow({ channel, clubId, clubEnabled }: {
         channelId={channel._id}
         compact
         className="shrink-0"
-        parentEnabled={clubEnabled}
       />
+    </div>
+    <p className="pb-2 text-xs text-muted-foreground">
+      {preferences === undefined ? 'Loading effective preferences…' : !clubEnabled ? (
+        <>Alerts paused by <a className="underline" href={`#notification-club-${clubId}`}>club notifications</a>. Your channel choice remains editable and saved.</>
+      ) : muted ? (
+        <>Alerts paused by a channel mute. <a className="underline" href={`/clubs/${clubId}/channels/${channel._id}`}>Open channel notification settings to unmute</a>. Your saved preference remains editable.</>
+      ) : (
+        <>{mention ? 'Channel override' : 'Inherited from global mentions'}: {enabled ? 'in-app alerts allowed' : 'off'}. <a className="underline" href={mention ? `/clubs/${clubId}/channels/${channel._id}` : '#notification-global-CLUB_CHANNEL_MENTION'}>{mention ? 'Channel alert settings' : 'Global mentions toggle'}</a>. Channel mutes can pause alerts; push also depends on browser setup and delivery availability.</>
+      )}
+    </p>
     </div>
   );
 }

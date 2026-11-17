@@ -115,9 +115,9 @@ export function FridayForm({
             <div className="py-2">
               <Switch
                 label="Is School Day?"
-                checked={form.isSchoolDay}
-                onCheckedChange={(isSchoolDay) =>
-                  setForm((current) => ({ ...current, isSchoolDay }))
+                checked={Boolean(form.isSchoolDay)}
+                onToggle={() =>
+                  setForm((current) => ({ ...current, isSchoolDay: !current.isSchoolDay }))
                 }
               />
             </div>

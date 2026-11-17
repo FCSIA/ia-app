@@ -57,7 +57,8 @@ const DialogClose = DialogPrimitive.Close;
 
 interface DialogContentProps
   extends ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
-  size?: "sm" | "lg";
+  /** Fluid widths: short confirmation, form, or composed two-panel layout. */
+  size?: "sm" | "lg" | "xl";
   /** Controls the dialog-owned content inset. Use `none` when a composed
    * primitive owns its internal layout and must meet the dialog edge. */
   padding?: "default" | "none";
@@ -173,6 +174,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               padding === "none" && "p-0",
               size === "sm" && (isTop ? "max-w-[400px]" : "sm:max-w-[400px]"),
               size === "lg" && (isTop ? "max-w-[540px]" : "sm:max-w-[540px]"),
+              size === "xl" && (isTop ? "max-w-[880px]" : "sm:max-w-[880px]"),
               shape.container,
               className
             )}

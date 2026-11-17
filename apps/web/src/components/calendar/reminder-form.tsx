@@ -139,8 +139,8 @@ export function ReminderForm({
       </Field>
       <Switch
         label="All day"
-        checked={values.allDay}
-        onCheckedChange={changeAllDay}
+        checked={Boolean(values.allDay)}
+        onToggle={() => changeAllDay(!Boolean(values.allDay))}
         disabled={disabled}
       />
       {/* One column: two date-and-time triggers side by side cannot show a

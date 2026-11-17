@@ -78,6 +78,7 @@ export const wrappedSummaryValidator = v.object({
   schoolYearLabel: v.string(),
   rangeStart: v.string(),
   rangeEnd: v.string(),
+  dailyActivity: v.optional(v.array(v.object({ date: v.string(), messages: v.number() }))),
   messagesSent: v.number(),
   channelsEngaged: v.number(),
   friends: v.number(),
@@ -134,3 +135,14 @@ export const wrappedSummaryValidator = v.object({
 });
 
 export type WrappedSummary = Infer<typeof wrappedSummaryValidator>;
+
+/** Only observed message days, in school-local calendar order; no synthetic history. */
+export function dailyMessageActivity(timestamps: number[]): { date: string; messages: number }[] {
+  const counts = new Map<string, number>();
+  for (const timestamp of timestamps) {
+    const date = schoolDateKey(timestamp);
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+  }
+  return [...counts].sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, messages]) => ({ date, messages }));
+}

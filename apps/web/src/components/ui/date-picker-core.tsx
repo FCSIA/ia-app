@@ -988,7 +988,10 @@ function useControllable<T>(value: T | undefined, defaultValue: T | undefined, o
     },
     [isControlled, onChange]
   );
-  return [current, set] as const;
+  const reset = useCallback(() => {
+    if (!isControlled) setInternal(defaultValue);
+  }, [defaultValue, isControlled]);
+  return [current, set, reset] as const;
 }
 
 function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePickerPopoverProps> }) {
@@ -1014,7 +1017,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   const presets = mode === "range" ? (props as DatePickerRangeProps).presets : undefined;
   const numberOfMonths = numberOfMonthsProp ?? (mode === "range" ? 2 : 1);
 
-  const [value, setValue] = useControllable<Date | DateRange | undefined>(
+  const [value, setValue, resetValue] = useControllable<Date | DateRange | undefined>(
     props.value,
     props.defaultValue,
     props.onValueChange as ((v: Date | DateRange | undefined) => void) | undefined,
@@ -1022,13 +1025,13 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   );
   const hasTime = "time" in props || "defaultTime" in props;
   const hasTimeRange = "timeRange" in props || "defaultTimeRange" in props;
-  const [time, setTime] = useControllable<string | null>(
+  const [time, setTime, resetTime] = useControllable<string | null>(
     props.time,
     props.defaultTime ?? null,
     props.onTimeChange,
     "time" in props
   );
-  const [timeRange, setTimeRange] = useControllable<TimeRange | null>(
+  const [timeRange, setTimeRange, resetTimeRange] = useControllable<TimeRange | null>(
     props.timeRange,
     props.defaultTimeRange ?? null,
     props.onTimeRangeChange,
@@ -1040,6 +1043,23 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     props.onOpenChange,
     "open" in props
   );
+  const formInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const form = formInputRef.current?.form;
+    if (!form) return;
+    const onReset = (event: Event) => {
+      // A later form listener may cancel reset. Uncontrolled fields follow
+      // native defaults; controlled fields remain owned by their caller.
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        resetValue();
+        resetTime();
+        resetTimeRange();
+      });
+    };
+    form.addEventListener("reset", onReset);
+    return () => form.removeEventListener("reset", onReset);
+  }, [name, resetValue, resetTime, resetTimeRange]);
 
   const shape = useShape();
   const sizeClasses = useSize(size);
@@ -1482,7 +1502,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       <FluidHoverHighlight hover={segmentHover} className={cn("z-0", innerRadius)} />
       {name && (
         <input
+          ref={formInputRef}
           type="hidden"
+          disabled={disabled}
           name={name}
           value={formValue(
             mode === "range" ? range : single,

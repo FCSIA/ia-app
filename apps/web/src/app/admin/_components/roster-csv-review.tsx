@@ -1,25 +1,20 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { Download } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
 import {
-  DataTablePanel,
-  dataTableClasses,
-} from '@/components/data/data-table-panel';
+  useDataTable,
+  DataTableColumnHeader,
+  type ColumnDef,
+} from '@/components/ui/data-table';
+import { AdminDataTable } from './admin-data-table';
+import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
 import type { RosterCsvPreview } from '../_lib/roster-csv';
 import { normalizeCsvHeader } from '~/apps/shared/csv';
 import type {
@@ -50,7 +45,64 @@ export function RosterCsvReview({
   preview: RosterCsvPreview<unknown>;
   clearsBlanks?: boolean;
 }) {
-  const classes = dataTableClasses('compact');
+  type CsvRow = RosterCsvPreview<unknown>['rows'][number];
+  const columns = useMemo<ColumnDef<CsvRow>[]>(
+    () => [
+      {
+        accessorKey: 'line',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Line" />
+        ),
+      },
+      ...preview.headers.map((header, index): ColumnDef<CsvRow> => ({
+        id: `cell-${index}`,
+        accessorFn: (row) => row.cells[index],
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={header || '(missing header)'}
+          />
+        ),
+        meta: { label: header || '(missing header)' },
+        cell: ({ row }) =>
+          row.original.cells[index] ||
+          (clearsBlanks &&
+          [
+            'grade',
+            'gradelevel',
+            'major',
+            'majorpathway',
+            'pathway',
+            'minor',
+            'minorpathway',
+          ].includes(normalizeCsvHeader(header))
+            ? '(clear)'
+            : '—'),
+      })),
+      {
+        id: 'validation',
+        accessorFn: (row) => row.issues.join(' ') || 'Ready',
+        header: 'Validation',
+        meta: { lines: 'wrap' },
+        cell: ({ row }) =>
+          row.original.issues.length ? (
+            <ul className="text-destructive">
+              {row.original.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          ) : (
+            'Ready'
+          ),
+      },
+    ],
+    [preview.headers, clearsBlanks],
+  );
+  const table = useDataTable({
+    data: preview.rows,
+    columns,
+    getRowId: (row) => String(row.line),
+  });
   const invalid = preview.rows.filter((row) => row.issues.length > 0).length;
   return (
     <div className="min-w-0 space-y-2">
@@ -75,79 +127,14 @@ export function RosterCsvReview({
             ))}
         </ul>
       ) : null}
-      <DataTablePanel
-        title="CSV preview"
-        count={preview.rows.length}
-        density="compact"
-        contentClassName="max-h-96"
-        toolbar={
-          <p className="text-sm text-muted-foreground" role="status">
-            {preview.issues.length
-              ? 'Fix CSV errors before continuing'
-              : invalid
-                ? `${invalid} ${invalid === 1 ? 'row needs' : 'rows need'} correction`
-                : 'All rows passed file validation'}
-          </p>
-        }
-      >
-        {preview.rows.length ? (
-          <Table aria-label="CSV rows and validation results">
-            <TableHeader>
-              <TableRow>
-                <TableHead className={classes.head}>Line</TableHead>
-                {preview.headers.map((header, index) => (
-                  <TableHead
-                    className={classes.head}
-                    key={`${header}-${index}`}
-                  >
-                    {header || '(missing header)'}
-                  </TableHead>
-                ))}
-                <TableHead className={classes.head}>Validation</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {preview.rows.map((row, index) => (
-                <TableRow key={row.line} index={index}>
-                  <TableCell className={classes.cell}>{row.line}</TableCell>
-                  {row.cells.map((cell, cellIndex) => (
-                    <TableCell className={classes.cell} key={cellIndex}>
-                      {cell ||
-                        (clearsBlanks &&
-                        [
-                          'grade',
-                          'gradelevel',
-                          'major',
-                          'majorpathway',
-                          'pathway',
-                          'minor',
-                          'minorpathway',
-                        ].includes(
-                          normalizeCsvHeader(
-                            preview.headers[cellIndex] ?? '',
-                          ),
-                        )
-                          ? '(clear)'
-                          : '—')}
-                    </TableCell>
-                  ))}
-                  <TableCell className={classes.cell}>
-                    {row.issues.length ? (
-                      <ul className="min-w-56 whitespace-normal text-destructive">
-                        {row.issues.map((issue) => (
-                          <li key={issue}>{issue}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      'Ready'
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : null}
-      </DataTablePanel>
+      <p className="text-sm text-muted-foreground" role="status">
+        {preview.issues.length
+          ? 'Fix CSV errors before continuing'
+          : invalid
+            ? `${invalid} ${invalid === 1 ? 'row needs' : 'rows need'} correction`
+            : 'All rows passed file validation'}
+      </p>
+      <AdminDataTable table={table} empty="No CSV rows to review." />
     </div>
   );
 }

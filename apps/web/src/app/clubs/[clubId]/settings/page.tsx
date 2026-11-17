@@ -52,9 +52,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   Field,
-  FieldContent,
   FieldGroup,
-  FieldLabel,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -500,18 +498,13 @@ export default function ClubSettingsPage() {
           {canManageClubSettings && navigation ? (
             <Elevated offset={1} className="overflow-hidden rounded-xl">
               <Card className="pb-0">
-                <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Volunteer hours</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Let members submit service hours with photo proof for club review.
-                    </p>
-                  </div>
+                <CardContent className="flex flex-col gap-2 px-5 py-4">
                   <Switch
                     aria-label="Enable volunteer-hours tracking"
-                    checked={navigation.club.volunteerTrackingEnabled}
+                    checked={Boolean(navigation.club.volunteerTrackingEnabled)}
                     disabled={savingVolunteerSetting}
-                    onCheckedChange={(enabled) => {
+                    onToggle={() => {
+                      const enabled = !navigation.club.volunteerTrackingEnabled;
                       setSavingVolunteerSetting(true);
                       void setVolunteerTrackingEnabled({ clubId, enabled })
                         .catch((error) => toast({
@@ -520,7 +513,11 @@ export default function ClubSettingsPage() {
                         }))
                         .finally(() => setSavingVolunteerSetting(false));
                     }}
+                    label="Enable volunteer-hours tracking"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Let members submit service hours with photo proof for club review.
+                  </p>
                 </CardContent>
               </Card>
             </Elevated>
@@ -662,30 +659,23 @@ export default function ClubSettingsPage() {
                         </div>
 
                         <div className="flex items-center justify-between gap-4 border-b border-border/70 px-5 py-4">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1">
-                              <p className="text-sm font-medium text-foreground">
-                                Make this role a group
-                              </p>
-                              <Tooltip content="This role will appear as a tab in People.">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon-compact"
-                                  aria-label="About role groups"
-                                >
-                                  <CircleHelp />
-                                </Button>
-                              </Tooltip>
-                            </div>
-                          </div>
                           <Switch
-                            aria-label={`Show ${selectedRole.name} as a People group`}
-                            checked={selectedRole.showInDirectory}
-                            onCheckedChange={(checked) =>
-                              void setDirectoryVisibility(checked)
-                            }
+                            checked={Boolean(selectedRole.showInDirectory)}
+                            label={`Show ${selectedRole.name} as a People group`}
+                            onToggle={() => {
+                              void setDirectoryVisibility(!selectedRole.showInDirectory);
+                            }}
                           />
+                          <Tooltip content="This role will appear as a tab in People.">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-compact"
+                              aria-label="About role groups"
+                            >
+                              <CircleHelp />
+                            </Button>
+                          </Tooltip>
                         </div>
 
                         <div className="divide-y divide-border/70 px-5">
@@ -737,38 +727,26 @@ export default function ClubSettingsPage() {
                                           orientation="horizontal"
                                           className="min-h-14 items-center py-2.5"
                                         >
-                                          <FieldContent>
-                                            <div className="flex items-center gap-2">
-                                              <FieldLabel
-                                                htmlFor={`${selectedRole._id}-${item.key}`}
-                                              >
-                                                {item.label}
-                                              </FieldLabel>
-                                              <Tooltip content={item.description}>
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="icon-compact"
-                                                  aria-label={`About ${item.label}`}
-                                                >
-                                                  <CircleHelp />
-                                                </Button>
-                                              </Tooltip>
-                                            </div>
-                                          </FieldContent>
                                           <Switch
-                                            id={`${selectedRole._id}-${item.key}`}
-                                            aria-label={item.label}
-                                            checked={
-                                              selectedRole.permissions[item.key]
-                                            }
-                                            onCheckedChange={(enabled) =>
+                                            checked={Boolean(selectedRole.permissions[item.key])}
+                                            label={item.label}
+                                            onToggle={() => {
                                               void setPermission(
                                                 item.key,
-                                                enabled,
-                                              )
-                                            }
+                                                !selectedRole.permissions[item.key],
+                                              );
+                                            }}
                                           />
+                                          <Tooltip content={item.description}>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon-compact"
+                                              aria-label={`About ${item.label}`}
+                                            >
+                                              <CircleHelp />
+                                            </Button>
+                                          </Tooltip>
                                         </Field>
                                       ))}
                                     </FieldGroup>

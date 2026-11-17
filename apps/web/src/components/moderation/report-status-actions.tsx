@@ -1,14 +1,8 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Ellipsis } from 'lucide-react';
+import { DataTableControls } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownContent,
-  DropdownMenu,
-  DropdownTrigger,
-} from '@/components/ui/dropdown';
-import { MenuItem } from '@/components/ui/menu-item';
 
 export type ReportStatusAction<Status extends string> = {
   label: string;
@@ -38,9 +32,9 @@ export function ReportStatusActions<Status extends string>({
   onRun: (action: ReportStatusAction<Status>) => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <DataTableControls aria-label={`Actions for ${menuLabel}`}>
       <Button
-        size="sm"
+        size="compact"
         variant={emphasis}
         leadingIcon={primary.icon}
         disabled={disabled}
@@ -48,32 +42,11 @@ export function ReportStatusActions<Status extends string>({
       >
         {primary.label}
       </Button>
-      {more.length ? (
-        <DropdownMenu disabled={disabled}>
-          <DropdownTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`More actions for ${menuLabel}`}
-              >
-                <Ellipsis />
-              </Button>
-            }
-          />
-          <DropdownContent align="end">
-            {more.map((action, index) => (
-              <MenuItem
-                key={action.label}
-                index={index}
-                icon={action.icon}
-                label={action.label}
-                onSelect={() => onRun(action)}
-              />
-            ))}
-          </DropdownContent>
-        </DropdownMenu>
-      ) : null}
-    </div>
+      {more.map((action) => (
+        <Button key={action.status} size="compact" variant="ghost" leadingIcon={action.icon} disabled={disabled} onClick={() => onRun(action)}>
+          {action.label}
+        </Button>
+      ))}
+    </DataTableControls>
   );
 }

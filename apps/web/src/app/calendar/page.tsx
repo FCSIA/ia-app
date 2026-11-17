@@ -63,6 +63,7 @@ import type {
   EventCalendarRangeInfo,
   EventCalendarSlotDraft,
 } from '@/components/reui/event-calendar/event-calendar-types';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -162,12 +163,12 @@ function CalendarInvites() {
       <PopoverTrigger asChild>
         <Button
           variant="tertiary"
-          size={isMobile ? 'icon-sm' : 'md'}
+          size="default"
           leadingIcon={isMobile ? undefined : Mail}
-          badge={invites.length || undefined}
           aria-label={`Calendar invites, ${invites.length} pending`}
         >
           {isMobile ? <Mail /> : 'Invites'}
+          {invites.length ? <Badge>{invites.length}</Badge> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 space-y-4">
@@ -551,7 +552,7 @@ function CalendarWorkspace({ isMobile }: { isMobile: boolean }) {
                   <PopoverTrigger asChild>
                     <Button
                       variant="tertiary"
-                      size={isMobile ? 'icon-sm' : 'md'}
+                      size="default"
                       leadingIcon={isMobile ? undefined : SlidersHorizontal}
                       aria-label={`Calendar sources, ${sources.length} visible`}
                     >

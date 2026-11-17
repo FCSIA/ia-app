@@ -26,6 +26,13 @@ import type { Slide, WrappedSummary } from './types';
 import { schoolYearLabel } from '~/apps/shared/school-time';
 import { PATHWAY_THEME } from './constants';
 
+function activityDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
 function formatHour(hour: number): string {
   // 0 → 12 AM, 13 → 1 PM, etc.
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -62,7 +69,7 @@ export function buildSlides(summary: WrappedSummary, displayName: string): Slide
     kind: 'intro',
     eyebrow: `${year} · IA Wrapped`,
     value: displayName,
-    caption: 'Your year, in numbers. Tap through →',
+    caption: 'Your year at IA. Tap through →',
     icon: Star,
     gradient: 'from-fuchsia-500 via-purple-600 to-indigo-700',
     graphic: 'confetti',
@@ -79,12 +86,29 @@ export function buildSlides(summary: WrappedSummary, displayName: string): Slide
     caption:
       summary.messagesSent === 0
         ? 'No messages yet — this is your blank canvas.'
-        : `messages — about ${avgPerWeek.toLocaleString()} a week.`,
+        : summary.messagesSent < 40
+          ? 'messages shared this school year.'
+          : `messages — about ${avgPerWeek.toLocaleString()} a week.`,
     icon: MessageSquare,
     gradient: 'from-rose-500 via-orange-500 to-amber-500',
     graphic: 'blobs',
     scatterIcons: [MessageSquare, MessageCircle, Volume2, Flame],
   });
+
+  if (summary.dailyActivity !== undefined) {
+    slides.push({ key: 'daily-activity', kind: 'name', eyebrow: 'Your message activity',
+      value: 'Day by day', icon: CalendarDays, gradient: 'from-sky-700 to-indigo-900',
+      graphic: 'grid', scatterIcons: [],
+      activity: { start: activityDate(summary.rangeStart), end: activityDate(summary.rangeEnd), days: summary.dailyActivity } });
+  }
+  const dated = (summary.dailyActivity ?? []).filter((day) => day.messages > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const highlights: { date: string; label: string }[] = [];
+  if (dated.length) highlights.push({ date: dated[0].date, label: 'First recorded message day' });
+  if (summary.mostActiveDay?.messages) highlights.push({ date: summary.mostActiveDay.date, label: `${summary.mostActiveDay.messages.toLocaleString()} messages · busiest day` });
+  if (dated.length > 1) highlights.push({ date: dated[dated.length - 1].date, label: 'Latest recorded message day' });
+  if (highlights.length) slides.push({ key: 'dated-highlights', kind: 'name', eyebrow: 'Dates to remember', value: 'Your highlights',
+    icon: CalendarDays, gradient: 'from-violet-700 to-indigo-900', graphic: 'grid', scatterIcons: [],
+    highlights: highlights.sort((a, b) => a.date.localeCompare(b.date)) });
 
   // 3. Peak hour — skip when there are no messages
   if (summary.peakHour && summary.peakHour.messages > 0) {
@@ -196,7 +220,7 @@ export function buildSlides(summary: WrappedSummary, displayName: string): Slide
     caption:
       summary.friends === 0
         ? 'No new friends yet — maybe this is the year.'
-        : 'friends added to your schedule this year.',
+        : 'friends on your schedule.',
     icon: Users,
     gradient: 'from-pink-500 via-rose-500 to-red-500',
     graphic: 'orbs',
@@ -316,5 +340,32 @@ export function buildSlides(summary: WrappedSummary, displayName: string): Slide
     scatterIcons: [Star, Sparkles, Heart, Rocket],
   });
 
-  return slides;
+  // Describe recorded participation rather than repeat prompts for missing
+  // activity. Non-chat participation still gives students a complete story.
+  const populated = slides.filter((slide) => {
+    switch (slide.key) {
+      case 'messages': return summary.messagesSent > 0;
+      case 'channels': return summary.channelsEngaged > 0;
+      case 'top-channel': return !!summary.topChannel && summary.topChannel.messages > 0;
+      case 'top-mention': return !!summary.topMentioned && summary.topMentioned.mentions > 0;
+      case 'friends': return summary.friends > 0;
+      case 'clubs': return summary.clubs > 0;
+      case 'credits': return summary.flexCredits > 0;
+      default: return true;
+    }
+  });
+  if (populated.length === 2) {
+    populated.splice(1, 0, {
+      key: 'unrecorded-year',
+      kind: 'name',
+      eyebrow: 'Beyond the numbers',
+      value: 'Your year is yours',
+      caption: 'No activity is recorded in this snapshot. There is more to a school year than what happens in this app.',
+      icon: Star,
+      gradient: 'from-fuchsia-500 via-purple-600 to-indigo-700',
+      graphic: 'stars',
+      scatterIcons: [Star, Sparkles, Heart],
+    });
+  }
+  return populated;
 }

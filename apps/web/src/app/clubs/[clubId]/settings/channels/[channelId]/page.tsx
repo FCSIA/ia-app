@@ -341,13 +341,13 @@ function ChannelSettingsEditor({
 
           <Field orientation="horizontal" className="items-center">
             <FieldContent>
-              <FieldLabel htmlFor="channel-whiteboards">Whiteboards</FieldLabel>
+
               <FieldDescription>Shared drawing boards in this channel.</FieldDescription>
             </FieldContent>
             <Switch
               id="channel-whiteboards"
-              checked={whiteboards}
-              onCheckedChange={setWhiteboards}
+              checked={Boolean(whiteboards)}
+              onToggle={() => setWhiteboards(!Boolean(whiteboards))} label="Whiteboards"
             />
           </Field>
         </CardContent>

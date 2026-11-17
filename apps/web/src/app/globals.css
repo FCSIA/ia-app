@@ -47,9 +47,10 @@
   --color-border: var(--theme-border-color, hsl(var(--foreground) / 0.16));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  /* Fluid shape classes and numeric selection radii share Tailwind's standard ladder. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
@@ -1010,4 +1011,13 @@
       inset-inline: min(0px, calc((100% - 44px) / 2));
     }
   }
+}
+
+/* Fluid's full-color interaction tokens, relative to the current app surface. */
+:root {
+  --hover: hsl(var(--foreground) / 0.06);
+  --active: hsl(var(--foreground) / 0.1);
+  --tint: hsl(var(--foreground) / 0.08);
+  --tint-hover: hsl(var(--foreground) / 0.12);
+  --focus-ring: hsl(var(--ring));
 }

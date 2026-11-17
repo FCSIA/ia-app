@@ -14,6 +14,7 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -50,15 +51,11 @@ export function PinnedMessagesButton({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
-            badge={
-              messages.length
-                ? `${messages.length}${hasMore ? '+' : ''}`
-                : undefined
-            }
+            size="compact"
             aria-label={`${messages.length}${hasMore ? '+' : ''} pinned ${messages.length === 1 ? 'message' : 'messages'}`}
           >
-            <Pin className="size-4" />
+            <Pin />
+            {messages.length ? <Badge>{messages.length}{hasMore ? '+' : ''}</Badge> : null}
           </Button>
         </PopoverTrigger>
       </Tooltip>

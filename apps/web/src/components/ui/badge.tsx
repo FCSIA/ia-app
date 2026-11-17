@@ -4,8 +4,25 @@ import { forwardRef, type HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
+import { useSizeVariant } from "@/lib/size-context";
 
+// ---------------------------------------------------------------------------
+// Badge is a short label for status, category or metadata, in 3 variants:
+//   solid: a light tint of the color behind foreground text.
+//   dot:   a neutral outline and foreground text; only the dot is colored.
+//   ghost: the dot and its label alone, no outline and no side padding, in
+//          the surrounding text color. For rows and tables, where the label
+//          lines up with the column and lifts with the row.
+// Each color is a single hex. The solid tint is mixed against the page
+// background at render time, so the same hex works in light and dark themes.
+// ---------------------------------------------------------------------------
+
+// Tailwind's 500 step for each hue (400 for gray). Text never takes the hue:
+// it stays on the foreground color, so it keeps its contrast on every color.
+// `accent` is the app's accent (--fluid-accent, #6B97FF without the token),
+// for marks like New that should follow the brand color.
 const badgeColors = {
+  accent: "var(--fluid-accent, #6B97FF)",
   gray: "#a3a3a3",
   red: "#ef4444",
   orange: "#f97316",
@@ -28,31 +45,51 @@ const badgeColors = {
 type BadgeColor = keyof typeof badgeColors;
 
 const badgeVariants = cva(
-  "inline-flex items-center font-medium whitespace-nowrap",
+  "inline-flex items-center whitespace-nowrap",
   {
     variants: {
       variant: {
         solid: "",
         dot: "border border-border text-foreground",
+        ghost: "",
       },
+      // The two-step size ladder shared by every control: 24px tall by
+      // default, 20px compact. The height is fixed rather than padded so the
+      // trimmed label below can't shrink the badge.
       size: {
-        sm: "h-5 px-2 text-[11px] gap-1",
-        md: "h-6 px-2.5 text-[12px] gap-1.5",
-        lg: "h-7 px-3 text-[13px] gap-1.5",
+        default: "h-6 px-2.5 text-[length:var(--fs-caption,12px)] leading-[var(--lh-caption,16px)] gap-1.5",
+        compact: "h-5 px-2 text-[length:var(--fs-caption-compact,11px)] leading-[var(--lh-caption-compact,14px)] gap-1",
       },
     },
+    // Ghost has nothing to pad away from, so its dot sits on the edge.
+    compoundVariants: [{ variant: "ghost", className: "px-0" }],
     defaultVariants: {
       variant: "solid",
-      size: "md",
+      size: "default",
     },
-  },
+  }
 );
 
+type BadgeSizeCanonical = "default" | "compact";
+
+/** Public size values: the canonical two-size scale plus the pre-sizes-system
+ *  aliases, kept so existing call sites keep compiling. Aliases resolve onto
+ *  the canonical ladder (sm → compact; md/lg → default). */
+type BadgeSize = BadgeSizeCanonical | "sm" | "md" | "lg";
+
+const legacySizeAliases: Partial<Record<BadgeSize, BadgeSizeCanonical>> = {
+  sm: "compact",
+  md: "default",
+  lg: "default",
+};
+
 interface BadgeProps
-  extends
-    Omit<HTMLAttributes<HTMLSpanElement>, "color">,
-    VariantProps<typeof badgeVariants> {
+  extends Omit<HTMLAttributes<HTMLSpanElement>, "color">,
+    Omit<VariantProps<typeof badgeVariants>, "size"> {
   color?: BadgeColor;
+  /** Omitted, the badge follows the surrounding SizeProvider. Legacy
+   *  sm/md/lg values still resolve. */
+  size?: BadgeSize;
 }
 
 const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
@@ -60,41 +97,50 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     {
       className,
       variant = "solid",
-      size = "md",
+      size: sizeProp,
       color = "gray",
       children,
       style,
       ...props
     },
-    ref,
+    ref
   ) => {
+    // Corner radius comes from the shape context (rounded, pill or sharp), so
+    // badges follow the rest of the app instead of hard-coding a radius.
     const shape = useShape();
+    // Resolve the size: explicit prop (legacy aliases mapped onto the
+    // canonical ladder) > surrounding SizeProvider > default.
+    const contextSize = useSizeVariant();
+    const size: BadgeSizeCanonical = sizeProp
+      ? legacySizeAliases[sizeProp] ?? (sizeProp as BadgeSizeCanonical)
+      : contextSize === "compact"
+        ? "compact"
+        : "default";
     const colorValue = badgeColors[color];
     const isSolid = variant === "solid";
-    const dotSize = size === "sm" ? 6 : size === "lg" ? 8 : 7;
+    const dotSize = size === "compact" ? 6 : 7;
 
+    // 15% of the hue mixed into the page background: a tint that sits at the
+    // right depth in either theme, under plain foreground text. Gray skips
+    // the mix and takes the theme's neutral fill (`--accent`), so a gray
+    // badge matches the other neutral fills around it.
     const colorStyle = isSolid
       ? color === "gray"
-        ? { color: "hsl(var(--foreground))" }
+        ? { backgroundColor: "var(--color-accent)", color: "var(--color-foreground)" }
         : {
-            color: "hsl(var(--foreground))",
-            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, hsl(var(--background)))`,
+            color: "var(--color-foreground)",
+            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, var(--color-background))`,
           }
       : {};
 
-    const dotColor = color === "gray" ? "hsl(var(--muted-foreground))" : colorValue;
+    // The dot carries the full-strength hex. Gray uses the theme's muted text
+    // color instead, so the neutral dot stays visible in both themes.
+    const dotColor = color === "gray" ? "var(--color-muted-foreground)" : colorValue;
 
     return (
       <span
         ref={ref}
-        className={cn(
-          badgeVariants({ variant, size }),
-          // A translucent neutral layer composes with the current surface;
-          // its border preserves the badge edge on attention/raised cards.
-          isSolid && color === "gray" && "border border-border bg-active",
-          shape.item,
-          className,
-        )}
+        className={cn(badgeVariants({ variant, size }), shape.item, className)}
         style={{ ...colorStyle, ...style }}
         {...props}
       >
@@ -108,19 +154,16 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
             }}
           />
         )}
-        {/* text-box needs a block container — the badge root is a flex
-            container, so the label gets its own span. Keep that slot an
-            inline flex row: callers can safely pair an icon with a label
-            without the SVG being laid out above the text. */}
-        <span className="inline-flex items-center gap-[inherit] [text-box:trim-both_cap_alphabetic] [&>svg]:size-[0.9em] [&>svg]:shrink-0">
-          {children}
-        </span>
+        {/* text-box needs a block container. The badge root is a flex
+            container, so the label gets its own span. Height is fixed (h-*),
+            so trimming only recenters the letterforms. */}
+        <span className="[text-box:trim-both_cap_alphabetic]">{children}</span>
       </span>
     );
-  },
+  }
 );
 
 Badge.displayName = "Badge";
 
 export { Badge, badgeVariants, badgeColors };
-export type { BadgeProps, BadgeColor };
+export type { BadgeProps, BadgeColor, BadgeSize };

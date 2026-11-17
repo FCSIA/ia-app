@@ -56,7 +56,7 @@ export function ScheduleWorkspace() {
         {canEditOwnSchedule && selectedTab === "my" ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Switch label="Visible to friends" checked={isPublic} onCheckedChange={setIsPublic} />
+              <Switch label="Visible to friends" checked={Boolean(isPublic)} onToggle={() => setIsPublic(!Boolean(isPublic))} />
               {isScheduleDirty ? (
                 <Button size="sm" leadingIcon={Save} loading={pendingAction === "save-schedule"} onClick={handleSaveSchedule}>Save schedule</Button>
               ) : null}

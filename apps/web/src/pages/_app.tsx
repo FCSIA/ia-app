@@ -18,8 +18,14 @@ export default function PagesApp({ Component, pageProps }: AppProps) {
       enableSystem
       themes={[...THEME_NAMES, "system"]}
     >
+      <style jsx global>{`
+        html {
+          --font-work-sans: ${workSans.style.fontFamily};
+          font-family: var(--font-work-sans);
+        }
+      `}</style>
       <ThemeFavicon />
-      <div className={`${workSans.variable} font-sans`}>
+      <div className="font-sans">
         <Component {...pageProps} />
       </div>
     </ThemeProvider>

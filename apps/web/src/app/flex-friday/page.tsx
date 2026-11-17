@@ -92,7 +92,7 @@ function FlexFridayWorkspace() {
       void actions.runAction('session-delete', async () => {
         await deleteSession({ sessionId: s._id });
         toast({ title: 'Session deleted' });
-      });
+      }).catch(() => {});
     }
   };
 
@@ -131,26 +131,26 @@ function FlexFridayWorkspace() {
       void actions.runAction('workshop-delete', async () => {
         await deleteWorkshop({ workshopId: w._id });
         toast({ title: 'Workshop deleted' });
-      });
+      }).catch(() => {});
     }
   };
 
   const handleRegister = (workshopId: string) => {
-    void actions.runAction('register', async () => {
+    void actions.runAction(`register:${workshopId}`, async () => {
       await register({
         workshopId: workshopId as Id<'flexWorkshops'>,
       });
       toast({ title: 'Registered successfully' });
-    });
+    }).catch(() => {});
   };
 
   const handleUnregister = (workshopId: string) => {
-    void actions.runAction('unregister', async () => {
+    void actions.runAction(`unregister:${workshopId}`, async () => {
       await unregister({
         workshopId: workshopId as Id<'flexWorkshops'>,
       });
       toast({ title: 'Registration removed' });
-    });
+    }).catch(() => {});
   };
 
   return (
@@ -257,23 +257,23 @@ function FlexFridayWorkspace() {
                     isLoading={flex.rosterLoading}
                     error={null}
                     onMark={(studentId, status) =>
-                      void actions.runAction('attendance-mark', () =>
+                      void actions.runAction(`attendance:${studentId}:${status}`, () =>
                         markAttendance({
                           workshopId: flex.attendanceWorkshopId!,
                           studentId,
                           status,
                         }),
-                      )
+                      ).catch(() => {})
                     }
                     onClear={(studentId) =>
-                      void actions.runAction('attendance-clear', () =>
+                      void actions.runAction(`attendance-clear:${studentId}`, () =>
                         clearAttendance({
                           workshopId: flex.attendanceWorkshopId!,
                           studentId,
                         }),
-                      )
+                      ).catch(() => {})
                     }
-                    isMarking={actions.actionPending != null}
+                    actionPending={actions.actionPending}
                   />
                 </div>
               )}

@@ -1,144 +1,335 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useEffect, useRef, useState } from 'react';
-import { format, isThisYear, isToday, isYesterday } from 'date-fns';
-import { CalendarDays, ChevronRight, FileText, Megaphone, MessagesSquare, Shield, Users } from 'lucide-react';
+import { Fragment, createContext, useContext, useMemo, useState } from 'react';
+import type { Column, Table } from '@tanstack/react-table';
+import {
+  useDataTable,
+  DataTable,
+  DataTableColumnHeader,
+  DataTableColumnHeaderLabel,
+  DataTableControls,
+  DataTablePagination,
+  type ColumnDef,
+} from '@/components/ui/data-table';
+import { format } from 'date-fns';
+import {
+  CalendarDays,
+  ListFilter,
+  FileText,
+  Megaphone,
+  MessagesSquare,
+  Shield,
+  Users,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardGroup, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
-import { PINNED_TABLE_HEADER } from '@/components/data/data-table-section';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Table, TableBody, TableCell, TableHead, TableHeadFilter, TableHeader, TableRow } from '@/components/ui/table';
-import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
-import { AdminNotice } from '../admin-ui';
+import { DropdownMenu, DropdownTrigger } from '@/components/ui/dropdown';
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from '@/components/ui/popover';
+import {
+  AuditColumnFilter,
+  WhenRangeFields,
+  auditFilterActive,
+  type AuditFilterColumn,
+} from './audit-filters';
 import { AUDIT_FETCH_LIMIT } from '../../_lib/admin-utils';
 import type { AuditEventRecord } from '../../_lib/types';
 import type { useAdminAudit } from '../../_hooks/use-admin-audit';
-import { AUDIT_CATEGORIES, auditActionInfo, auditActionLabel, auditCategory, auditPersonName, auditRecordTitle } from '~/apps/shared/audit';
-import { AuditColumnFilter, WhenRangeFields, auditFilterActive, type AuditFilterColumn } from './audit-filters';
+import {
+  AUDIT_CATEGORIES,
+  auditActionInfo,
+  auditActionLabel,
+  auditCategory,
+  auditPersonName,
+  auditRecordTitle,
+} from '~/apps/shared/audit';
 import { AuditPerson } from './audit-person';
 
 type AuditState = ReturnType<typeof useAdminAudit>;
-const icons = { 'people-access': Users, 'clubs-chat': MessagesSquare, announcements: Megaphone, moderation: Shield, schedules: FileText, 'flex-events': CalendarDays };
-function dayLabel(date: Date) { return isToday(date) ? 'Today' : isYesterday(date) ? 'Yesterday' : format(date, isThisYear(date) ? 'EEE, MMM d' : 'MMM d, yyyy'); }
-const dayKey = (value: string) => format(new Date(value), 'yyyy-MM-dd');
-
-/**
- * Days label a gutter in the When column instead of interrupting the table:
- * every row stays a uniform, hoverable record, and the first row of each day
- * names it. The full date stays available to assistive tech on every row.
- */
-function WhenCell({ event, newDay }: { event: AuditEventRecord; newDay: boolean }) {
-  const date = new Date(event.createdAt);
-  return <span className="flex min-w-0 items-baseline gap-2 tabular-nums">
-    <span className="w-[5.75rem] shrink-0 truncate text-muted-foreground" aria-hidden="true">{newDay ? dayLabel(date) : null}</span>
-    <time className="shrink-0 whitespace-nowrap" dateTime={event.createdAt} title={format(date, 'PPpp')} aria-label={format(date, 'PPPp')}>{format(date, 'h:mm a')}</time>
-  </span>;
-}
-
-function WhenHeader({ audit }: { audit: AuditState }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [rangeOpen, setRangeOpen] = useState(false);
-  return <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
-    <PopoverAnchor asChild><div className="inline-flex">
-      <TableHeadFilter label="When" active={auditFilterActive(audit, 'When')} open={menuOpen} onOpenChange={setMenuOpen}>
-        <AuditColumnFilter column="When" surface="menu" audit={audit} onCustomRange={() => { setMenuOpen(false); setRangeOpen(true); }} />
-      </TableHeadFilter>
-    </div></PopoverAnchor>
-    <PopoverContent align="start" className="w-[22rem] p-3" aria-label="Custom date range"><WhenRangeFields audit={audit} /></PopoverContent>
-  </Popover>;
-}
-
-/** Cursor pagination: older pages stream in as the end of the list approaches. */
-function AuditPagination({ audit }: { audit: AuditState }) {
-  const sentinel = useRef<HTMLDivElement>(null);
-  const canLoad = audit.auditStatus === 'CanLoadMore' && !audit.isStale;
-  const loading = audit.auditStatus === 'LoadingMore' || audit.isStale;
-  const { loadMoreAuditEvents } = audit;
-  useEffect(() => {
-    const node = sentinel.current;
-    if (!node || !canLoad) return;
-    const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) loadMoreAuditEvents(AUDIT_FETCH_LIMIT); }, { rootMargin: '0px 0px 320px 0px' });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [canLoad, loadMoreAuditEvents]);
-  if (audit.isAuditLoading || !audit.auditEvents.length) return null;
-  // The toolbar owns the count; the list end only says whether more is coming.
-  return <div ref={sentinel} className="flex min-h-9 items-center justify-center text-xs text-muted-foreground">
-    {audit.auditStatus === 'Exhausted'
-      ? <span>End of activity</span>
-      : loading
-        ? <span className="flex items-center gap-2" role="status"><Spinner className="size-3.5" role={undefined} aria-hidden="true" />Loading older activity</span>
-        : <Button type="button" size="sm" variant="ghost" disabled={!canLoad} onClick={() => loadMoreAuditEvents(AUDIT_FETCH_LIMIT)}>Load older activity</Button>}
-  </div>;
-}
+const AuditTableContext = createContext<AuditState | null>(null);
+const icons = {
+  'people-access': Users,
+  'clubs-chat': MessagesSquare,
+  announcements: Megaphone,
+  moderation: Shield,
+  schedules: FileText,
+  'flex-events': CalendarDays,
+};
 /** Where a record lives (club, then channel, workshop, …); people are not places. */
-const PLACE_LABELS = new Set(['Club', 'Channel', 'Workshop', 'Session', 'Board', 'Announcement', 'Event', 'Unit', 'Group', 'Template', 'Course']);
+const PLACE_LABELS = new Set([
+  'Club',
+  'Channel',
+  'Workshop',
+  'Session',
+  'Board',
+  'Announcement',
+  'Event',
+  'Unit',
+  'Group',
+  'Template',
+  'Course',
+]);
 function auditPlaces(event: AuditEventRecord) {
-  return (event.context?.links ?? []).filter((link) => link.id !== event.entityId && PLACE_LABELS.has(link.label)).slice(0, 2);
+  return (event.context?.links ?? [])
+    .filter(
+      (link) => link.id !== event.entityId && PLACE_LABELS.has(link.label),
+    )
+    .slice(0, 2);
 }
 function RecordCell({ event }: { event: AuditEventRecord }) {
   const title = auditRecordTitle(event);
-  const href = event.context?.links?.find((link) => link.id === event.entityId)?.href;
-  if (href) return <Link className="block truncate text-foreground hover:underline focus-visible:underline" href={href} title={title}>{title}</Link>;
-  if (!event.context?.deleted) return <span className="block truncate text-foreground" title={title}>{title}</span>;
+  const href = event.context?.links?.find(
+    (link) => link.id === event.entityId,
+  )?.href;
+  if (href)
+    return (
+      <Link
+        className="block truncate text-foreground hover:underline focus-visible:underline"
+        href={href}
+        title={title}
+      >
+        {title}
+      </Link>
+    );
+  if (!event.context?.deleted)
+    return (
+      <span className="block truncate text-foreground" title={title}>
+        {title}
+      </span>
+    );
   // The action already says so for deletions; elsewhere the state needs words, not only a muted color.
   const stated = /^(Deleted|Removed)\b/.test(auditActionLabel(event.action));
-  return <span className="flex min-w-0 gap-1 text-muted-foreground" title={`${title} (deleted)`}><span className="truncate">{title}</span>{stated ? null : <span className="shrink-0">(deleted)</span>}</span>;
+  return (
+    <span
+      className="flex min-w-0 gap-1 text-muted-foreground"
+      title={`${title} (deleted)`}
+    >
+      <span className="truncate">{title}</span>
+      {stated ? null : <span className="shrink-0">(deleted)</span>}
+    </span>
+  );
 }
 function WhereCell({ event }: { event: AuditEventRecord }) {
   const places = auditPlaces(event);
-  if (!places.length) return <span className="block truncate">{event.context?.subtitle || '—'}</span>;
+  if (!places.length)
+    return (
+      <span className="block truncate">{event.context?.subtitle || '—'}</span>
+    );
   // The innermost place (the channel) is the most specific, so the club truncates first.
-  return <span className="flex min-w-0 items-center gap-1">{places.map((place, index) => {
-    const name = place.label === 'Channel' ? `#${place.name}` : place.name;
-    const fit = index && index === places.length - 1 ? 'max-w-full shrink-0 truncate' : 'min-w-0 truncate';
-    return <Fragment key={`${place.label}:${place.id}`}>
-      {index ? <span aria-hidden="true">·</span> : null}
-      {place.href ? <Link href={place.href} className={`${fit} hover:underline focus-visible:underline`} title={`${place.label}: ${place.name}`}>{name}</Link> : <span className={fit}>{name}</span>}
-    </Fragment>;
-  })}</span>;
+  return (
+    <span className="flex min-w-0 items-center gap-1">
+      {places.map((place, index) => {
+        const name = place.label === 'Channel' ? `#${place.name}` : place.name;
+        const fit =
+          index && index === places.length - 1
+            ? 'max-w-full shrink-0 truncate'
+            : 'min-w-0 truncate';
+        return (
+          <Fragment key={`${place.label}:${place.id}`}>
+            {index ? <span aria-hidden="true">·</span> : null}
+            {place.href ? (
+              <Link
+                href={place.href}
+                className={`${fit} hover:underline focus-visible:underline`}
+                title={`${place.label}: ${place.name}`}
+              >
+                {name}
+              </Link>
+            ) : (
+              <span className={fit}>{name}</span>
+            )}
+          </Fragment>
+        );
+      })}
+    </span>
+  );
 }
 function Action({ event }: { event: AuditEventRecord }) {
   const category = auditCategory(event.entityType, event.action);
   const Icon = icons[category];
-  return <span className="flex min-w-0 items-center gap-2"><Icon size={14} className="shrink-0 text-muted-foreground" aria-label={AUDIT_CATEGORIES[category]} /><span className={`truncate ${auditActionInfo(event.action)?.destructive ? 'text-destructive' : 'text-foreground'}`}>{auditActionLabel(event.action)}</span></span>;
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <Icon
+        size={14}
+        className="shrink-0 text-muted-foreground"
+        aria-label={AUDIT_CATEGORIES[category]}
+      />
+      <span
+        className={`truncate ${auditActionInfo(event.action)?.destructive ? 'text-destructive' : 'text-foreground'}`}
+      >
+        {auditActionLabel(event.action)}
+      </span>
+    </span>
+  );
 }
-export function AuditTable({ audit }: { audit: AuditState }) {
-  const isMobile = useIsMobile();
-  const events = audit.displayedAuditEvents;
-  const empty = <AdminNotice message="No activity matches these filters." actionLabel={audit.hasActiveAuditFilters ? 'Clear filters' : undefined} onAction={audit.hasActiveAuditFilters ? audit.clearAuditFilters : undefined} />;
-  return <div className="min-w-0 space-y-3" aria-busy={audit.isStale || audit.auditStatus === 'LoadingMore'}>
-    {!isMobile ? <div className="hidden md:block"><Table className="table-fixed" aria-label="Audit activity">
-      <colgroup><col className="w-[12.5rem]" /><col className="w-[19%]" /><col className="w-[20%]" /><col /><col className="hidden w-[19%] xl:table-column" /><col className="w-11" /></colgroup>
-      <TableHeader className={PINNED_TABLE_HEADER}><TableRow>
-        <TableHead scope="col"><WhenHeader audit={audit} /></TableHead>
-        {(['Person', 'Action', 'Record'] as const).map((column: AuditFilterColumn) => <TableHead key={column} scope="col"><TableHeadFilter label={column} active={auditFilterActive(audit, column)}><AuditColumnFilter column={column} surface="menu" audit={audit} /></TableHeadFilter></TableHead>)}
-        <TableHead scope="col" className="hidden xl:table-cell">Where</TableHead><TableHead scope="col"><span className="sr-only">Details</span></TableHead>
-      </TableRow></TableHeader>
-      <TableBody>
-        {audit.isAuditLoading ? Array.from({ length: 8 }, (_, index) => <TableRow key={index}><TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell></TableRow>) : events.length ? events.map((event, index) => {
-          const newDay = index === 0 || dayKey(event.createdAt) !== dayKey(events[index - 1]!.createdAt);
-          return <Fragment key={event.id}>
-            <TableRow index={index} interactive selected={audit.selectedAuditEventId === event.id} onClick={(click) => {
-              const target = click.target;
-              if (!(target instanceof Element) || !click.currentTarget.contains(target) || target.closest('button,a,input,[role="button"]')) return;
-              audit.setSelectedAuditEventId(event.id);
-            }}>
-              <TableCell><WhenCell event={event} newDay={newDay} /></TableCell>
-              <TableCell><AuditPerson event={event} onFilter={audit.setAuditActorId} /></TableCell>
-              <TableCell><Action event={event} /></TableCell>
-              <TableCell><RecordCell event={event} /></TableCell>
-              <TableCell className="hidden xl:table-cell"><WhereCell event={event} /></TableCell>
-              <TableCell><Button type="button" variant="ghost" size="icon-compact" aria-label={`Details: ${auditActionLabel(event.action)} by ${auditPersonName(event)}`} onClick={() => audit.setSelectedAuditEventId(event.id)}><ChevronRight /></Button></TableCell>
-            </TableRow>
-          </Fragment>;
-        }) : <TableRow><TableCell colSpan={6}>{empty}</TableCell></TableRow>}
-      </TableBody>
-    </Table></div> : null}
-    <div className="md:hidden">{audit.isAuditLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div> : events.length ? <CardGroup orientation="inline" border="none" corners="compact">{events.map((event) => <Card key={event.id} onClick={() => audit.setSelectedAuditEventId(event.id)} selected={event.id === audit.selectedAuditEventId} label={`Details: ${auditActionLabel(event.action)} by ${auditPersonName(event)}`}><CardHeader><CardTitle><span className="flex min-w-0 items-center justify-between gap-2"><Action event={event} /><time className="shrink-0 text-xs tabular-nums text-muted-foreground" dateTime={event.createdAt} title={format(new Date(event.createdAt), 'PPpp')}>{format(new Date(event.createdAt), 'h:mm a')}</time></span></CardTitle><CardDescription className="truncate">{auditPersonName(event)} · {auditRecordTitle(event)}</CardDescription></CardHeader></Card>)}</CardGroup> : empty}</div>
-    <AuditPagination audit={audit} />
-  </div>;
+function AuditPersonCell({ event }: { event: AuditEventRecord }) {
+  const audit = useContext(AuditTableContext);
+  if (!audit) throw new Error('AuditPersonCell requires AuditTableContext');
+  return <AuditPerson event={event} onFilter={audit.setAuditActorId} />;
+}
+
+/** Feature filters use ColumnDef.header; Fluid retains ownership of sorting and controls. */
+function AuditColumnHeader({
+  title,
+  column,
+}: {
+  column: Column<AuditEventRecord, unknown>;
+  title: AuditFilterColumn;
+}) {
+  const audit = useContext(AuditTableContext);
+  if (!audit) throw new Error('AuditColumnHeader requires AuditTableContext');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  return (
+    <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
+      <PopoverAnchor asChild>
+        <div>
+          <DataTableColumnHeader column={column} title={title}>
+          <DataTableColumnHeaderLabel />
+          <DataTableControls>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-compact"
+                  active={auditFilterActive(audit, title)}
+                  aria-label={`Filter ${title.toLowerCase()}`}
+                >
+                  <ListFilter />
+                </Button>
+              }
+            />
+            <AuditColumnFilter
+              column={title}
+              surface="menu"
+              audit={audit}
+              onCustomRange={() => {
+                setMenuOpen(false);
+                setRangeOpen(true);
+              }}
+            />
+          </DropdownMenu>
+          </DataTableControls>
+          </DataTableColumnHeader>
+        </div>
+      </PopoverAnchor>
+      {title === 'When' ? (
+        <PopoverContent align="start" aria-label="Custom date range">
+          <WhenRangeFields audit={audit} />
+        </PopoverContent>
+      ) : null}
+    </Popover>
+  );
+}
+
+export function useAuditDataTable(audit: AuditState) {
+  const columns = useMemo<ColumnDef<AuditEventRecord>[]>(
+    () => [
+      {
+        accessorKey: 'createdAt',
+        header: ({ column }) => <AuditColumnHeader column={column} title="When" />,
+        meta: { label: 'When' },
+        cell: ({ row }) => (
+          <time
+            className="whitespace-nowrap"
+            dateTime={row.original.createdAt}
+            title={format(new Date(row.original.createdAt), 'PPpp')}
+          >
+            {format(new Date(row.original.createdAt), 'MMM d, h:mm a')}
+          </time>
+        ),
+      },
+      {
+        id: 'person',
+        accessorFn: auditPersonName,
+        header: ({ column }) => <AuditColumnHeader column={column} title="Person" />,
+        meta: { label: 'Person' },
+        cell: ({ row }) => (
+          <AuditPersonCell event={row.original} />
+        ),
+      },
+      {
+        id: 'action',
+        accessorFn: (event) => auditActionLabel(event.action),
+        header: ({ column }) => <AuditColumnHeader column={column} title="Action" />,
+        meta: { label: 'Action' },
+        cell: ({ row }) => <Action event={row.original} />,
+      },
+      {
+        id: 'record',
+        accessorFn: auditRecordTitle,
+        header: ({ column }) => <AuditColumnHeader column={column} title="Record" />,
+        meta: { label: 'Record' },
+        cell: ({ row }) => <RecordCell event={row.original} />,
+      },
+      {
+        id: 'where',
+        accessorFn: (event) =>
+          auditPlaces(event)
+            .map((place) => place.name)
+            .join(' · ') ||
+          event.context?.subtitle ||
+          '',
+        header: 'Where',
+        cell: ({ row }) => <WhereCell event={row.original} />,
+      },
+    ],
+    [],
+  );
+  return useDataTable<AuditEventRecord>({
+    data: audit.displayedAuditEvents,
+    columns,
+    pageSize: 20,
+    getRowId: (event) => event.id,
+    manualFiltering: true,
+    enableSorting: false,
+    state: { globalFilter: audit.auditSearch },
+    onGlobalFilterChange: (update) =>
+      audit.setAuditSearch(
+        typeof update === 'function' ? update(audit.auditSearch) : update,
+      ),
+  });
+}
+
+export function AuditTable({
+  audit,
+  table,
+}: {
+  audit: AuditState;
+  table: Table<AuditEventRecord>;
+}) {
+  const canLoad = audit.auditStatus === 'CanLoadMore' && !audit.isStale;
+  return (
+    <div className="flex min-w-0 flex-col gap-3" aria-busy={audit.isStale}>
+      <AuditTableContext.Provider value={audit}>
+      <DataTable
+        table={table}
+        loading={audit.isAuditLoading}
+        empty={{ title: 'No activity matches these filters.' }}
+        onRowClick={(row) => audit.setSelectedAuditEventId(row.original.id)}
+      />
+      </AuditTableContext.Provider>
+      <DataTablePagination table={table} />
+      {audit.auditStatus !== 'Exhausted' && !audit.isAuditLoading ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            Pages cover {audit.displayedAuditEvents.length.toLocaleString()}{' '}
+            loaded events.
+          </span>
+          <Button
+            variant="ghost"
+            loading={audit.auditStatus === 'LoadingMore'}
+            disabled={!canLoad}
+            onClick={() => audit.loadMoreAuditEvents(AUDIT_FETCH_LIMIT)}
+          >
+            Load older activity
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

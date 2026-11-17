@@ -71,7 +71,6 @@ export function BulkStructureImportDialog({ clubId }: { clubId: Id<"clubs"> }) {
             : null,
       })));
     } catch (error) {
-      setPreview([]);
       toast({
         title: error instanceof Error ? error.message : "Could not read CSV",
         variant: "destructive",
@@ -143,7 +142,7 @@ export function BulkStructureImportDialog({ clubId }: { clubId: Id<"clubs"> }) {
                 accept=".csv,text/csv"
                 onChange={(event) => {
                   setFile(event.target.files?.[0] ?? null);
-                  setPreview([]);
+
                 }}
               />
             </div>
@@ -157,6 +156,17 @@ export function BulkStructureImportDialog({ clubId }: { clubId: Id<"clubs"> }) {
                 {preview.length - blocked.length} ready
                 {blocked.length ? ` · ${blocked.length} need attention` : ""}
               </p>
+              <details>
+                <summary>Hierarchy impact preview</summary>
+                <ul className="space-y-1 text-sm">
+                  {preview.map((row) => (
+                    <li key={row.line}>
+                      {row.parent ? `${row.parent} → ` : "Club root → "}{row.name || "Unnamed unit"}
+                      {row.issue ? ` · ${row.issue}` : " · Create or retain existing unit"}
+                    </li>
+                  ))}
+                </ul>
+              </details>
               <div className="max-h-72 overflow-auto rounded-md border">
                 <Table>
                   <TableHeader>

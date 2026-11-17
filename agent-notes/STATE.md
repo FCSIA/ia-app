@@ -10,6 +10,42 @@
   `agent-notes/untangle/HANDOFF.md` for the remaining work, deploy checks and
   owner decisions.
 
+- **Native admin DataTable (2026-11-10)**: On `fix/ui-library-reliability`, the
+  owner-authorized latest Radix Fluid DataTable and shared dependencies replace
+  admin table compositions. Native search, column controls and pagination are
+  composed at callers; server cursor paging and audit server ordering remain
+  explicit. Desktop audit header filters are restored. Global radius aliases
+  now match Fluid's numeric animations (4/6/8px), fixing the 16px-hover versus
+  8px-selection mismatch. Work Sans is restored as the shared app font; both routers expose its variable
+  at the document root for portals and font utilities. DataTable
+  now has owner-authorized compound header/search parts and interaction
+  boundaries; exact source delta is recorded in the contribution packet.
+  Web typecheck/lint/build, 43 UI tests and frozen dependency install pass.
+  Root `bun dev` remains in Rex `admin-fluid-tables`, web 3000/backend 3210/3211.
+  Audit autocomplete is restored through the native input part. Stable feature
+  providers preserve open header and permission controls across updates. Exact
+  installed delta and general composition design: `contributions/fluid-functionalism/data-table-integration.md`.
+  One owner-requested Luna max screenshot review returned four findings;
+  its resized image reads failed the original-resolution audit requirement.
+  Source follow-up and limitations are in `contributions/fluid-functionalism/data-table-ui-review.md`.
+  Current browser/design-owner review remains pending. No push or shared deployment.
+
+- **UI library reliability (2026-11-07)**: Primary checkout branch
+  `fix/ui-library-reliability` now includes the authorized primitive/feature
+  follow-through: selective Table subscriptions, native DatePicker reset,
+  optional same-origin PDF previews, desktop OCR comparison, Flex availability
+  and individual attendance loading, daily Wrapped snapshots/heatmap/highlights,
+  volunteer Timeline, import repair/structure previews, unread channel links and
+  notification inheritance explanations. Web typecheck/lint/build, frozen offline
+  install, 38 UI tests, backend typecheck and two daily-activity tests pass.
+  Three local upstream patches include generated registry output; 70 focused
+  upstream tests, targeted lint, registry rebuild and reverse apply checks pass.
+  No shared deployment, push or upstream posting occurred. Visual-owner, real
+  browser/screen-reader and native artifact review remain pending. A combined
+  since-last-visit digest and broader dated milestones remain separately scoped.
+  See `docs/reference/ui-library-inventory-2026-11-06.md` and
+  `contributions/fluid-functionalism/README.md`. Preserve other worktrees.
+
 - **Issue #176 account onboarding (2026-11-02)**: Worktree `.worktrees/issue-176`,
   branch `codex/student-onboarding`, owns the versioned account-setup lifecycle
   and web/native checklist. Its isolated local-anonymous backend uses 3318/3319;
@@ -45,7 +81,6 @@
   pushes run CI without deployment. Main permits direct pushes while rejecting
   force pushes/deletion; `v*` tag rules reject updates/deletion. This supersedes
   the older release-PR instructions below. See `docs/reference/versioning.md`.
-
 
 - **Browser OCR production repair (2026-10-30)**: Worktree
   `.worktrees/browser-schedule-ocr`, branch `codex/browser-schedule-ocr`, switches
@@ -98,6 +133,7 @@
   `codex/desktop-notification-banner`, carrying the three earlier local banner
   commits onto main after audit PR #152 squash-merged as `4c464526`.
   The original commits are preserved on `work/desktop-notification-banner`.
+
 - **Current goal**: The owner authorized including the banner in the release,
   after squash-merging audit PR #152 and running `release:ship`.
   Release PR #165 is held in draft until the banner lands; regenerate its single
@@ -105,6 +141,7 @@
   This supersedes earlier draft/awaiting-owner-review and no-production-authorization
   notes for this release. Preserve main's preferred-name display/search support
   when integrating the audit refactor. Local demo data remains intact.
+
 - **Dashboard calendar follow-up**: The owner requested a small commit directly
   in the primary `main` checkout after PR #163 squash-merged as `8b29a445` on
   October 18. After owner feedback, the month controls and full-calendar arrow
@@ -116,6 +153,7 @@
   touch date grids, keyboard selection, six-week months, and the shared schedule
   date picker. Captures: `/tmp/ia-calendar-review/`; native device review was not run.
   The prior release-headline PR #162 is squash-merged as `00bad9db`.
+
 - **Integration**: On October 17 the owner explicitly authorized squash-merging
   the reviewed UI work in #154–#158 onto main and requested React Doctor fixes.
   #154–#157 landed as `c3a15071`, `c53396d7`, `df566c46`, and `ef157d6a`.
@@ -124,6 +162,7 @@
   Each PR retains a separate squash merge.
   This authorization supersedes older awaiting-owner-review notes below.
 - Native iPhone swipe verification from the preceding UI work remains outstanding.
+
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.

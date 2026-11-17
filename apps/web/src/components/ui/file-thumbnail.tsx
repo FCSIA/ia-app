@@ -4,42 +4,9 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
 
-// ─── Lazy pdfjs loader ────────────────────────────────────────────────────
-// Imports pdfjs-dist on first PDF, caches the module, and points the worker
-// at the matching CDN build. Consumers don't need bundler-side worker config.
-type PdfjsModule = typeof import("pdfjs-dist");
-let pdfjsPromise: Promise<PdfjsModule> | null = null;
-
-async function loadPdfjs(): Promise<PdfjsModule> {
-  if (!pdfjsPromise) {
-    pdfjsPromise = import("pdfjs-dist").then((mod) => {
-      if (!mod.GlobalWorkerOptions.workerSrc) {
-        mod.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${mod.version}/build/pdf.worker.min.mjs`;
-      }
-      return mod;
-    });
-  }
-  return pdfjsPromise;
-}
-
-async function renderPdfFirstPage(file: File, targetWidth: number): Promise<string> {
-  const pdfjs = await loadPdfjs();
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-  const page = await pdf.getPage(1);
-  const baseViewport = page.getViewport({ scale: 1 });
-  const scale = (targetWidth * 2) / baseViewport.width; // 2× for retina
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  await page.render({ canvas, viewport }).promise;
-  return canvas.toDataURL("image/png");
-}
-
 // ─── File thumbnail ───────────────────────────────────────────────────────
 // Read-only square preview of a File. Images use object-cover via
-// `URL.createObjectURL`; PDFs render the first page via pdfjs; while either is
+// `URL.createObjectURL`; the optional PDF renderer supplies its first page. While a preview is
 // resolving a spinner is shown. Self-contained (border + surface + sizing) so
 // it can be reused both inside the composer's preview row and to render
 // already-sent attachments in a chat transcript.
@@ -48,9 +15,11 @@ interface FileThumbnailProps {
   /** Side length of the square thumbnail in pixels. */
   size: number;
   className?: string;
+  /** Optional enhancement. The base image/file preview has no PDF dependency. */
+  renderPdf?: (file: File, width: number, signal: AbortSignal) => Promise<string>;
 }
 
-function FileThumbnail({ file, size, className }: FileThumbnailProps) {
+function FileThumbnail({ file, size, className, renderPdf }: FileThumbnailProps) {
   const shape = useShape();
   const isImage = file.type.startsWith("image/");
   const isPdf = file.type === "application/pdf";
@@ -64,47 +33,47 @@ function FileThumbnail({ file, size, className }: FileThumbnailProps) {
   // fresh URL and updates state. The one-frame "before URL" state is
   // covered by the bg-accent (no fallback icon shown for images), so the
   // transition is visually clean.
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
+  const imageUrl = imagePreview?.file === file ? imagePreview.url : null;
   useEffect(() => {
     if (!isImage) {
       // Clear stale state if the `file` prop swaps type on the same mount —
       // otherwise a revoked blob URL would keep winning over the new preview.
-      setImageUrl(null);
+      setImagePreview(null);
       return;
     }
     const url = URL.createObjectURL(file);
-    setImageUrl(url);
+    setImagePreview({ file, url });
     return () => URL.revokeObjectURL(url);
   }, [isImage, file]);
 
   // PDFs need async rendering — loading flash is unavoidable for the first
   // ~100–300ms while pdfjs loads. Falls back to the generic icon on error
-  // (corrupt/password-protected file, CDN worker blocked).
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  // (corrupt/password-protected file, unavailable worker).
+  const [pdfPreview, setPdfPreview] = useState<{ file: File; size: number; url: string } | null>(null);
+  const pdfUrl = pdfPreview?.file === file && pdfPreview.size === size ? pdfPreview.url : null;
   const [pdfError, setPdfError] = useState(false);
   useEffect(() => {
     setPdfError(false);
-    if (!isPdf) {
-      setPdfUrl(null);
-      return;
-    }
-    let cancelled = false;
-    renderPdfFirstPage(file, size)
+    setPdfPreview(null);
+    if (!isPdf || !renderPdf) return;
+    const controller = new AbortController();
+    renderPdf(file, size, controller.signal)
       .then((url) => {
-        if (!cancelled) setPdfUrl(url);
+        if (!controller.signal.aborted) setPdfPreview({ file, size, url });
       })
       .catch(() => {
-        if (!cancelled) setPdfError(true);
+        if (!controller.signal.aborted) setPdfError(true);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [file, isPdf, size]);
+  }, [file, isPdf, size, renderPdf]);
 
   const previewUrl = imageUrl ?? pdfUrl;
   // Spinner only while a preview is genuinely pending; anything that can't
   // produce one (failed PDF, unsupported type) gets the generic icon instead.
-  const isPending = (isImage && !imageUrl) || (isPdf && !pdfUrl && !pdfError);
+  const isPending = (isImage && !imageUrl) || (isPdf && !!renderPdf && !pdfUrl && !pdfError);
 
   return (
     <div
@@ -130,7 +99,7 @@ function FileThumbnail({ file, size, className }: FileThumbnailProps) {
         // `animate-spin` rotation reads as a moving arc.
         <div className="absolute inset-0 flex items-center justify-center">
           <div
-            className="w-6 h-6 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
+            className="w-6 h-6 rounded-full border-2 border-border border-t-muted-foreground animate-spin motion-reduce:animate-none"
             aria-label="Loading preview"
             role="status"
           />
@@ -164,5 +133,5 @@ function FileThumbnail({ file, size, className }: FileThumbnailProps) {
   );
 }
 
-export { FileThumbnail, loadPdfjs, renderPdfFirstPage };
+export { FileThumbnail };
 export type { FileThumbnailProps };

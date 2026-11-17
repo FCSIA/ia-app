@@ -1,0 +1,299 @@
+--- a/apps/web/src/components/ui/data-table.tsx
++++ b/apps/web/src/components/ui/data-table.tsx
+@@ -13,6 +13,8 @@
+   useState,
+   useSyncExternalStore,
+   type HTMLAttributes,
++  type ComponentPropsWithRef,
++  type Ref,
+   type FocusEvent,
+   type KeyboardEvent,
+   type MouseEvent,
+@@ -188,7 +190,6 @@
+  *  filtered and paginated. Anything TanStack accepts still goes through. */
+ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDataTableOptions<TData>) {
+   "use no memo";
+-  // eslint-disable-next-line react-hooks/incompatible-library -- handled below and by "use no memo" in each part
+   const table = useReactTable<TData>({
+     getCoreRowModel: getCoreRowModel(),
+     getSortedRowModel: getSortedRowModel(),
+@@ -400,7 +401,7 @@
+
+ // Clicks that land on a control in the row belong to that control.
+ const CONTROL =
+-  "button, a, input, select, textarea, [role=checkbox], [role=menuitem], [data-select-hit]";
++  "button, a, input, select, textarea, [role=checkbox], [role=menuitem], [data-select-hit], [data-slot=data-table-controls]";
+
+
+ // The header press fill's corners, per shape: the shape's item radius, as
+@@ -720,7 +721,8 @@
+     label: string,
+     icon: IconComponent | undefined
+   ) => {
+-    if (e.button !== 0 || (e.target as Element).closest("[data-resize-handle]")) return;
++    if (e.defaultPrevented || !e.currentTarget.contains(e.target as Node) || e.button !== 0 ||
++      (e.target as Element).closest("[data-resize-handle], [data-slot=data-table-controls]")) return;
+     const startX = e.clientX;
+     const rect = e.currentTarget.getBoundingClientRect();
+     let moved = false;
+@@ -803,6 +805,8 @@
+   };
+
+   const moveByKey = (e: KeyboardEvent<HTMLTableCellElement>, id: string) => {
++    if (e.defaultPrevented || !e.currentTarget.contains(e.target as Node) ||
++      (e.target as Element).closest("[data-slot=data-table-controls], [data-resize-handle]")) return;
+     if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+     const ids = visible.filter(canReorder).map((c) => c.id);
+     const i = ids.indexOf(id);
+@@ -890,6 +894,7 @@
+   };
+   const onBodyKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
+     const target = e.target as HTMLElement;
++    if (e.defaultPrevented || !e.currentTarget.contains(target) || target.closest("[data-slot=data-table-controls]")) return;
+     // Typing in a field (a search, an editable cell) keeps its keys.
+     if (target.closest("input, textarea, select, [contenteditable=true]")) return;
+     const mod = e.metaKey || e.ctrlKey;
+@@ -1433,10 +1438,54 @@
+
+ // ── DataTableColumnHeader ────────────────────────────────
+
++/** A semantic interaction boundary, not a menu or a filter. Controls keep
++ * their own events, including events bubbling through React portals. */
++function DataTableControls({ className, ...props }: ComponentPropsWithRef<"span">) {
++  return <span {...props} data-slot="data-table-controls" className={cn("inline-flex items-center gap-1 [td_&]:-my-(--table-cell-py)", className)} />;
++}
++
++interface DataTableColumnHeaderContextValue {
++  state: { canSort: boolean; sorted: false | "asc" | "desc" };
++  actions: {
++    onSort: (event: unknown) => void;
++    setSort: (direction: false | "asc" | "desc", multi?: boolean) => void;
++  };
++  meta: { title: string; icon?: IconComponent };
++}
++const ColumnHeaderContext = createContext<DataTableColumnHeaderContextValue | null>(null);
++function useDataTableColumnHeader() {
++  const value = useContext(ColumnHeaderContext);
++  if (!value) throw new Error("useDataTableColumnHeader requires DataTableColumnHeader");
++  return value;
++}
+ interface DataTableColumnHeaderProps<TData, TValue> {
+   column: Column<TData, TValue>;
+   title: string;
+   className?: string;
++  /** Omitted: the original sort label. Supplied: compose Label, Controls,
++   * or your own control. A render child retains the column's exact type. */
++  children?: ReactNode | ((context: { column: Column<TData, TValue>; title: string }) => ReactNode);
++}
++function DataTableColumnHeader<TData, TValue>({ column, title, className, children }: DataTableColumnHeaderProps<TData, TValue>) {
++  "use no memo";
++  const value: DataTableColumnHeaderContextValue = {
++    state: { canSort: column.getCanSort(), sorted: column.getIsSorted() },
++    actions: {
++      onSort: (event) => column.getToggleSortingHandler()?.(event),
++      setSort: (direction, multi) => {
++        if (!column.getCanSort()) return;
++        if (direction === false) column.clearSorting();
++        else column.toggleSorting(direction === "desc", multi);
++      },
++    },
++    meta: { title, icon: column.columnDef.meta?.icon },
++  };
++  return <ColumnHeaderContext.Provider value={value}>
++    {children === undefined ? <DataTableColumnHeaderLabel className={className} /> :
++      <span data-slot="data-table-column-header" className={cn("inline-flex items-center gap-1", className)}>
++        {typeof children === "function" ? children({ column, title }) : children}
++      </span>}
++  </ColumnHeaderContext.Provider>;
+ }
+
+ // The sort glyph swaps like every icon swap in the library: the arriving
+@@ -1449,30 +1498,25 @@
+ /** A header that sorts its column: click for ascending, again for
+  *  descending, a third time to clear. Shift-click adds a column to the
+  *  sort. Columns that can't sort render the title alone. */
+-function DataTableColumnHeader<TData, TValue>({
+-  column,
+-  title,
+-  className,
+-}: DataTableColumnHeaderProps<TData, TValue>) {
+-  "use no memo";
++function DataTableColumnHeaderLabel({ className }: { className?: string }) {
++  const { state, actions, meta: { title, icon } } = useDataTableColumnHeader();
+   const icons = useIcons();
+   const Unsorted = icons["chevrons-up-down"];
+   const Arrow = icons["arrow-up"];
+
+-  const icon = column.columnDef.meta?.icon;
+-  if (!column.getCanSort())
++  if (!state.canSort)
+     return (
+       <span className={className}>
+         <HeaderLabel icon={icon} title={title} />
+       </span>
+     );
+
+-  const sorted = column.getIsSorted();
++  const sorted = state.sorted;
+
+   return (
+     <button
+       type="button"
+-      onClick={column.getToggleSortingHandler()}
++      onClick={actions.onSort}
+       className={cn(
+         "group/sort inline-flex cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
+         // The sorted column reads at full contrast, its icon and label with
+@@ -2904,60 +2948,76 @@
+
+ // ── DataTableSearch ──────────────────────────────────────
+
+-interface DataTableSearchProps<TData> {
++interface DataTableSearchContextValue {
++  state: { value: string };
++  actions: { setValue: (value: string) => void; focusFirstRow: () => boolean };
++  meta: { placeholder: string; size?: SizeVariant };
++}
++const SearchContext = createContext<DataTableSearchContextValue | null>(null);
++function useDataTableSearch() {
++  const value = useContext(SearchContext);
++  if (!value) throw new Error("useDataTableSearch requires DataTableSearch");
++  return value;
++}
++interface DataTableSearchProps<TData> extends HTMLAttributes<HTMLSpanElement> {
+   table: TanStackTable<TData>;
+-  /** The column id to search. Omitted, the field searches every column. */
+   column?: string;
+   placeholder?: string;
+   size?: SizeVariant;
+-  className?: string;
+-}
+-
+-/** A search field that narrows the rows as you type, by one column or all.
+- *  The magnifying glass sits over the field's left padding, where Input
+- *  puts a file field's icon. */
+-function DataTableSearch<TData>({
+-  table,
+-  column,
+-  placeholder = "Search…",
+-  size,
+-  className,
+-}: DataTableSearchProps<TData>) {
++  ref?: Ref<HTMLSpanElement>;
++}
++function DataTableSearch<TData>({ table, column, placeholder = "Search…", size, className, children, ref, ...props }: DataTableSearchProps<TData>) {
+   "use no memo";
+-  const icons = useIcons();
+-  const SearchIcon = icons.search;
++  const SearchIcon = useIcons().search;
+   const sizeClasses = useSize(size);
+   const target = column ? table.getColumn(column) : undefined;
+   const value = (target ? target.getFilterValue() : table.getState().globalFilter) ?? "";
+-
+-  return (
+-    <span data-slot="data-table-search" className={cn("relative block w-full max-w-xs min-w-0", className)}>
+-      <SearchIcon
+-        size={sizeClasses.icon}
+-        strokeWidth={1.5}
+-        aria-hidden
+-        className={cn(
+-          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground",
+-          "left-2"
+-        )}
+-      />
++  const context: DataTableSearchContextValue = {
++    state: { value: String(value) },
++    actions: {
++      setValue: (next) => {
++        if (target) target.setFilterValue(next);
++        else table.setGlobalFilter(next);
++        table.setPageIndex(0);
++      },
++      focusFirstRow: () => (table as Partial<DataTableExtras>).focusFirstRow?.() ?? false,
++    },
++    meta: { placeholder, size },
++  };
++  return <SearchContext.Provider value={context}>
++    <span {...props} ref={ref} data-slot="data-table-search" className={cn("relative block w-full max-w-xs min-w-0", className)}>
++      <SearchIcon size={sizeClasses.icon} strokeWidth={1.5} aria-hidden className="pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground left-2" />
++      {children === undefined ? <DataTableSearchInput /> : children}
++    </span>
++  </SearchContext.Provider>;
++}
++// Value and density are owned by the provider; decorators may add ARIA,
++// refs and events without introducing another source of filter state.
++type DataTableSearchInputProps = Omit<ComponentPropsWithRef<typeof Input>, "value" | "defaultValue" | "size">;
++const DataTableSearchInput = forwardRef<HTMLInputElement, DataTableSearchInputProps>(
++  ({ onChange, onKeyDown, className, ...props }, ref) => {
++    const { state: { value }, actions, meta: { placeholder, size } } = useDataTableSearch();
++    return (
+       <Input
++        {...props}
++        ref={ref}
+         type="search"
+         size={size}
+         placeholder={placeholder}
+-        aria-label={placeholder.replace(/…$/, "")}
++        aria-label={props["aria-label"] ?? placeholder.replace(/…$/, "")}
+         value={String(value)}
+         onChange={(e) => {
++          onChange?.(e);
++          if (e.defaultPrevented) return;
+           const next = e.target.value;
+-          if (target) target.setFilterValue(next);
+-          else table.setGlobalFilter(next);
+-          // A search that shrinks the rows starts over on the first page.
+-          table.setPageIndex(0);
++          actions.setValue(next);
+         }}
+         // ↓ steps from the search into the rows.
+         onKeyDown={(e) => {
++          onKeyDown?.(e);
++          if (e.defaultPrevented || e.currentTarget.getAttribute("aria-expanded") === "true") return;
+           if (e.key !== "ArrowDown" || e.altKey || e.metaKey || e.ctrlKey) return;
+-          if ((table as Partial<DataTableExtras>).focusFirstRow?.()) e.preventDefault();
++          if (actions.focusFirstRow()) e.preventDefault();
+         }}
+         // The icon sits 8px in, on the selection checkbox's line; then the
+         // icon and an 8px gap (16 + 8, 14 + 6 compact).
+@@ -2965,13 +3025,15 @@
+         // fill on hover, and the fill held while focused so the field still
+         // shows where typing goes.
+         className={cn(
++          className,
+           "pl-8",
+           "border-transparent focus:border-transparent aria-invalid:focus:border-transparent focus:bg-hover focus:hover:bg-hover"
+         )}
+       />
+-    </span>
+-  );
+-}
++    );
++  }
++);
++DataTableSearchInput.displayName = "DataTableSearchInput";
+
+ // ── DataTableViewOptions ─────────────────────────────────
+
+@@ -3586,6 +3648,11 @@
+   useDataTable,
+   DataTable,
+   DataTableColumnHeader,
++  DataTableColumnHeaderLabel,
++  DataTableControls,
++  useDataTableColumnHeader,
++  DataTableSearchInput,
++  useDataTableSearch,
+   DataTableSearch,
+   DataTableViewOptions,
+   DataTableRowActions,
+@@ -3606,6 +3673,9 @@
+   DataTableEmpty,
+   DataTableColumnHeaderProps,
+   DataTableSearchProps,
++  DataTableSearchInputProps,
++  DataTableSearchContextValue,
++  DataTableColumnHeaderContextValue,
+   DataTableViewOptionsProps,
+   DataTableRowActionsProps,
+   DataTablePaginationProps,

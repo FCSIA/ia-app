@@ -1,6 +1,12 @@
 'use client';
 
 import { displayName } from '~/apps/shared/user-name';
+import {
+  useDataTable,
+  DataTableColumnHeader,
+  type ColumnDef,
+} from '@/components/ui/data-table';
+import { AdminDataTable } from './admin-data-table';
 
 import {
   CheckCircle2,
@@ -11,9 +17,8 @@ import {
   Undo2,
 } from 'lucide-react';
 import type { Doc } from '~/apps/convex/src/_generated/dataModel';
-import { Button, iconSizeFor } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SearchInput, SearchToolbarRow } from '@/components/ui/search';
 import {
   Dialog,
   DialogContent,
@@ -23,11 +28,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  DataTableCount,
-  DataTableSection,
-  PINNED_TABLE_HEADER,
-} from '@/components/data/data-table-section';
-import {
   Card,
   CardDescription,
   CardFooter,
@@ -36,14 +36,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   ReportStatusActions,
   type ReportStatusAction,
@@ -85,7 +77,7 @@ const REOPEN: ModerationAction = {
   icon: Undo2,
 };
 
-/** Same anatomy as the feedback queue: the next step leads, the rest in a menu. */
+/** Same anatomy as the feedback queue: the next step leads, then the alternatives. */
 const MODERATION_ACTIONS: Record<
   ModerationReportStatus,
   { primary: ModerationAction; more: ModerationAction[] }
@@ -121,13 +113,6 @@ export function ModerationTab() {
   const pendingReports = useAdminModerationPending();
   const actions = (
     <>
-      <SearchInput
-        className="min-w-0 flex-1"
-        value={moderationSearch}
-        onValueChange={setModerationSearch}
-        aria-label="Search reports"
-        placeholder="Search reports…"
-      />
       <Dialog>
         <DialogTrigger asChild>
           <Button
@@ -202,7 +187,7 @@ export function ModerationTab() {
                     onClick={() => removeKeywordMutation.mutate(kw._id)}
                     aria-label={`Remove ${kw.keyword}`}
                   >
-                    <Trash2 size={iconSizeFor('icon-sm')} aria-hidden="true" />
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </li>
               ))}
@@ -258,100 +243,111 @@ export function ModerationTab() {
       report.reportedUser ? ` by ${displayName(report.reportedUser)}` : ''
     }`;
 
+  const columns: ColumnDef<ModerationReport>[] = [
+      {
+        id: 'report',
+        accessorFn: (report) => report.reason,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Report" />
+        ),
+        cell: ({ row }) => (
+          <>
+            <p className="truncate text-foreground" title={row.original.reason}>
+              {row.original.reason}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {context(row.original)}
+            </p>
+          </>
+        ),
+        meta: { label: 'Report' },
+      },
+      {
+        id: 'submitted-by',
+        accessorFn: (report) => displayName(report.submitter),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Submitted by" />
+        ),
+        cell: ({ row }) => (
+          <span className="block truncate">
+            {displayName(row.original.submitter)}
+          </span>
+        ),
+        meta: { label: 'Submitted by' },
+      },
+      {
+        id: 'submitted',
+        accessorFn: (report) => report._creationTime,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Submitted" />
+        ),
+        cell: ({ row }) => (
+          <time
+            className="whitespace-nowrap tabular-nums"
+            dateTime={new Date(row.original._creationTime).toISOString()}
+            title={formatDateTime(row.original._creationTime)}
+          >
+            {formatShortDate(row.original._creationTime)}
+          </time>
+        ),
+        meta: { label: 'Submitted' },
+      },
+      {
+        id: 'status',
+        accessorFn: (report) => report.status,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <ReportStatusBadge status={row.original.status} audience="moderation" />
+        ),
+        meta: { label: 'Status' },
+      },
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end">{actionsFor(row.original)}</div>
+        ),
+        meta: { label: 'Actions' },
+      },
+  ];
+  const table = useDataTable({
+    data: filteredReports,
+    columns,
+    pageSize: 20,
+    getRowId: (report) => report._id,
+    manualFiltering: true,
+    state: { globalFilter: moderationSearch },
+    onGlobalFilterChange: (update) =>
+      setModerationSearch(
+        typeof update === 'function' ? update(moderationSearch) : update,
+      ),
+  });
+
   return (
-    <DataTableSection
+    <AdminDataTable
       label="Report queue"
-      toolbar={
-        <SearchToolbarRow className="flex-row items-center gap-2">
-          {actions}
-          <DataTableCount>
-            {isLoading
-              ? '—'
-              : pendingReports > 0
-                ? `${pendingReports} pending · ${filteredReports.length} total`
-                : `${filteredReports.length} ${filteredReports.length === 1 ? 'report' : 'reports'}`}
-          </DataTableCount>
-        </SearchToolbarRow>
+      table={table}
+      loading={isLoading}
+      searchPlaceholder="Search reports…"
+      controls={actions}
+      count={
+        isLoading
+          ? '—'
+          : pendingReports > 0
+            ? `${pendingReports} pending · ${filteredReports.length} total`
+            : `${filteredReports.length} ${filteredReports.length === 1 ? 'report' : 'reports'}`
       }
-    >
-      <div className="hidden md:block">
-        <Table
-          className="table-fixed"
-          aria-label="Moderation reports"
-          aria-busy={reportMutation.isPending}
-        >
-          <colgroup>
-            <col />
-            <col className="w-[11rem]" />
-            <col className="w-[5.5rem]" />
-            <col className="w-[6.5rem]" />
-            <col className="w-[9.5rem]" />
-          </colgroup>
-          <TableHeader className={PINNED_TABLE_HEADER}>
-            <TableRow>
-              <TableHead scope="col">Report</TableHead>
-              <TableHead scope="col">Submitted by</TableHead>
-              <TableHead scope="col">Submitted</TableHead>
-              <TableHead scope="col">Status</TableHead>
-              <TableHead scope="col">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 6 }, (_, index) => (
-                <TableRow key={index}>
-                  <TableCell colSpan={5}>
-                    <Skeleton className="h-5 w-full" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : filteredReports.length ? (
-              filteredReports.map((report, index) => (
-                <TableRow key={report._id} index={index}>
-                  <TableCell className="py-2">
-                    <p className="truncate text-foreground" title={report.reason}>
-                      {report.reason}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {context(report)}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <span className="block truncate">
-                      {displayName(report.submitter)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">
-                    <time
-                      dateTime={new Date(report._creationTime).toISOString()}
-                      title={formatDateTime(report._creationTime)}
-                    >
-                      {formatShortDate(report._creationTime)}
-                    </time>
-                  </TableCell>
-                  <TableCell>
-                    <ReportStatusBadge
-                      status={report.status}
-                      audience="moderation"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">{actionsFor(report)}</div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5}>{empty}</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="md:hidden">
-        {isLoading ? (
+      empty={
+        deferredModerationSearch
+          ? 'No reports match your search.'
+          : 'No reports submitted.'
+      }
+      mobile={
+        isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((index) => (
               <Skeleton key={index} className="h-20 w-full" />
@@ -382,8 +378,8 @@ export function ModerationTab() {
           </CardGroup>
         ) : (
           empty
-        )}
-      </div>
-    </DataTableSection>
+        )
+      }
+    />
   );
 }
