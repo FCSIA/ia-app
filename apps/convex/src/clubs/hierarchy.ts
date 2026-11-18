@@ -1,3 +1,4 @@
+import { requireClubJoinEligibility } from "./joinRules";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -898,6 +899,7 @@ export const join = mutation({
       )
       .unique();
     if (!existing) {
+      requireClubJoinEligibility(context.club.joinRules, user);
       const now = Date.now();
       await ctx.db.insert("clubUnitMembers", {
         clubId: args.clubId,

@@ -1,3 +1,4 @@
+import { clubJoinBlockedReason } from "./joinRules";
 import { isSuperAdmin } from "../../../shared/roles";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
@@ -26,6 +27,7 @@ import {
 } from "./serialize";
 import {
   clubJoinRequestStatusValidator,
+  clubJoinRulesValidator,
   clubMemberRoleValidator,
 } from "../validators";
 
@@ -74,6 +76,8 @@ const clubDetailValidator = v.union(
       }),
     ),
     viewer: clubViewerStateValidator,
+    joinRules: v.optional(clubJoinRulesValidator),
+    joinBlockedReason: v.union(v.string(), v.null()),
     pendingJoinRequests: v.array(
       v.object({
         _id: v.id("clubJoinRequests"),
@@ -82,6 +86,7 @@ const clubDetailValidator = v.union(
         status: clubJoinRequestStatusValidator,
         createdAt: v.string(),
         requester: clubUserRefValidator,
+        joinBlockedReason: v.union(v.string(), v.null()),
       }),
     ),
     activeJoinCode: v.union(
@@ -305,6 +310,7 @@ export const get = query({
           status: request.status,
           createdAt: new Date(request.createdAt).toISOString(),
           requester: toClubUserRef(requester),
+          joinBlockedReason: clubJoinBlockedReason(club.joinRules, requester),
         };
       }),
     );
@@ -373,6 +379,8 @@ export const get = query({
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],
       viewer: toViewerState(context),
+      joinRules: club.joinRules,
+      joinBlockedReason: clubJoinBlockedReason(club.joinRules, user),
       pendingJoinRequests: pendingJoinRequests.filter(
         (r): r is NonNullable<typeof r> => !!r,
       ),

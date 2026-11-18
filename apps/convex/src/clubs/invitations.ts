@@ -1,7 +1,8 @@
 import { clubHref, clubPeopleRequestsHref } from "../../../shared/routes";
 import { logAuditEvent } from "../audit/_lib";
 import { displayName } from '../../../shared/user-name';
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { clubJoinBlockedReason, requireClubJoinEligibility } from "./joinRules";
 import {
   action,
   internalMutation,
@@ -70,11 +71,11 @@ export function generateSecureJoinCode() {
   ).join("");
 }
 
-async function addClubMember(
+async function tryAddClubMember(
   ctx: MutationCtx,
   clubId: Id<"clubs">,
   userId: Id<"users">,
-): Promise<ClubMemberAddResult> {
+): Promise<ClubMemberAddResult | { kind: "skipped"; error: string }> {
   const existing = await ctx.db
     .query("clubMembers")
     .withIndex("by_clubId_and_userId", (q) =>
@@ -84,6 +85,12 @@ async function addClubMember(
   if (existing) return { kind: "alreadyMember" };
   const club = await ctx.db.get(clubId);
   if (!club || !club.isActive) throw new Error("Club not found");
+  if (club.joinRules) {
+    const user = await ctx.db.get(userId);
+    if (!user) throw new ConvexError("Student not found");
+    const reason = clubJoinBlockedReason(club.joinRules, user);
+    if (reason) return { kind: "skipped", error: reason };
+  }
   if (club.memberLimit != null) {
     const members = await ctx.db
       .query("clubMembers")
@@ -102,6 +109,12 @@ async function addClubMember(
     joinedAt: Date.now(),
   });
   return { kind: "added" };
+}
+
+async function addClubMember(ctx: MutationCtx, clubId: Id<"clubs">, userId: Id<"users">) {
+  const result = await tryAddClubMember(ctx, clubId, userId);
+  if (result.kind === "skipped") throw new ConvexError(result.error);
+  return result;
 }
 
 export const searchInviteCandidates = query({
@@ -258,6 +271,8 @@ export const requestToJoin = mutation({
     if (club.joinPolicy !== "REQUEST") {
       throw new Error("This club does not accept join requests");
     }
+
+    requireClubJoinEligibility(club.joinRules, user);
 
     const existingRequest = await ctx.db
       .query("clubJoinRequests")
@@ -489,7 +504,7 @@ export const addBulkMemberByUniqueId = internalMutation({
       };
     }
 
-    const memberResult = await addClubMember(ctx, args.clubId, student._id);
+    const memberResult = await tryAddClubMember(ctx, args.clubId, student._id);
     if (memberResult.kind !== "added") {
       return memberResult;
     }

@@ -124,30 +124,38 @@ function ClubsLandingWorkspace() {
                     <p className="truncate text-xs text-muted-foreground">
                       From {displayName(invite.sender)}
                     </p>
+                    {invite.joinBlockedReason ? (
+                      <p className="text-xs text-muted-foreground">{invite.joinBlockedReason}</p>
+                    ) : null}
                   </div>
-                  <Button
-                    size="sm"
-                    leadingIcon={Check}
-                    onClick={() => {
-                      void respondToInvite({
-                        inviteId: invite._id,
-                        accept: true,
-                      }).then((result) =>
-                        toast(
-                          result.kind === "memberLimitReached"
-                            ? {
-                                title: "Club is full",
-                                description:
-                                  "A member spot must open before you can accept this invite.",
-                                variant: "destructive",
-                              }
-                            : { title: "Invite accepted" },
-                        ),
-                      );
-                    }}
-                  >
-                    Accept
-                  </Button>
+                  {!invite.joinBlockedReason ? (
+                    <Button
+                      size="sm"
+                      leadingIcon={Check}
+                      onClick={() => {
+                        void respondToInvite({
+                          inviteId: invite._id,
+                          accept: true,
+                        }).then((result) =>
+                          toast(
+                            result.kind === "memberLimitReached"
+                              ? {
+                                  title: "Club is full",
+                                  description:
+                                    "A member spot must open before you can accept this invite.",
+                                  variant: "destructive",
+                                }
+                              : { title: "Invite accepted" },
+                          ),
+                        ).catch((error: unknown) => toast({
+                          title: error instanceof Error ? error.message : "Could not accept invite",
+                          variant: "destructive",
+                        }));
+                      }}
+                    >
+                      Accept
+                    </Button>
+                  ) : null}
                   <Button
                     size="icon-sm"
                     variant="ghost"

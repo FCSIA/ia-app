@@ -1217,6 +1217,9 @@ export default function ClubPeoplePage() {
                                 { addSuffix: true },
                               )}
                             </p>
+                            {request.joinBlockedReason ? (
+                              <p className="text-xs text-muted-foreground">{request.joinBlockedReason}</p>
+                            ) : null}
                           </CardHeader>
                           <CardFooter>
                             <Button
@@ -1234,7 +1237,7 @@ export default function ClubPeoplePage() {
                               type="button"
                               size="sm"
                               leadingIcon={Check}
-                              disabled={requestInFlight !== null}
+                              disabled={requestInFlight !== null || Boolean(request.joinBlockedReason)}
                               onClick={() =>
                                 void respondToRequest(request._id, true)
                               }

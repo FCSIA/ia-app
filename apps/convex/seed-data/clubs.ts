@@ -16,6 +16,7 @@ export type SeedClubDefinition = {
   category: SeedClubCategory;
   pathway?: Pathway | null;
   gradeLevels?: number[];
+  joinRules?: { gradeLevel: 9 | 10 | 11 | 12 };
 };
 
 export const CLUB_DEFINITIONS: SeedClubDefinition[] = [
@@ -155,6 +156,7 @@ export const CLUB_DEFINITIONS: SeedClubDefinition[] = [
     joinPolicy: "REQUEST",
     category: "LEADERSHIP",
     gradeLevels: [9],
+    joinRules: { gradeLevel: 9 },
   },
   {
     name: "10th Grade Student Government",
@@ -163,6 +165,7 @@ export const CLUB_DEFINITIONS: SeedClubDefinition[] = [
     joinPolicy: "REQUEST",
     category: "LEADERSHIP",
     gradeLevels: [10],
+    joinRules: { gradeLevel: 10 },
   },
   {
     name: "11th Grade Student Government",
@@ -171,6 +174,7 @@ export const CLUB_DEFINITIONS: SeedClubDefinition[] = [
     joinPolicy: "REQUEST",
     category: "LEADERSHIP",
     gradeLevels: [11],
+    joinRules: { gradeLevel: 11 },
   },
   {
     name: "12th Grade Student Government",
@@ -179,6 +183,7 @@ export const CLUB_DEFINITIONS: SeedClubDefinition[] = [
     joinPolicy: "REQUEST",
     category: "LEADERSHIP",
     gradeLevels: [12],
+    joinRules: { gradeLevel: 12 },
   },
   {
     name: "IA Beacon",

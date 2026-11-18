@@ -18,6 +18,7 @@ import {
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useClubId } from "../../club-route";
+import { ClubJoinRulesSettings } from "@/components/clubs/club-join-rules-settings";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubStructureActions } from "@/components/clubs/dialogs/hierarchy-dialog";
 import { PeopleGroupsSettings } from "@/components/clubs/people-groups-settings";
@@ -497,6 +498,11 @@ export default function ClubSettingsPage() {
     <ClubWorkspace title={settingsTitle}>
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-5">
+          {club && canManageClubSettings ? (
+            <Elevated offset={1} className="overflow-hidden rounded-xl">
+              <ClubJoinRulesSettings key={club._id} club={club} />
+            </Elevated>
+          ) : null}
           {canManageClubSettings && navigation ? (
             <Elevated offset={1} className="overflow-hidden rounded-xl">
               <Card className="pb-0">

@@ -295,6 +295,7 @@ export const run = internalMutation({
         name: clubDef.name,
         description: clubDef.description,
         joinPolicy: clubDef.joinPolicy,
+        joinRules: clubDef.joinRules,
         memberLimit:
           clubDef.category === "LEADERSHIP"
             ? 80

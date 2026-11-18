@@ -150,17 +150,23 @@ export default function ClubDetailScreen() {
                   {(data.overview ?? data.description) ? (
                     <Txt tone="muted">{data.overview ?? data.description}</Txt>
                   ) : null}
-                  <Button
-                    title={
-                      hasPendingJoinRequest
-                        ? "Request pending"
-                        : data.joinPolicy === "OPEN"
-                          ? "Join club"
-                          : "Request to join"
-                    }
-                    disabled={hasPendingJoinRequest}
-                    onPress={joinClub}
-                  />
+                  {data.joinBlockedReason ? (
+                    <Txt tone="muted">{data.joinBlockedReason}</Txt>
+                  ) : data.joinPolicy === "INVITE_ONLY" ? (
+                    <Txt tone="muted">This club is invite only.</Txt>
+                  ) : (
+                    <Button
+                      title={
+                        hasPendingJoinRequest
+                          ? "Request pending"
+                          : data.joinPolicy === "OPEN"
+                            ? "Join club"
+                            : "Request to join"
+                      }
+                      disabled={hasPendingJoinRequest}
+                      onPress={joinClub}
+                    />
+                  )}
                 </View>
               ) : null}
 
@@ -412,11 +418,13 @@ export default function ClubDetailScreen() {
                               </Txt>
                             </View>
                           </View>
+                          {request.joinBlockedReason ? <Txt tone="muted">{request.joinBlockedReason}</Txt> : null}
                           <View
                             style={{ flexDirection: "row", gap: spacing.sm }}
                           >
                             <Button
                               title="Approve"
+                              disabled={Boolean(request.joinBlockedReason)}
                               size="sm"
                               style={{ flex: 1 }}
                               onPress={() => {

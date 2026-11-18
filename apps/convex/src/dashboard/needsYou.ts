@@ -1,3 +1,4 @@
+import { clubJoinBlockedReason } from "../clubs/joinRules";
 import { CALENDAR_HREF, adminFeedbackHref, announcementHref, clubHref, eventHref } from "../../../shared/routes";
 import { isAdmin } from "../../../shared/roles";
 import { v, type Infer } from "convex/values";
@@ -16,6 +17,7 @@ const itemValidator = v.object({
   title: v.string(),
   href: v.string(),
   createdAt: v.number(),
+  joinBlockedReason: v.optional(v.string()),
   kind: v.union(
     v.literal("announcement"),
     v.literal("event"),
@@ -144,6 +146,7 @@ export const list = query({
           kind: "club-invite",
           title: club.name,
           href: clubHref(club._id),
+          joinBlockedReason: clubJoinBlockedReason(club.joinRules, user) ?? undefined,
           createdAt: invite.createdAt,
         });
     }

@@ -1,7 +1,7 @@
 import { FEEDBACK_STATUSES } from "../../shared/feedback-status";
 import { GITHUB_SYNC_STATES } from "../../shared/feedback-sync";
 import { NOTIFICATION_CATEGORIES } from "../../shared/notifications";
-import { PATHWAYS } from "../../shared/labels";
+import { GRADE_LEVELS, PATHWAYS } from "../../shared/labels";
 import { v, type Infer, type Validator } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { APP_ROLES } from "../../shared/roles";
@@ -223,6 +223,12 @@ export const clubChannelPostingPolicyValidator = v.union(
 );
 
 export type ClubChannelPostingPolicy = Infer<typeof clubChannelPostingPolicyValidator>;
+
+export const clubJoinRulesValidator = v.object({
+  gradeLevel: v.optional(v.union(...GRADE_LEVELS.map((grade) => v.literal(grade)))),
+  major: v.optional(pathwayValidator),
+  minor: v.optional(pathwayValidator),
+});
 
 export const clubJoinPolicyValidator = v.union(
   v.literal("OPEN"),
